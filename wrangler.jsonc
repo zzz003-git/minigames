@@ -13,14 +13,23 @@
     "run_worker_first": ["/game/*", "/ad/*", "/user/*"]
   },
 
-  // D1 데이터베이스. database_id는 `wrangler d1 create` 후 채웁니다.
+  // D1 데이터베이스 (APAC 리전). 스키마는 migrations/ 에 있습니다.
   "d1_databases": [
     {
       "binding": "DB",
       "database_name": "minigames-db",
-      "database_id": "REPLACE_WITH_D1_DATABASE_ID"
+      "database_id": "c2d77540-5648-4c74-ad4f-00de5bc01e9f"
     }
   ],
+
+  // 광고 동작 모드. "mock" = 목업 광고, "live" = 실제 광고 플랫폼 검증 사용.
+  // 실연동 전에 "live" 로 바꾸면 src/lib/adverify.js 가 501 로 실패합니다(의도된 안전장치).
+  "vars": {
+    "AD_MODE": "mock"
+  },
+
+  // SESSION_SECRET 은 시크릿이므로 이 파일에 두지 않습니다.
+  //   npx wrangler versions secret put SESSION_SECRET
 
   "observability": {
     "enabled": true
