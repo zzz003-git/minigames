@@ -1,0 +1,22 @@
+{
+  "name": "minigames",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "인스턴트 컨텐츠 미니게임 4종 (스탑워치 / 숫자야구 / 타이핑 / 숫자기억력)",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "db:create": "wrangler d1 create minigames-db",
+    "db:migrate": "wrangler d1 migrations apply minigames-db --remote",
+    "db:migrate:local": "wrangler d1 migrations apply minigames-db --local",
+    "db:console": "wrangler d1 execute minigames-db --remote --command"
+  },
+  "devDependencies": {
+    "wrangler": "^4.0.0"
+  },
+  "allowScripts": {
+    "esbuild@0.28.1": true,
+    "workerd@1.20260722.1": true
+  }
+}

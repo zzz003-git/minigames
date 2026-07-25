@@ -1,0 +1,28 @@
+{
+  // Cloudflare Workers 설정. 정적 파일(public/)과 API 서버(src/)를 한 Worker에서 함께 서비스합니다.
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "minigames",
+  "main": "src/index.js",
+  "compatibility_date": "2026-07-01",
+
+  // public/ 아래 파일은 정적 자산으로 그대로 서비스됩니다.
+  // run_worker_first에 적힌 경로만 Worker 코드가 먼저 처리합니다(= API).
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS",
+    "run_worker_first": ["/game/*", "/ad/*", "/user/*"]
+  },
+
+  // D1 데이터베이스. database_id는 `wrangler d1 create` 후 채웁니다.
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "minigames-db",
+      "database_id": "REPLACE_WITH_D1_DATABASE_ID"
+    }
+  ],
+
+  "observability": {
+    "enabled": true
+  }
+}

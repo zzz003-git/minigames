@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>인스턴트 미니게임</title>
+  <meta name="description" content="스탑워치 · 숫자야구 · 타이핑 · 숫자기억력 미니게임 4종">
+  <link rel="stylesheet" href="shared/base.css">
+</head>
+<body>
+  <main class="hub">
+    <header class="hub__header">
+      <h1>인스턴트 미니게임</h1>
+      <p class="muted">하고 싶은 게임을 골라주세요</p>
+    </header>
+
+    <nav class="hub__grid">
+      <a class="hub-card" href="games/stopwatch/" style="--card-accent:#12b5a5">
+        <span class="hub-card__icon">⏱</span>
+        <span>
+          <span class="hub-card__title">스탑워치 챌린지</span>
+          <span class="hub-card__desc">서버가 정한 랜덤 목표 시간에 정확히 맞춰 멈추기</span>
+          <span class="hub-card__meta">1.00~9.99초 · 오차 0.001초 단위 · 타임별 순위</span>
+        </span>
+      </a>
+
+      <a class="hub-card" href="games/baseball/" style="--card-accent:#ff5c2b">
+        <span class="hub-card__icon">⚾</span>
+        <span>
+          <span class="hub-card__title">숫자야구</span>
+          <span class="hub-card__desc">중복 없는 3자리 숫자를 스트라이크·볼 힌트로 추리하기</span>
+          <span class="hub-card__meta">기본 6회 · 정답은 서버 암호화 보관</span>
+        </span>
+      </a>
+
+      <a class="hub-card" href="games/typing/" style="--card-accent:#ffd166">
+        <span class="hub-card__icon">⌨</span>
+        <span>
+          <span class="hub-card__title">타이핑 스피드</span>
+          <span class="hub-card__desc">제시된 문장을 빠르고 정확하게 입력하기</span>
+          <span class="hub-card__meta">한국어·English·혼합 · 275문장 · WPM/CPM</span>
+        </span>
+      </a>
+
+      <a class="hub-card" href="games/memory/" style="--card-accent:#12b5a5">
+        <span class="hub-card__icon">🧠</span>
+        <span>
+          <span class="hub-card__title">숫자 기억력</span>
+          <span class="hub-card__desc">잠깐 보여준 숫자를 가린 뒤 그대로 입력하기</span>
+          <span class="hub-card__meta">LV1~10 · 4~13자리 · 자리별 채점</span>
+        </span>
+      </a>
+    </nav>
+
+    <footer class="hub__footer">
+      <a href="https://github.com/zzz00321-boop/minigames">소스 코드</a>
+    </footer>
+  </main>
+</body>
+</html>

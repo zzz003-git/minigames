@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>스탑워치 챌린지</title>
+  <link rel="stylesheet" href="../../shared/base.css">
+</head>
+<body class="game game--stopwatch">
+  <div class="app">
+    <header class="app__header" id="header"></header>
+
+    <main class="app__body">
+
+      <!-- 화면① 게임 준비 (랜덤 타임) -->
+      <section class="screen is-active" data-screen="ready">
+        <div class="panel panel--center">
+          <div class="label">목표 타임 (Random)</div>
+          <div class="bignum bignum--xl bignum--accent" id="targetDisplay">—</div>
+          <div class="hint" style="margin-top:8px">★ 도전마다 새로운 목표 타임!</div>
+        </div>
+
+        <button class="btn btn--primary" id="startBtn" disabled>▶ START</button>
+
+        <div class="panel">
+          <div class="label">남은 도전 횟수</div>
+          <div id="attemptDots"></div>
+          <div class="hint" id="attemptText" style="margin-top:10px"></div>
+        </div>
+      </section>
+
+      <!-- 화면② 게임 진행 -->
+      <section class="screen" data-screen="running">
+        <div class="panel panel--center">
+          <div class="label" id="runningTarget">목표: —</div>
+          <div class="bignum bignum--xl" id="timerMain">0.00</div>
+          <div class="bignum" id="timerMs" style="font-size:1.2rem;color:var(--text-dim)">.0</div>
+        </div>
+
+        <div class="center hint"><span class="spinner-dot"></span> 타이머 진행 중...</div>
+
+        <button class="btn btn--stop" id="stopBtn">■ STOP</button>
+        <div class="hint" id="stopHint"></div>
+      </section>
+
+      <!-- 화면③ 결과 확인 -->
+      <section class="screen" data-screen="result">
+        <div class="panel panel--center">
+          <div class="label">목표 타임 (Target)</div>
+          <div class="bignum bignum--lg bignum--accent" id="resultTarget">—</div>
+        </div>
+
+        <div class="panel panel--center">
+          <div class="label">오차 (Gap from Target)</div>
+          <div class="bignum bignum--lg" id="resultGap" style="color:var(--ad)">—</div>
+        </div>
+
+        <div class="panel panel--center">
+          <div class="label">동일 목표 타임 도전자 중 순위</div>
+          <div class="bignum bignum--lg bignum--accent" id="resultRank">—</div>
+        </div>
+
+        <div class="tiles" id="resultTiles"></div>
+
+        <button class="btn" id="viewStatsBtn">전체 통계 보기</button>
+        <button class="btn btn--primary" id="retryBtn">다시 도전하기</button>
+        <div class="hint" id="resultNote"></div>
+      </section>
+
+      <!-- 화면④ 타임별 통계 -->
+      <section class="screen" data-screen="stats">
+        <div class="panel">
+          <div class="label" id="statsTitle">전체 통계 (Stats)</div>
+          <div id="statsChart"></div>
+        </div>
+
+        <div class="panel">
+          <div class="label">나의 기록 (My Record)</div>
+          <div class="rank-row is-me">
+            <span class="rank-row__no">ME</span>
+            <span id="statsMyRecord">—</span>
+            <span class="rank-row__value" id="statsMyPct">—</span>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="label">목표 타임별 랭킹 (Target-specific)</div>
+          <div class="tiles" id="statsPopular"></div>
+        </div>
+
+        <button class="btn" id="backToResultBtn">← 결과로 돌아가기</button>
+      </section>
+
+    </main>
+
+    <div id="adbar"></div>
+  </div>
+
+  <script type="module" src="game.js"></script>
+</body>
+</html>
