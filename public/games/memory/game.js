@@ -373,10 +373,11 @@ function renderLevelStats(stats) {
 
 // ── 보상 카드 ────────────────────────────────────────────────
 
-const clearAllRewards = () => {
+// 함수 선언으로 둡니다 (typing 쪽과 같은 이유 — 초기화 전 접근 방지).
+function clearAllRewards() {
   clearRewardCard($("#adbar"));
   clearRewardCard($("#adbar2"));
-};
+}
 
 function renderRewards(screen) {
   clearAllRewards();

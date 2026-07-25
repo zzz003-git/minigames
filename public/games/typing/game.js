@@ -408,10 +408,12 @@ function renderBuckets(stats) {
 
 // ── 보상 카드 ────────────────────────────────────────────────
 
-const clearAllRewards = () => {
+// 함수 선언으로 둡니다. 모듈 최상단에서 showSetup() 이 동기적으로 호출하므로,
+// const 화살표 함수로 두면 초기화 전에 접근해서 ReferenceError 가 납니다.
+function clearAllRewards() {
   clearRewardCard($("#adbar"));
   clearRewardCard($("#adbar2"));
-};
+}
 
 function renderRewards(screen) {
   clearAllRewards();
