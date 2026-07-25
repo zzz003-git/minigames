@@ -31,12 +31,7 @@ let numpad = null;
 
 // ── 초기화 ───────────────────────────────────────────────────
 
-renderHeader($("#header"), {
-  icon: "⚾",
-  title: "숫자야구",
-  sub: "세 자리 숫자 추리하기",
-  badge: "3자리",
-});
+renderHeader($("#header"), { icon: "⚾", title: "숫자야구", badge: "3-DIGIT" });
 
 $("#inputBtn").addEventListener("click", openInput);
 $("#cancelInputBtn").addEventListener("click", () => {
@@ -103,12 +98,18 @@ function renderMain() {
 
   renderHistoryInto($("#history"));
   $("#historyEmpty").classList.toggle("hidden", state.history.length > 0);
-  $("#historyCount").textContent = state.history.length > 0 ? `${state.history.length}회 시도` : "";
 
   const total = 6 + state.adViews * 3;
+  const label = `${state.history.length} / ${total}`;
+  $("#historyCount").textContent = state.history.length > 0 ? label : "";
+  $("#inputHistoryCount").textContent = label;
+
   renderPips($("#attemptDots"), { total, used: total - state.attemptsLeft, base: 6 });
-  $("#adCount").textContent =
-    `${state.attemptsLeft}회 남음 · 광고 충전 ${state.adViews}/${state.maxAdViews}회`;
+
+  clear($("#adCount")).append(
+    document.createTextNode(String(state.attemptsLeft)),
+    el("span", { class: "figure__sub" }, `회 남음 · 광고 ${state.adViews}/${state.maxAdViews}`),
+  );
   setHeaderBadge(`${state.attemptsLeft}회`);
 
   $("#inputBtn").disabled = state.attemptsLeft <= 0;
@@ -116,27 +117,26 @@ function renderMain() {
 
 function renderHistoryInto(host) {
   clear(host);
-  state.history.forEach((h, i) => {
+  for (const h of state.history) {
     const out = h.strikes === 0 && h.balls === 0;
     host.append(
       el(
         "div",
         { class: "history__row" },
-        el("span", { class: "history__no" }, `${i + 1}`),
         el("span", { class: "history__guess" }, [...h.guess].join(" ")),
         el(
           "span",
           { class: "history__verdict" },
           out
-            ? el("span", { class: "tag tag--out" }, "OUT")
+            ? el("span", { class: "tag" }, "OUT")
             : [
-                el("span", { class: `tag ${h.strikes > 0 ? "tag--strike" : "tag--out"}` }, `${h.strikes}S`),
-                el("span", { class: `tag ${h.balls > 0 ? "tag--ball" : "tag--out"}` }, `${h.balls}B`),
+                h.strikes > 0 ? el("span", { class: "tag tag--strike" }, `${h.strikes} S`) : null,
+                h.balls > 0 ? el("span", { class: "tag tag--ball" }, `${h.balls} B`) : null,
               ],
         ),
       ),
     );
-  });
+  }
 }
 
 // ── 숫자 입력 ────────────────────────────────────────────────
@@ -147,14 +147,15 @@ function openInput() {
     return;
   }
   state.input = "";
+  renderHistoryInto($("#inputHistory"));
   renderInput();
   showScreen("input");
   renderRewards("input");
 }
 
 function renderInput() {
-  renderSlots($("#inputSlots"), { length: DIGITS, value: state.input });
-  $("#inputLabel").textContent = `${state.history.length + 1}번째 시도 · 세 자리를 입력하세요`;
+  renderSlots($("#inputSlots"), { length: DIGITS, value: state.input, variant: "input" });
+  $("#inputLabel").textContent = `숫자 입력 (${state.history.length + 1}번째)`;
   numpad.setOkEnabled(state.input.length === DIGITS);
 }
 
@@ -212,18 +213,25 @@ async function submitGuess() {
 // ── 결과 화면 ────────────────────────────────────────────────
 
 function renderSuccess(res) {
+  $("#successSub").textContent = `정답은 ${[...res.answer].join(" ")} 였어요`;
+
   renderSlots($("#successSlots"), {
     length: DIGITS,
     value: res.answer,
+    variant: "compact",
     marks: [true, true, true],
     expected: res.answer,
   });
 
-  renderStats($("#successTiles"), [
-    { value: `${res.attempt_no}회`, label: "시도" },
-    { value: mmss(res.elapsed_ms), label: "소요" },
-    { value: res.rank_pct ? `TOP ${res.rank_pct}%` : "—", label: "순위", accent: true },
-  ]);
+  renderStats(
+    $("#successTiles"),
+    [
+      { label: "시도", value: `${res.attempt_no}회` },
+      { label: "소요", value: mmss(res.elapsed_ms) },
+      { label: "순위", value: res.rank_pct ? `TOP ${res.rank_pct}%` : "—", accent: true },
+    ],
+    { inset: true },
+  );
 
   showScreen("success");
   renderRewards("success");
@@ -254,15 +262,18 @@ async function giveUp() {
 }
 
 function renderFail(res) {
-  renderSlots($("#failSlots"), { length: DIGITS, value: res.answer });
+  $("#failSub").textContent = `정답은 ${[...res.answer].join(" ")} 이었어요`;
 
-  renderStats($("#failTiles"), [
-    { value: `${res.attempt_no}회`, label: "총 시도" },
-    { value: `${res.ad_views ?? state.adViews}/${state.maxAdViews}`, label: "광고 사용" },
-    { value: "공개", label: "정답" },
-  ]);
+  renderSlots($("#failSlots"), { length: DIGITS, value: res.answer, variant: "compact" });
 
-  $("#failNote").textContent = "새 게임을 시작하면 새로운 정답이 생성됩니다";
+  renderStats(
+    $("#failTiles"),
+    [
+      { label: "이번 기록", value: `${res.attempt_no}회 사용` },
+      { label: "광고 사용", value: `${res.ad_views ?? state.adViews}/${state.maxAdViews}회` },
+    ],
+    { inset: true },
+  );
 
   showScreen("fail");
   renderRewards("fail");
@@ -305,9 +316,9 @@ async function openStats() {
 
 function renderStatsScreen(stats) {
   renderStats($("#statsTiles"), [
-    { value: comma(stats.total_games), label: "총 게임" },
-    { value: `${stats.success_rate}%`, label: "성공률", accent: true },
-    { value: stats.avg_attempts != null ? `${stats.avg_attempts}회` : "—", label: "평균 시도" },
+    { label: "총 게임", value: comma(stats.total_games) },
+    { label: "성공률", value: `${stats.success_rate}%`, accent: true },
+    { label: "평균 시도", value: stats.avg_attempts != null ? `${stats.avg_attempts}회` : "—" },
   ]);
 
   const bins = (stats.attempt_distribution ?? []).map((r) => ({
@@ -318,14 +329,14 @@ function renderStatsScreen(stats) {
   renderChart($("#statsChart"), {
     bins,
     mine: state.lastResult?.solved ? state.lastResult.attempt_no : null,
-    caption: "왼쪽이 적은 시도로 맞춘 기록",
+    caption: "왼쪽이 적은 시도",
   });
 
   const host = clear($("#statsPosition"));
   const dist = stats.position_distribution ?? [];
 
   if (dist.length === 0) {
-    host.append(el("div", { class: "footnote" }, "아직 집계된 기록이 없습니다"));
+    host.append(el("div", { class: "footnote--dim center" }, "아직 집계된 기록이 없습니다"));
   }
 
   dist.forEach((counts, pos) => {
@@ -344,8 +355,8 @@ function renderStatsScreen(stats) {
     host.append(
       el(
         "div",
-        { class: pos < dist.length - 1 ? "mt-sm" : "mt-sm" },
-        el("div", { class: "footnote" }, `${pos + 1}번째 자리`),
+        { class: "mt-sm" },
+        el("div", { class: "footnote--dim" }, `${pos + 1}번째 자리`),
         bar,
         el("div", { class: "chart__caption" }, "0 1 2 3 4 5 6 7 8 9"),
       ),
@@ -364,14 +375,13 @@ function renderRewards(screen) {
   const canRefill = state.adViews < state.maxAdViews;
 
   if (screen === "main" || screen === "exhausted") {
-    const host = screen === "main" ? $("#adbar") : $("#adbar3");
-    renderRewardCard(host, {
-      icon: "⚡",
-      title: canRefill ? "기회 3회 충전하기" : "광고 한도에 도달했습니다",
+    renderRewardCard($(screen === "main" ? "#adbar" : "#adbar3"), {
+      icon: "🎁",
+      title: canRefill ? "광고 보고 기회 충전" : "광고 한도에 도달했습니다",
       desc: canRefill
-        ? `광고를 보면 같은 정답으로 이어서 도전합니다 (${state.adViews}/${state.maxAdViews}회 사용)`
+        ? `같은 정답으로 이어서 도전합니다 · ${state.adViews}/${state.maxAdViews}회 사용`
         : "새 게임을 시작하면 기회가 초기화됩니다",
-      cta: "광고 보기",
+      cta: canRefill ? "+3회" : "불가",
       disabled: !canRefill,
       onClick: refillByAd,
     });
@@ -381,8 +391,9 @@ function renderRewards(screen) {
   if (screen === "success" || screen === "fail") {
     renderRewardCard($(screen === "success" ? "#adbar2" : "#adbar4"), {
       icon: "📊",
-      title: "전체 통계 열람",
-      desc: "성공률, 평균 시도 횟수, 자리별 정답 분포를 볼 수 있습니다",
+      title: "광고 보고 전체 통계 열람",
+      desc: "성공률 · 평균 시도 · 자리별 정답 분포",
+      cta: "보기",
       onClick: openStats,
     });
   }

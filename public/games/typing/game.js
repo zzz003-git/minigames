@@ -1,7 +1,7 @@
 /**
- * ③ 타이핑 스피드 챌린지
+ * ③ 타이핑 챌린지
  *
- * 실시간 WPM/CPM·정확도는 화면 표시용으로 클라이언트가 계산하고,
+ * 실시간 CPM/WPM·정확도는 화면 표시용으로 클라이언트가 계산하고,
  * 순위에 들어가는 최종 수치는 서버가 원본 문장과 제출 문자열을 비교해 다시 계산합니다.
  * 즉 화면 숫자를 조작해도 기록은 바뀌지 않습니다.
  */
@@ -14,8 +14,8 @@ import {
 } from "../../shared/ui.js";
 
 const DIFFICULTY_LABEL = { easy: "쉬움", normal: "보통", hard: "어려움" };
-const LANG_LABEL = { ko: "한국어", en: "English", mix: "한/영 혼합" };
-const METRIC_LABEL = { wpm: "WPM", cpm: "타수/분" };
+const LANG_LABEL = { ko: "한국어", en: "English", mix: "한·영 혼합" };
+const METRIC_LABEL = { wpm: "WPM", cpm: "타수 CPM" };
 
 const state = {
   lang: "ko",
@@ -31,17 +31,12 @@ const state = {
 
 // ── 초기화 ───────────────────────────────────────────────────
 
-renderHeader($("#header"), {
-  icon: "⌨",
-  title: "타이핑 스피드",
-  sub: "빠르고 정확하게 입력하기",
-});
+renderHeader($("#header"), { icon: "⌨", title: "타이핑 챌린지" });
 
 buildSegments();
 $("#startBtn").addEventListener("click", beginChallenge);
 $("#finishBtn").addEventListener("click", () => finish("manual"));
 $("#retryBtn").addEventListener("click", () => showSetup());
-$("#newSentenceBtn").addEventListener("click", requestNewSentence);
 $("#viewRankBtn").addEventListener("click", openRank);
 $("#rankBackBtn").addEventListener("click", () => {
   showScreen("result");
@@ -63,12 +58,7 @@ function buildSegments() {
       host.append(
         el(
           "button",
-          {
-            class: "seg__item",
-            type: "button",
-            "aria-pressed": key === current,
-            onclick: () => onPick(key),
-          },
+          { class: "seg__item", type: "button", "aria-pressed": key === current, onclick: () => onPick(key) },
           labels[key],
         ),
       );
@@ -92,18 +82,15 @@ function buildSegments() {
 }
 
 function updateMetricHint() {
-  const metric = state.lang === "en" ? "WPM (분당 단어 수)" : "CPM / 타수 (분당 글자 수)";
-  const extra = state.lang === "mix" ? " · WPM도 함께 표시됩니다" : "";
-  $("#metricHint").textContent = `순위 기준 지표: ${metric}${extra}`;
+  const metric = state.lang === "en" ? "WPM / 분당 단어 수" : "CPM / 분당 글자 수";
+  $("#metricHint").textContent = `순위 기준: ${metric}`;
 }
 
 /** 시작 버튼 바로 위에 현재 선택값을 짧게 요약 */
 function updateSummary() {
-  const host = clear($("#selectionSummary"));
-  host.append(
+  clear($("#selectionSummary")).append(
     el("span", { class: "chip chip--accent" }, LANG_LABEL[state.lang]),
     el("span", { class: "chip chip--accent" }, DIFFICULTY_LABEL[state.difficulty]),
-    el("span", { class: "chip" }, METRIC_LABEL[state.lang === "en" ? "wpm" : "cpm"]),
     state.previewChars > 0 ? el("span", { class: "chip" }, `약 ${state.previewChars}자`) : null,
   );
 }
@@ -119,9 +106,12 @@ async function loadAttempts() {
     const res = await apiGet("/user/attempts", { game: "TYPING" });
     const { total, used, remaining } = res.attempts;
     renderPips($("#attemptDots"), { total, used, base: 5 });
-    $("#attemptText").textContent = `${remaining}회 남음 · 오늘 ${used}/${total}회 사용`;
+    clear($("#attemptText")).append(
+      document.createTextNode(String(remaining)),
+      el("span", { class: "figure__sub" }, ` / ${total}회`),
+    );
   } catch {
-    $("#attemptText").textContent = "";
+    $("#attemptText").textContent = "—";
   }
 }
 
@@ -129,7 +119,7 @@ async function loadPreview() {
   try {
     const res = await apiGet("/game/preview", { lang: state.lang });
     const match = (res.previews ?? []).find((p) => p.difficulty === state.difficulty);
-    $("#preview").textContent = match ? `“${match.text}”` : "문장을 불러올 수 없습니다.";
+    $("#preview").textContent = match ? match.text : "문장을 불러올 수 없습니다.";
     state.previewChars = match?.char_count ?? 0;
     updateSummary();
   } catch {
@@ -161,9 +151,9 @@ async function beginChallenge() {
   }
 }
 
-/** 기획서 화면① → ② 사이의 3초 카운트다운 */
+/** 화면① → ② 사이의 3초 카운트다운 */
 function runCountdown() {
-  $("#countdownText").textContent = `“${state.session.text}”`;
+  $("#countdownText").textContent = state.session.text;
   showScreen("countdown");
   clearAllRewards();
 
@@ -208,7 +198,7 @@ function onInput() {
   if (typed.length >= state.targetChars.length) finish("complete");
 }
 
-/** 원본 문장을 글자 단위로 색칠합니다 (초록/빨강/커서) */
+/** 원본 문장을 글자 단위로 색칠합니다 (입력 완료분/오타/커서) */
 function renderTarget(typed) {
   const host = clear($("#targetText"));
   const u = [...typed];
@@ -220,7 +210,6 @@ function renderTarget(typed) {
     host.append(el("span", { class: cls }, ch === " " ? " " : ch));
   });
 
-  // 원본보다 길게 입력한 초과분 표시
   if (u.length > state.targetChars.length) {
     host.append(el("span", { class: "ch--bad" }, u.slice(state.targetChars.length).join("")));
   }
@@ -232,26 +221,30 @@ function liveTick() {
   const elapsed = performance.now() - state.t0;
   const typed = $("#typingInput").value;
   const minutes = elapsed / 60000;
+  const u = [...typed];
 
   const words = typed.trim().split(/\s+/).filter(Boolean).length;
   const wpm = minutes > 0 ? words / minutes : 0;
-  const cpm = minutes > 0 ? [...typed].length / minutes : 0;
+  const cpm = minutes > 0 ? u.length / minutes : 0;
   const speed = state.session.primary_metric === "wpm" ? wpm : cpm;
 
   let correct = 0;
-  const u = [...typed];
   for (let i = 0; i < Math.min(u.length, state.targetChars.length); i++) {
     if (u[i] === state.targetChars[i]) correct++;
   }
-  const acc = u.length > 0 ? (correct / Math.max(u.length, 1)) * 100 : 100;
+  const typos = u.length - correct;
+  const acc = u.length > 0 ? (correct / u.length) * 100 : 100;
 
   const limit = state.session.time_limit_ms;
   const left = Math.max(0, limit - elapsed);
+  const progress = Math.min(100, (u.length / state.targetChars.length) * 100);
 
   $("#liveSpeed").textContent = Math.round(speed);
   $("#liveAcc").textContent = `${Math.round(acc)}%`;
+  $("#liveTypos").textContent = typos;
   $("#liveLeft").textContent = mmss(left);
-  $("#progressFill").style.width = `${Math.min(100, (u.length / state.targetChars.length) * 100)}%`;
+  $("#progressText").textContent = `진행률 ${Math.round(progress)}%`;
+  $("#progressFill").style.width = `${progress}%`;
 
   if (left <= 0) {
     finish("timeout");
@@ -291,33 +284,51 @@ async function finish(reason) {
   }
 }
 
+function verdictOf(res) {
+  if (res.accuracy >= 98 && res.completion >= 100) return { badge: "🎯", headline: "완벽해요!", great: true };
+  if (res.accuracy >= 90) return { badge: "🎉", headline: "훌륭해요!", great: true };
+  if (res.accuracy >= 70) return { badge: "👍", headline: "좋아요!", great: false };
+  return { badge: "🌙", headline: "다시 도전해볼까요?", great: false };
+}
+
 function renderResult(res, reason) {
+  const v = verdictOf(res);
   const primaryLabel = METRIC_LABEL[res.primary_metric];
   const primaryValue = res.primary_metric === "wpm" ? res.wpm : res.cpm;
 
+  const badge = $("#resultBadge");
+  badge.textContent = v.badge;
+  badge.className = v.great ? "badge-round" : "badge-round badge-round--quiet";
+
+  $("#resultHeadline").textContent = v.headline;
+  $("#resultSub").textContent = `${LANG_LABEL[state.lang]} · ${DIFFICULTY_LABEL[state.difficulty]} · 최종 점수`;
   $("#resultScore").textContent = comma(res.score);
 
-  renderStats($("#resultTiles"), [
-    { value: Math.round(primaryValue), label: primaryLabel },
-    { value: `${Math.round(res.accuracy)}%`, label: "정확도", accent: true },
-    { value: mmss(res.elapsed_ms), label: "소요" },
-  ]);
+  clear($("#resultChips")).append(
+    el("span", { class: "chip" }, `전체 ${comma(res.bucket_total)}명`),
+    el("span", { class: "chip chip--accent" }, `#${comma(res.rank)} · TOP ${res.rank_pct}%`),
+  );
 
-  $("#resultRankLabel").textContent = `전체 ${comma(res.bucket_total)}명 중 순위`;
-  $("#resultRank").textContent = `#${comma(res.rank)} · TOP ${res.rank_pct}%`;
+  renderStats(
+    $("#resultTiles"),
+    [
+      { label: "정확도", value: `${Math.round(res.accuracy)}%`, accent: true },
+      { label: primaryLabel, value: Math.round(primaryValue) },
+      { label: "소요", value: mmss(res.elapsed_ms) },
+    ],
+    { inset: true },
+  );
 
-  const extra = res.primary_metric === "cpm" ? ` · ${res.wpm} WPM` : ` · ${Math.round(res.cpm)} 타수`;
-  const reasonText = reason === "timeout" ? "시간 초과로 종료되었습니다 · " : "";
+  const extra = res.primary_metric === "cpm" ? `${res.wpm} WPM` : `${Math.round(res.cpm)} 타수`;
+  const reasonText = reason === "timeout" ? "시간 초과 · " : "";
   // 정확도는 원본 전체 글자 수 기준이므로, 끝까지 못 친 경우 이유를 함께 알려 줍니다.
   const partial = res.completion < 100 ? ` · 완성도 ${res.completion}% (${res.typed_chars}/${res.target_chars}자)` : "";
-  $("#resultNote").textContent =
-    `${reasonText}오탈자 ${res.typos}개${extra}${partial}`;
+  $("#resultNote").textContent = `${reasonText}오탈자 ${res.typos}개 · ${extra}${partial}`;
 
   showScreen("result");
   renderRewards("result");
 
-  // 정확도가 아주 높을 때만 절제된 축하 연출
-  if (res.accuracy >= 98 && res.completion >= 100) celebrate($("#resultCard"));
+  if (v.great) celebrate($("#resultCard"));
 }
 
 // ── 새 문장 도전권 (보상형 광고) ───────────────────────────────
@@ -356,12 +367,11 @@ async function openRank() {
 
 function renderRank(data) {
   const [lang, difficulty] = String(data.bucket ?? ":").split(":");
-  $("#rankTitle").textContent =
-    `${LANG_LABEL[lang] ?? lang} · ${DIFFICULTY_LABEL[difficulty] ?? difficulty}`;
+  $("#rankTitle").textContent = `${LANG_LABEL[lang] ?? lang} · ${DIFFICULTY_LABEL[difficulty] ?? difficulty} 순위`;
 
   const host = clear($("#rankList"));
   if ((data.list ?? []).length === 0) {
-    host.append(el("div", { class: "footnote" }, "아직 기록이 없습니다"));
+    host.append(el("div", { class: "footnote--dim center" }, "아직 기록이 없습니다"));
   }
   for (const row of data.list ?? []) {
     const mine = data.my_rank === row.rank;
@@ -409,8 +419,9 @@ function renderRewards(screen) {
   if (screen === "setup") {
     renderRewardCard($("#adbar"), {
       icon: "📄",
-      title: "새 문장 도전권 받기",
-      desc: "광고를 보면 도전 기회가 1회 늘어납니다 (하루 5회)",
+      title: "광고 보고 새 문장 받기",
+      desc: "하루 5회까지",
+      cta: "받기",
       onClick: requestNewSentence,
     });
     return;
@@ -419,8 +430,9 @@ function renderRewards(screen) {
   if (screen === "result") {
     renderRewardCard($("#adbar2"), {
       icon: "🏆",
-      title: "전체 순위 열람",
-      desc: "같은 언어·난이도 참가자들의 순위를 볼 수 있습니다",
+      title: "광고 보고 전체 순위 열람",
+      desc: "같은 언어·난이도 참가자 순위",
+      cta: "보기",
       onClick: openRank,
     });
   }

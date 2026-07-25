@@ -3,9 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>숫자 기억력</title>
+  <title>기억력 챌린지</title>
   <meta name="color-scheme" content="dark">
-  <meta name="theme-color" content="#111820">
+  <meta name="theme-color" content="#0F1420">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../../shared/base.css">
 </head>
 <body class="game game--memory">
@@ -16,20 +19,25 @@
 
       <!-- 화면① 레벨 선택 -->
       <section class="screen is-active" data-screen="select">
-        <div class="card card--accent card--center">
-          <div class="card__label">최고 기록</div>
-          <div class="figure figure--xl figure--accent mt-sm" id="bestLevel">—</div>
-          <div class="footnote mt-sm" id="bestSub">아직 클리어한 레벨이 없습니다</div>
-        </div>
-
         <div class="card">
           <div class="card__head">
-            <span class="card__label">레벨 선택</span>
-            <span class="footnote" id="ticketBadge"></span>
+            <span class="card__title">레벨 선택</span>
+            <span class="footnote--dim">LV1~LV10</span>
           </div>
           <div class="level-grid" id="levelGrid" role="group" aria-label="레벨 선택"></div>
-          <div class="footnote mt-md" id="ticketText"></div>
         </div>
+
+        <div class="card card--info">
+          <div class="meter">
+            <div class="meter__text">
+              <span class="card__label">최고 기록</span>
+              <span class="footnote" style="color:var(--text-2)" id="bestSub">현재 최고 레벨</span>
+            </div>
+            <span class="figure figure--lg figure--accent" id="bestLevel">—</span>
+          </div>
+        </div>
+
+        <div class="mono-note center" id="ticketText">—</div>
 
         <button class="btn btn--primary" id="challengeBtn">▶ 도전하기</button>
         <button class="btn" id="viewRankBtn">🏆 전체 랭킹 보기</button>
@@ -37,73 +45,67 @@
         <div id="adbar"></div>
       </section>
 
-      <!-- 화면② 숫자 암기 -->
-      <section class="screen" data-screen="memorize">
-        <div class="card card--accent card--center">
-          <div class="card__label" id="memorizeLabel">기억하세요</div>
-          <div class="figure figure--xl figure--accent mt-md" id="memorizeDigits">—</div>
-        </div>
-
-        <div class="card card--center card--tight">
-          <div class="figure figure--lg" id="memorizeCount">5</div>
-          <div class="card__label mt-sm">초 후 사라집니다</div>
-        </div>
-
+      <!-- 화면② 암기 -->
+      <section class="screen screen--center" data-screen="memorize">
+        <div class="step-badge" id="memorizeLabel">STEP 1 · 기억하기</div>
+        <div class="figure figure--play" id="memorizeDigits">—</div>
         <div class="footnote center" id="memorizeHint"></div>
+        <div class="card card--info card--center" style="min-width:120px">
+          <span class="figure figure--lg figure--accent" id="memorizeCount">5</span>
+          <span class="card__label mt-sm">초 후 사라집니다</span>
+        </div>
       </section>
 
-      <!-- 화면③ 숫자 입력 (블라인드) -->
+      <!-- 화면③ 입력 (블라인드) -->
       <section class="screen" data-screen="input">
-        <div class="card card--center card--tight">
-          <div class="card__label" id="inputLabel">기억한 숫자를 입력하세요</div>
-          <div class="slots mt-md" id="inputSlots"></div>
+        <div class="center stack stack--sm" style="align-items:center">
+          <div class="step-badge step-badge--quiet">STEP 2 · 입력하기</div>
+          <div class="footnote" style="color:var(--text-2)" id="inputLabel">기억한 숫자를 입력하세요</div>
         </div>
+
+        <div class="slots slots--input" id="inputSlots"></div>
+
+        <div class="spacer"></div>
 
         <div class="sheet">
           <div class="sheet__grip" aria-hidden="true"></div>
           <div id="numpad"></div>
+          <button class="btn btn--ghost" id="hintBtn">💡 힌트 사용</button>
         </div>
-
-        <button class="btn btn--ghost" id="hintBtn">💡 힌트 사용</button>
       </section>
 
-      <!-- 화면④ 결과 확인 -->
+      <!-- 화면④ 결과 -->
       <section class="screen" data-screen="result">
-        <div class="card card--center celebrate" id="resultCard">
-          <div id="resultMark"></div>
+        <div class="card card--center card--hero celebrate" id="resultCard">
+          <div class="badge-round" id="resultBadge" aria-hidden="true">🎉</div>
           <div class="headline" id="resultHeadline">—</div>
-          <div class="card__label mt-sm" id="resultSub">—</div>
+          <div class="footnote" id="resultSub">—</div>
+          <div class="slots slots--compact mt-sm" id="resultSlots"></div>
+          <div class="chips mt-sm" id="resultChips"></div>
+          <div id="resultTiles" class="stats stats--inset"></div>
         </div>
-
-        <div class="card">
-          <div class="card__label">자리별 채점</div>
-          <div class="slots mt-sm" id="resultSlots"></div>
-          <div class="footnote mt-md">✓ 맞은 자리 · ✕ 틀린 자리</div>
-        </div>
-
-        <div id="resultTiles"></div>
 
         <button class="btn btn--primary" id="nextLevelBtn">▶ 다음 레벨 도전하기</button>
         <button class="btn" id="resultRankBtn">🏆 랭킹 보기</button>
         <button class="btn btn--ghost" id="backToSelectBtn">← 레벨 선택으로</button>
-        <div class="footnote center" id="resultNote"></div>
+        <div class="footnote--dim center" id="resultNote"></div>
 
         <div id="adbar2"></div>
       </section>
 
       <!-- 랭킹 -->
       <section class="screen" data-screen="rank">
-        <div class="card">
+        <div class="card card--info">
           <div class="card__label" id="rankTitle">전체 랭킹</div>
           <div class="rank-list mt-sm" id="rankList"></div>
         </div>
 
-        <div class="card">
+        <div class="card card--info">
           <div class="card__label">레벨별 클리어율</div>
           <div class="rank-list mt-sm" id="levelStats"></div>
         </div>
 
-        <button class="btn btn--ghost" id="rankBackBtn">← 돌아가기</button>
+        <button class="btn" id="rankBackBtn">← 돌아가기</button>
       </section>
 
     </main>

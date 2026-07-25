@@ -42,21 +42,16 @@ export const currentScreen = () => $(".screen.is-active")?.dataset.screen ?? nul
 
 /**
  * @param {HTMLElement} host  <header class="topbar" id="header">
- * @param {{ icon?:string, title:string, sub?:string, badge?:string }} opts
+ * @param {{ icon?:string, title:string, badge?:string }} opts
  */
-export function renderHeader(host, { icon, title, sub, badge } = {}) {
+export function renderHeader(host, { icon, title, badge } = {}) {
   clear(host);
   host.classList.add("topbar");
 
   host.append(
-    el("a", { class: "topbar__back", href: "/", "aria-label": "게임 목록으로 돌아가기" }, "←"),
+    el("a", { class: "topbar__back", href: "/", "aria-label": "게임 목록으로 돌아가기" }, "‹"),
     icon ? el("span", { class: "topbar__icon", "aria-hidden": "true" }, icon) : null,
-    el(
-      "span",
-      { class: "topbar__text" },
-      el("span", { class: "topbar__title" }, title),
-      sub ? el("span", { class: "topbar__sub" }, sub) : null,
-    ),
+    el("span", { class: "topbar__title" }, title),
     badge ? el("span", { class: "topbar__badge", id: "headerBadge" }, badge) : null,
   );
 }
@@ -112,7 +107,7 @@ export function mountNumpad(host, { onDigit, onBack, onOk, okLabel = "OK" }) {
     el(
       "button",
       { class: "numpad__key numpad__key--util", type: "button", onclick: onBack, "aria-label": "한 자리 지우기" },
-      "⌫",
+      "지우기",
     ),
     el("button", { class: "numpad__key", type: "button", onclick: () => onDigit("0") }, "0"),
   );
@@ -168,18 +163,18 @@ export function renderPips(host, { total, used, base = total }) {
 // ── 숫자 슬롯 ────────────────────────────────────────────────
 
 /**
- * @param {{ length:number, value:string, small?:boolean, blind?:boolean,
- *           marks?:boolean[], expected?:string }} opts
+ * @param {{ length:number, value:string, variant?:"default"|"input"|"compact",
+ *           blind?:boolean, marks?:boolean[], expected?:string }} opts
+ *   variant: 'input' = 입력용(조금 작게), 'compact' = 자리수가 많을 때
  *   marks 를 주면 채점 결과 표시 모드로 그립니다(색 + 아이콘 함께).
  */
-export function renderSlots(host, { length, value = "", small = false, blind = false, marks = null, expected = "" }) {
+export function renderSlots(host, { length, value = "", variant = "default", blind = false, marks = null, expected = "" }) {
   clear(host);
-  host.classList.add("slots");
+  host.className = `slots${variant === "default" ? "" : ` slots--${variant}`}`;
 
   for (let i = 0; i < length; i++) {
     const ch = value[i];
     const cls = ["slot"];
-    if (small) cls.push("slot--sm");
 
     if (marks) {
       const ok = Boolean(marks[i]);
@@ -205,7 +200,7 @@ export function renderSlots(host, { length, value = "", small = false, blind = f
     else if (i === value.length) cls.push("is-active");
     else cls.push("is-empty");
 
-    host.append(el("div", { class: cls.join(" ") }, ch ?? "·"));
+    host.append(el("div", { class: cls.join(" ") }, ch ?? "_"));
   }
 }
 
@@ -240,17 +235,21 @@ export function renderChart(host, { bins, mine = null, caption = "", short = fal
 
 // ── 통계 타일 ────────────────────────────────────────────────
 
-/** items: [{ value, label, accent? }] */
-export function renderStats(host, items) {
+/**
+ * 가로 3분할 미니 통계 카드. 시안대로 라벨이 위, 숫자가 아래입니다.
+ * @param {Array<{value:string|number, label:string, accent?:boolean}>} items
+ * @param {{ inset?:boolean }} opts  inset: 결과 카드 안에 들어가는 형태
+ */
+export function renderStats(host, items, { inset = false } = {}) {
   clear(host);
-  host.classList.add("stats");
+  host.className = `stats${inset ? " stats--inset" : ""}`;
   for (const t of items) {
     host.append(
       el(
         "div",
         { class: `stat ${t.accent ? "stat--accent" : ""}` },
-        el("div", { class: "stat__value" }, t.value),
         el("div", { class: "stat__label" }, t.label),
+        el("div", { class: "stat__value" }, t.value),
       ),
     );
   }

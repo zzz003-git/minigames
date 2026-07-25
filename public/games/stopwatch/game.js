@@ -24,11 +24,7 @@ const state = {
 
 // ── 초기화 ───────────────────────────────────────────────────
 
-renderHeader($("#header"), {
-  icon: "⏱",
-  title: "스탑워치 챌린지",
-  sub: "목표 시간에 정확히 멈추기",
-});
+renderHeader($("#header"), { icon: "⏱", title: "스탑워치 챌린지" });
 
 $("#startBtn").addEventListener("click", onStart);
 $("#stopBtn").addEventListener("click", onStop);
@@ -66,7 +62,6 @@ async function loadChallenge() {
     setFigure($("#targetDisplay"), ms2(res.target_ms), "초");
     $("#startBtn").disabled = false;
     $("#runningTarget").textContent = `목표 ${ms2(res.target_ms)}초`;
-    $("#stopHint").textContent = `정확히 ${ms2(res.target_ms)}초에 멈춰보세요`;
     renderAttempts();
     renderRewards("ready");
   } catch (err) {
@@ -77,7 +72,7 @@ async function loadChallenge() {
 function handleStartError(err) {
   if (err instanceof ApiFail && err.code === "NO_ATTEMPTS") {
     $("#targetDisplay").textContent = "—";
-    $("#attemptText").textContent = "오늘 도전 기회를 모두 사용했습니다";
+    setFigure($("#attemptText"), "0", "회");
     renderPips($("#attemptDots"), { total: 0, used: 0 });
     renderRewards("ready");
     return;
@@ -96,7 +91,11 @@ function setFigure(host, value, unit) {
 function renderAttempts() {
   const { total, used, remaining } = state.attempts;
   renderPips($("#attemptDots"), { total, used, base: 5 });
-  $("#attemptText").textContent = `${remaining}회 남음 · 오늘 ${used}/${total}회 사용`;
+  clear($("#attemptText"));
+  $("#attemptText").append(
+    document.createTextNode(String(remaining)),
+    el("span", { class: "figure__sub" }, ` / ${total}회`),
+  );
 }
 
 // ── 게임 진행 ────────────────────────────────────────────────
@@ -119,7 +118,6 @@ function onStart() {
 function tick() {
   const elapsed = performance.now() - state.t0;
   $("#timerMain").textContent = (elapsed / 1000).toFixed(2);
-  $("#timerMs").textContent = `.${Math.floor(elapsed % 10)}`;
   state.raf = requestAnimationFrame(tick);
 }
 
@@ -149,33 +147,39 @@ async function onStop() {
 
 // ── 결과 ─────────────────────────────────────────────────────
 
+/** 오차 크기에 따른 평가 문구 */
+function verdictOf(absGapMs) {
+  if (absGapMs <= 30) return { badge: "🎯", headline: "완벽해요!", great: true };
+  if (absGapMs <= 100) return { badge: "🎉", headline: "훌륭해요!", great: true };
+  if (absGapMs <= 300) return { badge: "👍", headline: "좋아요!", great: false };
+  if (absGapMs <= 800) return { badge: "🙂", headline: "아쉬워요", great: false };
+  return { badge: "🌙", headline: "다시 도전해볼까요?", great: false };
+}
+
 function renderResult(res) {
-  const gapEl = $("#resultGap");
-  gapEl.textContent = gapText(res.gap_ms);
+  const v = verdictOf(res.abs_gap_ms);
 
-  // 오차 크기에 따라 색을 다르게 (0.1초 이내는 성공색)
-  gapEl.classList.remove("figure--success", "figure--accent", "figure--danger");
-  const great = res.abs_gap_ms <= 100;
-  gapEl.classList.add(great ? "figure--success" : res.abs_gap_ms <= 400 ? "figure--accent" : "figure--danger");
+  const badge = $("#resultBadge");
+  badge.textContent = v.badge;
+  badge.className = v.great ? "badge-round" : "badge-round badge-round--quiet";
 
-  $("#resultTarget").textContent = `${ms2(res.target_ms)}초`;
-  $("#resultRank").textContent = `TOP ${res.rank_pct}%`;
+  $("#resultHeadline").textContent = v.headline;
+  $("#resultSub").textContent = `목표 ${ms2(res.target_ms)}초 · 오차 ${ms3(res.abs_gap_ms)}초`;
+  setFigure($("#resultElapsed"), ms3(res.elapsed_ms), null);
 
-  renderStats($("#resultTiles"), [
-    { value: `${comma(res.bucket_total)}명`, label: "같은 목표 도전자" },
-    { value: `${ms3(res.abs_gap_ms)}s`, label: "오차", accent: true },
-    { value: `${res.attempts.used}회`, label: "오늘 도전" },
-  ]);
+  clear($("#resultChips")).append(
+    el("span", { class: "chip" }, `동일 타임 ${comma(res.bucket_total)}명`),
+    el("span", { class: "chip chip--accent" }, `TOP ${res.rank_pct}%`),
+  );
 
   $("#resultNote").textContent = res.suspect
     ? "검증 이상치로 표시되어 전체 통계에는 반영되지 않습니다"
-    : `실제 기록 ${ms3(res.elapsed_ms)}초 · 남은 기회 ${res.attempts.remaining}회`;
+    : `오차 ${gapText(res.gap_ms)} · 남은 기회 ${res.attempts.remaining}회`;
 
   showScreen("result");
   renderRewards("result");
 
-  // 아주 잘 맞췄을 때만 절제된 축하 연출
-  if (great) celebrate($("#resultCard"));
+  if (v.great) celebrate($("#resultCard"));
 }
 
 // ── 전체 통계 (광고 시청 후 열람) ─────────────────────────────
@@ -208,7 +212,7 @@ function renderStatsScreen(stats) {
   renderChart($("#statsChart"), {
     bins: stats.distribution?.bins ?? [],
     mine: state.lastResult?.abs_gap_ms ?? null,
-    caption: "오차 분포 — 왼쪽이 정확한 기록",
+    caption: "오차 분포 · 왼쪽이 정확",
   });
 
   const my = state.lastResult;
@@ -219,11 +223,10 @@ function renderStatsScreen(stats) {
   const popular = stats.popular_buckets ?? [];
 
   if (popular.length === 0) {
-    // renderStats 가 붙여 둔 grid 클래스를 떼야 안내 문구가 격자 칸에 갇히지 않습니다.
-    host.classList.remove("stats");
-    host.append(el("div", { class: "footnote" }, "아직 집계된 목표 타임이 없습니다"));
+    host.className = "mt-sm";
+    host.append(el("div", { class: "footnote--dim center" }, "아직 집계된 목표 타임이 없습니다"));
   } else {
-    renderStats(host, popular.map((b) => ({ value: `${b.bucket}초`, label: `${comma(b.n)}명` })));
+    renderStats(host, popular.map((b) => ({ label: `${comma(b.n)}명`, value: `${b.bucket}초` })));
   }
 
   showScreen("stats");
@@ -239,8 +242,9 @@ function renderRewards(screen) {
   if (screen === "ready") {
     renderRewardCard($("#adbar"), {
       icon: "🎁",
-      title: "도전 기회 받기",
-      desc: "광고를 보면 오늘 기회가 1회 늘어납니다 (하루 3회)",
+      title: "광고 보고 도전 기회 추가",
+      desc: "하루 3회까지",
+      cta: "받기",
       onClick: async () => {
         const res = await watchAdForReward("STOPWATCH_ATTEMPT");
         if (!res) return;
@@ -254,8 +258,9 @@ function renderRewards(screen) {
   if (screen === "result") {
     renderRewardCard($("#adbar2"), {
       icon: "📊",
-      title: "전체 통계 열람",
-      desc: "같은 목표 타임 도전자들의 오차 분포를 볼 수 있습니다",
+      title: "광고 보고 전체 통계 열람",
+      desc: "같은 목표 타임 도전자들의 오차 분포",
+      cta: "보기",
       onClick: openStats,
     });
   }
