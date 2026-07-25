@@ -59,6 +59,12 @@ AD_MODE="mock"
 ## 배포
 
 `main` 브랜치에 push하면 Cloudflare Workers Builds가 자동 배포합니다.
+따라서 별도로 `wrangler deploy` 를 실행할 필요가 없습니다. 두 번 하면 push 한 번에
+버전이 두 개 생깁니다.
+
+`main` 이 아닌 브랜치는 `wrangler versions upload` 로 미리보기 버전만 만들고 프로덕션에는
+영향을 주지 않습니다. (대시보드 Build configuration 의 *Non-production branch deploy command*
+가 `npx wrangler deploy` 로 되어 있으면 어떤 브랜치든 프로덕션을 덮어쓰므로 주의)
 
 처음 한 번만 필요한 작업:
 
