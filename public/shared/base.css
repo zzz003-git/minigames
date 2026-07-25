@@ -324,6 +324,31 @@ h1, h2, h3 { margin: 0; font-weight: 700; letter-spacing: -0.01em; }
   font-family: var(--sans);
 }
 
+/* 암기 숫자 — 한 줄에 4개씩 고정 배치.
+   자릿수가 4~13까지 변하는데 텍스트로 두면 줄바꿈이 제멋대로 끊기므로 그리드로 잡습니다. */
+.digit-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px 16px;
+  justify-items: center;
+  align-items: center;
+  width: 100%;
+  max-width: 296px;
+  margin: 0 auto;
+}
+
+.digit-grid__d {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+  font-weight: 700;
+  font-size: clamp(46px, 15vw, 62px);
+  line-height: 1.15;
+  letter-spacing: 0;
+  color: var(--accent);
+  text-align: center;
+}
+
 .headline { font-size: 19px; font-weight: 700; }
 .headline--sm { font-size: 18px; font-weight: 700; }
 
@@ -1295,6 +1320,8 @@ h1, h2, h3 { margin: 0; font-weight: 700; letter-spacing: -0.01em; }
   .level-card { padding: 9px 1px; }
   .typing-target { font-size: 20px; }
   .quote { font-size: 17px; }
+  .digit-grid { max-width: 252px; gap: 10px 12px; }
+  .digit-grid__d { font-size: clamp(40px, 14vw, 52px); }
   .history__guess { font-size: 18px; letter-spacing: 0.08em; }
 }
 

@@ -145,8 +145,13 @@ async function startLevel(level) {
 
 function runMemorize(session) {
   $("#memorizeLabel").textContent = `STEP 1 · LV${session.level} 기억하기`;
-  $("#memorizeDigits").textContent = [...session.digits].join(" ");
   $("#memorizeHint").textContent = `${session.digit_count}자리 숫자입니다`;
+
+  // 한 줄에 4개씩 놓이도록 자리마다 개별 요소로 그립니다(텍스트 줄바꿈에 맡기지 않음).
+  const digits = clear($("#memorizeDigits"));
+  for (const d of session.digits) {
+    digits.append(el("span", { class: "digit-grid__d" }, d));
+  }
 
   showScreen("memorize");
   clearAllRewards();
