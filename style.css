@@ -68,6 +68,19 @@ body {
 .card-title { font-weight: 600; font-size: 1.1rem; }
 .card-desc { color: var(--text-dim); font-size: 0.875rem; }
 
+.hub-footer {
+  margin-top: 48px;
+  text-align: center;
+  font-size: 0.85rem;
+}
+
+.hub-footer a {
+  color: var(--text-dim);
+  text-decoration: none;
+}
+
+.hub-footer a:hover { color: var(--accent); }
+
 /* ---------- 게임 페이지 공통 ---------- */
 
 .game-page {
