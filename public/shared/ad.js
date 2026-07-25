@@ -80,13 +80,13 @@ async function showInterstitialAd(trigger) {
 /**
  * 광고 자리를 시각적으로 보여주는 목업. 카운트다운이 끝나면 닫을 수 있습니다.
  * @param {string} trigger
- * @param {{ skippable:boolean }} opts  skippable=true 면 카운트다운 후 바로 닫기 버튼
+ * @param {{ skippable:boolean }} opts
  */
 function playMockAd(trigger, { skippable }) {
   const copy = TRIGGER_COPY[trigger] ?? { title: "광고", reward: "", seconds: 5 };
 
   return new Promise((resolve, reject) => {
-    const overlay = el("div", { class: "ad-overlay", role: "dialog", "aria-modal": "true" });
+    const overlay = el("div", { class: "ad-overlay", role: "dialog", "aria-modal": "true", "aria-label": copy.title });
     const countEl = el("div", { class: "ad-box__count" }, `${copy.seconds}초 후 보상을 받을 수 있습니다`);
     const actionBtn = el("button", { class: "btn btn--primary", type: "button", disabled: true }, "잠시만 기다려 주세요");
     const cancelBtn = el("button", { class: "btn btn--ghost", type: "button" }, "닫기 (보상 없음)");
@@ -94,18 +94,23 @@ function playMockAd(trigger, { skippable }) {
     const box = el(
       "div",
       { class: "ad-box" },
-      el("div", { class: "ad-box__tag" }, el("span", {}, "광고 · Advertisement"), el("span", {}, skippable ? "INTERSTITIAL" : "REWARDED")),
+      el(
+        "div",
+        { class: "ad-box__tag" },
+        el("span", {}, "광고 · ADVERTISEMENT"),
+        el("span", {}, skippable ? "INTERSTITIAL" : "REWARDED"),
+      ),
       el(
         "div",
         { class: "ad-box__stage" },
-        el("div", { class: "ad-box__mock" }, "📺"),
-        el("div", { class: "ad-box__note" }, "여기에 실제 광고가 노출됩니다."),
-        el("div", { class: "ad-box__note" }, "(광고 SDK 연동 대기 — 현재는 목업 화면)"),
+        el("div", { class: "ad-box__mock", "aria-hidden": "true" }, "▣"),
+        el("div", { class: "ad-box__note" }, "여기에 실제 광고가 노출됩니다"),
+        el("div", { class: "ad-box__note" }, "광고 SDK 연동 대기 — 현재는 목업 화면입니다"),
       ),
       el(
         "div",
         { class: "ad-box__footer" },
-        el("div", { class: "hint" }, copy.reward),
+        el("div", { class: "ad-box__reward" }, copy.reward),
         countEl,
         actionBtn,
         cancelBtn,
@@ -114,6 +119,7 @@ function playMockAd(trigger, { skippable }) {
 
     overlay.append(box);
     document.body.append(overlay);
+    actionBtn.focus();
 
     let left = copy.seconds;
     const tick = setInterval(() => {
@@ -166,23 +172,48 @@ export async function watchAdForReward(trigger, { sessionId } = {}) {
   }
 
   try {
-    const res = await apiPost("/ad/reward", {
+    return await apiPost("/ad/reward", {
       trigger,
       session_id: sessionId ?? null,
       // 실연동 시에는 SDK 가 돌려준 검증용 값이 여기 실립니다.
       transaction_id: null,
     });
-    return res;
   } catch (err) {
     toast(err.message, "error");
     return null;
   }
 }
 
-/** 하단 고정 광고 배너 버튼을 만듭니다. */
-export function renderAdBar(host, { label, onClick }) {
+/**
+ * "추가 혜택" 보상 카드.
+ *
+ * 하단 고정 배너가 아니라 일반 콘텐츠 흐름 안에 놓이는 카드입니다.
+ * 게임 시작 버튼보다 시각적으로 약하게 보이도록 surface 배경 + 얇은 테두리만 씁니다.
+ *
+ * @param {HTMLElement} host
+ * @param {{ icon?:string, title:string, desc?:string, cta?:string,
+ *           onClick:()=>void, disabled?:boolean }} opts
+ * @returns {HTMLButtonElement}
+ */
+export function renderRewardCard(host, { icon = "🎁", title, desc, cta = "광고 보기", onClick, disabled = false }) {
   clear(host);
-  const btn = el("button", { class: "adbar", type: "button", onclick: onClick }, label);
+
+  const btn = el(
+    "button",
+    { class: "reward", type: "button", disabled, onclick: disabled ? null : onClick },
+    el("span", { class: "reward__icon", "aria-hidden": "true" }, icon),
+    el(
+      "span",
+      { class: "reward__text" },
+      el("span", { class: "reward__title" }, title),
+      desc ? el("span", { class: "reward__desc" }, desc) : null,
+    ),
+    el("span", { class: "reward__cta" }, disabled ? "불가" : cta),
+  );
+
   host.append(btn);
   return btn;
 }
+
+/** 보상 카드 영역 비우기 */
+export const clearRewardCard = (host) => clear(host);

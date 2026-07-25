@@ -7,10 +7,10 @@
  */
 
 import { apiGet, apiPost, ApiFail } from "../../shared/api.js";
-import { watchAdForReward, renderAdBar } from "../../shared/ad.js";
+import { watchAdForReward, renderRewardCard, clearRewardCard } from "../../shared/ad.js";
 import {
-  $, el, clear, showScreen, toast, renderSlots, renderHeader,
-  mountNumpad, bindKeyboardNumpad, mmss, comma, currentScreen,
+  $, el, clear, showScreen, toast, renderSlots, renderStats, renderHeader, setHeaderBadge,
+  mountNumpad, bindKeyboardNumpad, celebrate, mmss, comma, currentScreen,
 } from "../../shared/ui.js";
 
 const state = {
@@ -29,7 +29,12 @@ let numpad = null;
 
 // ── 초기화 ───────────────────────────────────────────────────
 
-renderHeader($("#header"), { title: "🧠 기억력 챌린지" });
+renderHeader($("#header"), {
+  icon: "🧠",
+  title: "숫자 기억력",
+  sub: "본 숫자를 그대로 입력하기",
+  badge: "LV—",
+});
 
 $("#challengeBtn").addEventListener("click", () => startLevel(state.selected));
 $("#viewRankBtn").addEventListener("click", openRank);
@@ -43,14 +48,14 @@ $("#nextLevelBtn").addEventListener("click", () => {
 $("#rankBackBtn").addEventListener("click", () => {
   const back = state.lastResult ? "result" : "select";
   showScreen(back);
-  renderAdBarFor(back);
+  renderRewards(back);
 });
 
 numpad = mountNumpad($("#numpad"), {
   onDigit: pushDigit,
   onBack: popDigit,
   onOk: submitInput,
-  okLabel: "✓",
+  okLabel: "확인",
 });
 
 bindKeyboardNumpad({
@@ -73,39 +78,49 @@ async function loadLevels() {
     state.selected = Math.min(Math.max(1, res.best_level || 1), res.levels.length);
     renderLevels();
     showScreen("select");
-    renderAdBarFor("select");
+    renderRewards("select");
   } catch (err) {
     toast(err.message ?? "레벨 정보를 불러올 수 없습니다.", "error");
   }
 }
 
 function renderLevels() {
-  clear($("#levelGrid"));
+  const host = clear($("#levelGrid"));
+
   for (const lv of state.levels) {
-    const needsTicket = lv.level > Math.max(1, state.bestLevel);
-    $("#levelGrid").append(
-      el("button", {
-        class: `seg__item ${lv.level === state.selected ? "" : ""}`,
-        type: "button",
-        "aria-pressed": lv.level === state.selected,
-        style: "flex:none;padding:10px 4px",
-        onclick: () => {
-          state.selected = lv.level;
-          renderLevels();
+    const locked = lv.level > Math.max(1, state.bestLevel);
+    host.append(
+      el(
+        "button",
+        {
+          class: `level-card ${locked ? "is-locked" : ""}`,
+          type: "button",
+          "aria-pressed": lv.level === state.selected,
+          "aria-label": `레벨 ${lv.level}, ${lv.digits}자리${locked ? ", 도전권 필요" : ""}`,
+          onclick: () => {
+            state.selected = lv.level;
+            renderLevels();
+          },
         },
-      },
-        el("div", { style: "font-weight:700" }, `LV${lv.level}`),
-        el("div", { style: "font-size:0.72rem;opacity:0.8" }, `${lv.digits}자`),
-        needsTicket ? el("div", { style: "font-size:0.62rem;opacity:0.7" }, "🎟") : null,
+        el("span", { class: "level-card__lv" }, `LV${lv.level}`),
+        el("span", { class: "level-card__digits" }, `${lv.digits}자리`),
+        locked ? el("span", { class: "level-card__lock", "aria-hidden": "true" }, "🔒 도전권") : null,
       ),
     );
   }
 
-  $("#bestLevel").textContent = state.bestLevel > 0 ? `LV${state.bestLevel}` : "기록 없음";
+  $("#bestLevel").textContent = state.bestLevel > 0 ? `LV${state.bestLevel}` : "—";
+  $("#bestSub").textContent =
+    state.bestLevel > 0
+      ? `${(state.levels.find((l) => l.level === state.bestLevel)?.digits ?? "?")}자리까지 성공했습니다`
+      : "아직 클리어한 레벨이 없습니다";
+  setHeaderBadge(state.bestLevel > 0 ? `LV${state.bestLevel}` : "LV—");
+
+  $("#ticketBadge").textContent = `도전권 ${state.tickets.remaining}장`;
 
   const spec = state.levels.find((l) => l.level === state.selected);
-  const needsTicket = state.selected > Math.max(1, state.bestLevel);
-  $("#ticketText").textContent = needsTicket
+  const locked = state.selected > Math.max(1, state.bestLevel);
+  $("#ticketText").textContent = locked
     ? `LV${state.selected}는 도전권이 필요합니다 · 보유 ${state.tickets.remaining}장`
     : `LV${state.selected} · ${spec?.digits ?? "?"}자리 · ${(spec?.expose_ms ?? 0) / 1000}초 노출${spec?.hints ? " · 힌트 1회" : ""}`;
 
@@ -136,13 +151,12 @@ async function startLevel(level) {
 }
 
 function runMemorize(session) {
-  $("#memorizeLabel").textContent = `LV${session.level} · MEMORIZE!`;
+  $("#memorizeLabel").textContent = `LV${session.level} · 기억하세요`;
   $("#memorizeDigits").textContent = [...session.digits].join(" ");
-  $("#memorizeHint").textContent =
-    `${session.digit_count}자리 숫자 — ${session.expose_ms / 1000}초 후 사라집니다`;
+  $("#memorizeHint").textContent = `${session.digit_count}자리 숫자입니다`;
 
   showScreen("memorize");
-  clear($("#adbar"));
+  clearAllRewards();
 
   let left = Math.ceil(session.expose_ms / 1000);
   $("#memorizeCount").textContent = left;
@@ -160,13 +174,13 @@ function runMemorize(session) {
 
 function openInput() {
   state.input = "";
-  $("#inputLabel").textContent = `기억한 ${state.session.digit_count}자리를 입력하세요 (Blind)`;
+  $("#inputLabel").textContent = `기억한 ${state.session.digit_count}자리를 입력하세요`;
   $("#hintBtn").classList.toggle("hidden", state.hintsLeft <= 0);
   $("#hintBtn").disabled = state.hintsLeft <= 0;
   $("#hintBtn").textContent = `💡 힌트 사용 (${state.hintsLeft}회)`;
   renderInput();
   showScreen("input");
-  renderAdBarFor("input");
+  renderRewards("input");
 
   // 입력 제한 시간
   clearTimeout(state.countdown);
@@ -179,7 +193,11 @@ function openInput() {
 }
 
 function renderInput() {
-  renderSlots($("#inputSlots"), { length: state.session.digit_count, value: state.input, small: state.session.digit_count > 8 });
+  renderSlots($("#inputSlots"), {
+    length: state.session.digit_count,
+    value: state.input,
+    small: state.session.digit_count > 7,
+  });
   numpad.setOkEnabled(state.input.length > 0);
 }
 
@@ -188,7 +206,6 @@ function pushDigit(d) {
   if (state.input.length >= state.session.digit_count) return;
   state.input += d;
   renderInput();
-  // 마지막 자리를 채우면 바로 제출하지 않고 사용자가 확인할 수 있게 둡니다.
 }
 
 function popDigit() {
@@ -243,61 +260,59 @@ async function submitInput(auto = false) {
 // ── 결과 ─────────────────────────────────────────────────────
 
 function renderResult(res) {
-  $("#resultHeadline").textContent = res.cleared ? `LV${res.level} 클리어!` : `LV${res.level} 실패`;
-  $("#resultHeadline").style.color = res.cleared ? "var(--good)" : "var(--bad)";
-  $("#resultSub").textContent = `${res.correct_count} / ${res.digit_count} 정답`;
+  const mark = clear($("#resultMark"));
+  if (res.cleared) mark.append(el("div", { class: "check-mark", "aria-hidden": "true" }, "✓"));
 
-  // 자리별 채점 표시
-  clear($("#resultSlots"));
-  for (const d of res.per_digit) {
-    $("#resultSlots").append(
-      el("div", {
-        class: `slot ${res.digit_count > 8 ? "slot--sm" : ""} ${d.correct ? "is-correct" : "is-wrong"}`,
-        title: d.correct ? "정답" : `정답은 ${d.expected}`,
-      }, d.correct ? d.expected : (d.got ?? "_")),
-    );
-  }
+  $("#resultHeadline").textContent = res.cleared ? `LV${res.level} 클리어` : `LV${res.level} 실패`;
+  $("#resultSub").textContent = `${res.correct_count} / ${res.digit_count} 자리 정답`;
 
-  clear($("#resultTiles"));
-  const tiles = [
+  // 자리별 채점 — 색 외에 ✓/✕ 아이콘도 함께 표시합니다.
+  renderSlots($("#resultSlots"), {
+    length: res.digit_count,
+    value: res.per_digit.map((d) => d.got ?? "_").join(""),
+    marks: res.per_digit.map((d) => d.correct),
+    expected: res.answer,
+    small: res.digit_count > 7,
+  });
+
+  renderStats($("#resultTiles"), [
     { value: `TOP ${res.rank_pct}%`, label: `LV${res.level} 상위`, accent: true },
     { value: mmss(res.elapsed_ms), label: "소요" },
     { value: `LV${res.best_level}`, label: "최고 레벨" },
-  ];
-  for (const t of tiles) {
-    $("#resultTiles").append(
-      el("div", { class: `tile ${t.accent ? "tile--accent" : ""}` },
-        el("div", { class: "tile__value" }, t.value),
-        el("div", { class: "tile__label" }, t.label)),
-    );
-  }
+  ]);
 
-  const nextAvailable = Boolean(res.next_level);
-  $("#nextLevelBtn").classList.toggle("hidden", !nextAvailable || !res.cleared);
-  $("#nextLevelBtn").textContent = nextAvailable ? `▶ LV${res.next_level} 도전하기` : "";
+  setHeaderBadge(`LV${res.best_level}`);
 
-  const answerText = res.cleared ? "" : ` · 정답 ${[...res.answer].join(" ")}`;
+  const nextAvailable = Boolean(res.next_level) && res.cleared;
+  $("#nextLevelBtn").classList.toggle("hidden", !nextAvailable);
+  if (nextAvailable) $("#nextLevelBtn").textContent = `▶ LV${res.next_level} 도전하기`;
+
   $("#resultNote").textContent = res.cleared
-    ? `다음 레벨 도전권 보유 ${res.tickets.remaining}장${nextAvailable ? " — 없으면 광고로 받을 수 있습니다." : ""}`
-    : `같은 레벨을 다시 도전할 수 있습니다${answerText}`;
+    ? `도전권 ${res.tickets.remaining}장 보유${nextAvailable ? " · 없으면 광고로 받을 수 있습니다" : ""}`
+    : `정답은 ${[...res.answer].join(" ")} 였습니다 · 같은 레벨을 다시 도전할 수 있습니다`;
 
   showScreen("result");
-  renderAdBarFor("result");
+  renderRewards("result");
+
+  if (res.cleared) celebrate($("#resultCard"));
 }
 
 // ── 랭킹 (전면 광고 후 열람) ──────────────────────────────────
 
 async function openRank() {
   const bucket = state.lastResult ? `LV${state.lastResult.level}` : `LV${state.selected}`;
-  try {
+  const load = async () => {
     renderRank(await apiGet("/game/rank", { game: "MEMORY", bucket }));
     renderLevelStats(await apiGet("/game/stats", { game: "MEMORY", bucket }));
+  };
+
+  try {
+    await load();
   } catch (err) {
     if (err instanceof ApiFail && err.code === "AD_REQUIRED") {
       if (!(await watchAdForReward("MEMORY_RANK"))) return;
       try {
-        renderRank(await apiGet("/game/rank", { game: "MEMORY", bucket }));
-        renderLevelStats(await apiGet("/game/stats", { game: "MEMORY", bucket }));
+        await load();
       } catch (e) {
         toast(e.message, "error");
       }
@@ -310,52 +325,72 @@ async function openRank() {
 function renderRank(data) {
   $("#rankTitle").textContent = `${data.bucket ?? ""} 랭킹`;
 
-  clear($("#rankList"));
+  const host = clear($("#rankList"));
   if ((data.list ?? []).length === 0) {
-    $("#rankList").append(el("div", { class: "hint" }, "아직 기록이 없습니다."));
+    host.append(el("div", { class: "footnote" }, "아직 기록이 없습니다"));
   }
   for (const row of data.list ?? []) {
     const mine = data.my_rank === row.rank;
     const d = row.detail ?? {};
-    $("#rankList").append(
-      el("div", { class: `rank-row ${mine ? "is-me" : ""}` },
-        el("span", { class: "rank-row__no" }, `#${row.rank}`),
-        el("span", {}, `${row.label}${d.cleared ? " · 클리어" : ""}`),
-        el("span", { class: "rank-row__value" }, `${d.correct_count ?? row.score}/${d.digit_count ?? "?"}`)),
+    host.append(
+      el(
+        "div",
+        { class: `rank-row ${mine ? "is-me" : ""}` },
+        el("span", { class: "rank-row__no" }, mine ? "ME" : `#${row.rank}`),
+        el("span", { class: "rank-row__name" }, `${row.label}${d.cleared ? " · 클리어" : ""}`),
+        el("span", { class: "rank-row__value" }, `${d.correct_count ?? row.score}/${d.digit_count ?? "?"}`),
+      ),
     );
   }
 
   showScreen("rank");
-  clear($("#adbar"));
+  clearAllRewards();
 }
 
 function renderLevelStats(stats) {
-  clear($("#levelStats"));
-  for (const lv of stats.by_level ?? []) {
-    $("#levelStats").append(
-      el("div", { class: "rank-row" },
+  const host = clear($("#levelStats"));
+  const rows = stats.by_level ?? [];
+
+  if (rows.length === 0) {
+    host.append(el("div", { class: "footnote" }, "아직 집계된 기록이 없습니다"));
+  }
+
+  for (const lv of rows) {
+    host.append(
+      el(
+        "div",
+        { class: "rank-row" },
         el("span", { class: "rank-row__no" }, `LV${lv.level}`),
-        el("span", {}, `${comma(lv.count)}회 도전`),
-        el("span", { class: "rank-row__value" }, `${lv.clear_rate}%`)),
+        el("span", { class: "rank-row__name" }, `${comma(lv.count)}회 도전`),
+        el("span", { class: "rank-row__value" }, `${lv.clear_rate}%`),
+      ),
     );
   }
 }
 
-// ── 하단 광고 바 ─────────────────────────────────────────────
+// ── 보상 카드 ────────────────────────────────────────────────
 
-function renderAdBarFor(screen) {
-  if (screen === "select" || screen === "result") {
-    renderAdBar($("#adbar"), {
-      label: "🚀 다음 레벨 도전권 | 광고 보기 →",
-      onClick: async () => {
-        const res = await watchAdForReward("MEMORY_LEVEL");
-        if (!res) return;
-        state.tickets = res.reward.attempts;
-        toast("레벨 도전권이 지급되었습니다.", "good");
-        if (screen === "select") renderLevels();
-      },
-    });
-    return;
-  }
-  clear($("#adbar"));
+const clearAllRewards = () => {
+  clearRewardCard($("#adbar"));
+  clearRewardCard($("#adbar2"));
+};
+
+function renderRewards(screen) {
+  clearAllRewards();
+  if (screen !== "select" && screen !== "result") return;
+
+  const host = screen === "select" ? $("#adbar") : $("#adbar2");
+  renderRewardCard(host, {
+    icon: "🎟",
+    title: "레벨 도전권 받기",
+    desc: `광고를 보면 도전권 1장이 지급됩니다 (하루 3회) · 보유 ${state.tickets.remaining}장`,
+    onClick: async () => {
+      const res = await watchAdForReward("MEMORY_LEVEL");
+      if (!res) return;
+      state.tickets = res.reward.attempts;
+      toast("레벨 도전권이 지급되었습니다.", "good");
+      if (screen === "select") renderLevels();
+      renderRewards(screen);
+    },
+  });
 }

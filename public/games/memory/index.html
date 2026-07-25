@@ -3,101 +3,110 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>숫자 기억력 챌린지</title>
+  <title>숫자 기억력</title>
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#111820">
   <link rel="stylesheet" href="../../shared/base.css">
 </head>
 <body class="game game--memory">
   <div class="app">
-    <header class="app__header" id="header"></header>
+    <header class="topbar" id="header"></header>
 
     <main class="app__body">
 
       <!-- 화면① 레벨 선택 -->
       <section class="screen is-active" data-screen="select">
-        <div class="panel">
-          <div class="label">레벨 선택 (Level Select)</div>
-          <div id="levelGrid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px"></div>
+        <div class="card card--accent card--center">
+          <div class="card__label">최고 기록</div>
+          <div class="figure figure--xl figure--accent mt-sm" id="bestLevel">—</div>
+          <div class="footnote mt-sm" id="bestSub">아직 클리어한 레벨이 없습니다</div>
         </div>
 
-        <div class="panel panel--center">
-          <div class="label">현재 최고 레벨</div>
-          <div class="bignum bignum--lg bignum--accent" id="bestLevel">—</div>
-          <div class="hint" id="ticketText" style="margin-top:8px"></div>
+        <div class="card">
+          <div class="card__head">
+            <span class="card__label">레벨 선택</span>
+            <span class="footnote" id="ticketBadge"></span>
+          </div>
+          <div class="level-grid" id="levelGrid" role="group" aria-label="레벨 선택"></div>
+          <div class="footnote mt-md" id="ticketText"></div>
         </div>
 
         <button class="btn btn--primary" id="challengeBtn">▶ 도전하기</button>
         <button class="btn" id="viewRankBtn">🏆 전체 랭킹 보기</button>
+
+        <div id="adbar"></div>
       </section>
 
       <!-- 화면② 숫자 암기 -->
       <section class="screen" data-screen="memorize">
-        <div class="panel panel--center">
-          <div class="label" id="memorizeLabel">MEMORIZE!</div>
-          <div class="bignum bignum--xl bignum--accent" id="memorizeDigits">—</div>
+        <div class="card card--accent card--center">
+          <div class="card__label" id="memorizeLabel">기억하세요</div>
+          <div class="figure figure--xl figure--accent mt-md" id="memorizeDigits">—</div>
         </div>
 
-        <div class="hint" id="memorizeHint"></div>
-
-        <div class="panel panel--center">
-          <div class="bignum bignum--xl" id="memorizeCount">5</div>
-          <div class="label" style="margin-top:6px">남은 시간 (초)</div>
+        <div class="card card--center card--tight">
+          <div class="figure figure--lg" id="memorizeCount">5</div>
+          <div class="card__label mt-sm">초 후 사라집니다</div>
         </div>
+
+        <div class="footnote center" id="memorizeHint"></div>
       </section>
 
       <!-- 화면③ 숫자 입력 (블라인드) -->
       <section class="screen" data-screen="input">
-        <div class="panel panel--center">
-          <div class="label" id="inputLabel">기억한 숫자를 입력하세요</div>
-          <div class="slots" id="inputSlots"></div>
+        <div class="card card--center card--tight">
+          <div class="card__label" id="inputLabel">기억한 숫자를 입력하세요</div>
+          <div class="slots mt-md" id="inputSlots"></div>
         </div>
 
-        <div class="panel">
-          <div class="label">숫자패드</div>
+        <div class="sheet">
+          <div class="sheet__grip" aria-hidden="true"></div>
           <div id="numpad"></div>
         </div>
 
-        <button class="btn" id="hintBtn">💡 힌트 사용</button>
+        <button class="btn btn--ghost" id="hintBtn">💡 힌트 사용</button>
       </section>
 
       <!-- 화면④ 결과 확인 -->
       <section class="screen" data-screen="result">
-        <div class="panel panel--center">
-          <div class="bignum bignum--lg" id="resultHeadline">—</div>
-          <div class="label" style="margin-top:6px" id="resultSub">—</div>
+        <div class="card card--center celebrate" id="resultCard">
+          <div id="resultMark"></div>
+          <div class="headline" id="resultHeadline">—</div>
+          <div class="card__label mt-sm" id="resultSub">—</div>
         </div>
 
-        <div class="panel">
-          <div class="label">자리별 채점</div>
-          <div class="slots" id="resultSlots"></div>
-          <div class="hint" style="margin-top:10px">초록 = 정답 자리 · 빨강 = 틀린 자리</div>
+        <div class="card">
+          <div class="card__label">자리별 채점</div>
+          <div class="slots mt-sm" id="resultSlots"></div>
+          <div class="footnote mt-md">✓ 맞은 자리 · ✕ 틀린 자리</div>
         </div>
 
-        <div class="tiles" id="resultTiles"></div>
+        <div id="resultTiles"></div>
 
-        <button class="btn" id="resultRankBtn">🏆 랭킹 보기</button>
         <button class="btn btn--primary" id="nextLevelBtn">▶ 다음 레벨 도전하기</button>
+        <button class="btn" id="resultRankBtn">🏆 랭킹 보기</button>
         <button class="btn btn--ghost" id="backToSelectBtn">← 레벨 선택으로</button>
-        <div class="hint" id="resultNote"></div>
+        <div class="footnote center" id="resultNote"></div>
+
+        <div id="adbar2"></div>
       </section>
 
       <!-- 랭킹 -->
       <section class="screen" data-screen="rank">
-        <div class="panel">
-          <div class="label" id="rankTitle">전체 랭킹</div>
-          <div class="rank-list" id="rankList"></div>
+        <div class="card">
+          <div class="card__label" id="rankTitle">전체 랭킹</div>
+          <div class="rank-list mt-sm" id="rankList"></div>
         </div>
 
-        <div class="panel">
-          <div class="label">레벨별 클리어율</div>
-          <div class="rank-list" id="levelStats"></div>
+        <div class="card">
+          <div class="card__label">레벨별 클리어율</div>
+          <div class="rank-list mt-sm" id="levelStats"></div>
         </div>
 
-        <button class="btn" id="rankBackBtn">← 돌아가기</button>
+        <button class="btn btn--ghost" id="rankBackBtn">← 돌아가기</button>
       </section>
 
     </main>
-
-    <div id="adbar"></div>
   </div>
 
   <script type="module" src="game.js"></script>

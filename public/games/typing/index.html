@@ -3,114 +3,143 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>타이핑 스피드 챌린지</title>
+  <title>타이핑 스피드</title>
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#111820">
   <link rel="stylesheet" href="../../shared/base.css">
 </head>
 <body class="game game--typing">
   <div class="app">
-    <header class="app__header" id="header"></header>
+    <header class="topbar" id="header"></header>
 
     <main class="app__body">
 
       <!-- 화면① 설정 선택 -->
       <section class="screen is-active" data-screen="setup">
-        <div class="panel">
-          <div class="label">난이도 (Difficulty)</div>
-          <div class="seg" id="difficultySeg"></div>
+        <div class="card">
+          <div class="stack stack--sm">
+            <span class="card__label">난이도</span>
+            <div class="seg" id="difficultySeg" role="group" aria-label="난이도 선택"></div>
+          </div>
+          <div class="stack stack--sm mt-md">
+            <span class="card__label">언어</span>
+            <div class="seg" id="langSeg" role="group" aria-label="언어 선택"></div>
+          </div>
+          <div class="footnote mt-md" id="metricHint"></div>
         </div>
 
-        <div class="panel">
-          <div class="label">언어 (Language)</div>
-          <div class="seg" id="langSeg"></div>
-          <div class="hint" id="metricHint" style="margin-top:10px"></div>
+        <div class="card">
+          <div class="card__label">예시 문장</div>
+          <blockquote class="quote mt-sm" id="preview">문장을 불러오는 중…</blockquote>
         </div>
 
-        <div class="panel">
-          <div class="label">예시 문장 미리보기</div>
-          <div class="panel panel--flat" id="preview" style="font-size:0.95rem;line-height:1.6">—</div>
+        <div class="summary" id="selectionSummary"></div>
+        <button class="btn btn--primary" id="startBtn">▶ 게임 시작</button>
+
+        <div class="card card--tight">
+          <div class="meter-row">
+            <span class="card__label">남은 도전 횟수</span>
+            <span id="attemptDots"></span>
+          </div>
+          <div class="meter-row mt-sm">
+            <span class="meter-row__text" id="attemptText">불러오는 중…</span>
+          </div>
         </div>
 
-        <button class="btn btn--primary" id="startBtn">▶ 시작하기</button>
-
-        <div class="panel">
-          <div class="label">남은 도전 횟수</div>
-          <div id="attemptDots"></div>
-          <div class="hint" id="attemptText" style="margin-top:10px"></div>
-        </div>
+        <div id="adbar"></div>
       </section>
 
       <!-- 카운트다운 -->
       <section class="screen" data-screen="countdown">
-        <div class="panel panel--center" style="padding:48px 16px">
-          <div class="label">곧 시작합니다</div>
-          <div class="bignum bignum--xl bignum--accent" id="countdownNum">3</div>
-          <div class="hint" style="margin-top:12px">문장을 눈으로 먼저 읽어 두세요</div>
+        <div class="card card--accent card--center">
+          <div class="card__label">곧 시작합니다</div>
+          <div class="figure figure--xl figure--accent mt-sm" id="countdownNum">3</div>
+          <div class="footnote mt-sm">문장을 눈으로 먼저 읽어 두세요</div>
         </div>
-        <div class="panel">
-          <div class="label">도전 문장</div>
-          <div class="typing-target" id="countdownText"></div>
+
+        <div class="card">
+          <div class="card__label">도전 문장</div>
+          <blockquote class="quote mt-sm" id="countdownText"></blockquote>
         </div>
       </section>
 
       <!-- 화면② 타이핑 진행 -->
       <section class="screen" data-screen="play">
-        <div class="tiles">
-          <div class="tile"><div class="tile__value" id="liveSpeed">0</div><div class="tile__label" id="liveSpeedLabel">WPM</div></div>
-          <div class="tile tile--accent"><div class="tile__value" id="liveAcc">100%</div><div class="tile__label">정확도</div></div>
-          <div class="tile"><div class="tile__value" id="liveLeft">0:00</div><div class="tile__label">남은 시간</div></div>
+        <div class="card card--tight">
+          <div id="liveTiles" class="stats">
+            <div class="stat">
+              <div class="stat__value" id="liveSpeed">0</div>
+              <div class="stat__label" id="liveSpeedLabel">WPM</div>
+            </div>
+            <div class="stat stat--accent">
+              <div class="stat__value" id="liveAcc">100%</div>
+              <div class="stat__label">정확도</div>
+            </div>
+            <div class="stat">
+              <div class="stat__value" id="liveLeft">0:00</div>
+              <div class="stat__label">남은 시간</div>
+            </div>
+          </div>
+          <div class="progress mt-md"><div class="progress__fill" id="progressFill"></div></div>
         </div>
 
-        <div class="progress"><div class="progress__fill" id="progressFill"></div></div>
+        <div class="card">
+          <div class="card__label">따라 칠 문장</div>
+          <div class="typing-target mt-sm" id="targetText"></div>
+        </div>
 
-        <div class="typing-target" id="targetText"></div>
-
-        <textarea class="typing-input" id="typingInput" rows="3" autocomplete="off"
-                  autocorrect="off" autocapitalize="off" spellcheck="false"
-                  placeholder="여기에 입력하세요"></textarea>
-
-        <div class="hint">정확히 입력된 글자: <span style="color:var(--good)">초록</span> | 오탈자: <span style="color:var(--bad)">빨강</span> · 백스페이스로 수정 가능</div>
+        <div class="card">
+          <div class="card__label">입력</div>
+          <textarea class="typing-input mt-sm" id="typingInput" rows="3" autocomplete="off"
+                    autocorrect="off" autocapitalize="off" spellcheck="false"
+                    placeholder="여기에 입력하세요"></textarea>
+          <div class="footnote mt-sm">
+            정확한 글자는 초록, 오탈자는 빨강으로 표시됩니다 · 백스페이스로 수정 가능
+          </div>
+        </div>
 
         <button class="btn" id="finishBtn">입력 완료</button>
       </section>
 
       <!-- 화면③ 결과 확인 -->
       <section class="screen" data-screen="result">
-        <div class="tiles" id="resultTiles"></div>
-
-        <div class="panel panel--center">
-          <div class="label">최종 점수 (지표 × 정확도%)</div>
-          <div class="bignum bignum--lg bignum--accent" id="resultScore">—</div>
+        <div class="card card--accent card--center celebrate" id="resultCard">
+          <div class="card__label">최종 점수</div>
+          <div class="figure figure--xl figure--accent mt-sm" id="resultScore">—</div>
+          <div class="footnote mt-sm">지표 × 정확도%</div>
         </div>
 
-        <div class="panel panel--center">
-          <div class="label" id="resultRankLabel">전체 순위</div>
-          <div class="bignum bignum--lg" id="resultRank">—</div>
+        <div id="resultTiles"></div>
+
+        <div class="card card--center card--tight">
+          <div class="card__label" id="resultRankLabel">전체 순위</div>
+          <div class="figure figure--lg mt-sm" id="resultRank">—</div>
         </div>
 
-        <button class="btn" id="viewRankBtn">전체 순위 보기</button>
-        <button class="btn" id="newSentenceBtn">📄 새 문장 도전</button>
-        <button class="btn btn--primary" id="retryBtn">🔄 재도전</button>
-        <div class="hint" id="resultNote"></div>
+        <button class="btn btn--primary" id="retryBtn">🔄 다시 도전하기</button>
+        <button class="btn" id="viewRankBtn">🏆 전체 순위 보기</button>
+        <button class="btn btn--ghost" id="newSentenceBtn">📄 새 문장 도전권 받기</button>
+        <div class="footnote center" id="resultNote"></div>
+
+        <div id="adbar2"></div>
       </section>
 
       <!-- 화면④ 전체 순위 -->
       <section class="screen" data-screen="rank">
-        <div class="panel">
-          <div class="label" id="rankTitle">전체 순위</div>
-          <div class="rank-list" id="rankList"></div>
+        <div class="card">
+          <div class="card__label" id="rankTitle">전체 순위</div>
+          <div class="rank-list mt-sm" id="rankList"></div>
         </div>
 
-        <div class="panel">
-          <div class="label">조건별 평균 (Language : Difficulty)</div>
-          <div class="rank-list" id="bucketList"></div>
+        <div class="card">
+          <div class="card__label">조건별 평균</div>
+          <div class="rank-list mt-sm" id="bucketList"></div>
         </div>
 
-        <button class="btn" id="rankBackBtn">← 결과로 돌아가기</button>
+        <button class="btn btn--ghost" id="rankBackBtn">← 결과로 돌아가기</button>
       </section>
 
     </main>
-
-    <div id="adbar"></div>
   </div>
 
   <script type="module" src="game.js"></script>

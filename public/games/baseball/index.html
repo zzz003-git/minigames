@@ -3,49 +3,58 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>숫자야구 게임</title>
+  <title>숫자야구</title>
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#111820">
   <link rel="stylesheet" href="../../shared/base.css">
 </head>
 <body class="game game--baseball">
   <div class="app">
-    <header class="app__header" id="header"></header>
+    <header class="topbar" id="header"></header>
 
     <main class="app__body">
 
       <!-- 화면① 게임 메인 -->
       <section class="screen is-active" data-screen="main">
-        <div class="panel panel--center">
-          <div class="label">정답 (Blind Answer) · 3-DIGIT</div>
-          <div class="slots" id="blindSlots"></div>
+        <div class="card card--accent card--center">
+          <div class="card__label">정답 (숨겨져 있음)</div>
+          <div class="slots mt-md" id="blindSlots"></div>
+          <div class="footnote mt-md">0–9 중 중복 없는 세 자리입니다</div>
         </div>
 
-        <div class="panel">
-          <div class="label">시도 기록 (Attempt History)</div>
-          <div class="history" id="history"></div>
-          <div class="hint" id="historyEmpty">아직 시도한 기록이 없습니다.</div>
-        </div>
+        <button class="btn btn--primary" id="inputBtn">⌨ 숫자 입력하기</button>
 
-        <div class="panel">
-          <div class="row">
-            <span class="label" style="margin:0">남은 기회</span>
-            <span class="label" style="margin:0" id="adCount"></span>
+        <div class="card card--tight">
+          <div class="meter-row">
+            <span class="card__label">남은 기회</span>
+            <span id="attemptDots"></span>
           </div>
-          <div id="attemptDots" style="margin-top:8px"></div>
+          <div class="meter-row mt-sm">
+            <span class="meter-row__text" id="adCount">—</span>
+          </div>
         </div>
 
-        <button class="btn btn--primary" id="inputBtn">숫자 입력하기</button>
+        <div class="card">
+          <div class="card__head">
+            <span class="card__label">시도 기록</span>
+            <span class="footnote" id="historyCount"></span>
+          </div>
+          <div class="history" id="history"></div>
+          <div class="footnote" id="historyEmpty">아직 시도한 기록이 없습니다</div>
+        </div>
+
+        <div id="adbar"></div>
       </section>
 
-      <!-- 화면② 숫자 입력 -->
+      <!-- 화면② 숫자 입력 (바텀시트형 키패드) -->
       <section class="screen" data-screen="input">
-        <div class="panel panel--center">
-          <div class="label" id="inputLabel">3자리 숫자를 입력하세요</div>
-          <div class="slots" id="inputSlots"></div>
-          <div class="hint" style="margin-top:10px">0~9 중 <b>중복 없는</b> 3자리</div>
+        <div class="card card--center card--tight">
+          <div class="card__label" id="inputLabel">세 자리를 입력하세요</div>
+          <div class="slots mt-md" id="inputSlots"></div>
         </div>
 
-        <div class="panel">
-          <div class="label">숫자패드 (Numpad)</div>
+        <div class="sheet">
+          <div class="sheet__grip" aria-hidden="true"></div>
           <div id="numpad"></div>
         </div>
 
@@ -54,78 +63,80 @@
 
       <!-- 화면③ 성공 결과 -->
       <section class="screen" data-screen="success">
-        <div class="panel panel--center">
-          <div style="font-size:2.4rem">🎉</div>
-          <div class="bignum bignum--lg" style="color:var(--good)">3 S 0 B</div>
-          <div class="label" style="margin-top:8px">정답 (SUCCESS)</div>
-          <div class="bignum bignum--lg bignum--accent" id="successAnswer">—</div>
+        <div class="card card--accent card--center celebrate" id="successCard">
+          <div class="check-mark" aria-hidden="true">✓</div>
+          <div class="headline">정답입니다</div>
+          <div class="card__label mt-md">정답</div>
+          <div class="slots mt-sm" id="successSlots"></div>
         </div>
 
-        <div class="tiles" id="successTiles"></div>
+        <div id="successTiles"></div>
 
-        <button class="btn" id="successStatsBtn">전체 통계 보기</button>
         <button class="btn btn--primary" id="successNewBtn">🔄 새 게임 시작</button>
+        <button class="btn" id="successStatsBtn">📊 전체 통계 보기</button>
+
+        <div id="adbar2"></div>
       </section>
 
       <!-- 화면④-1 기회 소진 (정답은 아직 감춘 상태) -->
       <section class="screen" data-screen="exhausted">
-        <div class="panel panel--center">
-          <div style="font-size:2.4rem">⏳</div>
-          <div class="bignum bignum--lg" style="color:var(--ad)">기회 소진</div>
-          <div class="hint" style="margin-top:8px">
-            정답은 아직 공개되지 않았습니다.<br>광고를 시청하면 같은 정답으로 계속 도전할 수 있습니다.
+        <div class="card card--center">
+          <div class="headline">기회를 모두 사용했습니다</div>
+          <div class="subtext mt-sm">
+            정답은 아직 공개되지 않았습니다.<br>
+            광고를 보면 같은 정답으로 이어서 도전할 수 있습니다.
           </div>
         </div>
 
-        <div class="panel">
-          <div class="label">지금까지의 시도</div>
-          <div class="history" id="exhaustedHistory"></div>
+        <div class="card">
+          <div class="card__label">지금까지의 시도</div>
+          <div class="history mt-sm" id="exhaustedHistory"></div>
         </div>
 
-        <button class="btn btn--danger" id="exhaustedRefillBtn">⚡ 광고 보고 기회 +3 충전</button>
+        <div id="adbar3"></div>
+
         <button class="btn btn--ghost" id="giveUpBtn">포기하고 정답 보기</button>
-        <div class="hint" id="exhaustedNote"></div>
+        <div class="footnote center" id="exhaustedNote"></div>
       </section>
 
       <!-- 화면④-2 실패 / 정답 공개 -->
       <section class="screen" data-screen="fail">
-        <div class="panel panel--center">
-          <div style="font-size:2.4rem">😢</div>
-          <div class="bignum bignum--lg" style="color:var(--bad)">실패!</div>
-          <div class="label" style="margin-top:8px">정답 공개 (Answer Revealed)</div>
-          <div class="bignum bignum--lg" style="color:var(--ad)" id="failAnswer">—</div>
+        <div class="card card--center">
+          <div class="headline">아쉽네요</div>
+          <div class="card__label mt-md">정답 공개</div>
+          <div class="slots mt-sm" id="failSlots"></div>
         </div>
 
-        <div class="tiles" id="failTiles"></div>
+        <div id="failTiles"></div>
 
-        <button class="btn" id="failStatsBtn">전체 통계 보기</button>
         <button class="btn btn--primary" id="failNewBtn">🔄 새 게임 시작</button>
-        <div class="hint" id="failNote"></div>
+        <button class="btn" id="failStatsBtn">📊 전체 통계 보기</button>
+        <div class="footnote center" id="failNote"></div>
+
+        <div id="adbar4"></div>
       </section>
 
       <!-- 전체 통계 -->
       <section class="screen" data-screen="stats">
-        <div class="panel">
-          <div class="label">전체 통계 (Stats)</div>
-          <div class="tiles" id="statsTiles"></div>
+        <div class="card">
+          <div class="card__label">전체 통계</div>
+          <div class="mt-sm" id="statsTiles"></div>
         </div>
 
-        <div class="panel">
-          <div class="label">시도 횟수 분포 (성공한 게임)</div>
-          <div id="statsChart"></div>
+        <div class="card">
+          <div class="card__label">시도 횟수 분포 (성공한 게임)</div>
+          <div class="mt-sm" id="statsChart"></div>
         </div>
 
-        <div class="panel">
-          <div class="label">자리별 정답 분포 (Position Distribution)</div>
-          <div id="statsPosition"></div>
+        <div class="card">
+          <div class="card__label">자리별 정답 분포</div>
+          <div class="mt-sm" id="statsPosition"></div>
         </div>
 
-        <button class="btn" id="statsBackBtn">← 돌아가기</button>
+        <button class="btn btn--ghost" id="statsBackBtn">← 돌아가기</button>
       </section>
 
     </main>
-
-    <div id="adbar"></div>
   </div>
 
   <script type="module" src="game.js"></script>

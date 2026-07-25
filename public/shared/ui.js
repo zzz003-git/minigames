@@ -1,9 +1,9 @@
-/** 공통 UI 헬퍼 — DOM 생성, 화면 전환, 숫자패드, 토스트, 서식 */
+/** 공통 UI 헬퍼 — DOM 생성, 화면 전환, 헤더, 숫자패드, 토스트, 서식 */
 
 export const $ = (sel, root = document) => root.querySelector(sel);
 export const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 
-/** el('div', { class: 'panel' }, '내용') */
+/** el('div', { class: 'card' }, '내용') */
 export function el(tag, attrs = {}, ...children) {
   const node = document.createElement(tag);
   for (const [k, v] of Object.entries(attrs)) {
@@ -25,35 +25,73 @@ export const clear = (node) => {
   return node;
 };
 
+const reduceMotion = () => window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+
 // ── 화면 전환 ─────────────────────────────────────────────────
 
 export function showScreen(name) {
   for (const s of $$("[data-screen]")) {
     s.classList.toggle("is-active", s.dataset.screen === name);
   }
-  window.scrollTo({ top: 0 });
+  window.scrollTo({ top: 0, behavior: reduceMotion() ? "auto" : "smooth" });
 }
 
 export const currentScreen = () => $(".screen.is-active")?.dataset.screen ?? null;
+
+// ── 헤더 (반투명 라운드 바) ────────────────────────────────────
+
+/**
+ * @param {HTMLElement} host  <header class="topbar" id="header">
+ * @param {{ icon?:string, title:string, sub?:string, badge?:string }} opts
+ */
+export function renderHeader(host, { icon, title, sub, badge } = {}) {
+  clear(host);
+  host.classList.add("topbar");
+
+  host.append(
+    el("a", { class: "topbar__back", href: "/", "aria-label": "게임 목록으로 돌아가기" }, "←"),
+    icon ? el("span", { class: "topbar__icon", "aria-hidden": "true" }, icon) : null,
+    el(
+      "span",
+      { class: "topbar__text" },
+      el("span", { class: "topbar__title" }, title),
+      sub ? el("span", { class: "topbar__sub" }, sub) : null,
+    ),
+    badge ? el("span", { class: "topbar__badge", id: "headerBadge" }, badge) : null,
+  );
+}
+
+/** 헤더 우측 배지 문구만 갱신 */
+export function setHeaderBadge(text) {
+  const badge = $("#headerBadge");
+  if (badge) badge.textContent = text;
+}
 
 // ── 토스트 ───────────────────────────────────────────────────
 
 function toastHost() {
   let host = $(".toast-host");
   if (!host) {
-    host = el("div", { class: "toast-host" });
+    host = el("div", { class: "toast-host", role: "status", "aria-live": "polite" });
     document.body.append(host);
   }
   return host;
 }
 
+const TOAST_ICON = { error: "⚠", good: "✓", "": "•" };
+
 export function toast(message, kind = "", ms = 2600) {
-  const node = el("div", { class: `toast ${kind ? `toast--${kind}` : ""}`, text: message });
+  const node = el(
+    "div",
+    { class: `toast ${kind ? `toast--${kind}` : ""}` },
+    el("span", { class: "toast__icon", "aria-hidden": "true" }, TOAST_ICON[kind] ?? "•"),
+    el("span", {}, message),
+  );
   toastHost().append(node);
   setTimeout(() => node.remove(), ms);
 }
 
-// ── 숫자패드 (기획서 화면② / 화면③) ──────────────────────────
+// ── 숫자패드 ─────────────────────────────────────────────────
 
 /**
  * @param {HTMLElement} host
@@ -65,12 +103,25 @@ export function mountNumpad(host, { onDigit, onBack, onOk, okLabel = "OK" }) {
   host.classList.add("numpad");
 
   for (const d of ["1", "2", "3", "4", "5", "6", "7", "8", "9"]) {
-    host.append(el("button", { class: "numpad__key", type: "button", onclick: () => onDigit(d) }, d));
+    host.append(
+      el("button", { class: "numpad__key", type: "button", onclick: () => onDigit(d) }, d),
+    );
   }
-  host.append(el("button", { class: "numpad__key", type: "button", onclick: onBack, "aria-label": "지우기" }, "←"));
-  host.append(el("button", { class: "numpad__key", type: "button", onclick: () => onDigit("0") }, "0"));
 
-  const okBtn = el("button", { class: "numpad__key numpad__key--ok", type: "button", onclick: onOk }, okLabel);
+  host.append(
+    el(
+      "button",
+      { class: "numpad__key numpad__key--util", type: "button", onclick: onBack, "aria-label": "한 자리 지우기" },
+      "⌫",
+    ),
+    el("button", { class: "numpad__key", type: "button", onclick: () => onDigit("0") }, "0"),
+  );
+
+  const okBtn = el(
+    "button",
+    { class: "numpad__key numpad__key--ok", type: "button", onclick: onOk, "aria-label": "확인" },
+    okLabel,
+  );
   host.append(okBtn);
 
   return { setOkEnabled: (v) => (okBtn.disabled = !v) };
@@ -88,42 +139,87 @@ export function bindKeyboardNumpad({ onDigit, onBack, onOk, isActive }) {
   return () => window.removeEventListener("keydown", handler);
 }
 
-// ── 조각 렌더러 ───────────────────────────────────────────────
-
-/** 도전 기회 점 표시 ●●●○○ */
-export function renderDots(host, { total, used }) {
-  clear(host);
-  host.classList.add("dots");
-  for (let i = 0; i < total; i++) {
-    host.append(el("span", { class: `dot ${i < total - used ? "is-filled" : ""}` }, i < total - used ? "●" : "○"));
-  }
-}
-
-/** 입력 중인 숫자 슬롯 */
-export function renderSlots(host, { length, value, small = false, marks = null }) {
-  clear(host);
-  host.classList.add("slots");
-  for (let i = 0; i < length; i++) {
-    const ch = value[i];
-    let cls = "slot";
-    if (small) cls += " slot--sm";
-    if (marks) cls += marks[i] ? " is-correct" : " is-wrong";
-    else if (ch != null) cls += " is-filled";
-    else if (i === value.length) cls += " is-active";
-    host.append(el("div", { class: cls }, ch ?? "_"));
-  }
-}
+// ── 남은 기회 인디케이터 ──────────────────────────────────────
 
 /**
- * 히스토그램. bins 는 [{from,to,count}], mine 은 내 값(해당 구간을 강조).
- * @param {(bin:object)=>string} caption 하단 설명 생성기
+ * 원형 pill 인디케이터. 기본 제공분과 광고로 받은 보너스분을 구분해서 표시합니다.
+ * @param {{ total:number, used:number, base?:number }} opts
  */
-export function renderChart(host, { bins, mine = null, caption = "" }) {
+export function renderPips(host, { total, used, base = total }) {
   clear(host);
-  const chart = el("div", { class: "chart" });
+  host.classList.add("pips");
+  const remaining = Math.max(0, total - used);
+
+  for (let i = 0; i < total; i++) {
+    const filled = i < remaining;
+    const bonus = i >= base;
+    host.append(
+      el("span", {
+        class: `pip ${filled ? "is-filled" : ""} ${!filled && bonus ? "is-bonus" : ""}`,
+        "aria-hidden": "true",
+      }),
+    );
+  }
+
+  // 스크린리더용 텍스트 (색·도형만으로 정보를 전달하지 않도록)
+  host.append(el("span", { class: "sr-only" }, `남은 기회 ${remaining}회, 전체 ${total}회`));
+}
+
+// ── 숫자 슬롯 ────────────────────────────────────────────────
+
+/**
+ * @param {{ length:number, value:string, small?:boolean, blind?:boolean,
+ *           marks?:boolean[], expected?:string }} opts
+ *   marks 를 주면 채점 결과 표시 모드로 그립니다(색 + 아이콘 함께).
+ */
+export function renderSlots(host, { length, value = "", small = false, blind = false, marks = null, expected = "" }) {
+  clear(host);
+  host.classList.add("slots");
+
+  for (let i = 0; i < length; i++) {
+    const ch = value[i];
+    const cls = ["slot"];
+    if (small) cls.push("slot--sm");
+
+    if (marks) {
+      const ok = Boolean(marks[i]);
+      cls.push(ok ? "is-correct" : "is-wrong");
+      host.append(
+        el(
+          "div",
+          { class: cls.join(" "), title: ok ? "정답" : `정답은 ${expected[i] ?? "?"}` },
+          el("span", {}, ok ? (expected[i] ?? ch ?? "?") : (ch ?? "_")),
+          el("span", { class: "slot__mark", "aria-hidden": "true" }, ok ? "✓" : "✕"),
+        ),
+      );
+      continue;
+    }
+
+    if (blind) {
+      cls.push("slot--blind");
+      host.append(el("div", { class: cls.join(" ") }, "?"));
+      continue;
+    }
+
+    if (ch != null) cls.push("is-filled");
+    else if (i === value.length) cls.push("is-active");
+    else cls.push("is-empty");
+
+    host.append(el("div", { class: cls.join(" ") }, ch ?? "·"));
+  }
+}
+
+// ── 차트 ─────────────────────────────────────────────────────
+
+/**
+ * 히스토그램. bins 는 [{from,to,count}], mine 은 내 값(해당 구간 강조).
+ */
+export function renderChart(host, { bins, mine = null, caption = "", short = false }) {
+  clear(host);
+  const chart = el("div", { class: `chart ${short ? "chart--short" : ""}` });
 
   if (!bins || bins.length === 0) {
-    chart.append(el("div", { class: "hint", style: "margin:auto" }, "아직 데이터가 없습니다"));
+    chart.append(el("div", { class: "chart__empty" }, "아직 데이터가 없습니다"));
   } else {
     const max = Math.max(...bins.map((b) => b.count), 1);
     for (const b of bins) {
@@ -142,6 +238,55 @@ export function renderChart(host, { bins, mine = null, caption = "" }) {
   if (caption) host.append(el("div", { class: "chart__caption" }, caption));
 }
 
+// ── 통계 타일 ────────────────────────────────────────────────
+
+/** items: [{ value, label, accent? }] */
+export function renderStats(host, items) {
+  clear(host);
+  host.classList.add("stats");
+  for (const t of items) {
+    host.append(
+      el(
+        "div",
+        { class: `stat ${t.accent ? "stat--accent" : ""}` },
+        el("div", { class: "stat__value" }, t.value),
+        el("div", { class: "stat__label" }, t.label),
+      ),
+    );
+  }
+}
+
+// ── 성공 연출 (절제해서 사용) ──────────────────────────────────
+
+const CONFETTI_COLORS = ["#69c7b3", "#f0957f", "#e7c878", "#a99ae8"];
+
+/**
+ * 성공 카드에 작은 confetti 를 한 번 뿌립니다.
+ * prefers-reduced-motion 이면 아무것도 하지 않습니다.
+ */
+export function celebrate(host, { pieces = 14 } = {}) {
+  if (!host || reduceMotion()) return;
+
+  host.querySelector(".confetti")?.remove();
+  const layer = el("div", { class: "confetti", "aria-hidden": "true" });
+
+  for (let i = 0; i < pieces; i++) {
+    layer.append(
+      el("span", {
+        class: "confetti__bit",
+        style: [
+          `left:${6 + (i * 88) / pieces + (i % 3) * 2}%`,
+          `background:${CONFETTI_COLORS[i % CONFETTI_COLORS.length]}`,
+          `animation-delay:${(i % 5) * 60}ms`,
+        ].join(";"),
+      }),
+    );
+  }
+
+  host.append(layer);
+  setTimeout(() => layer.remove(), 1800);
+}
+
 // ── 서식 ─────────────────────────────────────────────────────
 
 /** 3470 → '3.470' (소수점 3자리, 기획서 오차 표기 규격) */
@@ -151,7 +296,7 @@ export const ms3 = (ms) => (ms / 1000).toFixed(3);
 export const ms2 = (ms) => (ms / 1000).toFixed(2);
 
 /** 부호를 붙인 오차 표기: 120 → '+0.120초' */
-export const gapText = (ms) => `${ms >= 0 ? "+" : "-"}${(Math.abs(ms) / 1000).toFixed(3)}초`;
+export const gapText = (ms) => `${ms >= 0 ? "+" : "−"}${(Math.abs(ms) / 1000).toFixed(3)}초`;
 
 /** 74000 → '1:14' */
 export function mmss(ms) {
@@ -160,14 +305,3 @@ export function mmss(ms) {
 }
 
 export const comma = (n) => Number(n ?? 0).toLocaleString("ko-KR");
-
-/** 화면 상단 헤더를 만듭니다. */
-export function renderHeader(host, { title, badge }) {
-  clear(host);
-  host.append(
-    el("a", { href: "/", "aria-label": "목록으로" }, "←"),
-    el("span", { class: "app__title" }, title),
-    el("span", { class: "app__spacer" }),
-    badge ? el("span", { class: "app__badge", id: "headerBadge" }, badge) : null,
-  );
-}
