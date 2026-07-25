@@ -10,3 +10,10 @@ desktop.ini
 # 로그 / 임시
 *.log
 node_modules/
+
+# wrangler files
+.wrangler
+.dev.vars*
+!.dev.vars.example
+.env*
+!.env.example
