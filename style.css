@@ -1,0 +1,95 @@
+/* ===== 공통 스타일 (허브 + 모든 게임이 함께 사용) ===== */
+
+:root {
+  --bg: #0f1115;
+  --surface: #191d25;
+  --surface-hover: #212734;
+  --border: #2b3240;
+  --text: #e8eaed;
+  --text-dim: #9aa2b1;
+  --accent: #5b8cff;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Pretendard", -apple-system, "Segoe UI", "Malgun Gothic", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ---------- 허브 페이지 ---------- */
+
+.hub {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 64px 24px;
+}
+
+.hub-header { text-align: center; margin-bottom: 48px; }
+
+.hub-header h1 {
+  margin: 0 0 8px;
+  font-size: clamp(2rem, 6vw, 3rem);
+  letter-spacing: -0.02em;
+}
+
+.sub { margin: 0; color: var(--text-dim); }
+
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 28px 24px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  text-decoration: none;
+  color: inherit;
+  transition: background 0.15s, transform 0.15s, border-color 0.15s;
+}
+
+.card:hover {
+  background: var(--surface-hover);
+  border-color: var(--accent);
+  transform: translateY(-2px);
+}
+
+.card-icon { font-size: 2rem; }
+.card-title { font-weight: 600; font-size: 1.1rem; }
+.card-desc { color: var(--text-dim); font-size: 0.875rem; }
+
+/* ---------- 게임 페이지 공통 ---------- */
+
+.game-page {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 32px 24px 64px;
+}
+
+.back-link {
+  display: inline-block;
+  margin-bottom: 24px;
+  color: var(--text-dim);
+  text-decoration: none;
+  font-size: 0.9rem;
+}
+
+.back-link:hover { color: var(--accent); }
+
+.game-stage {
+  padding: 40px 24px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  text-align: center;
+}
