@@ -189,10 +189,52 @@ export async function findOpenSession(env, userId, gameType) {
   return { ...row, secret: await decryptJSON(env, row.secret_json), meta: JSON.parse(row.meta_json) };
 }
 
+/**
+ * 세션을 닫습니다. 이때 정답(secret_json)과 라운드 데이터(meta_json)를 함께 비웁니다.
+ *
+ * 닫힌 세션의 정답은 다시 쓰이지 않습니다 — 결과는 이미 results 에 들어갔고,
+ * getOpenSession 은 OPEN 상태만 봅니다. 그런데 이 값들이 세션 행의 대부분을 차지합니다:
+ * 스트룹·이겨라/져라는 문항 120개의 정답과 제한 시간을, 60초 암산은 정답 80개를 담고
+ * 있어 세션 1건이 평균 2KB 입니다.
+ *
+ * 10만 DAU 기준 하루 420만 세션이면 그것만으로 하루 5.7GB — D1 상한(10GB)을 이틀도
+ * 못 버팁니다. 비우면 살아 있는(OPEN) 세션만 큰 값을 갖게 되고, 그 수는 누적 사용자와
+ * 무관하게 "지금 플레이 중인 사람 수" 에만 비례합니다.
+ * 행 자체는 cron 정리(cleanupSessions)가 나중에 지웁니다.
+ */
 export async function closeSession(env, sessionId, endTs = now()) {
-  await env.DB.prepare(`UPDATE sessions SET status = 'CLOSED', end_ts = ? WHERE session_id = ?`)
+  await env.DB.prepare(
+    `UPDATE sessions
+     SET status = 'CLOSED', end_ts = ?, secret_json = '{}', meta_json = '{}'
+     WHERE session_id = ?`,
+  )
     .bind(endTs, sessionId)
     .run();
+}
+
+/**
+ * 오래된 세션 행을 지웁니다 (Cron Trigger 에서 호출).
+ *
+ * 닫힌 세션은 보관할 이유가 없고, OPEN 인데 만료된 세션도 다시 쓰이지 않습니다.
+ * 게임 기록은 results 에 남아 있으므로 통계·순위에는 영향이 없습니다.
+ *
+ * @param {number} keepMs  이 시간보다 오래된 것만 삭제
+ * @param {number} limit   한 번에 지울 최대 행 수 (한 실행이 너무 길어지지 않도록)
+ */
+export async function cleanupSessions(env, { keepMs, limit = 5000 }) {
+  const cutoff = now() - keepMs;
+
+  const res = await env.DB.prepare(
+    `DELETE FROM sessions WHERE session_id IN (
+       SELECT session_id FROM sessions
+       WHERE created_at < ? AND (status = 'CLOSED' OR start_ts < ?)
+       LIMIT ?
+     )`,
+  )
+    .bind(cutoff, now() - COMMON.SESSION_MAX_AGE_MS, limit)
+    .run();
+
+  return { deleted: res.meta?.changes ?? 0, cutoff };
 }
 
 /**
@@ -293,11 +335,16 @@ export async function insertResult(env, { sessionId, gameType, userId, bucket, r
  */
 export async function percentileOf(env, gameType, bucket, rankMetric) {
   const row = await env.DB.prepare(
+    // 최근 STATS_WINDOW 건만 봅니다. 리그 기록이 수백만 건이 되어도 비용이 일정하게
+    // 유지되어야 합니다 — 이 쿼리는 게임이 끝날 때마다(= 가장 잦게) 실행됩니다.
     `SELECT
        COUNT(*) AS total,
        SUM(CASE WHEN rank_metric < ? THEN 1 ELSE 0 END) AS better
-     FROM results
-     WHERE game_type = ? AND bucket = ? AND suspect = 0`,
+     FROM (
+       SELECT rank_metric FROM results
+       WHERE game_type = ? AND bucket = ? AND suspect = 0
+       ORDER BY created_at DESC LIMIT ${COMMON.STATS_WINDOW}
+     )`,
   )
     .bind(rankMetric, gameType, bucket)
     .first();
@@ -368,22 +415,45 @@ export async function getReadyState(env, userId, gameType, { baseAttempts, unloc
   };
 }
 
-/** bucket 안 rank_metric 분포를 bins 개 구간으로 나눈 히스토그램 */
+/**
+ * bucket 안 rank_metric 분포를 bins 개 구간으로 나눈 히스토그램.
+ *
+ * 구간 계산을 **SQL 안에서** 합니다. 예전에는 해당 리그의 rank_metric 을 전부 받아
+ * Worker 에서 세었는데, 기록이 100만 건이면 100만 개짜리 배열이 Worker 메모리(128MB)로
+ * 들어옵니다 — 언젠가 반드시 터지는 구조였습니다. 지금은 응답이 bins 개 행으로 고정입니다.
+ * 집계 대상도 최근 STATS_WINDOW 건으로 제한해 기록량과 무관하게 비용이 일정합니다.
+ */
 export async function histogram(env, gameType, bucket, bins = COMMON.STATS_HISTOGRAM_BINS) {
-  const { results } = await env.DB.prepare(
-    `SELECT rank_metric FROM results
-     WHERE game_type = ? AND bucket = ? AND suspect = 0
-     ORDER BY rank_metric ASC`,
+  const window = `
+    SELECT rank_metric FROM results
+    WHERE game_type = ? AND bucket = ? AND suspect = 0
+    ORDER BY created_at DESC LIMIT ${COMMON.STATS_WINDOW}
+  `;
+
+  // ① 구간 폭을 정하려면 최소·최대와 개수가 먼저 필요합니다.
+  const range = await env.DB.prepare(
+    `SELECT MIN(rank_metric) AS mn, MAX(rank_metric) AS mx, COUNT(*) AS cnt FROM (${window})`,
   )
     .bind(gameType, bucket)
-    .all();
+    .first();
 
-  const values = (results ?? []).map((r) => r.rank_metric);
-  if (values.length === 0) return { bins: [], min: 0, max: 0, count: 0 };
+  const count = range?.cnt ?? 0;
+  if (count === 0) return { bins: [], min: 0, max: 0, count: 0 };
 
-  const min = values[0];
-  const max = values[values.length - 1];
+  const min = range.mn;
+  const max = range.mx;
   const width = (max - min) / bins || 1;
+
+  // ② 각 기록이 몇 번째 구간인지 SQL 이 계산해 구간별 개수만 돌려줍니다.
+  const { results } = await env.DB.prepare(
+    `SELECT
+       MIN(CAST((rank_metric - ?) / ? AS INTEGER), ?) AS bin,
+       COUNT(*) AS n
+     FROM (${window})
+     GROUP BY bin`,
+  )
+    .bind(min, width, bins - 1, gameType, bucket)
+    .all();
 
   const buckets = Array.from({ length: bins }, (_, i) => ({
     from: min + i * width,
@@ -391,12 +461,12 @@ export async function histogram(env, gameType, bucket, bins = COMMON.STATS_HISTO
     count: 0,
   }));
 
-  for (const v of values) {
-    const idx = Math.min(bins - 1, Math.floor((v - min) / width));
-    buckets[idx].count++;
+  for (const row of results ?? []) {
+    const idx = Math.max(0, Math.min(bins - 1, Number(row.bin)));
+    buckets[idx].count += row.n;
   }
 
-  return { bins: buckets, min, max, count: values.length };
+  return { bins: buckets, min, max, count };
 }
 
 /** bucket 상위 기록 목록 */

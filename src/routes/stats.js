@@ -12,6 +12,7 @@
 import {
   GAME_TYPES,
   ARCADE,
+  COMMON,
   STATS_UNLOCK_TRIGGER,
   STOPWATCH,
   TYPING,
@@ -83,8 +84,14 @@ export async function stats({ env, userId, url }) {
     const dist = targetBucket ? await histogram(env, gameType, targetBucket) : null;
     const mine = await personalBest(env, userId, gameType, targetBucket);
     const { results: buckets } = await env.DB.prepare(
+      // 최근 STATS_WINDOW 건만 집계합니다. 게임 전체 기록을 GROUP BY 하면 기록 수에
+      // 비례해 느려집니다 (로컬 측정: 20만 건 399ms → 100만 건 1,886ms).
       `SELECT bucket, COUNT(*) AS n, AVG(score) AS avg_score, MIN(rank_metric) AS best
-       FROM results WHERE game_type = ? AND suspect = 0
+       FROM (
+         SELECT bucket, score, rank_metric FROM results
+         WHERE game_type = ? AND suspect = 0
+         ORDER BY created_at DESC LIMIT ${COMMON.STATS_WINDOW}
+       )
        GROUP BY bucket ORDER BY n DESC`,
     )
       .bind(gameType)
@@ -116,12 +123,17 @@ export async function stats({ env, userId, url }) {
   }
 
   if (gameType === "BASEBALL") {
+    // 최근 구간만 집계 (전체 역사를 세면 기록 수에 비례해 느려집니다)
     const row = await env.DB.prepare(
       `SELECT
          SUM(CASE WHEN bucket = 'solved' THEN 1 ELSE 0 END) AS solved,
          SUM(CASE WHEN bucket = 'failed' THEN 1 ELSE 0 END) AS failed,
          AVG(CASE WHEN bucket = 'solved' THEN rank_metric END) AS avg_attempts
-       FROM results WHERE game_type = 'BASEBALL' AND suspect = 0`,
+       FROM (
+         SELECT bucket, rank_metric FROM results
+         WHERE game_type = 'BASEBALL' AND suspect = 0
+         ORDER BY created_at DESC LIMIT ${COMMON.STATS_WINDOW}
+       )`,
     ).first();
 
     const solved = row?.solved ?? 0;
@@ -130,9 +142,11 @@ export async function stats({ env, userId, url }) {
 
     // 시도 횟수 분포 (성공한 게임만)
     const { results: attemptRows } = await env.DB.prepare(
-      `SELECT rank_metric AS attempts, COUNT(*) AS n FROM results
-       WHERE game_type = 'BASEBALL' AND bucket = 'solved' AND suspect = 0
-       GROUP BY rank_metric ORDER BY rank_metric ASC`,
+      `SELECT attempts, COUNT(*) AS n FROM (
+         SELECT rank_metric AS attempts FROM results
+         WHERE game_type = 'BASEBALL' AND bucket = 'solved' AND suspect = 0
+         ORDER BY created_at DESC LIMIT ${COMMON.STATS_WINDOW}
+       ) GROUP BY attempts ORDER BY attempts ASC`,
     ).all();
 
     // 자리별 정답 분포 — 최근 2000게임의 정답을 모아 집계
@@ -166,8 +180,13 @@ export async function stats({ env, userId, url }) {
   if (gameType === "TYPING") {
     const dist = targetBucket ? await histogram(env, gameType, targetBucket) : null;
     const { results: buckets } = await env.DB.prepare(
+      // 아케이드와 같은 이유로 최근 구간만 집계합니다
       `SELECT bucket, COUNT(*) AS n, AVG(score) AS avg_score, AVG(accuracy) AS avg_accuracy
-       FROM results WHERE game_type = 'TYPING' AND suspect = 0
+       FROM (
+         SELECT bucket, score, accuracy FROM results
+         WHERE game_type = 'TYPING' AND suspect = 0
+         ORDER BY created_at DESC LIMIT ${COMMON.STATS_WINDOW}
+       )
        GROUP BY bucket ORDER BY n DESC`,
     ).all();
     return {
@@ -192,7 +211,11 @@ export async function stats({ env, userId, url }) {
             COUNT(*) AS n,
             SUM(CASE WHEN json_extract(detail_json, '$.cleared') = 1 THEN 1 ELSE 0 END) AS cleared,
             AVG(score) AS avg_correct
-     FROM results WHERE game_type = 'MEMORY' AND suspect = 0
+     FROM (
+       SELECT bucket, detail_json, score FROM results
+       WHERE game_type = 'MEMORY' AND suspect = 0
+       ORDER BY created_at DESC LIMIT ${COMMON.STATS_WINDOW}
+     )
      GROUP BY bucket`,
   ).all();
 
@@ -230,9 +253,14 @@ export async function rank({ env, userId, url }) {
 
   let myRank = null;
   if (last && last.bucket === bucket) {
+    // 백분위(percentileOf)와 같은 최근 구간을 기준으로 셉니다.
+    // 한쪽만 전체 기록을 보면 "TOP 12%" 와 "내 순위" 가 서로 어긋납니다.
     const row = await env.DB.prepare(
-      `SELECT COUNT(*) AS better FROM results
-       WHERE game_type = ? AND bucket = ? AND suspect = 0 AND rank_metric < ?`,
+      `SELECT COUNT(*) AS better FROM (
+         SELECT rank_metric FROM results
+         WHERE game_type = ? AND bucket = ? AND suspect = 0
+         ORDER BY created_at DESC LIMIT ${COMMON.STATS_WINDOW}
+       ) WHERE rank_metric < ?`,
     )
       .bind(gameType, bucket, last.rank_metric)
       .first();

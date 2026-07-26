@@ -37,7 +37,7 @@
  * ==========================================================================
  */
 
-import { ARCADE } from "./config.js";
+import { ARCADE, COMMON } from "./config.js";
 import { ApiError } from "./http.js";
 import { randomId } from "./crypto.js";
 import { now } from "./time.js";
@@ -64,6 +64,35 @@ const ROUND_GRACE_MS = 1500;
 
 /** BATCH 게임에서 클라이언트 신고 시간과 서버 관측 시간창의 허용 오차 */
 const BATCH_GRACE_MS = 3000;
+
+/**
+ * 신고 시간의 상한. 세션 자체가 1시간이면 만료되므로 그보다 길 수 없습니다.
+ * 문항별 시간도 같은 상한을 씁니다(가장 긴 게임이 300초라 넉넉합니다).
+ */
+const MAX_REPORTED_MS = COMMON.SESSION_MAX_AGE_MS;
+
+/**
+ * 클라이언트가 신고한 시간이 애초에 시간일 수 있는 값인지 검사합니다.
+ *
+ * 상한만 보고 하한을 안 보면 **음수 시간**이 통과합니다. 시간이 곧 순위 지표인 게임
+ * (숫자 순서 터치)에서는 −5000ms 를 신고해 순위표 1위를 영구 점유할 수 있고,
+ * 간격이 정상이면 자동입력 탐지도 걸리지 않습니다. 실제로 뚫렸던 경로입니다.
+ * 그래서 지표를 계산하기 전에 값의 형태부터 거부합니다.
+ */
+function requireSaneTimes(elapsedMs, times) {
+  const bad = (v) => !Number.isFinite(v) || v < 0 || v > MAX_REPORTED_MS;
+
+  if (bad(Number(elapsedMs))) {
+    throw new ApiError("BAD_PARAM", "신고한 플레이 시간이 올바르지 않습니다.");
+  }
+  for (const t of times) {
+    // null 은 "손대지 않은 문항" 으로 허용합니다 (시간제 게임에서 남는 문항)
+    if (t == null) continue;
+    if (bad(Number(t))) {
+      throw new ApiError("BAD_PARAM", "문항별 응답 시간이 올바르지 않습니다.");
+    }
+  }
+}
 
 const cfgOf = (spec) => ARCADE[spec.game];
 
@@ -345,6 +374,9 @@ export async function submitBatch(ctx, spec) {
   if (times.length !== answers.length) {
     throw new ApiError("BAD_PARAM", "답안 수와 응답 시간 수가 일치하지 않습니다.");
   }
+
+  // 값의 형태를 먼저 거부합니다 — 음수·NaN·비현실적으로 큰 시간
+  requireSaneTimes(body.elapsed_ms, times);
 
   const endTs = now();
   const serverWindowMs = endTs - (session.armed_ts ?? session.start_ts);

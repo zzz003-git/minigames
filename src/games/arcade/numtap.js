@@ -11,6 +11,7 @@
 
 import { ARCADE } from "../../lib/config.js";
 import { randomInt } from "../../lib/crypto.js";
+import { ApiError } from "../../lib/http.js";
 import { shuffled } from "../../lib/arcade.js";
 
 const C = ARCADE.NUMTAP;
@@ -52,6 +53,14 @@ export const spec = {
 
       if (Number.isFinite(t)) {
         const gap = t - prevMs;
+
+        // times 는 시작 시점부터의 누적 경과입니다. 뒤로 갈 수 없습니다.
+        // 엔진이 음수는 이미 걸렀지만, "앞 탭보다 이른 시각" 을 신고해 완주 시간을
+        // 줄이는 것도 같은 종류의 조작이므로 여기서 거부합니다.
+        if (gap < 0) {
+          throw new ApiError("BAD_PARAM", "탭 시각이 시간 순서를 지키지 않습니다.");
+        }
+
         minGap = Math.min(minGap, gap);
         gaps += 1;
         if (gap < C.MIN_TAP_GAP_MS) fastGaps += 1;

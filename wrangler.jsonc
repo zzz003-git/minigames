@@ -31,6 +31,13 @@
   // SESSION_SECRET 은 시크릿이므로 이 파일에 두지 않습니다.
   //   npx wrangler versions secret put SESSION_SECRET
 
+  // 오래된 세션 행 정리 (src/index.js 의 scheduled 핸들러).
+  // 세션은 문제를 푸는 동안만 필요한 임시 상태인데, 지우지 않으면 사용량에 비례해
+  // 무한히 쌓여 D1 용량 상한(10GB)에 걸립니다. 게임 기록은 results 에 남습니다.
+  "triggers": {
+    "crons": ["*/10 * * * *"]
+  },
+
   "observability": {
     "enabled": true
   }

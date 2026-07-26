@@ -29,6 +29,7 @@
 
 import { ApiError, ok, fail, readJson, requireOneOf } from "./lib/http.js";
 import { resolveUser } from "./lib/user.js";
+import { cleanupSessions } from "./lib/db.js";
 import { hashIp } from "./lib/crypto.js";
 import { adMode } from "./lib/adverify.js";
 import {
@@ -164,6 +165,24 @@ const ROUTES = {
 };
 
 export default {
+  /**
+   * Cron Trigger — 오래된 세션 행 정리 (wrangler.jsonc 의 triggers.crons)
+   *
+   * 세션은 문제를 푸는 동안만 필요한 임시 상태입니다. 지우지 않으면 10만 DAU 기준
+   * 하루 420만 행이 쌓여 D1 상한(10GB)을 며칠 만에 넘깁니다.
+   * 게임 기록은 results 에 남으므로 통계·순위에는 영향이 없습니다.
+   */
+  async scheduled(event, env, ctx) {
+    ctx.waitUntil(
+      cleanupSessions(env, {
+        keepMs: COMMON.SESSION_KEEP_MS,
+        limit: COMMON.SESSION_CLEANUP_LIMIT,
+      })
+        .then((r) => console.log(`SESSION_CLEANUP deleted=${r.deleted}`))
+        .catch((err) => console.error("SESSION_CLEANUP failed", err?.stack ?? err)),
+    );
+  },
+
   async fetch(request, env) {
     const url = new URL(request.url);
     const key = `${request.method} ${url.pathname}`;

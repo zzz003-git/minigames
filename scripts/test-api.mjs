@@ -34,9 +34,15 @@ const failures = [];
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-/** 광고 한도는 IP+날짜로 누적되므로 실행마다 다른 대역을 씁니다. */
-const RUN = Math.floor(Date.now() / 1000) % 250;
-let currentIp = `203.0.113.${RUN}`;
+/**
+ * 광고 한도는 IP+날짜로 누적됩니다. 초 단위 값으로 대역을 잡으면 연달아 돌릴 때
+ * 같은 대역을 다시 써서 이전 실행이 소진한 한도가 남아 있습니다. 무작위로 넓게 잡습니다.
+ */
+const oct = () => 1 + Math.floor(Math.random() * 250);
+const RUN_A = oct();
+const RUN_B = oct();
+const testIp = (n) => `10.${RUN_A}.${RUN_B}.${n}`;
+let currentIp = testIp(1);
 const useIp = (ip) => { currentIp = ip; };
 
 function check(name, cond, extra = "") {
@@ -484,7 +490,7 @@ async function arcadeFlows() {
     if (!player) continue; // 커버리지 누락은 [1] 에서 이미 실패로 기록됩니다
 
     console.log(`\n  ── ${game} (${ARCADE[game].label}) ──`);
-    useIp(`10.${RUN}.1.${i++}`); // 게임마다 다른 IP — 서로의 광고 한도를 먹지 않게
+    useIp(testIp(40 + i++)); // 게임마다 다른 IP — 서로의 광고 한도를 먹지 않게
 
     try {
       const result = player.custom
@@ -506,7 +512,7 @@ async function arcadeFlows() {
 
 async function commonRules() {
   console.log("\n[3] 공통 규칙 · 한도");
-  useIp(`10.${RUN}.2.1`);
+  useIp(testIp(80));
 
   const badGame = await post("/game/session/start", { game_type: "NOPE" });
   check("없는 게임 거부", badGame.data.code === "BAD_PARAM");
@@ -525,10 +531,18 @@ async function commonRules() {
   check("config 오리지널 4종 유지",
     ["stopwatch", "baseball", "typing", "memory"].every((k) => cfg.data[k] != null));
 
-  // 시간 부풀리기
+  // 시간 조작 — 두 단계로 걸립니다
   const s = await post("/game/session/start", { game_type: "STROOP", fresh: true });
-  const tampered = await post("/game/submit", {
+
+  // ① 애초에 시간일 수 없는 값 (상한 초과) → 형태 검사에서 거부
+  const insane = await post("/game/submit", {
     game_type: "STROOP", session_id: s.data.session_id, answers: ["red"], times: [500], elapsed_ms: 9_000_000,
+  });
+  check("비현실적으로 긴 시간 거부", insane.data.code === "BAD_PARAM", `(${insane.data.code})`);
+
+  // ② 형태는 정상이지만 서버가 관측한 시간창을 넘는 값 → 시간창 검사에서 거부
+  const tampered = await post("/game/submit", {
+    game_type: "STROOP", session_id: s.data.session_id, answers: ["red"], times: [500], elapsed_ms: 200_000,
   });
   check("신고 시간 부풀리기 거부", tampered.data.code === "TIME_TAMPERED", `(${tampered.data.code})`);
 
@@ -538,7 +552,7 @@ async function commonRules() {
   check("답안/시간 길이 불일치 거부", mismatch.data.code === "BAD_PARAM");
 
   // 런당 보상 한도
-  useIp(`10.${RUN}.2.2`);
+  useIp(testIp(81));
   const run = await post("/game/session/start", { game_type: "SEQUENCE", fresh: true });
   const limit = ARCADE.SEQUENCE.boostsPerRun;
   let blocked = null;
@@ -550,7 +564,7 @@ async function commonRules() {
   await post("/game/finish", { game_type: "SEQUENCE", session_id: run.data.session_id });
 
   // 일일 도전 기회 + 광고 충전 한도
-  useIp(`10.${RUN}.2.3`);
+  useIp(testIp(82));
   const game = "RINGSTOP";
   for (let i = 0; i < ARCADE[game].baseAttempts + 2; i++) {
     const r = await post("/game/session/start", { game_type: game, fresh: true });
@@ -570,7 +584,7 @@ async function commonRules() {
   check("일일 광고 한도 강제", over.status === 429, `(${over.data.code})`);
 
   // 동일 IP 한도
-  useIp(`198.51.100.${RUN}`);
+  useIp(testIp(240)); // 이 검사가 IP 한도를 실제로 소진시킵니다
   let ipBlocked = null;
   for (let i = 1; i <= 24; i++) {
     const r = await post("/ad/reward", { trigger: "SEQUENCE_STATS" });
@@ -579,7 +593,7 @@ async function commonRules() {
   check("동일 IP 일일 광고 20회 제한", ipBlocked === 21, `${ipBlocked}번째에서 차단`);
 
   // 새로고침 복구 — 기회를 더 쓰지 않아야 합니다
-  useIp(`10.${RUN}.2.4`);
+  useIp(testIp(83));
   const a = await post("/game/session/start", { game_type: "COUNTDOT", fresh: true });
   const used1 = (await get("/user/attempts?game=COUNTDOT")).data.attempts.used;
   const b = await post("/game/session/start", { game_type: "COUNTDOT" });
@@ -595,7 +609,7 @@ async function commonRules() {
 
 async function classicRegression() {
   console.log("\n[4] 오리지널 4종 회귀");
-  useIp(`192.0.2.${RUN}`);
+  useIp(testIp(90));
 
   // ① 스탑워치
   const sw = await post("/game/session/start", { game_type: "STOPWATCH" });

@@ -7,6 +7,7 @@
   "scripts": {
     "dev": "wrangler dev",
     "test:api": "node scripts/test-api.mjs",
+    "test:abuse": "node scripts/test-abuse.mjs",
     "deploy": "wrangler deploy",
     "db:create": "wrangler d1 create minigames-db",
     "db:migrate": "wrangler d1 migrations apply minigames-db --remote",
