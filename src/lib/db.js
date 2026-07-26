@@ -2,7 +2,7 @@
 
 import { ApiError } from "./http.js";
 import { dayKey, now } from "./time.js";
-import { COMMON } from "./config.js";
+import { COMMON, RESULT_DETAIL_KEEP } from "./config.js";
 import { encryptJSON, decryptJSON } from "./crypto.js";
 
 // ═══════════════════════════════════════════════════════════════
@@ -221,6 +221,66 @@ export async function closeSession(env, sessionId, endTs = now()) {
  * @param {number} keepMs  이 시간보다 오래된 것만 삭제
  * @param {number} limit   한 번에 지울 최대 행 수 (한 실행이 너무 길어지지 않도록)
  */
+/**
+ * 오래된 결과의 상세 기록(detail_json)을 줄입니다 (Cron Trigger 에서 호출).
+ *
+ * 결과 행은 기록이라 지울 수 없지만, 상세 기록 대부분은 그 판이 끝난 직후 결과 화면에만
+ * 쓰이고 다시 읽히지 않습니다. 반응속도는 시행 배열(640 bytes), 기억력은 자리별 채점
+ * 배열(390 bytes)을 담고 있어 10만 DAU 기준 하루 약 0.7GB 를 차지합니다.
+ *
+ * **지우지 않고 남길 키만 남깁니다.** 기억력 순위표는 오래된 기록의 상세를 화면에 쓰고
+ * (클리어 여부·맞힌 자리수), 숫자야구 통계는 정답을 집계합니다. 통째로 비우면 그 화면이
+ * 조용히 비어 보입니다. 남길 키 목록은 config.RESULT_DETAIL_KEEP 에 있습니다.
+ *
+ * 정리한 행에는 `"c":1` 표시를 남겨 다음 실행이 같은 행을 다시 쓰지 않게 합니다.
+ */
+export async function compactResultDetails(env, { keepMs, limit = 2000 }) {
+  const cutoff = now() - keepMs;
+
+  // 게임별로 남길 키가 다르므로, 남길 키가 있는 게임과 없는 게임을 나눠 처리합니다.
+  const keepGames = Object.keys(RESULT_DETAIL_KEEP);
+
+  const stmts = [];
+
+  for (const game of keepGames) {
+    // json_object('c', 1, 'cleared', json_extract(...), ...) 형태를 만듭니다.
+    const pairs = RESULT_DETAIL_KEEP[game]
+      .map((k) => `'${k}', json_extract(detail_json, '$.${k}')`)
+      .join(", ");
+
+    stmts.push(
+      env.DB.prepare(
+        `UPDATE results SET detail_json = json_object('c', 1, ${pairs})
+         WHERE id IN (
+           SELECT id FROM results
+           WHERE game_type = ? AND created_at < ? AND json_extract(detail_json, '$.c') IS NULL
+           ORDER BY created_at ASC LIMIT ?
+         )`,
+      ).bind(game, cutoff, limit),
+    );
+  }
+
+  // 남길 것이 없는 게임 — 상세 기록을 통째로 비웁니다.
+  const placeholders = keepGames.map(() => "?").join(", ");
+  stmts.push(
+    env.DB.prepare(
+      `UPDATE results SET detail_json = json_object('c', 1)
+       WHERE id IN (
+         SELECT id FROM results
+         WHERE created_at < ?
+           AND json_extract(detail_json, '$.c') IS NULL
+           ${keepGames.length ? `AND game_type NOT IN (${placeholders})` : ""}
+         ORDER BY created_at ASC LIMIT ?
+       )`,
+    ).bind(cutoff, ...keepGames, limit),
+  );
+
+  const results = await env.DB.batch(stmts);
+  const compacted = results.reduce((sum, r) => sum + (r.meta?.changes ?? 0), 0);
+
+  return { compacted, cutoff };
+}
+
 export async function cleanupSessions(env, { keepMs, limit = 5000 }) {
   const cutoff = now() - keepMs;
 

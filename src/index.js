@@ -29,7 +29,7 @@
 
 import { ApiError, ok, fail, readJson, requireOneOf } from "./lib/http.js";
 import { resolveUser } from "./lib/user.js";
-import { cleanupSessions } from "./lib/db.js";
+import { cleanupSessions, compactResultDetails } from "./lib/db.js";
 import { hashIp } from "./lib/crypto.js";
 import { adMode } from "./lib/adverify.js";
 import {
@@ -166,11 +166,18 @@ const ROUTES = {
 
 export default {
   /**
-   * Cron Trigger — 오래된 세션 행 정리 (wrangler.jsonc 의 triggers.crons)
+   * Cron Trigger — 저장 공간 정리 (wrangler.jsonc 의 triggers.crons)
    *
-   * 세션은 문제를 푸는 동안만 필요한 임시 상태입니다. 지우지 않으면 10만 DAU 기준
-   * 하루 420만 행이 쌓여 D1 상한(10GB)을 며칠 만에 넘깁니다.
-   * 게임 기록은 results 에 남으므로 통계·순위에는 영향이 없습니다.
+   * D1 데이터베이스 상한이 10GB 인데, 정리하지 않으면 10만 DAU 기준 며칠 만에 넘깁니다.
+   * 두 가지를 정리합니다.
+   *
+   *   ① 세션 행 삭제 — 세션은 문제를 푸는 동안만 필요한 임시 상태입니다.
+   *      하루 420만 행이 쌓이므로 6시간 지난 것부터 지웁니다.
+   *   ② 오래된 결과의 상세 기록 축소 — 결과 행은 기록이라 지울 수 없지만, 상세 기록은
+   *      대부분 그 판 직후에만 쓰입니다. 아직 읽히는 키만 남깁니다(RESULT_DETAIL_KEEP).
+   *
+   * 순위·통계에 쓰이는 값(rank_metric, score, bucket)은 어느 쪽도 건드리지 않습니다.
+   * 한쪽이 실패해도 다른 쪽은 진행되도록 따로 걸어 둡니다.
    */
   async scheduled(event, env, ctx) {
     ctx.waitUntil(
@@ -180,6 +187,15 @@ export default {
       })
         .then((r) => console.log(`SESSION_CLEANUP deleted=${r.deleted}`))
         .catch((err) => console.error("SESSION_CLEANUP failed", err?.stack ?? err)),
+    );
+
+    ctx.waitUntil(
+      compactResultDetails(env, {
+        keepMs: COMMON.RESULT_DETAIL_KEEP_MS,
+        limit: COMMON.RESULT_COMPACT_LIMIT,
+      })
+        .then((r) => console.log(`RESULT_COMPACT compacted=${r.compacted}`))
+        .catch((err) => console.error("RESULT_COMPACT failed", err?.stack ?? err)),
     );
   },
 

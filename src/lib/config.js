@@ -332,6 +332,38 @@ export const COMMON = {
    */
   SESSION_KEEP_MS: 6 * 60 * 60 * 1000, // 6시간
   SESSION_CLEANUP_LIMIT: 5000, // Cron 1회 실행당 삭제 상한
+
+  /**
+   * 결과의 상세 기록(detail_json)을 온전히 보관하는 기간.
+   *
+   * 이 기간이 지나면 "아직 읽히는 키" 만 남기고 나머지를 버립니다(RESULT_DETAIL_KEEP).
+   * 상세 기록은 게임별로 73~640 bytes 인데(반응속도는 시행 배열, 기억력은 자리별 채점
+   * 배열을 담습니다) 결과 행은 세션과 달리 지울 수 없는 기록이라 계속 쌓입니다.
+   * 10만 DAU 기준 하루 420만 건 × 평균 175 bytes = 하루 약 0.7GB 가 상세 기록입니다.
+   *
+   * 결과 행 자체와 순위·통계에 쓰이는 값(rank_metric, score, bucket)은 건드리지 않습니다.
+   */
+  RESULT_DETAIL_KEEP_MS: 30 * 24 * 60 * 60 * 1000, // 30일
+  RESULT_COMPACT_LIMIT: 2000, // Cron 1회 실행당 정리 상한
+};
+
+/**
+ * 오래된 결과에서 **남겨야 하는** detail_json 키.
+ *
+ * 상세 기록 대부분은 그 판이 끝난 직후 결과 화면에만 쓰이고 다시 읽히지 않습니다.
+ * 하지만 일부는 시간이 지난 뒤에도 서버가 읽습니다 — 여기 적힌 것이 그것들입니다.
+ * 적히지 않은 게임은 상세 기록 전체를 버립니다.
+ *
+ * 게임을 추가할 때, 그 게임의 상세 기록을 **나중에** 읽는 코드를 쓴다면 여기에 키를
+ * 적어야 합니다. 적지 않으면 30일 뒤 그 값이 사라져 화면이 조용히 비어 보입니다.
+ */
+export const RESULT_DETAIL_KEEP = {
+  // 순위표에 "클리어 · 8/9" 로 표시하고, 레벨별 클리어율을 집계합니다
+  // (public/games/memory/game.js 의 renderRank, routes/stats.js 의 MEMORY 분기)
+  MEMORY: ["cleared", "correct_count", "digit_count"],
+
+  // 자리별 정답 분포를 집계합니다 (routes/stats.js 의 BASEBALL 분기)
+  BASEBALL: ["answer"],
 };
 
 // 광고 트리거 식별자 (기획서 11장 + 아케이드 10종)
