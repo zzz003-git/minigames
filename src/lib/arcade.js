@@ -51,6 +51,7 @@ import {
   personalBest,
   consumeAttempt,
   getAttemptState,
+  updateSessionMeta,
   updateSessionState,
   upsertProgress,
 } from "./db.js";
@@ -166,6 +167,18 @@ async function publicRun(env, userId, spec, session, meta) {
   };
 }
 
+/**
+ * 라운드 진행 상태를 저장합니다.
+ *
+ * 정답(secret)이 그대로인 라운드는 meta 만 씁니다. secret 은 AES-GCM 으로 암호화해
+ * 저장하므로, 바뀌지 않은 값을 매번 다시 암호화해서 쓰면 왕복 시간이 그만큼 늘어납니다.
+ * 카드 짝 맞추기는 배치가 런 내내 고정인데 뒤집기마다 라운드가 돌아 이 차이가 매번 생깁니다.
+ */
+async function persistRound(env, sessionId, meta, secret, secretChanged) {
+  if (secretChanged) await updateSessionState(env, sessionId, { meta, secret });
+  else await updateSessionMeta(env, sessionId, meta);
+}
+
 // ══════════════════════════════════════════════════════════════
 // ENDLESS — 라운드 1회 판정
 // ══════════════════════════════════════════════════════════════
@@ -237,7 +250,7 @@ export async function round(ctx, spec) {
   // 여기서 바로 결과를 확정해 버리면 "광고 보고 이어하기" 가 성립하지 않습니다.
   // (숫자야구에서 기회 소진 시 정답을 감춘 채 선택지를 주는 것과 같은 처리)
   if (outOfLives && boostsLeft > 0) {
-    await updateSessionState(env, session.session_id, { meta, secret });
+    await persistRound(env, session.session_id, meta, secret, false);
     return {
       correct,
       fatal,
@@ -280,7 +293,7 @@ export async function round(ctx, spec) {
   }
   meta.issued_ts = now();
 
-  await updateSessionState(env, session.session_id, { meta, secret });
+  await persistRound(env, session.session_id, meta, secret, Boolean(next));
 
   return {
     correct,

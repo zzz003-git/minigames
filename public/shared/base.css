@@ -1723,6 +1723,23 @@ h1, h2, h3 { margin: 0; font-weight: 700; letter-spacing: -0.01em; }
 
 .mcard__back { color: var(--text-faint); font-size: 18px; }
 
+/* 카드 배치는 서버에만 있어 뒤집을 때마다 왕복이 생깁니다. 응답을 기다린 뒤 뒤집으면
+   그 사이 화면이 멈춘 것처럼 보이므로, 탭 즉시 뒤집고 그림만 나중에 채웁니다.
+   is-waiting = 뒤집혔지만 아직 그림을 모르는 상태 (안에 .dot-pulse 가 들어갑니다) */
+.mcard.is-waiting { background: var(--accent-10); }
+
+/* 그림이 도착하면 살짝 튀어나오게 — 두 단계로 보이지 않도록 짧게 */
+.mcard__sym {
+  display: block;
+  line-height: 1;
+  animation: mcard-reveal 160ms cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+
+@keyframes mcard-reveal {
+  from { opacity: 0; transform: scale(0.72); }
+  to { opacity: 1; transform: none; }
+}
+
 /* ── 허브: 아케이드 2열 카드 ── */
 
 .hub__section {

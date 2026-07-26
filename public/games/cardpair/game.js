@@ -124,16 +124,32 @@ function buildBoard() {
 
 const cardAt = (i) => $$(".mcard")[i];
 
+/**
+ * 탭한 즉시 카드를 뒤집어 둡니다. 그림은 서버 응답이 와야 알 수 있으므로 그 자리에
+ * 기다림 표시를 넣습니다.
+ *
+ * 배치가 서버에만 있는 구조라 뒤집기마다 왕복(실측 0.3~0.5초)이 생기는데,
+ * 응답을 기다린 뒤에 뒤집으면 그 시간 동안 화면이 아무 반응도 하지 않아
+ * 탭이 씹힌 것처럼 느껴집니다. 뒤집기 자체는 서버 확인이 필요 없는 동작이므로
+ * 먼저 보여주고 그림만 나중에 채웁니다.
+ */
+function showTurning(index) {
+  const card = cardAt(index);
+  card.classList.add("is-face", "is-waiting");
+  card.classList.remove("is-hinted");
+  clear(card).append(el("span", { class: "dot-pulse", "aria-hidden": "true" }));
+}
+
 function showFace(index, symbol) {
   const card = cardAt(index);
   card.classList.add("is-face");
-  card.classList.remove("is-hinted");
-  clear(card).append(document.createTextNode(symbol));
+  card.classList.remove("is-hinted", "is-waiting");
+  clear(card).append(el("span", { class: "mcard__sym" }, symbol));
 }
 
 function showBack(index) {
   const card = cardAt(index);
-  card.classList.remove("is-face", "is-miss");
+  card.classList.remove("is-face", "is-miss", "is-waiting");
   clear(card).append(el("span", { class: "mcard__back", "aria-hidden": "true" }, "?"));
 }
 
@@ -151,12 +167,17 @@ async function flip(index) {
   if (card.classList.contains("is-matched") || card.classList.contains("is-face")) return;
 
   state.busy = true;
+  showTurning(index); // 응답을 기다리지 않고 먼저 뒤집습니다
 
   try {
     const res = await runApi.round(GAME, state.sessionId, index);
     const d = res.data ?? {};
 
-    if (d.phase === "ignored") return;
+    // 서버가 무시한 뒤집기(이미 맞춘 카드 등)는 되돌립니다
+    if (d.phase === "ignored") {
+      showBack(index);
+      return;
+    }
 
     state.flips = d.flips ?? state.flips;
     state.pairs = res.cleared ?? state.pairs;
@@ -179,6 +200,9 @@ async function flip(index) {
 
     if (res.game_over) onOver(res.result);
   } catch (err) {
+    // 요청이 실패했으면 낙관적으로 뒤집어 둔 카드를 되돌려야 합니다.
+    // 그러지 않으면 그림 없이 뒤집힌 카드가 남아 다시 누를 수도 없게 됩니다.
+    showBack(index);
     toast(err.message ?? "카드를 뒤집을 수 없습니다.", "error");
   } finally {
     state.busy = false;
@@ -220,7 +244,7 @@ function renderBoost() {
 
       for (const i of hint.pair) {
         cardAt(i).classList.add("is-hinted");
-        clear(cardAt(i)).append(document.createTextNode(hint.symbol));
+        clear(cardAt(i)).append(el("span", { class: "mcard__sym" }, hint.symbol));
       }
       await sleep(2600);
       for (const i of hint.pair) {
