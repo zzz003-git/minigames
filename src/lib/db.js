@@ -10,20 +10,31 @@ import { encryptJSON, decryptJSON } from "./crypto.js";
 // ═══════════════════════════════════════════════════════════════
 
 /**
- * 오늘 사용한/추가로 받은 기회를 조회합니다.
- * @returns {{ used:number, granted:number, total:number, remaining:number }}
+ * 조회 하나를 "구문(statement)" 과 "행 변환(map)" 으로 나눠 둡니다.
+ *
+ * 이렇게 두면 같은 SQL 을 단독 조회에도, batch() 로 묶은 조회에도 쓸 수 있습니다.
+ * D1 은 쿼리 1회가 왕복 1회라 (프로덕션 실측 약 150ms) 서로 의존하지 않는 조회를
+ * 순차로 하면 그만큼 그대로 쌓입니다. getReadyState 가 이 구문들을 묶어 씁니다.
  */
-export async function getAttemptState(env, userId, gameType, baseAttempts) {
-  const row = await env.DB.prepare(
+const attemptStateStmt = (env, userId, gameType) =>
+  env.DB.prepare(
     `SELECT used, granted FROM attempts WHERE user_id = ? AND game_type = ? AND day = ?`,
-  )
-    .bind(userId, gameType, dayKey())
-    .first();
+  ).bind(userId, gameType, dayKey());
 
+function mapAttemptState(row, baseAttempts) {
   const used = row?.used ?? 0;
   const granted = row?.granted ?? 0;
   const total = baseAttempts + granted;
   return { used, granted, total, remaining: Math.max(0, total - used) };
+}
+
+/**
+ * 오늘 사용한/추가로 받은 기회를 조회합니다.
+ * @returns {{ used:number, granted:number, total:number, remaining:number }}
+ */
+export async function getAttemptState(env, userId, gameType, baseAttempts) {
+  const row = await attemptStateStmt(env, userId, gameType).first();
+  return mapAttemptState(row, baseAttempts);
 }
 
 /** 기회 1회를 소모합니다. 남은 기회가 없으면 NO_ATTEMPTS 에러. */
@@ -99,17 +110,16 @@ export async function recordAdView(env, { userId, sessionId, gameType, trigger, 
     .run();
 }
 
-/** 통계·랭킹 열람 잠금 해제 여부 — 최근 유효시간 내 Interstitial 시청 기록이 있는지 */
-export async function hasAdUnlock(env, userId, gameType, trigger) {
-  const since = now() - COMMON.AD_UNLOCK_WINDOW_MS;
-  const row = await env.DB.prepare(
+const adUnlockStmt = (env, userId, gameType, trigger) =>
+  env.DB.prepare(
     `SELECT 1 AS hit FROM ad_views
      WHERE user_id = ? AND game_type = ? AND trigger = ? AND created_at >= ?
      LIMIT 1`,
-  )
-    .bind(userId, gameType, trigger, since)
-    .first();
-  return Boolean(row);
+  ).bind(userId, gameType, trigger, now() - COMMON.AD_UNLOCK_WINDOW_MS);
+
+/** 통계·랭킹 열람 잠금 해제 여부 — 최근 유효시간 내 Interstitial 시청 기록이 있는지 */
+export async function hasAdUnlock(env, userId, gameType, trigger) {
+  return Boolean(await adUnlockStmt(env, userId, gameType, trigger).first());
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -310,24 +320,52 @@ export async function percentileOf(env, gameType, bucket, rankMetric) {
  * 순위표에서 제외하는 것과 같은 이유입니다.
  * (plays 는 "몇 판 했는지" 이므로 이상치도 함께 셉니다)
  */
-export async function personalBest(env, userId, gameType, bucket = null) {
-  const row = bucket
-    ? await env.DB.prepare(
+const personalBestStmt = (env, userId, gameType, bucket) =>
+  bucket
+    ? env.DB.prepare(
         `SELECT MIN(CASE WHEN suspect = 0 THEN rank_metric END) AS best,
                 COUNT(*) AS plays
          FROM results WHERE user_id = ? AND game_type = ? AND bucket = ?`,
-      )
-        .bind(userId, gameType, bucket)
-        .first()
-    : await env.DB.prepare(
+      ).bind(userId, gameType, bucket)
+    : env.DB.prepare(
         `SELECT MIN(CASE WHEN suspect = 0 THEN rank_metric END) AS best,
                 COUNT(*) AS plays
          FROM results WHERE user_id = ? AND game_type = ?`,
-      )
-        .bind(userId, gameType)
-        .first();
+      ).bind(userId, gameType);
 
-  return { best: row?.best ?? null, plays: row?.plays ?? 0 };
+const mapPersonalBest = (row) => ({ best: row?.best ?? null, plays: row?.plays ?? 0 });
+
+export async function personalBest(env, userId, gameType, bucket = null) {
+  return mapPersonalBest(await personalBestStmt(env, userId, gameType, bucket).first());
+}
+
+/**
+ * 시작 화면에 필요한 값 전부를 **한 번의 왕복**으로 가져옵니다.
+ *
+ * 남은 기회 · 진행도 · 광고 열람 해제 여부 · 개인 최고 기록은 서로 의존하지 않는데,
+ * 순차로 조회하면 D1 왕복(프로덕션 실측 약 150ms)이 그대로 4번 쌓여 시작 화면이
+ * 0.7초 넘게 비어 있습니다. 게임을 켤 때마다 지나는 경로라 체감이 큽니다.
+ * batch() 는 여러 구문을 한 요청으로 보내므로 왕복이 1회로 줄어듭니다.
+ *
+ * @returns {{ attempts:object, progress:object, unlocked:boolean, best:object }}
+ */
+export async function getReadyState(env, userId, gameType, { baseAttempts, unlockTrigger, bucket = null }) {
+  const [attempts, progress, unlock, best] = await env.DB.batch([
+    attemptStateStmt(env, userId, gameType),
+    progressStmt(env, userId, gameType),
+    adUnlockStmt(env, userId, gameType, unlockTrigger),
+    personalBestStmt(env, userId, gameType, bucket),
+  ]);
+
+  // batch 결과는 구문별로 { results: [행...] } 형태입니다.
+  const first = (res) => res?.results?.[0];
+
+  return {
+    attempts: mapAttemptState(first(attempts), baseAttempts),
+    progress: mapProgress(first(progress)),
+    unlocked: Boolean(first(unlock)),
+    best: mapPersonalBest(first(best)),
+  };
 }
 
 /** bucket 안 rank_metric 분포를 bins 개 구간으로 나눈 히스토그램 */
@@ -401,13 +439,19 @@ export async function popularBuckets(env, gameType, limit = 3) {
 // 유저 진행도
 // ═══════════════════════════════════════════════════════════════
 
-export async function getProgress(env, userId, gameType) {
-  const row = await env.DB.prepare(
+const progressStmt = (env, userId, gameType) =>
+  env.DB.prepare(
     `SELECT best_level, best_score, play_count FROM user_progress WHERE user_id = ? AND game_type = ?`,
-  )
-    .bind(userId, gameType)
-    .first();
-  return { bestLevel: row?.best_level ?? 0, bestScore: row?.best_score ?? 0, playCount: row?.play_count ?? 0 };
+  ).bind(userId, gameType);
+
+const mapProgress = (row) => ({
+  bestLevel: row?.best_level ?? 0,
+  bestScore: row?.best_score ?? 0,
+  playCount: row?.play_count ?? 0,
+});
+
+export async function getProgress(env, userId, gameType) {
+  return mapProgress(await progressStmt(env, userId, gameType).first());
 }
 
 export async function upsertProgress(env, userId, gameType, { level = 0, score = 0 }) {

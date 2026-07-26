@@ -25,9 +25,9 @@ import {
   histogram,
   topList,
   popularBuckets,
-  getAttemptState,
   getProgress,
   personalBest,
+  getReadyState,
 } from "../lib/db.js";
 
 function gameParam(url) {
@@ -260,13 +260,14 @@ const baseAttemptsOf = (gameType) =>
 export async function attempts({ env, userId, url }) {
   const gameType = gameParam(url);
   const base = baseAttemptsOf(gameType);
-  const state = await getAttemptState(env, userId, gameType, base);
-  const progress = await getProgress(env, userId, gameType);
-  const unlocked = await hasAdUnlock(env, userId, gameType, STATS_UNLOCK_TRIGGER[gameType]);
 
-  // 시작 화면에 "내 최고 기록" 을 띄우려면 rank_metric 기준 최고값이 필요합니다.
-  const bucket = url.searchParams.get("bucket");
-  const mine = isArcade(gameType) ? await personalBest(env, userId, gameType, bucket) : null;
+  // 시작 화면은 게임을 켤 때마다 지나는 경로입니다. 필요한 값이 서로 독립이라
+  // 한 번의 왕복으로 묶어 가져옵니다 (순차 조회 시 D1 왕복이 4번 쌓입니다).
+  const { attempts: state, progress, unlocked, best } = await getReadyState(env, userId, gameType, {
+    baseAttempts: base,
+    unlockTrigger: STATS_UNLOCK_TRIGGER[gameType],
+    bucket: url.searchParams.get("bucket"),
+  });
 
   return {
     game: gameType,
@@ -276,6 +277,7 @@ export async function attempts({ env, userId, url }) {
     best_score: progress.bestScore,
     play_count: progress.playCount,
     stats_unlocked: unlocked,
-    ...(mine ? { my_best: mine.best, my_plays: mine.plays } : {}),
+    // "내 최고 기록" 은 아케이드 시작 화면에서만 씁니다 (rank_metric 해석이 게임별로 달라서)
+    ...(isArcade(gameType) ? { my_best: best.best, my_plays: best.plays } : {}),
   };
 }
