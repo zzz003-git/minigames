@@ -188,6 +188,7 @@ const PLAYERS = {
         times,
         elapsedMs: times.reduce((a, b) => a + b, 0),
         expectBucket: "75s", // 시간 연장이 곧 리그 (‘+’ 접미사 미사용)
+        packedScore: true,
         assert: (detail) => [
           ["19정답 / 1오답", detail.correct === 19 && detail.wrong === 1, `정확도 ${detail.accuracy}%`],
         ],
@@ -209,6 +210,7 @@ const PLAYERS = {
         times,
         elapsedMs: times.reduce((a, b) => a + b, 0),
         expectBucket: "all+",
+        packedScore: true,
         assert: (detail) => [
           ["광고 면제로 연속 유지", detail.streak === 11 && detail.forgiven === 1, `streak=${detail.streak}`],
         ],
@@ -229,6 +231,7 @@ const PLAYERS = {
         times,
         elapsedMs: times.reduce((a, b) => a + b, 0),
         expectBucket: "all",
+        packedScore: true,
         assert: (detail) => [
           ["시간 초과 문항은 오답", detail.streak === 14, `streak=${detail.streak} wrongAt=${detail.wrong_at}`],
         ],
@@ -383,6 +386,14 @@ async function batchFlow(game) {
     `점수=${result?.score} 리그=${result?.bucket} suspect=${result?.suspect}`);
   check(`${game} 정상 플레이는 이상치 아님`, result?.suspect === false, `suspect=${result?.suspect}`);
   check(`${game} 리그 = ${plan.expectBucket}`, result?.bucket === plan.expectBucket, `bucket=${result?.bucket}`);
+
+  // 동점자 보정항이 섞인 순위 지표에서 점수를 되돌릴 수 있어야 합니다.
+  // (floor 로 되돌려 "13연속인데 최고 기록 12연속" 으로 표시된 버그의 회귀 검사)
+  if (plan.packedScore) {
+    const unpacked = Math.max(0, Math.ceil(-result.rank_metric / 1000));
+    check(`${game} 순위 지표에서 점수 복원`, unpacked === result.score,
+      `metric=${result.rank_metric} → ${unpacked} (실제 ${result.score})`);
+  }
 
   for (const [name, cond, extra] of plan.assert?.(done.data.detail ?? {}) ?? []) {
     check(`${game} ${name}`, cond, extra ?? "");

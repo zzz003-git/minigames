@@ -16,15 +16,15 @@ import {
 } from "../../shared/ui.js";
 import {
   runApi, renderReady, renderRunOver, renderStatsScreen, openStats, loadRankList,
-  clearRewards, attemptReward, boostReward, statsReward, countdown,
+  clearRewards, attemptReward, boostReward, statsReward, countdown, unpackCount,
 } from "../../shared/run.js";
 
 const GAME = "MATHRUSH";
 const AD_PER_DAY = 5;
 const MAX_DIGITS = 5;
 
-/** rank_metric = -(정답 × 1000) + 평균응답/10 */
-const formatBest = (metric) => `${Math.floor(-metric / 1000)}문제`;
+/** rank_metric = -(정답 × 1000) + 평균응답/10 — 복원은 unpackCount 가 합니다 */
+const formatBest = (metric) => `${unpackCount(metric)}문제`;
 
 const state = {
   sessionId: null,

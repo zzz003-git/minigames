@@ -10,7 +10,7 @@ import { ApiFail } from "../../shared/api.js";
 import { $, el, clear, showScreen, toast, renderHeader, setHeaderBadge } from "../../shared/ui.js";
 import {
   runApi, renderReady, renderRunOver, renderStatsScreen, openStats, loadRankList,
-  clearRewards, attemptReward, boostReward, statsReward,
+  clearRewards, attemptReward, boostReward, statsReward, unpackCount,
 } from "../../shared/run.js";
 
 const GAME = "RPSFLASH";
@@ -28,8 +28,8 @@ const LOSES_TO = { rock: "paper", scissors: "rock", paper: "scissors" };
 const answerOf = (item) =>
   item.order === "WIN" ? LOSES_TO[item.hand] : item.order === "LOSE" ? BEATS[item.hand] : item.hand;
 
-/** rank_metric = -(연속 × 1000) + 평균응답/10 */
-const formatBest = (metric) => `${Math.floor(-metric / 1000)}연속`;
+/** rank_metric = -(연속 × 1000) + 평균응답/10 — 복원은 unpackCount 가 합니다 */
+const formatBest = (metric) => `${unpackCount(metric)}연속`;
 
 const state = {
   sessionId: null,

@@ -577,6 +577,18 @@ export function createEndlessRun({ game, boost, hooks }) {
 // 서식
 // ══════════════════════════════════════════════════════════════
 
+/**
+ * 연속/정답 수를 순위 지표에서 되돌립니다.
+ *
+ * 서버는 동점자를 가르려고 두 값을 하나로 묶어 저장합니다 (lib/arcade.js 의 streakMetric).
+ *   rank_metric = -(개수 × 1000) + 평균응답ms/10        ← 뒤 항은 0~999 의 양수 페널티
+ *
+ * 그래서 `-rank_metric / 1000` 은 항상 개수보다 조금 **작습니다** (13연속 → 12.805).
+ * floor 로 내리면 1이 깎여 "13연속을 냈는데 최고 기록이 12연속" 으로 표시됩니다.
+ * 페널티 항이 1000 미만인 것이 보장되므로 ceil 이 정확한 복원입니다.
+ */
+export const unpackCount = (metric) => Math.max(0, Math.ceil(-metric / 1000));
+
 /** 1234 → '1.23초' */
 export const sec2 = (ms) => `${(ms / 1000).toFixed(2)}초`;
 

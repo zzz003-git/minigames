@@ -13,14 +13,14 @@ import { ApiFail } from "../../shared/api.js";
 import { $, el, clear, showScreen, toast, renderHeader, setHeaderBadge } from "../../shared/ui.js";
 import {
   runApi, renderReady, renderRunOver, renderStatsScreen, openStats, loadRankList,
-  clearRewards, attemptReward, boostReward, statsReward, countdown,
+  clearRewards, attemptReward, boostReward, statsReward, countdown, unpackCount,
 } from "../../shared/run.js";
 
 const GAME = "STROOP";
 const AD_PER_DAY = 5;
 
-/** rank_metric = -(연속 × 1000) + 평균응답/10 */
-const formatBest = (metric) => `${Math.floor(-metric / 1000)}연속`;
+/** rank_metric = -(연속 × 1000) + 평균응답/10 — 복원은 unpackCount 가 합니다 */
+const formatBest = (metric) => `${unpackCount(metric)}연속`;
 
 const state = {
   sessionId: null,
