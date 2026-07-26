@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>인스턴트 미니게임</title>
-  <meta name="description" content="스탑워치 · 숫자야구 · 타이핑 · 숫자기억력 미니게임 4종">
+  <meta name="description" content="스탑워치 · 숫자야구 · 타이핑 · 숫자기억력 + 광고 리워드 아케이드 10종">
   <meta name="color-scheme" content="dark">
   <meta name="theme-color" content="#0F1420">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -19,51 +19,133 @@
       <p class="subtext">하고 싶은 게임을 골라보세요</p>
     </header>
 
-    <nav class="hub__grid">
-      <a class="hub-card" href="games/stopwatch/"
-         style="--card-accent:#7FD8C0; --card-soft:rgba(127,216,192,.12)">
-        <span class="hub-card__icon" aria-hidden="true">⏱</span>
-        <span class="hub-card__text">
-          <span class="hub-card__title">스탑워치 챌린지</span>
-          <span class="hub-card__desc">목표 시간에 정확히 맞춰 멈추기</span>
-          <span class="hub-card__meta">1.00~9.99초 · 타임별 순위</span>
-        </span>
-        <span class="hub-card__go" aria-hidden="true">›</span>
-      </a>
+    <!-- 오리지널 4종 — 한 판이 길고 기록 경신형이라 설명을 함께 보여줍니다 -->
+    <section class="hub__section">
+      <div class="hub__section-title"><b>오리지널</b><span>기록 경신형 4종</span></div>
 
-      <a class="hub-card" href="games/baseball/"
-         style="--card-accent:#E9927F; --card-soft:rgba(233,146,127,.12)">
-        <span class="hub-card__icon" aria-hidden="true">⚾</span>
-        <span class="hub-card__text">
-          <span class="hub-card__title">숫자야구</span>
-          <span class="hub-card__desc">3자리 숫자를 스트라이크·볼 힌트로 추리하기</span>
-          <span class="hub-card__meta">기본 6회 · 전략 퍼즐</span>
-        </span>
-        <span class="hub-card__go" aria-hidden="true">›</span>
-      </a>
+      <nav class="hub__grid">
+        <a class="hub-card" href="games/stopwatch/"
+           style="--card-accent:#7FD8C0; --card-soft:rgba(127,216,192,.12)">
+          <span class="hub-card__icon" aria-hidden="true">⏱</span>
+          <span class="hub-card__text">
+            <span class="hub-card__title">스탑워치 챌린지</span>
+            <span class="hub-card__desc">목표 시간에 정확히 맞춰 멈추기</span>
+            <span class="hub-card__meta">1.00~9.99초 · 타임별 순위</span>
+          </span>
+          <span class="hub-card__go" aria-hidden="true">›</span>
+        </a>
 
-      <a class="hub-card" href="games/typing/"
-         style="--card-accent:#D6B166; --card-soft:rgba(214,177,102,.12)">
-        <span class="hub-card__icon" aria-hidden="true">⌨</span>
-        <span class="hub-card__text">
-          <span class="hub-card__title">타이핑 챌린지</span>
-          <span class="hub-card__desc">제시 문장을 빠르고 정확하게 입력하기</span>
-          <span class="hub-card__meta">한국어 · English · 혼합</span>
-        </span>
-        <span class="hub-card__go" aria-hidden="true">›</span>
-      </a>
+        <a class="hub-card" href="games/baseball/"
+           style="--card-accent:#E9927F; --card-soft:rgba(233,146,127,.12)">
+          <span class="hub-card__icon" aria-hidden="true">⚾</span>
+          <span class="hub-card__text">
+            <span class="hub-card__title">숫자야구</span>
+            <span class="hub-card__desc">3자리 숫자를 스트라이크·볼 힌트로 추리하기</span>
+            <span class="hub-card__meta">기본 6회 · 전략 퍼즐</span>
+          </span>
+          <span class="hub-card__go" aria-hidden="true">›</span>
+        </a>
 
-      <a class="hub-card" href="games/memory/"
-         style="--card-accent:#7FD8C0; --card-soft:rgba(127,216,192,.12)">
-        <span class="hub-card__icon" aria-hidden="true">🧠</span>
-        <span class="hub-card__text">
-          <span class="hub-card__title">숫자 기억력</span>
-          <span class="hub-card__desc">잠깐 보여준 숫자를 기억해서 입력하기</span>
-          <span class="hub-card__meta">LV1~10 · 4~13자리</span>
-        </span>
-        <span class="hub-card__go" aria-hidden="true">›</span>
-      </a>
-    </nav>
+        <a class="hub-card" href="games/typing/"
+           style="--card-accent:#D6B166; --card-soft:rgba(214,177,102,.12)">
+          <span class="hub-card__icon" aria-hidden="true">⌨</span>
+          <span class="hub-card__text">
+            <span class="hub-card__title">타이핑 챌린지</span>
+            <span class="hub-card__desc">제시 문장을 빠르고 정확하게 입력하기</span>
+            <span class="hub-card__meta">한국어 · English · 혼합</span>
+          </span>
+          <span class="hub-card__go" aria-hidden="true">›</span>
+        </a>
+
+        <a class="hub-card" href="games/memory/"
+           style="--card-accent:#7FD8C0; --card-soft:rgba(127,216,192,.12)">
+          <span class="hub-card__icon" aria-hidden="true">🧠</span>
+          <span class="hub-card__text">
+            <span class="hub-card__title">숫자 기억력</span>
+            <span class="hub-card__desc">잠깐 보여준 숫자를 기억해서 입력하기</span>
+            <span class="hub-card__meta">LV1~10 · 4~13자리</span>
+          </span>
+          <span class="hub-card__go" aria-hidden="true">›</span>
+        </a>
+      </nav>
+    </section>
+
+    <!-- 아케이드 10종 — 한 판이 짧아 2열 압축 카드로 둡니다 -->
+    <section class="hub__section">
+      <div class="hub__section-title"><b>아케이드</b><span>10~60초 짧은 판 10종</span></div>
+
+      <nav class="arcade-grid">
+        <a class="arcade-card" href="games/reaction/"
+           style="--card-accent:#7FD8C0; --card-soft:rgba(127,216,192,.12)">
+          <span class="arcade-card__icon" aria-hidden="true">⚡</span>
+          <span class="arcade-card__title">반응속도 테스트</span>
+          <span class="arcade-card__desc">초록으로 바뀌면 바로 탭</span>
+        </a>
+
+        <a class="arcade-card" href="games/oddcolor/"
+           style="--card-accent:#E9927F; --card-soft:rgba(233,146,127,.12)">
+          <span class="arcade-card__icon" aria-hidden="true">🎨</span>
+          <span class="arcade-card__title">색 다른 타일 찾기</span>
+          <span class="arcade-card__desc">하나만 색이 다릅니다</span>
+        </a>
+
+        <a class="arcade-card" href="games/sequence/"
+           style="--card-accent:#7FD8C0; --card-soft:rgba(127,216,192,.12)">
+          <span class="arcade-card__icon" aria-hidden="true">🔔</span>
+          <span class="arcade-card__title">순서 기억</span>
+          <span class="arcade-card__desc">반짝인 순서 그대로</span>
+        </a>
+
+        <a class="arcade-card" href="games/numtap/"
+           style="--card-accent:#D6B166; --card-soft:rgba(214,177,102,.12)">
+          <span class="arcade-card__icon" aria-hidden="true">🔢</span>
+          <span class="arcade-card__title">숫자 순서 터치</span>
+          <span class="arcade-card__desc">1부터 25까지 순서대로</span>
+        </a>
+
+        <a class="arcade-card" href="games/mathrush/"
+           style="--card-accent:#D6B166; --card-soft:rgba(214,177,102,.12)">
+          <span class="arcade-card__icon" aria-hidden="true">➗</span>
+          <span class="arcade-card__title">60초 암산</span>
+          <span class="arcade-card__desc">60초 동안 몇 문제?</span>
+        </a>
+
+        <a class="arcade-card" href="games/stroop/"
+           style="--card-accent:#E9927F; --card-soft:rgba(233,146,127,.12)">
+          <span class="arcade-card__icon" aria-hidden="true">🌈</span>
+          <span class="arcade-card__title">색깔 말하기</span>
+          <span class="arcade-card__desc">뜻 말고 글자 색을 고르세요</span>
+        </a>
+
+        <a class="arcade-card" href="games/ringstop/"
+           style="--card-accent:#7FD8C0; --card-soft:rgba(127,216,192,.12)">
+          <span class="arcade-card__icon" aria-hidden="true">🎯</span>
+          <span class="arcade-card__title">링 스톱</span>
+          <span class="arcade-card__desc">밝은 구간에서 탭</span>
+        </a>
+
+        <a class="arcade-card" href="games/countdot/"
+           style="--card-accent:#E9927F; --card-soft:rgba(233,146,127,.12)">
+          <span class="arcade-card__icon" aria-hidden="true">👁</span>
+          <span class="arcade-card__title">순간 개수 세기</span>
+          <span class="arcade-card__desc">점이 몇 개였나요?</span>
+        </a>
+
+        <a class="arcade-card" href="games/cardpair/"
+           style="--card-accent:#D6B166; --card-soft:rgba(214,177,102,.12)">
+          <span class="arcade-card__icon" aria-hidden="true">🃏</span>
+          <span class="arcade-card__title">카드 짝 맞추기</span>
+          <span class="arcade-card__desc">적게 뒤집을수록 상위</span>
+        </a>
+
+        <a class="arcade-card" href="games/rpsflash/"
+           style="--card-accent:#7FD8C0; --card-soft:rgba(127,216,192,.12)">
+          <span class="arcade-card__icon" aria-hidden="true">✌</span>
+          <span class="arcade-card__title">이겨라 / 져라</span>
+          <span class="arcade-card__desc">지시대로 1초 안에</span>
+        </a>
+      </nav>
+    </section>
 
     <footer class="hub__footer">
       <a href="https://github.com/zzz003-git/minigames">소스 코드</a>

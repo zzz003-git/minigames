@@ -20,18 +20,33 @@
  *   POST /ad/reward             광고 시청 완료 → 보상 지급
  *   GET  /user/attempts         도전 기회 잔여 조회
  *   GET  /game/config           클라이언트용 규칙 상수
+ *
+ * 아케이드 10종 추가분 (docs/arcade-10-games.md)
+ *   POST /game/round            ENDLESS 게임 라운드 1회 판정 + 다음 라운드 발급
+ *   POST /game/finish           런 중도 종료 기록
+ *   (session/start · submit · ad/reward · rank · stats 는 기존 엔드포인트를 그대로 씁니다)
  */
 
 import { ApiError, ok, fail, readJson, requireOneOf } from "./lib/http.js";
 import { resolveUser } from "./lib/user.js";
 import { hashIp } from "./lib/crypto.js";
 import { adMode } from "./lib/adverify.js";
-import { GAME_TYPES, STOPWATCH, BASEBALL, TYPING, MEMORY, COMMON } from "./lib/config.js";
+import {
+  GAME_TYPES,
+  ARCADE,
+  STOPWATCH,
+  BASEBALL,
+  TYPING,
+  MEMORY,
+  COMMON,
+} from "./lib/config.js";
 
 import * as stopwatch from "./games/stopwatch.js";
 import * as baseball from "./games/baseball.js";
 import * as typing from "./games/typing.js";
 import * as memory from "./games/memory.js";
+import { ARCADE_SPECS } from "./games/arcade/index.js";
+import * as arcade from "./lib/arcade.js";
 import * as adRoutes from "./routes/ad.js";
 import * as statsRoutes from "./routes/stats.js";
 import * as sessionRoutes from "./routes/session.js";
@@ -48,6 +63,17 @@ const SUBMITTERS = {
   MEMORY: memory.submit,
 };
 
+// 라운드 방식(ENDLESS) 아케이드 게임만 /game/round · /game/finish 를 씁니다.
+const ROUNDERS = {};
+
+// 아케이드 10종은 공통 엔진(lib/arcade.js)에 spec 을 넘겨 연결합니다.
+// 게임을 추가해도 이 아래 라우팅 코드는 손댈 필요가 없습니다.
+for (const [game, spec] of Object.entries(ARCADE_SPECS)) {
+  STARTERS[game] = (ctx) => arcade.start(ctx, spec);
+  if (spec.mode === "BATCH") SUBMITTERS[game] = (ctx) => arcade.submitBatch(ctx, spec);
+  else ROUNDERS[game] = spec;
+}
+
 async function sessionStart(ctx) {
   const gameType = requireOneOf(ctx.body.game_type, "game_type", GAME_TYPES);
   return STARTERS[gameType](ctx);
@@ -56,6 +82,16 @@ async function sessionStart(ctx) {
 async function submit(ctx) {
   const gameType = requireOneOf(ctx.body.game_type, "game_type", Object.keys(SUBMITTERS));
   return SUBMITTERS[gameType](ctx);
+}
+
+async function round(ctx) {
+  const gameType = requireOneOf(ctx.body.game_type, "game_type", Object.keys(ROUNDERS));
+  return arcade.round(ctx, ROUNDERS[gameType]);
+}
+
+async function finishRun(ctx) {
+  const gameType = requireOneOf(ctx.body.game_type, "game_type", Object.keys(ROUNDERS));
+  return arcade.finish(ctx, ROUNDERS[gameType]);
 }
 
 /** 클라이언트가 화면 구성에 쓰는 규칙 상수 (비밀값 없음) */
@@ -86,6 +122,23 @@ function config({ env }) {
       levels: MEMORY.LEVELS,
       ad_views_per_day: MEMORY.AD_VIEWS_PER_DAY,
     },
+    // 아케이드 10종 — 화면에 표시할 수치(기본 기회·광고 한도·목숨)만 내려보냅니다.
+    // 난이도 곡선 계수는 서버 계산에만 쓰이므로 포함하지 않습니다.
+    arcade: Object.fromEntries(
+      Object.entries(ARCADE).map(([game, c]) => [
+        game,
+        {
+          mode: c.mode,
+          label: c.label,
+          icon: c.icon,
+          tagline: c.tagline,
+          base_attempts: c.baseAttempts,
+          ad_attempts_per_day: c.adAttemptsPerDay,
+          boosts_per_run: c.boostsPerRun,
+          lives: c.lives ?? 0,
+        },
+      ]),
+    ),
     ad_unlock_window_ms: COMMON.AD_UNLOCK_WINDOW_MS,
   };
 }
@@ -96,6 +149,8 @@ const ROUTES = {
   "POST /game/session/arm": sessionRoutes.arm,
   "POST /game/session/stop": stopwatch.stop,
   "POST /game/submit": submit,
+  "POST /game/round": round,
+  "POST /game/finish": finishRun,
   "POST /game/guess": baseball.guess,
   "POST /game/giveup": baseball.giveUp,
   "POST /game/hint": memory.hint,

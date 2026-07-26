@@ -6,9 +6,11 @@
  * 목업 광고라도 클라이언트가 무한히 보상을 요청할 수는 없습니다.
  */
 
-import { AD_TRIGGERS, BASEBALL, STOPWATCH, TYPING } from "../lib/config.js";
+import { AD_TRIGGERS, ARCADE, BASEBALL, STOPWATCH, TYPING } from "../lib/config.js";
 import { ApiError, requireOneOf } from "../lib/http.js";
 import { verifyRewardedCallback, verifyInterstitialImpression } from "../lib/adverify.js";
+import { arcadeSpec } from "../games/arcade/index.js";
+import { applyBoost } from "../lib/arcade.js";
 import {
   assertIpAdLimit,
   countAdViews,
@@ -37,7 +39,30 @@ export async function reward({ env, userId, ipHash, body }) {
   let reward = { kind: "UNLOCK", amount: 0 };
 
   if (spec.type === "REWARDED") {
-    if (triggerKey === "BASEBALL_ATTEMPT") {
+    const arcade = arcadeSpec(gameType);
+
+    if (arcade && triggerKey.endsWith("_BOOST")) {
+      // 런 진행 중 보상 — 한도는 "1런당 N회" 라서 세션 기준으로 셉니다.
+      // 실제 효과(목숨 +1 / 시간 +15초 / 오답 면제 / 한 쌍 공개)는 게임 spec 이 정합니다.
+      reward = await applyBoost(env, userId, arcade, body.session_id);
+    } else if (arcade && triggerKey.endsWith("_ATTEMPT")) {
+      const cfg = ARCADE[gameType];
+      const viewed = await countAdViews(env, userId, gameType, triggerKey);
+      if (viewed >= cfg.adAttemptsPerDay) {
+        throw new ApiError(
+          "AD_LIMIT",
+          `오늘 이 보상은 ${cfg.adAttemptsPerDay}회까지만 받을 수 있습니다. 내일 다시 시도해 주세요.`,
+          429,
+        );
+      }
+      await grantAttempts(env, userId, gameType, 1);
+      reward = {
+        kind: "ATTEMPTS",
+        amount: 1,
+        attempts: await getAttemptState(env, userId, gameType, cfg.baseAttempts),
+        remaining_today: cfg.adAttemptsPerDay - viewed - 1,
+      };
+    } else if (triggerKey === "BASEBALL_ATTEMPT") {
       // 숫자야구는 "1게임당" 광고 3회 제한이라 세션 기준으로 셉니다.
       const session = await getOpenSession(env, body.session_id, userId, "BASEBALL");
       if (session.ad_views >= BASEBALL.AD_VIEWS_PER_GAME) {

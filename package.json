@@ -6,6 +6,7 @@
   "description": "인스턴트 컨텐츠 미니게임 4종 (스탑워치 / 숫자야구 / 타이핑 / 숫자기억력)",
   "scripts": {
     "dev": "wrangler dev",
+    "test:api": "node scripts/test-api.mjs",
     "deploy": "wrangler deploy",
     "db:create": "wrangler d1 create minigames-db",
     "db:migrate": "wrangler d1 migrations apply minigames-db --remote",

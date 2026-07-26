@@ -21,7 +21,15 @@
 import { apiPost } from "./api.js";
 import { el, toast, clear } from "./ui.js";
 
-/** 트리거별 안내 문구 (기획서 11장 트리거 명세와 1:1 대응) */
+/**
+ * 트리거별 안내 문구 (기획서 11장 트리거 명세 + 아케이드 10종)
+ *
+ * 게임이 14개가 되면서 목록을 손으로 관리하면 빠뜨리기 쉬워졌습니다.
+ * 오리지널 4종처럼 문구가 특별한 것만 여기 적고, 아케이드 10종은 접미사 규칙으로 처리합니다.
+ *   *_ATTEMPT  도전 기회 +1
+ *   *_BOOST    런 진행 중 보상 (구체적 문구는 호출부가 boostLabel 로 넘겨 줍니다)
+ *   *_STATS    전체 통계·랭킹 열람
+ */
 const TRIGGER_COPY = {
   STOPWATCH_ATTEMPT: { title: "도전 기회 +1", reward: "기회 1회가 추가됩니다", seconds: 5 },
   STOPWATCH_STATS: { title: "전체 통계 열람", reward: "타임별 전체 통계가 공개됩니다", seconds: 3 },
@@ -33,12 +41,22 @@ const TRIGGER_COPY = {
   MEMORY_RANK: { title: "전체 랭킹 열람", reward: "전체 랭킹이 공개됩니다", seconds: 3 },
 };
 
-const REWARDED = new Set([
-  "STOPWATCH_ATTEMPT",
-  "BASEBALL_ATTEMPT",
-  "TYPING_SENTENCE",
-  "MEMORY_LEVEL",
-]);
+/** 접미사로 결정되는 기본 문구 */
+const SUFFIX_COPY = {
+  _ATTEMPT: { title: "도전 기회 +1", reward: "오늘 도전 기회가 1회 추가됩니다", seconds: 5 },
+  _BOOST: { title: "이어서 도전하기", reward: "지금 판을 이어서 진행합니다", seconds: 5 },
+  _STATS: { title: "전체 순위 열람", reward: "전체 순위와 통계가 공개됩니다", seconds: 3 },
+  _RANK: { title: "전체 순위 열람", reward: "전체 순위가 공개됩니다", seconds: 3 },
+};
+
+/** 전면(Interstitial)인지 보상형(Rewarded)인지 — 서버 AD_TRIGGERS 의 type 과 같은 규칙 */
+const isInterstitial = (trigger) => trigger.endsWith("_STATS") || trigger.endsWith("_RANK");
+
+function copyOf(trigger, override) {
+  const suffix = Object.keys(SUFFIX_COPY).find((s) => trigger.endsWith(s));
+  const base = TRIGGER_COPY[trigger] ?? SUFFIX_COPY[suffix] ?? { title: "광고", reward: "", seconds: 5 };
+  return override ? { ...base, ...override } : base;
+}
 
 // ── 실제 SDK 연동 자리 ────────────────────────────────────────
 
@@ -58,10 +76,10 @@ export async function loadAdSdk() {
  * @param {string} trigger
  * @returns {Promise<void>}
  */
-async function showRewardedAd(trigger) {
+async function showRewardedAd(trigger, copy) {
   // TODO(광고 연동): 아래 목업 호출을 SDK 호출로 교체
   //   return AdSdk.showRewarded({ placement: trigger });
-  return playMockAd(trigger, { skippable: false });
+  return playMockAd(trigger, { skippable: false, copy });
 }
 
 /**
@@ -69,10 +87,10 @@ async function showRewardedAd(trigger) {
  * @param {string} trigger
  * @returns {Promise<void>}
  */
-async function showInterstitialAd(trigger) {
+async function showInterstitialAd(trigger, copy) {
   // TODO(광고 연동): 아래 목업 호출을 SDK 호출로 교체
   //   return AdSdk.showInterstitial({ placement: trigger });
-  return playMockAd(trigger, { skippable: true });
+  return playMockAd(trigger, { skippable: true, copy });
 }
 
 // ── 목업 광고 오버레이 ────────────────────────────────────────
@@ -82,9 +100,7 @@ async function showInterstitialAd(trigger) {
  * @param {string} trigger
  * @param {{ skippable:boolean }} opts
  */
-function playMockAd(trigger, { skippable }) {
-  const copy = TRIGGER_COPY[trigger] ?? { title: "광고", reward: "", seconds: 5 };
-
+function playMockAd(trigger, { skippable, copy }) {
   return new Promise((resolve, reject) => {
     const overlay = el("div", { class: "ad-overlay", role: "dialog", "aria-modal": "true", "aria-label": copy.title });
     const countEl = el("div", { class: "ad-box__count" }, `${copy.seconds}초 후 보상을 받을 수 있습니다`);
@@ -157,15 +173,18 @@ function playMockAd(trigger, { skippable }) {
 /**
  * 광고를 재생하고 서버에 보상을 요청합니다.
  *
- * @param {string} trigger  TRIGGER_COPY 의 키 (= 서버 AD_TRIGGERS 키와 동일)
- * @param {{ sessionId?: string }} opts
+ * @param {string} trigger  서버 AD_TRIGGERS 의 키
+ * @param {{ sessionId?: string, copy?: { title?:string, reward?:string } }} opts
+ *   copy — 같은 `_BOOST` 트리거라도 게임마다 보상 문구가 다르므로 호출부가 덮어씁니다.
  * @returns {Promise<object|null>} 서버가 지급한 보상 정보. 취소/실패 시 null
  */
-export async function watchAdForReward(trigger, { sessionId } = {}) {
-  const isRewarded = REWARDED.has(trigger);
+export async function watchAdForReward(trigger, { sessionId, copy } = {}) {
+  const text = copyOf(trigger, copy);
 
   try {
-    await (isRewarded ? showRewardedAd(trigger) : showInterstitialAd(trigger));
+    await (isInterstitial(trigger)
+      ? showInterstitialAd(trigger, text)
+      : showRewardedAd(trigger, text));
   } catch {
     toast("광고를 끝까지 시청해야 보상이 지급됩니다.", "error");
     return null;

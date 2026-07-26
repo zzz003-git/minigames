@@ -11,6 +11,7 @@
 
 import {
   GAME_TYPES,
+  ARCADE,
   STATS_UNLOCK_TRIGGER,
   STOPWATCH,
   TYPING,
@@ -18,7 +19,16 @@ import {
   BASEBALL,
 } from "../lib/config.js";
 import { ApiError, requireOneOf } from "../lib/http.js";
-import { hasAdUnlock, histogram, topList, popularBuckets, getAttemptState, getProgress } from "../lib/db.js";
+import { isArcade } from "../games/arcade/index.js";
+import {
+  hasAdUnlock,
+  histogram,
+  topList,
+  popularBuckets,
+  getAttemptState,
+  getProgress,
+  personalBest,
+} from "../lib/db.js";
 
 function gameParam(url) {
   return requireOneOf(url.searchParams.get("game"), "game", GAME_TYPES);
@@ -66,6 +76,37 @@ export async function stats({ env, userId, url }) {
     bucket: targetBucket,
     my_last: last,
   };
+
+  // 아케이드 10종은 지표가 rank_metric 하나로 정규화되어 있어 처리가 같습니다.
+  // 게임별로 다른 것은 "그 숫자를 어떻게 읽어 주는가" 뿐이고, 그건 클라이언트가 합니다.
+  if (isArcade(gameType)) {
+    const dist = targetBucket ? await histogram(env, gameType, targetBucket) : null;
+    const mine = await personalBest(env, userId, gameType, targetBucket);
+    const { results: buckets } = await env.DB.prepare(
+      `SELECT bucket, COUNT(*) AS n, AVG(score) AS avg_score, MIN(rank_metric) AS best
+       FROM results WHERE game_type = ? AND suspect = 0
+       GROUP BY bucket ORDER BY n DESC`,
+    )
+      .bind(gameType)
+      .all();
+
+    return {
+      ...base,
+      mode: ARCADE[gameType].mode,
+      label: ARCADE[gameType].label,
+      distribution: dist,
+      my_best: mine.best,
+      my_plays: mine.plays,
+      leagues: (buckets ?? []).map((b) => ({
+        bucket: b.bucket,
+        count: b.n,
+        avg_score: Number((b.avg_score ?? 0).toFixed(1)),
+        best: b.best,
+        // '+' 가 붙은 리그는 광고 보상을 쓴 런의 집계입니다.
+        boosted: String(b.bucket).endsWith("+"),
+      })),
+    };
+  }
 
   if (gameType === "STOPWATCH") {
     // 같은 목표 타임 도전자들의 오차 분포 + 인기 목표 타임 3개
@@ -212,19 +253,29 @@ const BASE_ATTEMPTS = {
   BASEBALL: 0, // 세션(게임) 단위로 관리되므로 일일 기회 개념이 없음
 };
 
+/** 아케이드 10종은 전부 "하루 N회 + 광고로 추가" 구조라 config 에서 그대로 가져옵니다. */
+const baseAttemptsOf = (gameType) =>
+  isArcade(gameType) ? ARCADE[gameType].baseAttempts : BASE_ATTEMPTS[gameType];
+
 export async function attempts({ env, userId, url }) {
   const gameType = gameParam(url);
-  const state = await getAttemptState(env, userId, gameType, BASE_ATTEMPTS[gameType]);
+  const base = baseAttemptsOf(gameType);
+  const state = await getAttemptState(env, userId, gameType, base);
   const progress = await getProgress(env, userId, gameType);
   const unlocked = await hasAdUnlock(env, userId, gameType, STATS_UNLOCK_TRIGGER[gameType]);
+
+  // 시작 화면에 "내 최고 기록" 을 띄우려면 rank_metric 기준 최고값이 필요합니다.
+  const bucket = url.searchParams.get("bucket");
+  const mine = isArcade(gameType) ? await personalBest(env, userId, gameType, bucket) : null;
 
   return {
     game: gameType,
     attempts: state,
-    base_attempts: BASE_ATTEMPTS[gameType],
+    base_attempts: base,
     best_level: progress.bestLevel,
     best_score: progress.bestScore,
     play_count: progress.playCount,
     stats_unlocked: unlocked,
+    ...(mine ? { my_best: mine.best, my_plays: mine.plays } : {}),
   };
 }

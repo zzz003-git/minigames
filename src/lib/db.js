@@ -214,6 +214,23 @@ export async function updateSessionMeta(env, sessionId, meta) {
     .run();
 }
 
+/**
+ * secret_json 갱신 — 라운드가 진행되면서 정답이 바뀌는 아케이드 게임용.
+ * meta 와 달리 암호화해서 저장하므로 DB 가 유출되어도 진행 중인 라운드의 정답은 읽을 수 없습니다.
+ */
+export async function updateSessionSecret(env, sessionId, secret) {
+  await env.DB.prepare(`UPDATE sessions SET secret_json = ? WHERE session_id = ?`)
+    .bind(await encryptJSON(env, secret ?? {}), sessionId)
+    .run();
+}
+
+/** 라운드 진행 상태(meta)와 정답(secret)을 함께 저장합니다. */
+export async function updateSessionState(env, sessionId, { meta, secret }) {
+  await env.DB.prepare(`UPDATE sessions SET meta_json = ?, secret_json = ? WHERE session_id = ?`)
+    .bind(JSON.stringify(meta ?? {}), await encryptJSON(env, secret ?? {}), sessionId)
+    .run();
+}
+
 export async function bumpSessionAdViews(env, sessionId, attemptsLeft) {
   await env.DB.prepare(
     `UPDATE sessions SET ad_views = ad_views + 1, attempts_left = ? WHERE session_id = ?`,
@@ -280,6 +297,37 @@ export async function percentileOf(env, gameType, bucket, rankMetric) {
   // 참가자가 나 혼자면 TOP 100%. 그 외에는 (나보다 나은 사람 + 1) / 전체
   const rankPct = total > 0 ? Math.max(1, Math.ceil(((better + 1) / total) * 100)) : 100;
   return { rankPct, total, better };
+}
+
+/**
+ * 내 개인 최고 기록 (rank_metric 은 작을수록 좋은 값으로 정규화되어 있습니다).
+ * 결과 화면의 "신기록!" 판정과 "최고 기록 대비" 표시에 씁니다.
+ * 이번 판을 저장하기 *전에* 호출해야 직전 최고 기록이 나옵니다.
+ *
+ * 이상치(suspect)로 표시된 판은 최고 기록에서 제외합니다.
+ * 포함하면 조작되거나 검증에 걸린 한 판이 영구히 최고 기록으로 남아, 정상 플레이로는
+ * 절대 깰 수 없는 목표가 됩니다 — 재도전 동기(신기록 갱신)를 스스로 죽이는 셈입니다.
+ * 순위표에서 제외하는 것과 같은 이유입니다.
+ * (plays 는 "몇 판 했는지" 이므로 이상치도 함께 셉니다)
+ */
+export async function personalBest(env, userId, gameType, bucket = null) {
+  const row = bucket
+    ? await env.DB.prepare(
+        `SELECT MIN(CASE WHEN suspect = 0 THEN rank_metric END) AS best,
+                COUNT(*) AS plays
+         FROM results WHERE user_id = ? AND game_type = ? AND bucket = ?`,
+      )
+        .bind(userId, gameType, bucket)
+        .first()
+    : await env.DB.prepare(
+        `SELECT MIN(CASE WHEN suspect = 0 THEN rank_metric END) AS best,
+                COUNT(*) AS plays
+         FROM results WHERE user_id = ? AND game_type = ?`,
+      )
+        .bind(userId, gameType)
+        .first();
+
+  return { best: row?.best ?? null, plays: row?.plays ?? 0 };
 }
 
 /** bucket 안 rank_metric 분포를 bins 개 구간으로 나눈 히스토그램 */

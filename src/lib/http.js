@@ -24,7 +24,34 @@ export function json(data, { status = 200, headers = {} } = {}) {
   });
 }
 
-export const ok = (data = {}, init) => json({ ok: true, ...data }, init);
+/**
+ * 응답 봉투(envelope)가 쓰는 예약 필드.
+ * 게임 페이로드가 같은 이름을 쓰면 봉투의 의미가 덮여 써집니다.
+ */
+const RESERVED_KEYS = ["ok", "code", "message"];
+
+/**
+ * 성공 응답.
+ *
+ * `ok: true` 를 **뒤에** 둡니다. 앞에 두면 페이로드에 같은 이름의 필드가 있을 때
+ * 봉투의 성공 여부가 덮여 써집니다 — 클라이언트는 `data.ok === false` 를 요청 실패로
+ * 읽으므로, 게임이 "이번 판정은 틀림" 을 `ok` 라는 이름으로 담는 순간 정상 응답이
+ * 전부 오류로 처리됩니다. (실제로 겪은 버그입니다 — 라운드 판정 필드를 `correct` 로
+ * 이름을 바꾼 이유가 이것입니다)
+ *
+ * 순서만으로도 봉투는 지켜지지만, 이름이 겹친 페이로드는 그 자체로 설계 실수이므로
+ * 관측 로그에 남깁니다. 조용히 지나가면 다음 게임에서 같은 혼동이 반복됩니다.
+ */
+export const ok = (data = {}, init) => {
+  const clash = RESERVED_KEYS.filter((k) => Object.hasOwn(data, k));
+  if (clash.length > 0) {
+    console.error(
+      `RESERVED_FIELD_CLASH: 응답 페이로드가 봉투 예약 필드(${clash.join(", ")})를 사용했습니다. ` +
+        `다른 이름으로 바꿔 주세요 (예: ok → correct).`,
+    );
+  }
+  return json({ ...data, ok: true }, init);
+};
 
 export const fail = (code, message, status = 400) =>
   json({ ok: false, code, message }, { status });
