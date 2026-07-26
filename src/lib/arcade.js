@@ -170,9 +170,16 @@ async function publicRun(env, userId, spec, session, meta) {
 /**
  * 라운드 진행 상태를 저장합니다.
  *
- * 정답(secret)이 그대로인 라운드는 meta 만 씁니다. secret 은 AES-GCM 으로 암호화해
- * 저장하므로, 바뀌지 않은 값을 매번 다시 암호화해서 쓰면 왕복 시간이 그만큼 늘어납니다.
- * 카드 짝 맞추기는 배치가 런 내내 고정인데 뒤집기마다 라운드가 돌아 이 차이가 매번 생깁니다.
+ * 정답(secret)이 그대로인 라운드는 meta 만 씁니다 — AES-GCM 암호화를 건너뛰고 좁은 행을
+ * 씁니다. 카드 짝 맞추기는 배치가 런 내내 고정인데 뒤집기마다 라운드가 돌아 매번 해당됩니다.
+ *
+ * 다만 **체감 속도는 이것으로 개선되지 않습니다.** 실측(프로덕션, 2026-07-26):
+ *   정적 파일 171ms · Worker(D1 없음) 168ms · Worker + D1 4쿼리 739ms
+ *   → D1 쿼리 1회가 약 150ms. /game/round 는 세션 읽기 + 쓰기 2회라 약 470ms 가 바닥입니다.
+ * 줄여야 하는 것은 쓰는 양이 아니라 **왕복 횟수**인데, 쓸 내용이 읽은 값에 달려 있어
+ * batch() 로 묶을 수 없습니다. 왕복을 1회로 줄이려면 세션 상태를 Durable Object 로
+ * 옮겨야 하고, 그건 구조 변경입니다.
+ * 그래서 지연은 클라이언트에서 흡수합니다 — 탭 즉시 카드를 뒤집고 그림만 나중에 채웁니다.
  */
 async function persistRound(env, sessionId, meta, secret, secretChanged) {
   if (secretChanged) await updateSessionState(env, sessionId, { meta, secret });
