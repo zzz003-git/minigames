@@ -16,6 +16,12 @@
  *
  * 라운드 = 한 번의 추측입니다(⑰ 딱 맞게 담기와 같은 방식). 공통 엔진이 판정 후
  * 곧바로 다음 라운드를 내므로, 기회가 남아 있으면 makeRound 가 같은 사냥을 이어 냅니다.
+ *
+ * ── 사냥 상태를 meta 에 두는 이유 (엔진 제약) ───────────────────────────
+ * 공통 엔진은 목숨이 떨어졌지만 이어하기가 남은 경로에서 meta 만 저장하고 secret 은
+ * 버립니다(`persistRound(..., false)`). 사냥 상태를 secret 에 두면 **마지막 빗나감이
+ * 저장되지 않아** 광고 후 화면에 그 추측이 사라집니다. meta 는 모든 경로에서 저장됩니다.
+ * (경로 자체는 meta 에 있어도 응답에 실리지 않으므로 여전히 감춰집니다)
  */
 
 import { ARCADE } from "../../lib/config.js";
@@ -92,24 +98,23 @@ export const spec = {
   mode: "ENDLESS",
   boostLabel: "표적 1턴 정지 + 기회 1회",
 
-  makeRound(roundNo, meta, secret) {
+  makeRound(roundNo, meta) {
     meta.points = meta.points ?? 0;
 
     // 기회가 남아 있으면 **같은 사냥**을 이어 냅니다 (표적은 이미 움직였습니다).
-    const pending = secret?.round?.hunt;
-    if (pending && (meta.tries ?? 0) > 0) {
-      return { pub: pubOf(pending, meta), secret: { hunt: pending }, limitMs: C.LIMIT_MS };
+    if (meta.hunt && (meta.tries ?? 0) > 0) {
+      return { pub: pubOf(meta.hunt, meta), secret: null, limitMs: C.LIMIT_MS };
     }
 
     meta.stage = meta.stage ?? 0;
     meta.tries = C.TRIES;
-    const hunt = makeHunt(meta.stage);
-    return { pub: pubOf(hunt, meta), secret: { hunt }, limitMs: C.LIMIT_MS };
+    meta.hunt = makeHunt(meta.stage);
+    return { pub: pubOf(meta.hunt, meta), secret: null, limitMs: C.LIMIT_MS };
   },
 
   /** answer 는 누른 칸 번호입니다. 시간이 끝나면 그 라운드의 기회 하나를 잃습니다. */
-  judgeRound({ answer, roundSecret, timedOut, meta }) {
-    const hunt = roundSecret?.hunt;
+  judgeRound({ answer, timedOut, meta }) {
+    const hunt = meta.hunt;
     if (!hunt) return { ok: false, fatal: false, data: { error: "라운드가 없습니다" } };
 
     const cell = Number(answer);
@@ -153,17 +158,11 @@ export const spec = {
   },
 
   /** 광고 보상 — 표적을 한 턴 묶고 기회를 하나 돌려줍니다. */
-  applyBoost(meta, secret) {
+  applyBoost(meta) {
     meta.lives += 1;
     meta.tries = 1;
-
-    const hunt = secret?.round?.hunt;
-    if (hunt) hunt.frozen = true;
-
-    return {
-      secret: hunt ? { ...secret, round: { hunt } } : secret,
-      data: { lives: meta.lives, tries_left: meta.tries, frozen: true },
-    };
+    if (meta.hunt) meta.hunt.frozen = true;
+    return { data: { lives: meta.lives, tries_left: meta.tries, frozen: true } };
   },
 
   bucketOf: () => "all",

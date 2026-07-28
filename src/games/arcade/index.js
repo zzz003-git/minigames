@@ -21,6 +21,7 @@ import { spec as stophere } from "./stophere.js";
 import { spec as basket } from "./basket.js";
 import { spec as hunt } from "./hunt.js";
 import { spec as pathline } from "./pathline.js";
+import { spec as tileline } from "./tileline.js";
 
 export const ARCADE_SPECS = {
   REACTION: reaction,
@@ -38,6 +39,7 @@ export const ARCADE_SPECS = {
   BASKET: basket,
   HUNT: hunt,
   PATHLINE: pathline,
+  TILELINE: tileline,
 };
 
 export const isArcade = (gameType) => Object.hasOwn(ARCADE_SPECS, gameType);
