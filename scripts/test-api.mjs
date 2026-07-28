@@ -134,6 +134,11 @@ const PLAYERS = {
     custom: cardpairFlow,
   },
 
+  PATHLINE: {
+    // 정답 경로가 서버 secret 이라 공통 endlessFlow 를 쓸 수 없습니다.
+    custom: pathlineFlow,
+  },
+
   HUNT: {
     // 표적 위치가 서버 secret 이라 공통 endlessFlow 를 쓸 수 없습니다.
     custom: huntFlow,
@@ -528,6 +533,115 @@ function findCombo(items, target, tol) {
  * 대신 이 게임의 존재 이유인 **표적이 실제로 움직이는가**를 검증합니다 —
  * 같은 칸을 두 번 눌러 거리가 달라지면 표적이 옮겨 갔다는 뜻입니다.
  */
+/**
+ * ⑲ 한 줄로 이어요 — 전용 시나리오
+ *
+ * 정답 경로는 서버 secret 이지만, **번호 위치는 공개**되므로 클라이언트도 스스로
+ * 경로를 찾을 수 있어야 합니다(그게 이 게임의 규칙입니다). 여기서는 BFS 로 실제로
+ * 찾아 봅니다 — 못 찾으면 풀 수 없는 판을 낸 것이고, 그것 자체가 결함입니다.
+ */
+function solvePath(round) {
+  const { w, h, marks, nums } = round;
+  const nb = (i) => {
+    const r = Math.floor(i / w), c = i % w, out = [];
+    if (r > 0) out.push(i - w);
+    if (r < h - 1) out.push(i + w);
+    if (c > 0) out.push(i - 1);
+    if (c < w - 1) out.push(i + 1);
+    return out;
+  };
+  const start = Number(Object.keys(marks).find((k) => marks[k] === 1));
+
+  // 번호를 순서대로 지나는 자기회피 경로를 깊이우선으로 찾습니다.
+  const seen = new Set([start]);
+  const trail = [start];
+  const dfs = (expect) => {
+    if (expect > nums) return true;
+    const cur = trail[trail.length - 1];
+    for (const n of nb(cur)) {
+      if (seen.has(n)) continue;
+      const num = marks[n];
+      if (num != null && num !== expect) continue;
+      seen.add(n); trail.push(n);
+      if (dfs(num === expect ? expect + 1 : expect)) return true;
+      seen.delete(n); trail.pop();
+    }
+    return false;
+  };
+  return dfs(2) ? [...trail] : null;
+}
+
+async function pathlineFlow(game) {
+  const s = await post("/game/session/start", { game_type: game, fresh: true });
+  check(`${game} 시작`, s.data.ok === true, `목숨=${s.data.lives} 보상=0/${s.data.max_boosts}`);
+  if (!s.data.ok) return;
+
+  assertNoSecretLeak(game, s.data);
+  const sid = s.data.session_id;
+  let round = s.data.round;
+
+  check(`${game} 번호 위치를 공개`, Object.keys(round?.marks ?? {}).length === round?.nums,
+    `번호 ${Object.keys(round?.marks ?? {}).length}개 / nums=${round?.nums}`);
+  check(`${game} 이론상 최소 길이 제공`, round?.min_len >= round?.nums,
+    `min_len=${round?.min_len}`);
+  check(`${game} 힌트는 처음에 비어 있음`, (round?.hint ?? []).length === 0,
+    `hint=${(round?.hint ?? []).length}칸`);
+
+  // ── 해가 반드시 존재해야 합니다 ─────────────────────────────
+  const sol = solvePath(round);
+  check(`${game} 풀 수 있는 판인가`, sol != null, `${round?.w}x${round?.h} 번호 ${round?.nums}개`);
+  if (!sol) return;
+
+  // ── 잘못된 경로는 거부하되 판을 끝내지 않습니다 ─────────────
+  const bad = await post("/game/round", { game_type: game, session_id: sid, answer: [sol[0], sol[0]] });
+  check(`${game} 같은 칸 두 번은 거부`, bad.data.correct === false && bad.data.game_over !== true,
+    `사유=${bad.data.data?.invalid}`);
+
+  const jump = await post("/game/round", { game_type: game, session_id: sid, answer: [sol[0], sol[sol.length - 1]] });
+  check(`${game} 떨어진 칸으로 건너뛰기 거부`, jump.data.correct === false,
+    `사유=${jump.data.data?.invalid}`);
+  // 잘못 낸 경로 때문에 판이 통째로 바뀌면 안 됩니다 (실제로 그런 결함이 있었습니다)
+  check(`${game} 무효 제출 후에도 같은 판 유지`,
+    jump.data.round?.min_len === round.min_len && jump.data.round?.round === round.round,
+    `min_len=${jump.data.round?.min_len} (직전 ${round.min_len})`);
+
+  // ── 정답 경로로 통과 ────────────────────────────────────────
+  const ok = await post("/game/round", { game_type: game, session_id: sid, answer: sol });
+  check(`${game} 유효한 경로면 통과`, ok.data.correct === true,
+    `내 경로=${ok.data.data?.len}칸 최단=${ok.data.data?.min_len}칸`);
+  check(`${game} 최단 판정은 하한 기준`,
+    ok.data.data?.shortest === (ok.data.data?.len <= ok.data.data?.min_len),
+    `shortest=${ok.data.data?.shortest}`);
+
+  round = ok.data.round;
+  check(`${game} 다음 라운드 발급`, round?.round === 2, `round=${round?.round}`);
+
+  // ── 시간 초과 → 이어하기 → 같은 판을 힌트와 함께 다시 ───────
+  const out = await post("/game/round", { game_type: game, session_id: sid, answer: null, timeout: true });
+  check(`${game} 시간 초과 시 세션 유지`, out.data.exhausted === true && out.data.game_over === false,
+    `can_boost=${out.data.can_boost}`);
+
+  const target = round.min_len;
+  const boost = await post("/ad/reward", { trigger: `${game}_BOOST`, session_id: sid });
+  const after = boost.data.reward?.round;
+  check(`${game} 보상으로 정답 경로 3칸 공개`, (after?.hint ?? []).length === 3,
+    `hint=${(after?.hint ?? []).length}칸`);
+  check(`${game} 보상 후 같은 판을 다시 냄`, after?.min_len === target,
+    `min_len=${after?.min_len} (직전 ${target})`);
+
+  const sol2 = after ? solvePath(after) : null;
+  check(`${game} 힌트를 받은 판도 풀린다`, sol2 != null, `${after?.w}x${after?.h}`);
+
+  // 보상 2회를 모두 쓰면 런이 끝납니다.
+  await post("/game/round", { game_type: game, session_id: sid, answer: null, timeout: true });
+  await post("/ad/reward", { trigger: `${game}_BOOST`, session_id: sid });
+  const fin = await post("/game/round", { game_type: game, session_id: sid, answer: null, timeout: true });
+  const res = fin.data.result;
+  check(`${game} 보상 소진 후 결과 확정`, fin.data.game_over === true && res != null,
+    `game_over=${fin.data.game_over}`);
+  if (res) check(`${game} 보상 사용 런은 별도 리그`, res.bucket === "all+", `bucket=${res.bucket}`);
+}
+
 async function huntFlow(game) {
   const s = await post("/game/session/start", { game_type: game, fresh: true });
   check(`${game} 시작`, s.data.ok === true, `목숨=${s.data.lives} 보상=0/${s.data.max_boosts}`);

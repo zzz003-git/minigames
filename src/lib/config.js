@@ -463,6 +463,39 @@ export const ARCADE = {
     // 시간이 아니라 판단으로 푸는 게임입니다(관통 원리 6). 넉넉히 둡니다.
     LIMIT_MS: 20000,
   },
+  // ── ⑲ 한 줄로 이어요 (기획서 plans/2026-07-28/PLAN-11_한줄로이어요.md) ──
+  //
+  // 번호를 순서대로 지나가는 한 줄을 긋습니다. 지나간 칸은 다시 밟을 수 없습니다.
+  // 자사 배포분에 **경로·공간 퍼즐이 한 종도 없습니다** — 지나온 자리가 다음 수를
+  // 제약하는 구조는 이 게임이 처음입니다.
+  //
+  // 초안은 1~2분 완주형이었으나 아케이드 규격(1판 10~60초)을 넘어, 한 라운드를
+  // 40~50초로 줄이고 무한 진행으로 바꿨습니다. 체류는 판 길이가 아니라 라운드 수로 만듭니다.
+  PATHLINE: {
+    mode: "ENDLESS",
+    label: "한 줄로 이어요",
+    icon: "🧵",
+    accent: "mint",
+    tagline: "번호 순서대로 한 붓 그리기",
+    baseAttempts: 5,
+    adAttemptsPerDay: 5,
+    boostsPerRun: 2,
+    lives: 1,
+
+    // w×h 격자에 번호 nums 개. 라운드가 오를수록 판이 커집니다.
+    ROUNDS: [
+      { w: 4, h: 4, nums: 3, sec: 40, reward: 3 },
+      { w: 4, h: 4, nums: 4, sec: 40, reward: 4 },
+      { w: 5, h: 5, nums: 4, sec: 45, reward: 5 },
+      { w: 5, h: 5, nums: 5, sec: 45, reward: 6 },
+      { w: 6, h: 6, nums: 5, sec: 50, reward: 8 }, // 5라운드부터 반복
+    ],
+
+    GEN_TRIES: 400, // 정답 경로 생성 시도 횟수
+    MIN_LEN_FACTOR: 3, // 정답 경로 최소 길이 = 번호 수 × 이 값
+    SHORTEST_BONUS: 2, // 이론상 최소 길이로 완성
+    HINT_CELLS: 3, // 광고 1회당 공개하는 정답 경로 칸 수
+  },
 };
 
 export const ARCADE_GAME_TYPES = Object.keys(ARCADE);
