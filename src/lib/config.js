@@ -496,6 +496,39 @@ export const ARCADE = {
     SHORTEST_BONUS: 2, // 이론상 최소 길이로 완성
     HINT_CELLS: 3, // 광고 1회당 공개하는 정답 경로 칸 수
   },
+  // ── ⑳ 어디에 놓을까 (기획서 plans/2026-07-28/PLAN-08_어디에놓을까.md) ────
+  //
+  // 타일 12개를 5×5 판에 놓아 줄을 만듭니다. 조작은 "어디에 놓을 것인가" 하나뿐입니다.
+  //
+  // 두 목표가 일부러 부딪히게 두었습니다.
+  //   · 인접 보너스 — 같은 브랜드끼리 붙여야 이득
+  //   · 줄 해금     — 5칸을 채우려면 브랜드를 못 고르고 자리를 메워야 함
+  // 이 상충이 없으면 배치는 판단이 아니라 절차가 됩니다.
+  //
+  // 타일 12개 · 25칸이라 판을 다 채울 수 없습니다. '채우는 게임' 이 아니라
+  // '어느 줄을 만들지 고르는 게임' 입니다.
+  TILELINE: {
+    mode: "ENDLESS",
+    label: "어디에 놓을까",
+    icon: "🟦",
+    accent: "gold",
+    tagline: "타일 12개로 줄을 만드세요",
+    baseAttempts: 5,
+    adAttemptsPerDay: 5,
+    boostsPerRun: 2,
+    lives: 1,
+
+    N: 5, // 판 한 변
+    TILES: 12, // 한 판에 놓는 타일 수
+    SEED_CELLS: [12, 13], // 시작 시 같은 브랜드로 미리 깔아 두는 칸 (첫 배치 성공 보장)
+    BRANDS: ["아메리카노", "샌드위치", "초코바", "생수", "우유"],
+
+    PLACE_POINT: 1,
+    ADJACENT_POINT: 2,
+    LINE_POINT: 20,
+
+    LIMIT_MS: 20000, // 한 수당 제한. 판단 시간이지 반응속도가 아닙니다
+  },
 };
 
 export const ARCADE_GAME_TYPES = Object.keys(ARCADE);

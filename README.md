@@ -1,4 +1,4 @@
-# 인스턴트 컨텐츠 — 미니게임 19종
+# 인스턴트 컨텐츠 — 미니게임 20종
 
 Cloudflare Workers 하나에서 정적 화면과 API 서버를 함께 서비스하고, 데이터는 D1(SQLite)에 저장합니다.
 
@@ -11,7 +11,7 @@ Cloudflare Workers 하나에서 정적 화면과 API 서버를 함께 서비스�
 | ③ | 타이핑 스피드 | WPM 또는 CPM × 정확도% |
 | ④ | 숫자 기억력 | 맞힌 자리 수 → 동일하면 소요 시간 |
 
-**아케이드 15종** — ⑤~⑭는 기획서 [`docs/arcade-10-games.md`](docs/arcade-10-games.md) 기준.
+**아케이드 16종** — ⑤~⑭는 기획서 [`docs/arcade-10-games.md`](docs/arcade-10-games.md) 기준.
 앱에 탑재되는 **광고 리워드용** 미니게임입니다. 한 판이 10~60초로 짧고, 규칙이 한 문장이며,
 실패 지점이 명확해서 "광고 보고 이어하기" 가 자연스럽게 붙습니다.
 
@@ -32,6 +32,16 @@ Cloudflare Workers 하나에서 정적 화면과 API 서버를 함께 서비스�
 | ⑰ | 딱 맞게 담기 | `basket` | 무한 | 점수 ↑ |
 | ⑱ | 한 발 앞서 | `hunt` | 무한 | 점수 ↑ |
 | ⑲ | 한 줄로 이어요 | `pathline` | 무한 | 점수 ↑ |
+| ⑳ | 어디에 놓을까 | `tileline` | 12장 1회 | 점수 ↑ |
+
+**⑳ 어디에 놓을까** 는 기획서 `../reward-minigame-research/plans/2026-07-28/PLAN-08_어디에놓을까.md` 기준입니다.
+타일 12개를 5×5 판에 놓아 줄을 만듭니다. 조작은 "어디에 놓을 것인가" 하나뿐인데,
+**같은 상품을 붙이면 인접 보너스 · 다섯 칸을 채우면 줄 완성** 이라는 두 목표가 서로 부딪힙니다.
+이 상충이 없으면 배치는 판단이 아니라 절차가 됩니다.
+
+> 판 상태를 **meta 에 둡니다.** 공통 엔진은 목숨이 떨어졌지만 이어하기가 남은 경로에서
+> meta 만 저장하고 secret 은 버리므로(`persistRound(..., false)`), 판을 secret 에 두면
+> 마지막 배치가 사라집니다. ⑱ 한 발 앞서도 같은 이유로 사냥 상태를 meta 에 둡니다.
 
 **⑲ 한 줄로 이어요** 는 기획서 `../reward-minigame-research/plans/2026-07-28/PLAN-11_한줄로이어요.md` 기준입니다.
 번호를 순서대로 지나는 한 줄을 긋되 지나간 칸은 다시 밟을 수 없습니다. 자사 배포분에
@@ -73,7 +83,7 @@ Cloudflare Workers 하나에서 정적 화면과 API 서버를 함께 서비스�
 정답이 미리 존재하지 않으므로 정답 아카이브가 성립하기 어렵고, 팽팽한 문항일수록
 점수가 높아 쏠린 문항을 외워 오는 것의 실익이 가장 작습니다.
 
-아케이드 15종의 광고 트리거는 게임마다 3종으로 같습니다 —
+아케이드 16종의 광고 트리거는 게임마다 3종으로 같습니다 —
 `{GAME}_ATTEMPT`(기회 +1, 하루 5회) · `{GAME}_BOOST`(런 중 보상, 1런당 2회) ·
 `{GAME}_STATS`(전체 순위 열람). 보상을 쓴 런은 bucket 에 `+` 가 붙어 별도 리그로 집계되므로
 순위표가 광고 시청량 순위가 되지 않습니다.
@@ -83,7 +93,7 @@ Cloudflare Workers 하나에서 정적 화면과 API 서버를 함께 서비스�
 ```
 minigames/
 ├── public/                  정적 파일 (Workers 정적 자산으로 그대로 서비스)
-│   ├── index.html           허브 (오리지널 4종 + 아케이드 15종)
+│   ├── index.html           허브 (오리지널 4종 + 아케이드 16종)
 │   ├── shared/              공통 모듈
 │   │   ├── base.css         디자인 시스템
 │   │   ├── api.js           API 호출 래퍼
@@ -97,7 +107,8 @@ minigames/
 │       ├── memory/          ④
 │       └── reaction/ oddcolor/ sequence/ numtap/ mathrush/
 │           stroop/ ringstop/ countdot/ cardpair/ rpsflash/
-│           majority/ stophere/ basket/ hunt/ pathline/      ⑤~⑲
+│           majority/ stophere/ basket/ hunt/ pathline/
+│           tileline/                                        ⑤~⑳
 ├── src/                     Worker (API 서버)
 │   ├── index.js             라우터
 │   ├── games/               게임별 서버 로직

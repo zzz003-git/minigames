@@ -134,6 +134,11 @@ const PLAYERS = {
     custom: cardpairFlow,
   },
 
+  TILELINE: {
+    // 타일 순서가 서버 secret 이고 배치 판단이 핵심이라 공통 endlessFlow 를 쓸 수 없습니다.
+    custom: tilelineFlow,
+  },
+
   PATHLINE: {
     // 정답 경로가 서버 secret 이라 공통 endlessFlow 를 쓸 수 없습니다.
     custom: pathlineFlow,
@@ -569,6 +574,95 @@ function solvePath(round) {
     return false;
   };
   return dfs(2) ? [...trail] : null;
+}
+
+/**
+ * ⑳ 어디에 놓을까 — 전용 시나리오
+ *
+ * 판 상태는 공개되지만(그래야 놓을 수 있습니다) 타일 순서와 판정은 서버가 쥡니다.
+ * 여기서는 12장을 실제로 다 놓아 보며 **인접 보너스와 줄 완성이 실제로 상충하는지**,
+ * 그리고 **한 칸 남은 줄이 있을 때만 이어하기를 제안하는지**를 봅니다.
+ */
+async function tilelineFlow(game) {
+  const s = await post("/game/session/start", { game_type: game, fresh: true });
+  check(`${game} 시작`, s.data.ok === true, `목숨=${s.data.lives} 보상=0/${s.data.max_boosts}`);
+  if (!s.data.ok) return;
+
+  assertNoSecretLeak(game, s.data);
+  const sid = s.data.session_id;
+  let round = s.data.round;
+
+  const seeded = round.board.filter((v) => v != null).length;
+  check(`${game} 첫 배치 성공 보장 (같은 브랜드 2칸 선배치)`, seeded === 2, `깔린 칸=${seeded}`);
+  check(`${game} 타일 12장으로 시작`, round.tiles_left === 12, `tiles_left=${round.tiles_left}`);
+  check(`${game} 다음 타일을 미리 보여 준다`, round.next_tile != null, `next=${round.next_tile}`);
+
+  // ── 빈 칸이 아닌 곳은 거부하되 판을 끝내지 않습니다 ─────────
+  const filledCell = round.board.findIndex((v) => v != null);
+  const bad = await post("/game/round", { game_type: game, session_id: sid, answer: filledCell });
+  check(`${game} 이미 찬 칸은 거부`, bad.data.correct === false && bad.data.game_over !== true,
+    `사유=${bad.data.data?.invalid}`);
+
+  // ── 2행(5~9)을 채워 줄을 완성시켜 봅니다 ───────────────────
+  // 어떤 타일이 오든 자리는 우리가 고르므로, 줄 완성은 배치 판단만으로 만들 수 있습니다.
+  const rowCells = [5, 6, 7, 8, 9];
+  let opened = null;
+  let placed = 0;
+  for (const cell of rowCells) {
+    if (round.board[cell] != null) continue;
+    const r = await post("/game/round", { game_type: game, session_id: sid, answer: cell });
+    if (r.data.code) break;
+    placed += 1;
+    if (r.data.data?.opened?.length) opened = r.data.data.opened;
+    if (r.data.game_over || r.data.exhausted) { round = null; break; }
+    round = r.data.round;
+  }
+  check(`${game} 줄을 채우면 완성 판정`, opened != null, `완성=${opened?.join(", ") ?? "없음"}`);
+
+  if (!round) return;
+
+  // ── 남은 타일을 모두 소진해 판을 끝냅니다 ──────────────────
+  let last = null;
+  for (let i = 0; i < 20 && round; i++) {
+    const empty = round.board.findIndex((v) => v == null);
+    if (empty < 0) break;
+    last = await post("/game/round", { game_type: game, session_id: sid, answer: empty });
+    if (last.data.code) break;
+    if (last.data.game_over || last.data.exhausted) break;
+    round = last.data.round;
+  }
+
+  check(`${game} 12장을 다 놓으면 판이 끝난다`,
+    last?.data.game_over === true || last?.data.exhausted === true,
+    `game_over=${last?.data.game_over} exhausted=${last?.data.exhausted}`);
+
+  if (last?.data.exhausted) {
+    // 한 칸 남은 줄이 있어야만 이어하기를 제안합니다.
+    check(`${game} 아까운 판에만 이어하기 제안`, (last.data.data?.near_cells ?? []).length > 0,
+      `한 칸 남은 줄=${last.data.data?.near_line}`);
+
+    const boost = await post("/ad/reward", { trigger: `${game}_BOOST`, session_id: sid });
+    check(`${game} 보상으로 타일 1장 추가`, boost.data.reward?.data?.unlock_only === true,
+      `tiles_left=${boost.data.reward?.data?.tiles_left}`);
+
+    const after = boost.data.reward?.round;
+    check(`${game} 보상 후에는 줄 완성 칸만 열린다`, (after?.near_cells ?? []).length > 0 && after?.unlock_only === true,
+      `열린 칸=${(after?.near_cells ?? []).length}개`);
+
+    // 엉뚱한 칸은 거부되어야 합니다.
+    const wrong = after.board.findIndex((v, i) => v == null && !after.near_cells.includes(i));
+    if (wrong >= 0) {
+      const rej = await post("/game/round", { game_type: game, session_id: sid, answer: wrong });
+      check(`${game} 보상 상태에서 다른 칸은 거부`, rej.data.correct === false,
+        `사유=${rej.data.data?.invalid}`);
+    }
+  }
+
+  const res = last?.data.result;
+  if (res) {
+    check(`${game} 점수는 배치·인접·줄의 누적`, typeof res.score === "number" && res.score > 0,
+      `score=${res.score} 놓은 타일=${placed}장+`);
+  }
 }
 
 async function pathlineFlow(game) {
