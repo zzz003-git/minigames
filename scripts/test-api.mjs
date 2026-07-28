@@ -134,6 +134,11 @@ const PLAYERS = {
     custom: cardpairFlow,
   },
 
+  HUNT: {
+    // 표적 위치가 서버 secret 이라 공통 endlessFlow 를 쓸 수 없습니다.
+    custom: huntFlow,
+  },
+
   BASKET: {
     // 정답 조합이 서버 secret 이라 공통 endlessFlow 를 쓸 수 없습니다.
     custom: basketFlow,
@@ -514,6 +519,88 @@ function findCombo(items, target, tol) {
     if (Math.abs(target - sum) <= tol) return pick;
   }
   return null;
+}
+
+/**
+ * ⑱ 한 발 앞서 — 전용 시나리오
+ *
+ * 표적 위치는 서버 secret 이라 "일부러 맞히는" 방법이 없습니다.
+ * 대신 이 게임의 존재 이유인 **표적이 실제로 움직이는가**를 검증합니다 —
+ * 같은 칸을 두 번 눌러 거리가 달라지면 표적이 옮겨 갔다는 뜻입니다.
+ */
+async function huntFlow(game) {
+  const s = await post("/game/session/start", { game_type: game, fresh: true });
+  check(`${game} 시작`, s.data.ok === true, `목숨=${s.data.lives} 보상=0/${s.data.max_boosts}`);
+  if (!s.data.ok) return;
+
+  assertNoSecretLeak(game, s.data);
+  const sid = s.data.session_id;
+  const round = s.data.round;
+
+  check(`${game} 이동 규칙을 공개`, round?.step >= 1 && typeof round?.stay === "boolean",
+    `step=${round?.step} stay=${round?.stay}`);
+  check(`${game} 기회 3회로 시작`, round?.tries_left === 3, `tries_left=${round?.tries_left}`);
+  check(`${game} 격자 크기 제공`, round?.n === 4, `n=${round?.n}`);
+
+  // ── 같은 칸을 반복해 눌러 표적이 움직이는지 본다 ────────────
+  // 우연히 잡히면 새 라운드가 시작될 뿐이므로 멈추지 않고 계속 눌러 봅니다.
+  // (첫 추측에서 잡히는 일이 실제로 있었고, 그때 힌트를 하나도 못 모아 실패했습니다)
+  const probe = 0;
+  const dists = [];
+  const bands = [];
+  let missesThisRound = 0;
+  let last = null;
+  for (let i = 0; i < 8; i++) {
+    last = await post("/game/round", { game_type: game, session_id: sid, answer: probe });
+    if (last.data.code) break;
+    const d = last.data.data ?? {};
+    if (last.data.correct) missesThisRound = 0; // 잡으면 새 사냥이 시작됩니다
+    if (typeof d.dist === "number") { dists.push(d.dist); bands.push(d.band); missesThisRound += 1; }
+    if (last.data.exhausted || last.data.game_over) break;
+  }
+
+  check(`${game} 거리 힌트를 돌려준다`, dists.length > 0, `dists=[${dists.join(", ")}]`);
+  check(`${game} 힌트 구간을 함께 준다`,
+    bands.length > 0 && bands.every((b) => ["near", "close", "far"].includes(b)),
+    `bands=[${bands.join(", ")}]`);
+  check(`${game} 거리와 구간이 맞아떨어진다`,
+    dists.every((d, i) => bands[i] === (d <= 1 ? "near" : d <= 2 ? "close" : "far")),
+    `${dists.map((d, i) => `${d}:${bands[i]}`).join(" ")}`);
+  // 같은 칸인데 거리가 달라졌다면 표적이 옮겨 갔다는 뜻입니다.
+  // (같은 방향으로 나란히 움직여 거리가 유지될 수도 있어 '실패' 로 세지는 않습니다)
+  const moved = new Set(dists).size > 1;
+  console.log(`       └ 같은 칸 반복 시 거리 변화: ${dists.join(" → ")}${moved ? " (이동 확인)" : ""}`);
+
+  if (!last?.data.exhausted) return; // 우연히 잡았으면 여기까지
+
+  check(`${game} 기회 소진 시 세션 유지`, last.data.game_over === false,
+    `can_boost=${last.data.can_boost}`);
+  check(`${game} 끝난 뒤에만 지나간 길 공개`, Array.isArray(last.data.data?.walked),
+    `walked=${last.data.data?.walked?.length}칸`);
+  // 이 게임의 존재 이유 — 빗나갈 때마다 표적이 한 칸씩 옮겨 갔어야 합니다.
+  // 거리 힌트는 우연히 같을 수 있지만 지나간 길의 길이는 거짓말을 못 합니다.
+  // 지나간 길은 **마지막 사냥** 의 것이므로 그 사냥에서 빗나간 횟수와 맞춰 봅니다.
+  check(`${game} 빗나간 횟수만큼 표적이 이동`,
+    last.data.data?.walked?.length === missesThisRound + 1,
+    `이동 ${(last.data.data?.walked?.length ?? 1) - 1}칸 / 이 사냥에서 빗나감 ${missesThisRound}회`);
+
+  const boost = await post("/ad/reward", { trigger: `${game}_BOOST`, session_id: sid });
+  check(`${game} 보상으로 표적 정지 + 기회 1회`,
+    boost.data.reward?.data?.frozen === true && boost.data.reward?.data?.tries_left === 1,
+    `frozen=${boost.data.reward?.data?.frozen} tries=${boost.data.reward?.data?.tries_left}`);
+  check(`${game} 정지 상태를 화면에 알려 준다`, boost.data.reward?.round?.frozen === true,
+    `round.frozen=${boost.data.reward?.round?.frozen}`);
+
+  // 보상 2회를 모두 쓰고 나면 런이 끝납니다.
+  await post("/game/round", { game_type: game, session_id: sid, answer: null, timeout: true });
+  await post("/ad/reward", { trigger: `${game}_BOOST`, session_id: sid });
+  const fin = await post("/game/round", { game_type: game, session_id: sid, answer: null, timeout: true });
+  const res = fin.data.result;
+  check(`${game} 보상 소진 후 결과 확정`, fin.data.game_over === true && res != null,
+    `game_over=${fin.data.game_over}`);
+  if (res) {
+    check(`${game} 보상 사용 런은 별도 리그`, res.bucket === "all+", `bucket=${res.bucket}`);
+  }
 }
 
 async function basketFlow(game) {

@@ -425,6 +425,44 @@ export const ARCADE = {
     PERFECT_BONUS: 2, // 오차 0원
     FIRST_TRY_BONUS: 2, // 첫 시도 적중
   },
+  // ── ⑱ 한 발 앞서 (기획서 plans/2026-07-28/PLAN-10_한발앞서.md) ──────────
+  //
+  // 격자에 숨은 상품을 찾되, **표적이 매 추측마다 움직입니다.**
+  // 이미 서비스 중인 ② 숫자야구와 "제한된 시도 안에 숨은 것을 힌트로 좁히기" 가
+  // 같아지지 않게 하려고 넣은 규칙입니다 — 표적이 움직이면 소거법이 무너지고
+  // 좁히기가 아니라 **앞지르기**가 됩니다.
+  //
+  // 이동 규칙은 숨기지 않고 화면에 씁니다. 숨기면 운 게임이 되고, 공개해야 실력 게임이 됩니다.
+  HUNT: {
+    mode: "ENDLESS",
+    label: "한 발 앞서",
+    icon: "🎯",
+    accent: "coral",
+    tagline: "도망가는 자리를 앞질러 잡으세요",
+    baseAttempts: 5,
+    adAttemptsPerDay: 5,
+    boostsPerRun: 2,
+    lives: 1,
+
+    TRIES: 3, // 한 라운드에 누를 수 있는 횟수
+
+    // n=격자 한 변, step=턴당 최대 이동 칸, stay=제자리 허용
+    ROUNDS: [
+      { n: 4, step: 1, stay: false, reward: 2 },
+      { n: 4, step: 1, stay: false, reward: 3 },
+      { n: 5, step: 1, stay: false, reward: 4 },
+      { n: 5, step: 2, stay: false, reward: 6 },
+      { n: 5, step: 2, stay: true, reward: 8 }, // 5라운드부터 반복
+    ],
+
+    PATH_LEN: 24, // 미리 확정해 두는 이동 경로 길이
+    NEAR: 1, // 이 거리까지 "바로 옆"
+    CLOSE: 2, // 이 거리까지 "가까움"
+    SPARE_BONUS: 2, // 남긴 기회 1회당 점수
+
+    // 시간이 아니라 판단으로 푸는 게임입니다(관통 원리 6). 넉넉히 둡니다.
+    LIMIT_MS: 20000,
+  },
 };
 
 export const ARCADE_GAME_TYPES = Object.keys(ARCADE);
