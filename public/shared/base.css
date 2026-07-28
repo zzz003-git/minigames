@@ -1569,6 +1569,17 @@ h1, h2, h3 { margin: 0; font-weight: 700; letter-spacing: -0.01em; }
 .choice.is-hit { background: rgba(127, 216, 192, 0.18); border-color: var(--mint); }
 .choice.is-miss { background: rgba(233, 146, 127, 0.18); border-color: var(--coral); }
 
+/* 보기에 부제를 다는 경우 (⑰ 딱 맞게 담기의 가격) — 이름과 값이 붙어 읽히지 않게 합니다 */
+.choice__title { display: block; }
+.choice__sub {
+  display: block;
+  margin-top: 4px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+
 .choice__swatch {
   display: block;
   width: 26px;

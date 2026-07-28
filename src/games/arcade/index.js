@@ -18,6 +18,7 @@ import { spec as cardpair } from "./cardpair.js";
 import { spec as rpsflash } from "./rpsflash.js";
 import { spec as majority } from "./majority.js";
 import { spec as stophere } from "./stophere.js";
+import { spec as basket } from "./basket.js";
 
 export const ARCADE_SPECS = {
   REACTION: reaction,
@@ -32,6 +33,7 @@ export const ARCADE_SPECS = {
   RPSFLASH: rpsflash,
   MAJORITY: majority,
   STOPHERE: stophere,
+  BASKET: basket,
 };
 
 export const isArcade = (gameType) => Object.hasOwn(ARCADE_SPECS, gameType);

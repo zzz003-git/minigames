@@ -386,6 +386,45 @@ export const ARCADE = {
     // 판단 시간이지 반응속도가 아니다(관통 원리 6). 넉넉히 준다.
     LIMIT_MS: 15000,
   },
+  // ── ⑰ 딱 맞게 담기 (기획서 plans/2026-07-28/PLAN-09_딱맞게담기.md) ──────
+  //
+  // 목표 금액에 딱 맞게 상품을 담습니다. **시간 제한이 없고 시도 횟수가 제한**입니다.
+  // 이미 서비스 중인 ⑨ 60초 암산과 계산 소재가 겹치므로, 압박의 원천을 시간에서
+  // 시도 횟수로 옮겨 갈라놓았습니다 — 빠른 연산이 아니라 조합 탐색을 묻습니다.
+  //
+  // 목표 금액은 반드시 **실제 상품 조합의 합**에서 뽑습니다. 임의의 숫자를 던지면
+  // 해가 없는 판이 나오고, 그 순간 이 게임은 실력이 아니라 운이 됩니다.
+  BASKET: {
+    mode: "ENDLESS",
+    label: "딱 맞게 담기",
+    icon: "🧺",
+    accent: "mint",
+    tagline: "세 번 안에 금액을 딱 맞추세요",
+    baseAttempts: 5,
+    adAttemptsPerDay: 5,
+    boostsPerRun: 2,
+    lives: 1,
+
+    TRIES: 3, // 한 라운드에 담기 완료를 누를 수 있는 횟수
+
+    // 라운드가 오를수록 상품이 늘고 허용 오차가 좁아집니다.
+    ROUNDS: [
+      { items: 6, pick: [2, 3], tol: 500, reward: 2 },
+      { items: 7, pick: [3, 4], tol: 200, reward: 3 },
+      { items: 8, pick: [3, 4], tol: 100, reward: 4 },
+      { items: 9, pick: [4, 5], tol: 0, reward: 6 },
+      { items: 9, pick: [4, 5], tol: 0, reward: 8 }, // 5라운드부터 반복
+    ],
+
+    PRICE_MIN: 700,
+    PRICE_MAX: 4900,
+    PRICE_STEP: 100,
+    PRICE_LIFT: 100, // 라운드마다 가격대 상승폭
+    LIFT_MAX_ROUND: 6,
+
+    PERFECT_BONUS: 2, // 오차 0원
+    FIRST_TRY_BONUS: 2, // 첫 시도 적중
+  },
 };
 
 export const ARCADE_GAME_TYPES = Object.keys(ARCADE);
