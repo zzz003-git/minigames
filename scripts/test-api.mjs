@@ -134,6 +134,11 @@ const PLAYERS = {
     custom: cardpairFlow,
   },
 
+  BASKET: {
+    // 정답 조합이 서버 secret 이라 공통 endlessFlow 를 쓸 수 없습니다.
+    custom: basketFlow,
+  },
+
   STOPHERE: {
     // 꽝 여부를 클라이언트가 알 수 없으므로 공통 endlessFlow 를 쓸 수 없습니다.
     custom: stophereFlow,
@@ -493,6 +498,109 @@ async function cardpairFlow(game) {
  * 대신 **처음 세 장은 꽝 확률 0%** 라는 성질이 있어 그 구간은 결과가 확정적입니다.
  * 그 성질과 '그만'(= 완주) 을 이용해 흐름을 고정합니다.
  */
+/**
+ * ⑰ 딱 맞게 담기 — 전용 시나리오
+ *
+ * 정답 조합은 서버 secret 이라 클라이언트가 알 수 없습니다. 대신 **목표 금액이 실제
+ * 조합의 합** 이라는 성질이 있어, 가격표를 완전 탐색하면 반드시 해를 찾을 수 있습니다.
+ * 해가 없으면 그것 자체가 결함이므로 이 탐색이 곧 "해 존재" 검증입니다.
+ */
+function findCombo(items, target, tol) {
+  const n = items.length;
+  for (let mask = 1; mask < (1 << n); mask++) {
+    let sum = 0;
+    const pick = [];
+    for (let i = 0; i < n; i++) if (mask & (1 << i)) { sum += items[i].price; pick.push(i); }
+    if (Math.abs(target - sum) <= tol) return pick;
+  }
+  return null;
+}
+
+async function basketFlow(game) {
+  const s = await post("/game/session/start", { game_type: game, fresh: true });
+  check(`${game} 시작`, s.data.ok === true, `목숨=${s.data.lives} 보상=0/${s.data.max_boosts}`);
+  if (!s.data.ok) return;
+
+  assertNoSecretLeak(game, s.data);
+  const sid = s.data.session_id;
+  let round = s.data.round;
+
+  check(`${game} 제한 시간 없음`, s.data.limit_ms == null, `limit_ms=${s.data.limit_ms}`);
+  check(`${game} 시도 3회로 시작`, round?.tries_left === 3, `tries_left=${round?.tries_left}`);
+
+  // ── 해가 반드시 존재해야 합니다 ─────────────────────────────
+  const solution = findCombo(round.items, round.target, round.tolerance);
+  check(`${game} 목표 금액에 해가 존재`, solution != null,
+    `목표=${round.target} 상품=${round.items.length}개`);
+  if (!solution) return;
+
+  // ── 일부러 틀리기: 해가 아닌 조합을 만들어 시도를 깎습니다 ──
+  const wrong = round.items.map((_, i) => i).filter((i) => !solution.includes(i)).slice(0, 1);
+  const miss1 = await post("/game/round", { game_type: game, session_id: sid, answer: wrong });
+  check(`${game} 빗나가면 시도만 줄고 판은 유지`,
+    miss1.data.correct === false && miss1.data.game_over !== true && miss1.data.data?.tries_left === 2,
+    `tries_left=${miss1.data.data?.tries_left} game_over=${miss1.data.game_over}`);
+  check(`${game} 같은 문제를 다시 발급`, miss1.data.round?.target === round.target,
+    `target=${miss1.data.round?.target}`);
+
+  // ── 정답 조합으로 통과 ──────────────────────────────────────
+  const okRes = await post("/game/round", { game_type: game, session_id: sid, answer: solution });
+  check(`${game} 정답 조합이면 통과`, okRes.data.correct === true,
+    `합계=${okRes.data.data?.sum} 오차=${okRes.data.data?.gap}`);
+  check(`${game} 첫 시도 아님 → 보너스 없음`, okRes.data.data?.first_try === false,
+    `first_try=${okRes.data.data?.first_try}`);
+
+  round = okRes.data.round;
+  check(`${game} 다음 라운드는 새 문제`, round?.tries_left === 3 && round?.round === 2,
+    `round=${round?.round} tries=${round?.tries_left}`);
+
+  // ── 시도 3회를 모두 빗나가면 목숨 소진 → 이어하기 제안 ─────
+  const sol2 = findCombo(round.items, round.target, round.tolerance);
+  check(`${game} 2라운드도 해가 존재`, sol2 != null, `목표=${round.target}`);
+  const bad = round.items.map((_, i) => i).filter((i) => !(sol2 ?? []).includes(i)).slice(0, 1);
+  let last = null;
+  for (let i = 0; i < 3; i++) {
+    last = await post("/game/round", { game_type: game, session_id: sid, answer: bad });
+    if (last.data.exhausted || last.data.game_over) break;
+  }
+  check(`${game} 시도 소진 시 세션 유지(이어하기 가능)`,
+    last?.data.exhausted === true && last?.data.game_over === false,
+    `exhausted=${last?.data.exhausted} can_boost=${last?.data.can_boost}`);
+
+  const boost = await post("/ad/reward", { trigger: `${game}_BOOST`, session_id: sid });
+  check(`${game} 보상으로 시도 1회 복구 + 상품 교체`,
+    boost.data.reward?.data?.tries_left === 1 && boost.data.reward?.data?.swapped != null,
+    `tries=${boost.data.reward?.data?.tries_left} 교체=${boost.data.reward?.data?.swapped?.name}`);
+
+  const after = boost.data.reward?.round;
+  const sol3 = after ? findCombo(after.items, after.target, after.tolerance) : null;
+  check(`${game} 교체 후에도 해가 존재`, sol3 != null, `목표=${after?.target}`);
+
+  // ── 보상 2회를 모두 소진시켜야 런이 끝납니다 ────────────────
+  // 맞히면 런이 이어지므로, 결과를 보려면 남은 보상까지 전부 쓰고 다시 빗나가야 합니다.
+  const miss2 = await post("/game/round", { game_type: game, session_id: sid, answer: [] });
+  check(`${game} 보상 1회 남았으면 아직 끝나지 않음`,
+    miss2.data.exhausted === true && miss2.data.game_over === false,
+    `boosts=${miss2.data.boosts}/${miss2.data.max_boosts}`);
+
+  const boost2 = await post("/ad/reward", { trigger: `${game}_BOOST`, session_id: sid });
+  check(`${game} 보상 2회차 적용`, boost2.data.reward?.boosts === 2,
+    `boosts=${boost2.data.reward?.boosts}/${boost2.data.reward?.max_boosts}`);
+
+  const fin = await post("/game/round", { game_type: game, session_id: sid, answer: [] });
+  const res = fin.data.result;
+  check(`${game} 보상 소진 후 결과 확정`, fin.data.game_over === true && res != null,
+    `game_over=${fin.data.game_over}`);
+  if (!res) return;
+
+  check(`${game} 보상 사용 런은 별도 리그`, res.bucket === "all+", `bucket=${res.bucket}`);
+  check(`${game} 점수는 통과 라운드의 누적`, typeof res.score === "number" && res.score > 0,
+    `score=${res.score} cleared=${res.cleared}`);
+
+  const over = await post("/ad/reward", { trigger: `${game}_BOOST`, session_id: sid });
+  check(`${game} 런당 보상 2회 제한`, over.data.ok === false, `(${over.data.code})`);
+}
+
 async function stophereFlow(game) {
   const s = await post("/game/session/start", { game_type: game, fresh: true });
   check(`${game} 시작`, s.data.ok === true, `목숨=${s.data.lives} 보상=0/${s.data.max_boosts}`);
