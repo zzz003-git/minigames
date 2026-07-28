@@ -48,11 +48,16 @@ export function renderHeader(host, { icon, title, badge } = {}) {
   clear(host);
   host.classList.add("topbar");
 
+  // null 을 걸러내고 넘깁니다. append() 는 노드가 아닌 인자를 문자열로 바꾸므로,
+  // 그냥 넘기면 배지가 없는 화면(스탑워치·타이핑)에 "null" 이라는 글자가 찍힙니다.
+  // el() 은 자식의 null 을 알아서 건너뛰지만 append() 는 그렇지 않습니다.
   host.append(
-    el("a", { class: "topbar__back", href: "/", "aria-label": "게임 목록으로 돌아가기" }, "‹"),
-    icon ? el("span", { class: "topbar__icon", "aria-hidden": "true" }, icon) : null,
-    el("span", { class: "topbar__title" }, title),
-    badge ? el("span", { class: "topbar__badge", id: "headerBadge" }, badge) : null,
+    ...[
+      el("a", { class: "topbar__back", href: "/", "aria-label": "게임 목록으로 돌아가기" }, "‹"),
+      icon ? el("span", { class: "topbar__icon", "aria-hidden": "true" }, icon) : null,
+      el("span", { class: "topbar__title" }, title),
+      badge ? el("span", { class: "topbar__badge", id: "headerBadge" }, badge) : null,
+    ].filter(Boolean),
   );
 }
 
