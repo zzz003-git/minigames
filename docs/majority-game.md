@@ -198,21 +198,48 @@ live_a / live_b   오늘 들어온 표            ← 자정(KST)에 snap 으로
 
 ### 문항 추가·수정
 
+문항의 단일 출처는 `scripts/gen-majority-questions.mjs` 입니다. 질문 길이(24자)·보기
+길이(12자)·중복을 이 스크립트가 검증하므로, **어느 경로로 넣든 배열에는 반드시 함께
+추가합니다** — 새 환경을 처음부터 구축할 때 쓰이는 것이 이 배열입니다.
+
 ```bash
 # scripts/gen-majority-questions.mjs 의 배열을 편집한 뒤
 node scripts/gen-majority-questions.mjs
 ```
 
-질문 길이(24자)·보기 길이(12자)·중복을 스크립트가 검증합니다.
-**광고주 문항**(기획서 10장 「선택지 자체가 광고주 상품」)은 이 스크립트가 아니라 운영
-경로로 넣습니다. `topic` 을 `'sponsor:<브랜드>'` 로 두면 배정·판정 규칙은 완전히 동일합니다.
+**주의 — 이미 마이그레이션을 적용한 DB(운영 포함)에는 이것만으로 반영되지 않습니다.**
+`0008` 은 적용 이력이 남아 있어 내용을 바꿔도 다시 실행되지 않습니다. 그래서 경로가
+DB 상태에 따라 갈립니다.
+
+| 상황 | 방법 |
+|---|---|
+| 아직 적용 전 (새 환경 · 로컬 초기화) | 스크립트 재생성만으로 충분합니다 |
+| 이미 적용됨 (운영 · 개발 중인 로컬) | **새 마이그레이션 파일**에 추가분만 `INSERT` 합니다 |
 
 ```sql
-INSERT INTO majority_questions (topic, prompt, option_a, option_b, active, created_at)
-VALUES ('sponsor:브랜드', '이번 여름 신제품은?', 'A 맛', 'B 맛', 1, unixepoch() * 1000);
+-- migrations/0009_add_majority_questions.sql
+INSERT INTO majority_questions (topic, prompt, option_a, option_b, active, created_at) VALUES
+  ('food', '피자에 파인애플은?', '좋다', '싫다', 1, unixepoch() * 1000);
 ```
 
-문항을 내릴 때는 지우지 말고 `active = 0` 으로 둡니다 — 쌓인 표를 잃지 않습니다.
+이미 있는 문항을 다시 넣지 않도록 주의하세요. `prompt` 에는 UNIQUE 제약이 없습니다 —
+같은 질문이 두 행이 되면 표가 둘로 갈려 양쪽 다 표본이 모자란 상태가 됩니다.
+넣기 전에 확인하는 것이 확실합니다.
+
+```bash
+npx wrangler d1 execute minigames-db --remote --command \
+  "SELECT prompt FROM majority_questions WHERE prompt IN ('피자에 파인애플은?');"
+```
+
+> 같은 제약이 타이핑 문장 DB(`0002_seed_sentences.sql`)에도 있습니다. 저장소가 처음
+> 만들어질 때부터 그랬고, 이 게임에서 처음 문제가 드러났습니다.
+
+**광고주 문항**(기획서 10장 「선택지 자체가 광고주 상품」)은 기간이 정해져 있어 스크립트
+배열이 아니라 위와 같은 운영 경로로 넣습니다. `topic` 을 `'sponsor:<브랜드>'` 로 두면
+배정·판정 규칙은 완전히 동일하고, 기간이 끝나면 `active = 0` 으로 내립니다.
+
+문항을 내릴 때는 **지우지 말고 `active = 0`** 으로 둡니다 — 쌓인 표를 잃지 않습니다.
+지웠다가 같은 질문을 다시 넣으면 표본이 0인 문항이 되어 「집계 중」으로 돌아갑니다.
 
 ### 운영자가 조정하는 값 (기획서 13장 「운영자 변경 데이터」)
 
