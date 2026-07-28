@@ -16,6 +16,7 @@ import { spec as ringstop } from "./ringstop.js";
 import { spec as countdot } from "./countdot.js";
 import { spec as cardpair } from "./cardpair.js";
 import { spec as rpsflash } from "./rpsflash.js";
+import { spec as majority } from "./majority.js";
 
 export const ARCADE_SPECS = {
   REACTION: reaction,
@@ -28,6 +29,7 @@ export const ARCADE_SPECS = {
   COUNTDOT: countdot,
   CARDPAIR: cardpair,
   RPSFLASH: rpsflash,
+  MAJORITY: majority,
 };
 
 export const isArcade = (gameType) => Object.hasOwn(ARCADE_SPECS, gameType);

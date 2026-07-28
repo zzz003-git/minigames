@@ -1740,6 +1740,120 @@ h1, h2, h3 { margin: 0; font-weight: 700; letter-spacing: -0.01em; }
   to { opacity: 1; transform: none; }
 }
 
+/* ── ⑮ 다들 뭐 골랐을까 ── */
+
+.vote-card { padding: 22px 18px; gap: 10px; }
+
+.vote-q {
+  font-size: clamp(20px, 6vw, 25px);
+  font-weight: 700;
+  line-height: 1.35;
+  text-align: center;
+  word-break: keep-all; /* 한국어 질문이 어절 중간에서 끊기지 않도록 */
+}
+
+.vote-list { display: flex; flex-direction: column; gap: 10px; width: 100%; }
+
+/* 보기 버튼이 그대로 결과 막대가 됩니다. 답을 고른 자리에서 비율이 차오르면
+   "내가 고른 쪽이 몇 %였는지" 를 눈이 따라가지 않아도 됩니다. */
+.vote-opt {
+  position: relative;
+  overflow: hidden;
+  min-height: 74px;
+  padding: 16px 18px;
+  border: 1px solid var(--border-mid);
+  border-radius: var(--r-btn2);
+  background: var(--well);
+  color: var(--text-main);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color var(--t), background var(--t), transform 120ms ease;
+}
+
+.vote-opt:active:not(:disabled) { transform: scale(0.985); }
+.vote-opt:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.vote-opt:disabled { cursor: default; }
+
+.vote-opt__fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 0;
+  background: rgba(255, 255, 255, 0.06);
+  transition: width 620ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.vote-opt__row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.vote-opt__label { font-size: 18px; font-weight: 700; line-height: 1.3; word-break: keep-all; }
+
+.vote-opt__pct {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--text-sub);
+  opacity: 0;
+  transition: opacity 200ms var(--t);
+}
+
+.vote-opt.is-revealed .vote-opt__pct { opacity: 1; }
+
+/* 다수 쪽 = 이 문항의 정답 */
+.vote-opt.is-major { border-color: var(--mint); }
+.vote-opt.is-major .vote-opt__fill { background: rgba(127, 216, 192, 0.16); }
+.vote-opt.is-major .vote-opt__pct { color: var(--mint); }
+
+/* 내가 고른 쪽이 소수였을 때 */
+.vote-opt.is-mine:not(.is-major) { border-color: var(--coral); }
+.vote-opt.is-mine:not(.is-major) .vote-opt__fill { background: rgba(233, 146, 127, 0.14); }
+
+.vote-opt__mine {
+  position: relative;
+  display: inline-block;
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+/* 결과 화면의 문항별 기록 */
+.vote-log { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+
+.vote-log__row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: var(--r-row);
+  background: var(--well-soft);
+  font-size: 13px;
+}
+
+.vote-log__mark { flex: none; font-size: 13px; }
+.vote-log__mark.is-hit { color: var(--mint); }
+.vote-log__mark.is-miss { color: var(--coral); }
+
+.vote-log__text {
+  flex: 1;
+  min-width: 0;
+  color: var(--text-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.vote-log__pts {
+  flex: none;
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-sub);
+}
+
 /* ── 허브: 아케이드 2열 카드 ── */
 
 .hub__section {
@@ -1881,6 +1995,7 @@ h1, h2, h3 { margin: 0; font-weight: 700; letter-spacing: -0.01em; }
   .pad:active:not(:disabled),
   .tap-cell:active:not(:disabled),
   .choice:active:not(:disabled),
+  .vote-opt:active:not(:disabled),
   .mcard:active:not(:disabled) { transform: none; }
 
   .confetti { display: none; }

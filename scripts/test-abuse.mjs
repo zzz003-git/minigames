@@ -524,6 +524,21 @@ async function gameSpecificAbuse() {
   check("5ms 반응속도 신고", superhuman.data.result?.suspect === true,
     `평균 ${superhuman.data.detail?.avg_ms}ms → suspect=${superhuman.data.result?.suspect}`);
 
+  // 다들 뭐 골랐을까: 이 게임의 정답은 "집계 비율" 이라, 문항과 함께 내려가면
+  // 게임이 성립하지 않습니다. 판정 전에는 어떤 경로로도 비율이 보이면 안 됩니다.
+  const mj = await c.post("/game/session/start", { game_type: "MAJORITY", fresh: true });
+  const mjSid = mj.data.session_id;
+  const beforeJudge = JSON.stringify(mj.data);
+  const cfg = await c.get_("/game/config");
+  const leakedRatio = /"(pct|snap_[ab]|live_[ab]|major)"/.test(beforeJudge);
+  check("판정 전 다수 비율 노출", !leakedRatio && !/"pct"/.test(JSON.stringify(cfg.data)),
+    leakedRatio ? "문항과 함께 비율이 내려옴" : "문항만 노출 · 비율은 판정 후에만");
+
+  // 같은 판을 두 번 끝내 표를 두 번 넣을 수 있는지 (결과·집계 중복)
+  await c.post("/game/finish", { game_type: "MAJORITY", session_id: mjSid });
+  const twice = await c.post("/game/finish", { game_type: "MAJORITY", session_id: mjSid });
+  check("같은 판을 두 번 확정", twice.status >= 400, `(${twice.data.code})`);
+
   // 숫자야구: 정답을 응답에서 캐낼 수 있는지 (오리지널 게임 회귀)
   const bb = await c.post("/game/session/start", { game_type: "BASEBALL", fresh: true });
   const guess = await c.post("/game/guess", { session_id: bb.data.session_id, guess: "012" });

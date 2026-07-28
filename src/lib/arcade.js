@@ -17,11 +17,15 @@
  *   mode        'ENDLESS' | 'BATCH'
  *
  *   [ENDLESS]
- *   initSecret(meta)                 런 내내 유지되는 비밀값 (예: 카드 배치). 선택
- *   makeRound(roundNo, meta)         { pub, secret, limitMs } | null
+ *   initSecret(meta, ctx)            런 내내 유지되는 비밀값 (예: 카드 배치). 선택
+ *                                    ctx = { env, userId, attempts } — DB 를 읽어야 하는
+ *                                    게임을 위해 async 를 허용합니다 (⑮ 다들 뭐 골랐을까)
+ *   makeRound(roundNo, meta, secret) { pub, secret, limitMs } | null
  *                                    pub    → 클라이언트에 내려보낼 라운드 데이터
  *                                    secret → 정답. 응답에 절대 포함되지 않음
  *                                    null 을 주면 라운드 데이터 없이 진행(카드 뒤집기 등)
+ *                                    세 번째 인자로 런 비밀값을 받습니다 — initSecret 이
+ *                                    미리 만들어 둔 문제 묶음에서 꺼내 쓰는 게임용
  *   judgeRound(input)                { ok, fatal, done, data } — meta 를 직접 수정해도 됩니다
  *
  *   [BATCH]
@@ -32,6 +36,11 @@
  *   bucketOf(meta)                   리그 키. 보상을 쓴 런은 엔진이 '+' 를 붙입니다
  *   rankMetricOf(meta, ctx)          순위 지표. "작을수록 좋은" 값으로 정규화
  *   scoreOf(meta, ctx)               결과 화면에 띄울 점수. 생략하면 meta.cleared
+ *   detailOf(meta)                   결과에 함께 남길 상세 기록. 선택
+ *                                    (ENDLESS 는 라운드가 끝날 때마다 저장할 곳이 없으므로,
+ *                                     런 동안 meta 에 모아 둔 것을 여기서 한 번에 넘깁니다)
+ *   onRunEnd(env, meta, ctx)         결과를 저장한 뒤 실행할 뒷정리. 선택 · async 허용
+ *                                    (⑮ 는 이 판에서 모은 표를 공용 집계에 반영합니다)
  *   applyBoost(meta, secret)         광고 보상 적용. { data, secret } 를 돌려줄 수 있음
  *   boostLabel                       보상 카드 문구 (예: '목숨 +1')
  * ==========================================================================
@@ -131,12 +140,17 @@ export async function start(ctx, spec) {
     issued_ts: now(),
   };
 
-  let secret = { ext: spec.initSecret ? spec.initSecret(meta) : null, round: null };
+  // initSecret 은 DB 를 읽을 수 있으므로(문항 은행 배정) await 합니다.
+  // 값을 그대로 돌려주는 기존 게임들에는 await 가 아무 영향도 주지 않습니다.
+  let secret = {
+    ext: spec.initSecret ? await spec.initSecret(meta, { env, userId, attempts }) : null,
+    round: null,
+  };
   let pub = null;
   let limitMs = null;
 
   if (spec.mode === "ENDLESS") {
-    const first = spec.makeRound ? spec.makeRound(1, meta) : null;
+    const first = spec.makeRound ? spec.makeRound(1, meta, secret) : null;
     secret.round = first?.secret ?? null;
     pub = first?.pub ?? null;
     limitMs = first?.limitMs ?? null;
@@ -321,7 +335,7 @@ export async function round(ctx, spec) {
 
   // 다음 라운드 준비. makeRound 가 없거나 null 을 주면 라운드 데이터 없이 진행합니다.
   meta.round += 1;
-  const next = spec.makeRound ? spec.makeRound(meta.round, meta) : null;
+  const next = spec.makeRound ? spec.makeRound(meta.round, meta, secret) : null;
   if (next) {
     secret.round = next.secret ?? null;
     meta.limit_ms = next.limitMs ?? null;
@@ -467,10 +481,18 @@ async function finalize(env, userId, spec, session, meta, { completed, detail, s
       boosts: meta.boosts,
       completed: Boolean(completed),
       elapsed_ms: elapsedMs,
+      // ENDLESS 는 BATCH 와 달리 채점이 라운드마다 흩어져 있어 detail 을 넘길 자리가
+      // 없습니다. 런 동안 meta 에 모아 둔 기록을 여기서 한 번에 꺼냅니다.
+      ...(spec.detailOf ? spec.detailOf(meta) : {}),
       ...(detail ?? {}),
     },
     suspect,
   });
+
+  // 결과가 확실히 저장된 뒤에만 뒷정리를 합니다.
+  // (insertResult 는 중복 제출을 UNIQUE 제약으로 막습니다 — 그 경우 여기까지 오지 않아
+  //  같은 판의 표가 두 번 집계되지 않습니다)
+  if (spec.onRunEnd) await spec.onRunEnd(env, meta, { userId, completed: Boolean(completed) });
 
   await closeSession(env, session.session_id, finishedTs);
   await upsertProgress(env, userId, spec.game, { level: meta.cleared, score: displayScore });
@@ -537,7 +559,7 @@ export async function applyBoost(env, userId, spec, sessionId) {
   let next = null;
   if (spec.mode === "ENDLESS" && meta.lives > 0 && spec.makeRound) {
     meta.round += 1;
-    next = spec.makeRound(meta.round, meta);
+    next = spec.makeRound(meta.round, meta, nextSecret);
     nextSecret.round = next?.secret ?? nextSecret.round;
     meta.limit_ms = next?.limitMs ?? null;
     meta.pub = next?.pub ?? null;
@@ -703,6 +725,14 @@ export function validateSpec(spec) {
   if (spec.mode === "BATCH") {
     for (const fn of ["makeBatch", "gradeBatch"]) {
       if (typeof spec[fn] !== "function") problems.push(`BATCH 인데 ${fn} 가 없습니다`);
+    }
+  }
+
+  // 선택 훅은 있으면 함수여야 합니다. 오타로 다른 타입이 들어가면 조용히 무시되어
+  // "결과에 상세 기록이 없다 / 표가 집계되지 않는다" 처럼 원인을 찾기 어려운 형태로 나타납니다.
+  for (const fn of ["detailOf", "onRunEnd", "initSecret"]) {
+    if (spec[fn] != null && typeof spec[fn] !== "function") {
+      problems.push(`${fn} 가 함수가 아닙니다`);
     }
   }
 

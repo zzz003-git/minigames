@@ -134,6 +134,14 @@ const PLAYERS = {
     custom: cardpairFlow,
   },
 
+  MAJORITY: {
+    // 이 게임에는 "일부러 맞히는 방법" 이 없습니다 — 정답이 다른 사람들의 집계라
+    // 클라이언트가 미리 알 수 없어야 하는 것이 규칙 그 자체입니다.
+    // 그래서 공통 endlessFlow(정답 3연속) 대신, 확실하게 틀릴 수 있는 수단
+    // (시간 초과)으로 흐름을 고정한 전용 시나리오를 씁니다.
+    custom: majorityFlow,
+  },
+
   // ── BATCH ───────────────────────────────────────────────────
   // submit(start, boostReward) → { answers, times, elapsedMs, expectBucket, assert }
 
@@ -286,7 +294,11 @@ function contractChecks() {
  * 숫자 순서 터치의 배치 등). 그건 PLAYERS 의 publicFields 에 적어 두고, 적히지 않은
  * 비밀 필드가 나타나면 실패로 잡습니다. 새 게임이 실수로 정답을 흘리면 여기서 걸립니다.
  */
-const SECRET_KEYS = ["answer_index", "answers", "layout", "sequence", "digits", "count", "secret"];
+const SECRET_KEYS = [
+  "answer_index", "answers", "layout", "sequence", "digits", "count", "secret",
+  // ⑮ 다들 뭐 골랐을까 — 집계 비율이 곧 정답이라 문항과 함께 내려가면 안 됩니다
+  "snap_a", "snap_b", "major", "major_index", "pct",
+];
 
 function assertNoSecretLeak(game, payload) {
   const allowed = new Set(PLAYERS[game]?.publicFields ?? []);
@@ -455,6 +467,87 @@ async function cardpairFlow(game) {
 
   check(`${game} 여덟 쌍 완성으로 종료`, over != null, `뒤집기=${over?.score}`);
   check(`${game} 보상 사용 런은 별도 리그`, over?.bucket === "4x4+", `bucket=${over?.bucket}`);
+  return over;
+}
+
+/**
+ * 다들 뭐 골랐을까 — 정답을 미리 알 수 없는 게임이라 전용 흐름을 씁니다.
+ *
+ * 확인하는 것
+ *   ① 문항과 함께 집계 비율(=정답)이 내려가지 않는다
+ *   ② 시간 초과는 확실한 오답이고, 목숨 1이 떨어지면 세션이 유지된 채 되돌리기를 기다린다
+ *   ③ 되돌리기 광고로 새 문항을 받아 이어갈 수 있고, 적중분은 유지된다
+ *   ④ 판정 응답에는 비율·표본 수가 들어 있고, 「집계 중」 문항은 비율 없이 통과된다
+ *   ⑤ 보상을 쓴 런은 별도 리그('all+')로 집계된다
+ */
+async function majorityFlow(game) {
+  const s = await post("/game/session/start", { game_type: game, fresh: true });
+  check(`${game} 시작`, s.data.ok === true, `목숨=${s.data.lives} 보상=0/${s.data.max_boosts}`);
+  if (!s.data.ok) return;
+
+  assertNoSecretLeak(game, s.data);
+  check(`${game} 보기 2개 제시`, s.data.round?.options?.length === 2,
+    `문항="${s.data.round?.prompt}"`);
+
+  const sid = s.data.session_id;
+
+  // ── 시간 초과는 확실한 오답 ──────────────────────────────────
+  const miss = await post("/game/round", { game_type: game, session_id: sid, answer: null, timeout: true });
+  check(`${game} 시간 초과는 오답`, miss.data.ok === true && miss.data.correct === false,
+    `envelope.ok=${miss.data.ok} correct=${miss.data.correct}`);
+  check(`${game} 목숨 소진 시 세션 유지`, miss.data.exhausted === true && miss.data.game_over === false,
+    `can_boost=${miss.data.can_boost}`);
+
+  const extraAnswer = await post("/game/round", { game_type: game, session_id: sid, answer: 0 });
+  check(`${game} 소진 후 추가 응답 거부`, extraAnswer.data.code === "RUN_EXHAUSTED",
+    `(${extraAnswer.data.code})`);
+
+  const boost = await post("/ad/reward", { trigger: `${game}_BOOST`, session_id: sid });
+  check(`${game} 되돌리기로 새 문항 발급`,
+    boost.data.reward?.lives === 1 && boost.data.reward?.round?.options?.length === 2,
+    `목숨=${boost.data.reward?.lives} 문항=${boost.data.reward?.round?.no}`);
+
+  // ── 남은 문항을 실제로 풀어 봅니다 ──────────────────────────
+  // 맞을지 틀릴지는 집계에 달려 있으므로, 결과가 어느 쪽이든 흐름이 끝까지 가는지 봅니다.
+  let over = null;
+  let boosts = 1;
+  let revealed = 0;
+  let counting = 0;
+
+  for (let i = 0; i < 8 && !over; i++) {
+    const r = await post("/game/round", { game_type: game, session_id: sid, answer: i % 2 });
+    if (r.data.code) break;
+
+    const d = r.data.data ?? {};
+    if (d.basis === "none") counting++;
+    else if (typeof d.pct === "number" && d.sample > 0) revealed++;
+
+    if (r.data.game_over) { over = r.data.result; break; }
+
+    if (r.data.exhausted) {
+      const more = await post("/ad/reward", { trigger: `${game}_BOOST`, session_id: sid });
+      if (more.status !== 200) break; // 되돌리기 한도 소진 → 아래에서 finish
+      boosts++;
+    }
+  }
+
+  check(`${game} 판정 응답에 집계 근거 포함`, revealed + counting > 0,
+    `비율 공개 ${revealed}건 · 집계 중 ${counting}건`);
+
+  if (!over) {
+    const fin = await post("/game/finish", { game_type: game, session_id: sid });
+    over = fin.data.result;
+  }
+
+  check(`${game} 결과 확정`, over?.rank_metric != null,
+    `점수=${over?.score} 적중=${over?.cleared} 리그=${over?.bucket} TOP ${over?.rank_pct}%`);
+  check(`${game} 점수와 순위 지표가 일치`, over?.rank_metric === -(over?.score ?? 0),
+    `metric=${over?.rank_metric} score=${over?.score}`);
+  check(`${game} 보상 사용 런은 별도 리그`, over?.bucket === "all+", `bucket=${over?.bucket} (되돌리기 ${boosts}회)`);
+
+  const reuse = await post("/game/round", { game_type: game, session_id: sid, answer: 0 });
+  check(`${game} 종료된 세션 재사용 차단`, reuse.status === 409, `(${reuse.data.code})`);
+
   return over;
 }
 

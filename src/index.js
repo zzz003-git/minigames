@@ -47,6 +47,7 @@ import * as baseball from "./games/baseball.js";
 import * as typing from "./games/typing.js";
 import * as memory from "./games/memory.js";
 import { ARCADE_SPECS } from "./games/arcade/index.js";
+import { rollDailySnapshot } from "./games/arcade/majority.js";
 import * as arcade from "./lib/arcade.js";
 import * as adRoutes from "./routes/ad.js";
 import * as statsRoutes from "./routes/stats.js";
@@ -178,6 +179,10 @@ export default {
    *
    * 순위·통계에 쓰이는 값(rank_metric, score, bucket)은 어느 쪽도 건드리지 않습니다.
    * 한쪽이 실패해도 다른 쪽은 진행되도록 따로 걸어 둡니다.
+   *
+   * 정리와 별개로 ⑮ 다들 뭐 골랐을까의 **일일 스냅샷 이월** 도 여기서 겁니다.
+   * 그 게임의 정답은 "어제까지의 집계" 이고, 오늘 들어온 표는 자정(KST)에 확정분으로
+   * 넘어갑니다. 하루 한 번만 수행되도록 rollDailySnapshot 이 스스로 판별합니다.
    */
   async scheduled(event, env, ctx) {
     ctx.waitUntil(
@@ -196,6 +201,14 @@ export default {
       })
         .then((r) => console.log(`RESULT_COMPACT compacted=${r.compacted}`))
         .catch((err) => console.error("RESULT_COMPACT failed", err?.stack ?? err)),
+    );
+
+    ctx.waitUntil(
+      rollDailySnapshot(env)
+        .then((r) => {
+          if (!r.skipped) console.log(`MAJORITY_ROLL day=${r.day} moved=${r.moved}`);
+        })
+        .catch((err) => console.error("MAJORITY_ROLL failed", err?.stack ?? err)),
     );
   },
 
