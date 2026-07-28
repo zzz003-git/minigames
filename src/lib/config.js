@@ -350,6 +350,42 @@ export const ARCADE = {
      */
     CLEAR_BONUS: 50,
   },
+  // ── ⑯ 여기서 그만 (기획서 plans/2026-07-28/PLAN-07_여기서그만.md) ──────
+  //
+  // 뽑을수록 쌓이고, 꽝이 뜨면 거기서 끝난다. 다만 **꽝이 떠도 쌓은 것은 그대로 받는다.**
+  // 그렇게만 두면 계속 뽑기의 기대값이 항상 크거나 같아져 '그만'을 누를 이유가 사라지므로,
+  // 스스로 멈춘 사람에게만 STOP_MULT 배를 준다. 이 배수가 곧 최적 정지 지점을 결정한다.
+  //
+  //   계속이 유리한 조건: 다음 장 가치 / 누적 > (M-1)·p / (M·(1-p))     (M = STOP_MULT)
+  //
+  // 배수를 올리면 일찍 멈추고 내리면 끝까지 간다 → **포인트 원가 조절 레버**이자 A/B 1순위.
+  STOPHERE: {
+    mode: "ENDLESS",
+    label: "여기서 그만",
+    icon: "🛑",
+    accent: "gold",   // base.css 에 있는 값만 유효합니다 (coral · gold · mint)
+    tagline: "꽝이 떠도 쌓은 건 그대로 받습니다",
+    baseAttempts: 5,
+    adAttemptsPerDay: 5,
+    boostsPerRun: 2,
+    lives: 1,
+
+    // 라운드별 장당 가치. 상한을 두지 않으면 후반에 계속 뽑는 것이 항상 유리해진다.
+    VALUES: [2, 3, 4, 5, 6, 7, 8, 9, 10],
+    VALUE_MAX: 10,
+
+    // 처음 세 장은 꽝이 없다 — 첫 판을 반드시 성공시킨다(관통 원리 4).
+    SAFE_ROUNDS: 3,
+    BUST_START: 0.12, // 4라운드
+    BUST_STEP: 0.07,
+    BUST_MAX: 0.55,
+
+    STOP_MULT: 1.5,
+    MAX_ROUNDS: 20,
+
+    // 판단 시간이지 반응속도가 아니다(관통 원리 6). 넉넉히 준다.
+    LIMIT_MS: 15000,
+  },
 };
 
 export const ARCADE_GAME_TYPES = Object.keys(ARCADE);

@@ -134,6 +134,11 @@ const PLAYERS = {
     custom: cardpairFlow,
   },
 
+  STOPHERE: {
+    // 꽝 여부를 클라이언트가 알 수 없으므로 공통 endlessFlow 를 쓸 수 없습니다.
+    custom: stophereFlow,
+  },
+
   MAJORITY: {
     // 이 게임에는 "일부러 맞히는 방법" 이 없습니다 — 정답이 다른 사람들의 집계라
     // 클라이언트가 미리 알 수 없어야 하는 것이 규칙 그 자체입니다.
@@ -480,6 +485,60 @@ async function cardpairFlow(game) {
  *   ④ 판정 응답에는 비율·표본 수가 들어 있고, 「집계 중」 문항은 비율 없이 통과된다
  *   ⑤ 보상을 쓴 런은 별도 리그('all+')로 집계된다
  */
+/**
+ * ⑯ 여기서 그만 — 전용 시나리오
+ *
+ * 이 게임에는 "일부러 틀리는 방법" 이 없습니다. 꽝 여부는 서버가 라운드를 만들 때
+ * 정해 두고 응답에 싣지 않으므로 클라이언트가 알 수 없습니다(그게 규칙 그 자체입니다).
+ * 대신 **처음 세 장은 꽝 확률 0%** 라는 성질이 있어 그 구간은 결과가 확정적입니다.
+ * 그 성질과 '그만'(= 완주) 을 이용해 흐름을 고정합니다.
+ */
+async function stophereFlow(game) {
+  const s = await post("/game/session/start", { game_type: game, fresh: true });
+  check(`${game} 시작`, s.data.ok === true, `목숨=${s.data.lives} 보상=0/${s.data.max_boosts}`);
+  if (!s.data.ok) return;
+
+  assertNoSecretLeak(game, s.data);
+  check(`${game} 꽝 확률을 공개한다`, s.data.round?.bust_pct === 0,
+    `1라운드 bust_pct=${s.data.round?.bust_pct}`);
+  check(`${game} 첫 장은 쌓은 것이 0`, s.data.round?.stack === 0, `stack=${s.data.round?.stack}`);
+
+  const sid = s.data.session_id;
+
+  // ── 안전 구간(1~3라운드)은 반드시 통과해야 합니다 ──────────
+  let stack = 0;
+  for (let i = 1; i <= 3; i++) {
+    const r = await post("/game/round", { game_type: game, session_id: sid, answer: "more" });
+    const ok = r.data.ok === true && r.data.correct === true;
+    stack = r.data.data?.stack ?? stack;
+    check(`${game} ${i}번째 장은 꽝 없음`, ok, `stack=${stack}`);
+    if (!ok) return;
+  }
+  check(`${game} 안전 구간 누적 = 2+3+4`, stack === 9, `stack=${stack}`);
+
+  // ── 잘못된 answer 는 거부하되 판을 끝내지 않습니다 ─────────
+  const bad = await post("/game/round", { game_type: game, session_id: sid, answer: "hmm" });
+  check(`${game} 잘못된 선택지는 판을 끝내지 않음`,
+    bad.data.game_over !== true, `game_over=${bad.data.game_over}`);
+
+  // ── '그만' 은 실패가 아니라 완주다 ─────────────────────────
+  const stop = await post("/game/round", { game_type: game, session_id: sid, answer: "stop" });
+  const res = stop.data.result;
+  check(`${game} 그만 = 완주로 종료`, stop.data.game_over === true && res != null,
+    `game_over=${stop.data.game_over}`);
+  if (!res) return;
+
+  const expected = Math.round(stack * 1.5);
+  check(`${game} 정지 보너스 1.5배 지급`, res.score === expected,
+    `score=${res.score} 기대=${expected} (stack=${stack})`);
+  check(`${game} 순위 지표는 지급액의 음수`, res.rank_metric === -expected,
+    `rank_metric=${res.rank_metric}`);
+  // detailOf 는 DB 에만 저장되고 응답에는 실리지 않습니다(finalize 의 detail 은 별도 인자).
+  // 클라이언트가 "멈춤/꽝" 을 가릴 수 있는 값은 completed 입니다.
+  check(`${game} 자발 정지는 완주로 기록`, res.completed === true, `completed=${res.completed}`);
+  check(`${game} 무보상 리그`, res.bucket === "all", `bucket=${res.bucket}`);
+}
+
 async function majorityFlow(game) {
   const s = await post("/game/session/start", { game_type: game, fresh: true });
   check(`${game} 시작`, s.data.ok === true, `목숨=${s.data.lives} 보상=0/${s.data.max_boosts}`);

@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>여기서 그만</title>
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#0F1420">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../shared/base.css">
+</head>
+<body class="game game--accent-gold">
+  <div class="app">
+    <header class="topbar" id="header"></header>
+
+    <main class="app__body">
+
+      <!-- 시작 -->
+      <section class="screen is-active" data-screen="ready">
+        <div class="card card--accent card--center card--hero">
+          <div class="card__label card__label--mono">STOP HERE</div>
+          <div class="headline">꽝이 떠도 쌓은 건 그대로</div>
+          <p class="footnote">
+            한 장씩 더 뽑아 쌓다가 스스로 멈추세요.
+            <b>멈추면 1.5배</b>, 꽝이 뜨면 쌓은 만큼 그대로 받습니다 — 잃는 경우가 없습니다.
+          </p>
+        </div>
+
+        <div class="stats">
+          <div class="stat stat--accent">
+            <div class="stat__label">최고 기록</div>
+            <div class="stat__value" id="bestValue">—</div>
+          </div>
+          <div class="stat">
+            <div class="stat__label">플레이</div>
+            <div class="stat__value" id="playsValue">—</div>
+          </div>
+        </div>
+
+        <button class="btn btn--primary" id="startBtn" disabled>▶ 시작하기</button>
+
+        <div class="card card--info">
+          <div class="meter">
+            <div class="meter__text">
+              <span class="card__label">오늘 남은 도전</span>
+              <span class="figure figure--md" id="attemptText">—</span>
+            </div>
+            <div class="pips" id="attemptDots"></div>
+          </div>
+        </div>
+
+        <div id="adbar"></div>
+      </section>
+
+      <!-- 플레이 -->
+      <section class="screen" data-screen="play">
+        <div class="hud">
+          <div class="hud__item">
+            <span class="hud__label">ROUND</span>
+            <span class="hud__value" id="hudRound">1</span>
+          </div>
+          <div class="lives" id="hudLives"></div>
+          <div class="hud__item hud__item--right">
+            <span class="hud__label">남은 시간</span>
+            <span class="hud__value hud__value--accent" id="hudTime">—</span>
+          </div>
+        </div>
+
+        <div class="timebar"><div class="timebar__fill" id="timebar"></div></div>
+
+        <div class="stats">
+          <div class="stat stat--accent">
+            <div class="stat__label">쌓은 것</div>
+            <div class="stat__value" id="stackValue">0</div>
+          </div>
+          <div class="stat">
+            <div class="stat__label">지금 멈추면</div>
+            <div class="stat__value" id="stopValue">0</div>
+          </div>
+        </div>
+
+        <div class="card card--center">
+          <div class="card__label">다음 장</div>
+          <div class="figure figure--result" id="cardValue">—</div>
+          <div class="footnote" id="cardGoods">—</div>
+          <div class="footnote" id="bustText">—</div>
+        </div>
+
+        <button class="btn btn--primary" id="moreBtn">한 장 더</button>
+        <button class="btn" id="stopBtn">여기서 그만 — <span id="stopBtnValue">0</span> 받기</button>
+
+        <div class="footnote--dim center">
+          꽝이 떠도 쌓은 것은 전액 확정입니다. 멈추면 1.5배를 받습니다.
+        </div>
+      </section>
+
+      <!-- 꽝 — 이어할지 끝낼지 -->
+      <section class="screen" data-screen="pause">
+        <div class="card card--center card--hero">
+          <div class="badge-round badge-round--quiet" aria-hidden="true">🛑</div>
+          <div class="headline">꽝이 나왔어요</div>
+          <div class="footnote" id="pauseSub">—</div>
+          <div class="figure figure--result" id="pauseFigure">—</div>
+        </div>
+
+        <div id="adbarBoost"></div>
+        <button class="btn" id="pauseEndBtn">여기서 끝내고 결과 보기</button>
+      </section>
+
+      <!-- 결과 -->
+      <section class="screen" data-screen="over">
+        <div class="card card--accent card--center card--hero celebrate" id="overCard">
+          <div class="badge-round" id="overBadge" aria-hidden="true">🛑</div>
+          <div class="headline" id="overHeadline">—</div>
+          <div class="footnote" id="overSub">—</div>
+          <div class="figure figure--result" id="overFigure">—</div>
+          <div class="chips" id="overChips"></div>
+          <div class="stats stats--inset" id="overTiles"></div>
+        </div>
+
+        <button class="btn btn--primary" id="retryBtn">다시 도전하기</button>
+        <div id="adbarStats"></div>
+        <div class="footnote--dim center" id="overNote"></div>
+      </section>
+
+      <!-- 전체 순위 -->
+      <section class="screen" data-screen="stats">
+        <div class="card">
+          <div class="card__head">
+            <span class="card__title" id="statsTitle">전체 통계</span>
+          </div>
+          <div id="statsChart"></div>
+          <div class="stats mt-md" id="statsTiles"></div>
+        </div>
+
+        <div class="card card--info">
+          <div class="card__label">TOP 20</div>
+          <div class="rank-list mt-sm" id="statsRank"></div>
+        </div>
+
+        <div class="card card--info">
+          <div class="card__label">리그별 기록 수</div>
+          <div class="rank-list mt-sm" id="statsLeagues"></div>
+        </div>
+
+        <button class="btn" id="statsBackBtn">← 결과로 돌아가기</button>
+      </section>
+
+    </main>
+  </div>
+
+  <script type="module" src="game.js"></script>
+</body>
+</html>
