@@ -99,6 +99,7 @@ export const ARCADE = {
   // ⑤ 반응속도 테스트 — 초록으로 바뀌는 순간 탭. 5시행 평균.
   REACTION: {
     mode: "BATCH",
+    category: "action",
     label: "반응속도 테스트",
     icon: "⚡",
     accent: "mint",
@@ -118,6 +119,7 @@ export const ARCADE = {
   // ⑥ 색 다른 타일 찾기 — 격자에서 하나만 다른 색을 탭.
   ODDCOLOR: {
     mode: "ENDLESS",
+    category: "action",
     label: "색 다른 타일 찾기",
     icon: "🎨",
     accent: "coral",
@@ -141,6 +143,7 @@ export const ARCADE = {
   // ⑦ 순서 기억 — 반짝인 순서대로 패드를 누름.
   SEQUENCE: {
     mode: "ENDLESS",
+    category: "puzzle",
     label: "순서 기억",
     icon: "🔔",
     accent: "mint",
@@ -161,6 +164,7 @@ export const ARCADE = {
   // ⑧ 숫자 순서 터치 (슐테 테이블) — 1~25를 순서대로.
   NUMTAP: {
     mode: "BATCH",
+    category: "action",
     label: "숫자 순서 터치",
     icon: "🔢",
     accent: "gold",
@@ -178,6 +182,7 @@ export const ARCADE = {
   // ⑨ 60초 암산 — 제한 시간 안에 최대한 많이.
   MATHRUSH: {
     mode: "BATCH",
+    category: "puzzle",
     label: "60초 암산",
     icon: "➗",
     accent: "gold",
@@ -196,6 +201,7 @@ export const ARCADE = {
   // ⑩ 색깔 말하기(스트룹) — 글자의 뜻이 아니라 색을 고름.
   STROOP: {
     mode: "BATCH",
+    category: "action",
     label: "색깔 말하기",
     icon: "🌈",
     accent: "coral",
@@ -223,6 +229,7 @@ export const ARCADE = {
   // ⑪ 링 스톱 — 원을 도는 점을 타겟 구간에서 멈춤.
   RINGSTOP: {
     mode: "ENDLESS",
+    category: "action",
     label: "링 스톱",
     icon: "🎯",
     accent: "mint",
@@ -245,6 +252,7 @@ export const ARCADE = {
   // ⑫ 순간 개수 세기 — 잠깐 보인 점의 개수를 입력.
   COUNTDOT: {
     mode: "ENDLESS",
+    category: "puzzle",
     label: "순간 개수 세기",
     icon: "👁",
     accent: "coral",
@@ -267,6 +275,7 @@ export const ARCADE = {
   // ⑬ 카드 짝 맞추기 — 배치는 서버에만 존재.
   CARDPAIR: {
     mode: "ENDLESS",
+    category: "puzzle",
     label: "카드 짝 맞추기",
     icon: "🃏",
     accent: "gold",
@@ -282,6 +291,7 @@ export const ARCADE = {
   // ⑭ 이겨라 / 져라 — 지시대로 손을 고름.
   RPSFLASH: {
     mode: "BATCH",
+    category: "action",
     label: "이겨라 / 져라",
     icon: "✌",
     accent: "mint",
@@ -304,6 +314,7 @@ export const ARCADE = {
   // 기획: docs/majority-game.md
   MAJORITY: {
     mode: "ENDLESS",
+    category: "puzzle",
     label: "다들 뭐 골랐을까",
     icon: "🗳",
     accent: "gold",
@@ -360,6 +371,7 @@ export const ARCADE = {
   // 해가 없는 판이 나오고, 그 순간 이 게임은 실력이 아니라 운이 됩니다.
   BASKET: {
     mode: "ENDLESS",
+    category: "puzzle",
     label: "딱 맞게 담기",
     icon: "🧺",
     accent: "mint",
@@ -399,6 +411,7 @@ export const ARCADE = {
   // 40~50초로 줄이고 무한 진행으로 바꿨습니다. 체류는 판 길이가 아니라 라운드 수로 만듭니다.
   PATHLINE: {
     mode: "ENDLESS",
+    category: "puzzle",
     label: "한 줄로 이어요",
     icon: "🧵",
     accent: "mint",
@@ -435,6 +448,7 @@ export const ARCADE = {
   // 이상치로 걸립니다.
   DROPCATCH: {
     mode: "BATCH",
+    category: "action",
     label: "와르르 받기",
     icon: "🛒",
     accent: "coral", // base.css 에 있는 값만 유효합니다 (coral · gold · mint)

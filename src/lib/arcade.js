@@ -702,6 +702,11 @@ export function validateSpec(spec) {
   if (cfg && cfg.mode !== spec.mode) {
     problems.push(`config.mode(${cfg.mode}) 와 spec.mode(${spec.mode}) 가 다릅니다`);
   }
+  // 허브가 action/puzzle 두 묶음으로 그려집니다. 빠뜨리면 그 게임만 어느 쪽에도
+  // 들어가지 못한 채 조용히 화면에서 사라지므로 여기서 막습니다.
+  if (cfg && !["action", "puzzle"].includes(cfg.category)) {
+    problems.push(`config.category 가 action/puzzle 이 아닙니다 (${cfg.category})`);
+  }
 
   for (const fn of ["bucketOf", "rankMetricOf"]) {
     if (typeof spec[fn] !== "function") problems.push(`${fn} 가 함수가 아닙니다`);

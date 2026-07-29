@@ -131,6 +131,7 @@ function config({ env }) {
         game,
         {
           mode: c.mode,
+          category: c.category, // action = 순발력 / puzzle = 두뇌
           label: c.label,
           icon: c.icon,
           tagline: c.tagline,

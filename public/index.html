@@ -70,106 +70,121 @@
       </nav>
     </section>
 
-    <!-- 아케이드 — 한 판이 짧아 2열 압축 카드로 둡니다 -->
+    <!-- 아케이드 — action(순발력) · puzzle(두뇌) 두 묶음.
+         카드 색이 곧 분류입니다. 색만으로 정보를 전달하지 않도록
+         묶음마다 이름·개수·한 줄 설명을 함께 둡니다. -->
     <section class="hub__section">
       <div class="hub__section-title"><b>아케이드</b><span>10~60초 짧은 판 14종</span></div>
 
-      <nav class="arcade-grid">
-        <a class="arcade-card" href="games/reaction/"
-           style="--card-accent:#7FD8C0; --card-soft:rgba(127,216,192,.12)">
-          <span class="arcade-card__icon" aria-hidden="true">⚡</span>
-          <span class="arcade-card__title">반응속도 테스트</span>
-          <span class="arcade-card__desc">초록으로 바뀌면 바로 탭</span>
-        </a>
+      <div class="arcade-band"
+           style="--band-key:#E9927F; --band-bg:rgba(233,146,127,.05); --band-line:rgba(233,146,127,.16)">
+        <div class="arcade-band__head">
+          <span class="arcade-band__dot" aria-hidden="true"></span>
+          <span class="arcade-band__name">순발력</span>
+          <span class="arcade-band__count">ACTION 7</span>
+        </div>
+        <p class="arcade-band__desc">보면 아는 정답을 제때 해내는 게임</p>
 
-        <a class="arcade-card" href="games/oddcolor/"
-           style="--card-accent:#E9927F; --card-soft:rgba(233,146,127,.12)">
-          <span class="arcade-card__icon" aria-hidden="true">🎨</span>
-          <span class="arcade-card__title">색 다른 타일 찾기</span>
-          <span class="arcade-card__desc">하나만 색이 다릅니다</span>
-        </a>
+        <nav class="arcade-grid" aria-label="순발력 게임 7종">
+          <a class="arcade-card" href="games/reaction/"
+             style="--card-accent:#E9927F; --card-soft:rgba(233,146,127,.12)">
+            <span class="arcade-card__icon" aria-hidden="true">⚡</span>
+            <span class="arcade-card__title">반응속도 테스트</span>
+            <span class="arcade-card__desc">초록으로 바뀌면 바로 탭</span>
+          </a>
+          <a class="arcade-card" href="games/oddcolor/"
+             style="--card-accent:#E9927F; --card-soft:rgba(233,146,127,.12)">
+            <span class="arcade-card__icon" aria-hidden="true">🎨</span>
+            <span class="arcade-card__title">색 다른 타일 찾기</span>
+            <span class="arcade-card__desc">하나만 색이 다릅니다</span>
+          </a>
+          <a class="arcade-card" href="games/numtap/"
+             style="--card-accent:#E9927F; --card-soft:rgba(233,146,127,.12)">
+            <span class="arcade-card__icon" aria-hidden="true">🔢</span>
+            <span class="arcade-card__title">숫자 순서 터치</span>
+            <span class="arcade-card__desc">1부터 25까지 순서대로</span>
+          </a>
+          <a class="arcade-card" href="games/stroop/"
+             style="--card-accent:#E9927F; --card-soft:rgba(233,146,127,.12)">
+            <span class="arcade-card__icon" aria-hidden="true">🌈</span>
+            <span class="arcade-card__title">색깔 말하기</span>
+            <span class="arcade-card__desc">뜻 말고 글자 색을 고르세요</span>
+          </a>
+          <a class="arcade-card" href="games/ringstop/"
+             style="--card-accent:#E9927F; --card-soft:rgba(233,146,127,.12)">
+            <span class="arcade-card__icon" aria-hidden="true">🎯</span>
+            <span class="arcade-card__title">링 스톱</span>
+            <span class="arcade-card__desc">밝은 구간에서 탭</span>
+          </a>
+          <a class="arcade-card" href="games/rpsflash/"
+             style="--card-accent:#E9927F; --card-soft:rgba(233,146,127,.12)">
+            <span class="arcade-card__icon" aria-hidden="true">✌</span>
+            <span class="arcade-card__title">이겨라 / 져라</span>
+            <span class="arcade-card__desc">지시대로 1초 안에</span>
+          </a>
+          <a class="arcade-card" href="games/dropcatch/"
+             style="--card-accent:#E9927F; --card-soft:rgba(233,146,127,.12)">
+            <span class="arcade-card__icon" aria-hidden="true">🛒</span>
+            <span class="arcade-card__title">와르르 받기</span>
+            <span class="arcade-card__desc">폭탄만 피해서 받으세요</span>
+          </a>
+        </nav>
+      </div>
 
-        <a class="arcade-card" href="games/sequence/"
-           style="--card-accent:#7FD8C0; --card-soft:rgba(127,216,192,.12)">
-          <span class="arcade-card__icon" aria-hidden="true">🔔</span>
-          <span class="arcade-card__title">순서 기억</span>
-          <span class="arcade-card__desc">반짝인 순서 그대로</span>
-        </a>
+      <div class="arcade-band"
+           style="--band-key:#7FD8C0; --band-bg:rgba(127,216,192,.05); --band-line:rgba(127,216,192,.16)">
+        <div class="arcade-band__head">
+          <span class="arcade-band__dot" aria-hidden="true"></span>
+          <span class="arcade-band__name">두뇌</span>
+          <span class="arcade-band__count">PUZZLE 7</span>
+        </div>
+        <p class="arcade-band__desc">기억·계산·탐색으로 답을 만들어내는 게임</p>
 
-        <a class="arcade-card" href="games/numtap/"
-           style="--card-accent:#D6B166; --card-soft:rgba(214,177,102,.12)">
-          <span class="arcade-card__icon" aria-hidden="true">🔢</span>
-          <span class="arcade-card__title">숫자 순서 터치</span>
-          <span class="arcade-card__desc">1부터 25까지 순서대로</span>
-        </a>
-
-        <a class="arcade-card" href="games/mathrush/"
-           style="--card-accent:#D6B166; --card-soft:rgba(214,177,102,.12)">
-          <span class="arcade-card__icon" aria-hidden="true">➗</span>
-          <span class="arcade-card__title">60초 암산</span>
-          <span class="arcade-card__desc">60초 동안 몇 문제?</span>
-        </a>
-
-        <a class="arcade-card" href="games/stroop/"
-           style="--card-accent:#E9927F; --card-soft:rgba(233,146,127,.12)">
-          <span class="arcade-card__icon" aria-hidden="true">🌈</span>
-          <span class="arcade-card__title">색깔 말하기</span>
-          <span class="arcade-card__desc">뜻 말고 글자 색을 고르세요</span>
-        </a>
-
-        <a class="arcade-card" href="games/ringstop/"
-           style="--card-accent:#7FD8C0; --card-soft:rgba(127,216,192,.12)">
-          <span class="arcade-card__icon" aria-hidden="true">🎯</span>
-          <span class="arcade-card__title">링 스톱</span>
-          <span class="arcade-card__desc">밝은 구간에서 탭</span>
-        </a>
-
-        <a class="arcade-card" href="games/countdot/"
-           style="--card-accent:#E9927F; --card-soft:rgba(233,146,127,.12)">
-          <span class="arcade-card__icon" aria-hidden="true">👁</span>
-          <span class="arcade-card__title">순간 개수 세기</span>
-          <span class="arcade-card__desc">점이 몇 개였나요?</span>
-        </a>
-
-        <a class="arcade-card" href="games/cardpair/"
-           style="--card-accent:#D6B166; --card-soft:rgba(214,177,102,.12)">
-          <span class="arcade-card__icon" aria-hidden="true">🃏</span>
-          <span class="arcade-card__title">카드 짝 맞추기</span>
-          <span class="arcade-card__desc">적게 뒤집을수록 상위</span>
-        </a>
-
-        <a class="arcade-card" href="games/rpsflash/"
-           style="--card-accent:#7FD8C0; --card-soft:rgba(127,216,192,.12)">
-          <span class="arcade-card__icon" aria-hidden="true">✌</span>
-          <span class="arcade-card__title">이겨라 / 져라</span>
-          <span class="arcade-card__desc">지시대로 1초 안에</span>
-        </a>
-
-        <a class="arcade-card" href="games/majority/"
-           style="--card-accent:#D6B166; --card-soft:rgba(214,177,102,.12)">
-          <span class="arcade-card__icon" aria-hidden="true">🗳</span>
-          <span class="arcade-card__title">다들 뭐 골랐을까</span>
-          <span class="arcade-card__desc">다수가 고른 쪽을 3연속</span>
-        </a>
-        <a class="arcade-card" href="games/basket/"
-           style="--card-accent:#7BD8B0; --card-soft:rgba(123,216,176,.12)">
-          <span class="arcade-card__icon" aria-hidden="true">🧺</span>
-          <span class="arcade-card__title">딱 맞게 담기</span>
-          <span class="arcade-card__desc">세 번 안에 금액을 딱</span>
-        </a>
-        <a class="arcade-card" href="games/pathline/"
-           style="--card-accent:#7BD8B0; --card-soft:rgba(123,216,176,.12)">
-          <span class="arcade-card__icon" aria-hidden="true">🧵</span>
-          <span class="arcade-card__title">한 줄로 이어요</span>
-          <span class="arcade-card__desc">번호 순서대로 한 붓</span>
-        </a>
-        <a class="arcade-card" href="games/dropcatch/"
-           style="--card-accent:#E9927F; --card-soft:rgba(233,146,127,.12)">
-          <span class="arcade-card__icon" aria-hidden="true">🛒</span>
-          <span class="arcade-card__title">와르르 받기</span>
-          <span class="arcade-card__desc">폭탄만 피해서 받으세요</span>
-        </a>
-      </nav>
+        <nav class="arcade-grid" aria-label="두뇌 게임 7종">
+          <a class="arcade-card" href="games/sequence/"
+             style="--card-accent:#7FD8C0; --card-soft:rgba(127,216,192,.12)">
+            <span class="arcade-card__icon" aria-hidden="true">🔔</span>
+            <span class="arcade-card__title">순서 기억</span>
+            <span class="arcade-card__desc">반짝인 순서 그대로</span>
+          </a>
+          <a class="arcade-card" href="games/mathrush/"
+             style="--card-accent:#7FD8C0; --card-soft:rgba(127,216,192,.12)">
+            <span class="arcade-card__icon" aria-hidden="true">➗</span>
+            <span class="arcade-card__title">60초 암산</span>
+            <span class="arcade-card__desc">60초 동안 몇 문제?</span>
+          </a>
+          <a class="arcade-card" href="games/countdot/"
+             style="--card-accent:#7FD8C0; --card-soft:rgba(127,216,192,.12)">
+            <span class="arcade-card__icon" aria-hidden="true">👁</span>
+            <span class="arcade-card__title">순간 개수 세기</span>
+            <span class="arcade-card__desc">점이 몇 개였나요?</span>
+          </a>
+          <a class="arcade-card" href="games/cardpair/"
+             style="--card-accent:#7FD8C0; --card-soft:rgba(127,216,192,.12)">
+            <span class="arcade-card__icon" aria-hidden="true">🃏</span>
+            <span class="arcade-card__title">카드 짝 맞추기</span>
+            <span class="arcade-card__desc">적게 뒤집을수록 상위</span>
+          </a>
+          <a class="arcade-card" href="games/majority/"
+             style="--card-accent:#7FD8C0; --card-soft:rgba(127,216,192,.12)">
+            <span class="arcade-card__icon" aria-hidden="true">🗳</span>
+            <span class="arcade-card__title">다들 뭐 골랐을까</span>
+            <span class="arcade-card__desc">다수가 고른 쪽을 3연속</span>
+          </a>
+          <a class="arcade-card" href="games/basket/"
+             style="--card-accent:#7FD8C0; --card-soft:rgba(127,216,192,.12)">
+            <span class="arcade-card__icon" aria-hidden="true">🧺</span>
+            <span class="arcade-card__title">딱 맞게 담기</span>
+            <span class="arcade-card__desc">세 번 안에 금액을 딱</span>
+          </a>
+          <a class="arcade-card" href="games/pathline/"
+             style="--card-accent:#7FD8C0; --card-soft:rgba(127,216,192,.12)">
+            <span class="arcade-card__icon" aria-hidden="true">🧵</span>
+            <span class="arcade-card__title">한 줄로 이어요</span>
+            <span class="arcade-card__desc">번호 순서대로 한 붓</span>
+          </a>
+        </nav>
+      </div>
     </section>
 
     <footer class="hub__footer">

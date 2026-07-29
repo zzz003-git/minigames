@@ -1895,6 +1895,45 @@ h1, h2, h3 { margin: 0; font-weight: 700; letter-spacing: -0.01em; }
   gap: 10px;
 }
 
+/* ── 아케이드 분류 묶음 (action · puzzle) ──────────────────────
+   카드 색은 원래 민트·코럴·골드를 번갈아 쓰는 장식이었습니다. 그 색에 분류라는
+   뜻을 줘서, 스크롤 중에도 색만 보고 두 영역이 갈리게 합니다.
+   색만으로 정보를 전달하지 않도록 이름·개수·한 줄 설명을 함께 둡니다. */
+.arcade-band {
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+  padding: 13px 12px 14px;
+  border-radius: 22px;
+  border: 1px solid var(--band-line);
+  background: var(--band-bg);
+}
+
+.arcade-band__head { display: flex; align-items: center; gap: 8px; padding: 0 2px; }
+
+.arcade-band__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--band-key);
+}
+
+.arcade-band__name { font-size: 13px; font-weight: 700; color: var(--text-main); }
+
+.arcade-band__count {
+  margin-left: auto;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: var(--band-key);
+}
+
+.arcade-band__desc { font-size: 11px; color: var(--text-sub); }
+
+/* 묶음 안에서는 카드를 한 단계 어둡게 둬야 묶음의 옅은 색이 읽힙니다 */
+.arcade-band .arcade-card { background: var(--surface-2); }
+.arcade-band .arcade-card:hover { background: #1b2434; }
+
 .arcade-card {
   display: flex;
   flex-direction: column;
