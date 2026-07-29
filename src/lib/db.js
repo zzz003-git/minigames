@@ -412,7 +412,11 @@ export async function percentileOf(env, gameType, bucket, rankMetric) {
   const total = row?.total ?? 0;
   const better = row?.better ?? 0;
   // 참가자가 나 혼자면 TOP 100%. 그 외에는 (나보다 나은 사람 + 1) / 전체
-  const rankPct = total > 0 ? Math.max(1, Math.ceil(((better + 1) / total) * 100)) : 100;
+  //
+  // 100 으로 묶는 이유: 이 집계는 suspect = 0 만 셉니다. 그래서 **이상치로 표시된 판**은
+  // 자기 자신이 분모에 없는 채로 (better + 1) 을 계산하게 되어 100%를 넘습니다
+  // (기록 2건 중 둘 다 나보다 위 → 3/2 = 150%). 백분위가 100%를 넘는 값은 뜻이 없습니다.
+  const rankPct = total > 0 ? Math.min(100, Math.max(1, Math.ceil(((better + 1) / total) * 100))) : 100;
   return { rankPct, total, better };
 }
 
