@@ -1439,16 +1439,9 @@ h1, h2, h3 { margin: 0; font-weight: 700; letter-spacing: -0.01em; }
 .tile:active { transform: scale(0.94); }
 .tile:focus-visible { outline: 2px solid var(--text-main); outline-offset: 2px; }
 .tile.is-answer { box-shadow: inset 0 0 0 3px var(--mint); }
-/* ⑱ 한 발 앞서 — 이미 눌러 본 칸(흔적)과 표적이 지나간 길
-   '오답' 으로 칠하지 않는 것이 중요합니다. 표적이 돌아올 수 있어
-   소거의 근거가 되지 못한다는 것을 색으로도 말해야 합니다. */
-.tile.is-used { opacity: 0.45; color: var(--text-faint); }
+
+/* ⑰ 한 줄로 이어요 — 지나온 줄, 번호가 적힌 칸, 광고로 열어 준 정답 경로 */
 .tile.is-path { background: rgba(127, 216, 192, 0.14); border-color: var(--mint); color: var(--text-sub); }
-
-/* ⑲ 한 줄로 이어요 — 번호가 적힌 칸과 광고로 열어 준 정답 경로 */
-/* ⑳ 어디에 놓을까 — 이미 타일이 놓인 칸 (색은 브랜드별로 인라인 지정) */
-.tile.is-filled { font-size: 12px; font-weight: 700; }
-
 .tile.is-num { background: rgba(150, 140, 220, 0.16); border-color: #6a5ea8; }
 .tile.is-hint { outline: 2px dashed var(--gold); outline-offset: -4px; }
 
@@ -1582,7 +1575,7 @@ h1, h2, h3 { margin: 0; font-weight: 700; letter-spacing: -0.01em; }
 .choice.is-hit { background: rgba(127, 216, 192, 0.18); border-color: var(--mint); }
 .choice.is-miss { background: rgba(233, 146, 127, 0.18); border-color: var(--coral); }
 
-/* 보기에 부제를 다는 경우 (⑰ 딱 맞게 담기의 가격) — 이름과 값이 붙어 읽히지 않게 합니다 */
+/* 보기에 부제를 다는 경우 (⑯ 딱 맞게 담기의 가격) — 이름과 값이 붙어 읽히지 않게 합니다 */
 .choice__title { display: block; }
 .choice__sub {
   display: block;

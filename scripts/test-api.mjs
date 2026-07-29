@@ -134,29 +134,14 @@ const PLAYERS = {
     custom: cardpairFlow,
   },
 
-  TILELINE: {
-    // 타일 순서가 서버 secret 이고 배치 판단이 핵심이라 공통 endlessFlow 를 쓸 수 없습니다.
-    custom: tilelineFlow,
-  },
-
   PATHLINE: {
     // 정답 경로가 서버 secret 이라 공통 endlessFlow 를 쓸 수 없습니다.
     custom: pathlineFlow,
   },
 
-  HUNT: {
-    // 표적 위치가 서버 secret 이라 공통 endlessFlow 를 쓸 수 없습니다.
-    custom: huntFlow,
-  },
-
   BASKET: {
     // 정답 조합이 서버 secret 이라 공통 endlessFlow 를 쓸 수 없습니다.
     custom: basketFlow,
-  },
-
-  STOPHERE: {
-    // 꽝 여부를 클라이언트가 알 수 없으므로 공통 endlessFlow 를 쓸 수 없습니다.
-    custom: stophereFlow,
   },
 
   MAJORITY: {
@@ -506,15 +491,7 @@ async function cardpairFlow(game) {
  *   ⑤ 보상을 쓴 런은 별도 리그('all+')로 집계된다
  */
 /**
- * ⑯ 여기서 그만 — 전용 시나리오
- *
- * 이 게임에는 "일부러 틀리는 방법" 이 없습니다. 꽝 여부는 서버가 라운드를 만들 때
- * 정해 두고 응답에 싣지 않으므로 클라이언트가 알 수 없습니다(그게 규칙 그 자체입니다).
- * 대신 **처음 세 장은 꽝 확률 0%** 라는 성질이 있어 그 구간은 결과가 확정적입니다.
- * 그 성질과 '그만'(= 완주) 을 이용해 흐름을 고정합니다.
- */
-/**
- * ⑰ 딱 맞게 담기 — 전용 시나리오
+ * ⑯ 딱 맞게 담기 — 전용 시나리오
  *
  * 정답 조합은 서버 secret 이라 클라이언트가 알 수 없습니다. 대신 **목표 금액이 실제
  * 조합의 합** 이라는 성질이 있어, 가격표를 완전 탐색하면 반드시 해를 찾을 수 있습니다.
@@ -532,14 +509,7 @@ function findCombo(items, target, tol) {
 }
 
 /**
- * ⑱ 한 발 앞서 — 전용 시나리오
- *
- * 표적 위치는 서버 secret 이라 "일부러 맞히는" 방법이 없습니다.
- * 대신 이 게임의 존재 이유인 **표적이 실제로 움직이는가**를 검증합니다 —
- * 같은 칸을 두 번 눌러 거리가 달라지면 표적이 옮겨 갔다는 뜻입니다.
- */
-/**
- * ⑲ 한 줄로 이어요 — 전용 시나리오
+ * ⑰ 한 줄로 이어요 — 전용 시나리오
  *
  * 정답 경로는 서버 secret 이지만, **번호 위치는 공개**되므로 클라이언트도 스스로
  * 경로를 찾을 수 있어야 합니다(그게 이 게임의 규칙입니다). 여기서는 BFS 로 실제로
@@ -574,95 +544,6 @@ function solvePath(round) {
     return false;
   };
   return dfs(2) ? [...trail] : null;
-}
-
-/**
- * ⑳ 어디에 놓을까 — 전용 시나리오
- *
- * 판 상태는 공개되지만(그래야 놓을 수 있습니다) 타일 순서와 판정은 서버가 쥡니다.
- * 여기서는 12장을 실제로 다 놓아 보며 **인접 보너스와 줄 완성이 실제로 상충하는지**,
- * 그리고 **한 칸 남은 줄이 있을 때만 이어하기를 제안하는지**를 봅니다.
- */
-async function tilelineFlow(game) {
-  const s = await post("/game/session/start", { game_type: game, fresh: true });
-  check(`${game} 시작`, s.data.ok === true, `목숨=${s.data.lives} 보상=0/${s.data.max_boosts}`);
-  if (!s.data.ok) return;
-
-  assertNoSecretLeak(game, s.data);
-  const sid = s.data.session_id;
-  let round = s.data.round;
-
-  const seeded = round.board.filter((v) => v != null).length;
-  check(`${game} 첫 배치 성공 보장 (같은 브랜드 2칸 선배치)`, seeded === 2, `깔린 칸=${seeded}`);
-  check(`${game} 타일 12장으로 시작`, round.tiles_left === 12, `tiles_left=${round.tiles_left}`);
-  check(`${game} 다음 타일을 미리 보여 준다`, round.next_tile != null, `next=${round.next_tile}`);
-
-  // ── 빈 칸이 아닌 곳은 거부하되 판을 끝내지 않습니다 ─────────
-  const filledCell = round.board.findIndex((v) => v != null);
-  const bad = await post("/game/round", { game_type: game, session_id: sid, answer: filledCell });
-  check(`${game} 이미 찬 칸은 거부`, bad.data.correct === false && bad.data.game_over !== true,
-    `사유=${bad.data.data?.invalid}`);
-
-  // ── 2행(5~9)을 채워 줄을 완성시켜 봅니다 ───────────────────
-  // 어떤 타일이 오든 자리는 우리가 고르므로, 줄 완성은 배치 판단만으로 만들 수 있습니다.
-  const rowCells = [5, 6, 7, 8, 9];
-  let opened = null;
-  let placed = 0;
-  for (const cell of rowCells) {
-    if (round.board[cell] != null) continue;
-    const r = await post("/game/round", { game_type: game, session_id: sid, answer: cell });
-    if (r.data.code) break;
-    placed += 1;
-    if (r.data.data?.opened?.length) opened = r.data.data.opened;
-    if (r.data.game_over || r.data.exhausted) { round = null; break; }
-    round = r.data.round;
-  }
-  check(`${game} 줄을 채우면 완성 판정`, opened != null, `완성=${opened?.join(", ") ?? "없음"}`);
-
-  if (!round) return;
-
-  // ── 남은 타일을 모두 소진해 판을 끝냅니다 ──────────────────
-  let last = null;
-  for (let i = 0; i < 20 && round; i++) {
-    const empty = round.board.findIndex((v) => v == null);
-    if (empty < 0) break;
-    last = await post("/game/round", { game_type: game, session_id: sid, answer: empty });
-    if (last.data.code) break;
-    if (last.data.game_over || last.data.exhausted) break;
-    round = last.data.round;
-  }
-
-  check(`${game} 12장을 다 놓으면 판이 끝난다`,
-    last?.data.game_over === true || last?.data.exhausted === true,
-    `game_over=${last?.data.game_over} exhausted=${last?.data.exhausted}`);
-
-  if (last?.data.exhausted) {
-    // 한 칸 남은 줄이 있어야만 이어하기를 제안합니다.
-    check(`${game} 아까운 판에만 이어하기 제안`, (last.data.data?.near_cells ?? []).length > 0,
-      `한 칸 남은 줄=${last.data.data?.near_line}`);
-
-    const boost = await post("/ad/reward", { trigger: `${game}_BOOST`, session_id: sid });
-    check(`${game} 보상으로 타일 1장 추가`, boost.data.reward?.data?.unlock_only === true,
-      `tiles_left=${boost.data.reward?.data?.tiles_left}`);
-
-    const after = boost.data.reward?.round;
-    check(`${game} 보상 후에는 줄 완성 칸만 열린다`, (after?.near_cells ?? []).length > 0 && after?.unlock_only === true,
-      `열린 칸=${(after?.near_cells ?? []).length}개`);
-
-    // 엉뚱한 칸은 거부되어야 합니다.
-    const wrong = after.board.findIndex((v, i) => v == null && !after.near_cells.includes(i));
-    if (wrong >= 0) {
-      const rej = await post("/game/round", { game_type: game, session_id: sid, answer: wrong });
-      check(`${game} 보상 상태에서 다른 칸은 거부`, rej.data.correct === false,
-        `사유=${rej.data.data?.invalid}`);
-    }
-  }
-
-  const res = last?.data.result;
-  if (res) {
-    check(`${game} 점수는 배치·인접·줄의 누적`, typeof res.score === "number" && res.score > 0,
-      `score=${res.score} 놓은 타일=${placed}장+`);
-  }
 }
 
 async function pathlineFlow(game) {
@@ -734,81 +615,6 @@ async function pathlineFlow(game) {
   check(`${game} 보상 소진 후 결과 확정`, fin.data.game_over === true && res != null,
     `game_over=${fin.data.game_over}`);
   if (res) check(`${game} 보상 사용 런은 별도 리그`, res.bucket === "all+", `bucket=${res.bucket}`);
-}
-
-async function huntFlow(game) {
-  const s = await post("/game/session/start", { game_type: game, fresh: true });
-  check(`${game} 시작`, s.data.ok === true, `목숨=${s.data.lives} 보상=0/${s.data.max_boosts}`);
-  if (!s.data.ok) return;
-
-  assertNoSecretLeak(game, s.data);
-  const sid = s.data.session_id;
-  const round = s.data.round;
-
-  check(`${game} 이동 규칙을 공개`, round?.step >= 1 && typeof round?.stay === "boolean",
-    `step=${round?.step} stay=${round?.stay}`);
-  check(`${game} 기회 3회로 시작`, round?.tries_left === 3, `tries_left=${round?.tries_left}`);
-  check(`${game} 격자 크기 제공`, round?.n === 4, `n=${round?.n}`);
-
-  // ── 같은 칸을 반복해 눌러 표적이 움직이는지 본다 ────────────
-  // 우연히 잡히면 새 라운드가 시작될 뿐이므로 멈추지 않고 계속 눌러 봅니다.
-  // (첫 추측에서 잡히는 일이 실제로 있었고, 그때 힌트를 하나도 못 모아 실패했습니다)
-  const probe = 0;
-  const dists = [];
-  const bands = [];
-  let missesThisRound = 0;
-  let last = null;
-  for (let i = 0; i < 8; i++) {
-    last = await post("/game/round", { game_type: game, session_id: sid, answer: probe });
-    if (last.data.code) break;
-    const d = last.data.data ?? {};
-    if (last.data.correct) missesThisRound = 0; // 잡으면 새 사냥이 시작됩니다
-    if (typeof d.dist === "number") { dists.push(d.dist); bands.push(d.band); missesThisRound += 1; }
-    if (last.data.exhausted || last.data.game_over) break;
-  }
-
-  check(`${game} 거리 힌트를 돌려준다`, dists.length > 0, `dists=[${dists.join(", ")}]`);
-  check(`${game} 힌트 구간을 함께 준다`,
-    bands.length > 0 && bands.every((b) => ["near", "close", "far"].includes(b)),
-    `bands=[${bands.join(", ")}]`);
-  check(`${game} 거리와 구간이 맞아떨어진다`,
-    dists.every((d, i) => bands[i] === (d <= 1 ? "near" : d <= 2 ? "close" : "far")),
-    `${dists.map((d, i) => `${d}:${bands[i]}`).join(" ")}`);
-  // 같은 칸인데 거리가 달라졌다면 표적이 옮겨 갔다는 뜻입니다.
-  // (같은 방향으로 나란히 움직여 거리가 유지될 수도 있어 '실패' 로 세지는 않습니다)
-  const moved = new Set(dists).size > 1;
-  console.log(`       └ 같은 칸 반복 시 거리 변화: ${dists.join(" → ")}${moved ? " (이동 확인)" : ""}`);
-
-  if (!last?.data.exhausted) return; // 우연히 잡았으면 여기까지
-
-  check(`${game} 기회 소진 시 세션 유지`, last.data.game_over === false,
-    `can_boost=${last.data.can_boost}`);
-  check(`${game} 끝난 뒤에만 지나간 길 공개`, Array.isArray(last.data.data?.walked),
-    `walked=${last.data.data?.walked?.length}칸`);
-  // 이 게임의 존재 이유 — 빗나갈 때마다 표적이 한 칸씩 옮겨 갔어야 합니다.
-  // 거리 힌트는 우연히 같을 수 있지만 지나간 길의 길이는 거짓말을 못 합니다.
-  // 지나간 길은 **마지막 사냥** 의 것이므로 그 사냥에서 빗나간 횟수와 맞춰 봅니다.
-  check(`${game} 빗나간 횟수만큼 표적이 이동`,
-    last.data.data?.walked?.length === missesThisRound + 1,
-    `이동 ${(last.data.data?.walked?.length ?? 1) - 1}칸 / 이 사냥에서 빗나감 ${missesThisRound}회`);
-
-  const boost = await post("/ad/reward", { trigger: `${game}_BOOST`, session_id: sid });
-  check(`${game} 보상으로 표적 정지 + 기회 1회`,
-    boost.data.reward?.data?.frozen === true && boost.data.reward?.data?.tries_left === 1,
-    `frozen=${boost.data.reward?.data?.frozen} tries=${boost.data.reward?.data?.tries_left}`);
-  check(`${game} 정지 상태를 화면에 알려 준다`, boost.data.reward?.round?.frozen === true,
-    `round.frozen=${boost.data.reward?.round?.frozen}`);
-
-  // 보상 2회를 모두 쓰고 나면 런이 끝납니다.
-  await post("/game/round", { game_type: game, session_id: sid, answer: null, timeout: true });
-  await post("/ad/reward", { trigger: `${game}_BOOST`, session_id: sid });
-  const fin = await post("/game/round", { game_type: game, session_id: sid, answer: null, timeout: true });
-  const res = fin.data.result;
-  check(`${game} 보상 소진 후 결과 확정`, fin.data.game_over === true && res != null,
-    `game_over=${fin.data.game_over}`);
-  if (res) {
-    check(`${game} 보상 사용 런은 별도 리그`, res.bucket === "all+", `bucket=${res.bucket}`);
-  }
 }
 
 async function basketFlow(game) {
@@ -894,52 +700,6 @@ async function basketFlow(game) {
 
   const over = await post("/ad/reward", { trigger: `${game}_BOOST`, session_id: sid });
   check(`${game} 런당 보상 2회 제한`, over.data.ok === false, `(${over.data.code})`);
-}
-
-async function stophereFlow(game) {
-  const s = await post("/game/session/start", { game_type: game, fresh: true });
-  check(`${game} 시작`, s.data.ok === true, `목숨=${s.data.lives} 보상=0/${s.data.max_boosts}`);
-  if (!s.data.ok) return;
-
-  assertNoSecretLeak(game, s.data);
-  check(`${game} 꽝 확률을 공개한다`, s.data.round?.bust_pct === 0,
-    `1라운드 bust_pct=${s.data.round?.bust_pct}`);
-  check(`${game} 첫 장은 쌓은 것이 0`, s.data.round?.stack === 0, `stack=${s.data.round?.stack}`);
-
-  const sid = s.data.session_id;
-
-  // ── 안전 구간(1~3라운드)은 반드시 통과해야 합니다 ──────────
-  let stack = 0;
-  for (let i = 1; i <= 3; i++) {
-    const r = await post("/game/round", { game_type: game, session_id: sid, answer: "more" });
-    const ok = r.data.ok === true && r.data.correct === true;
-    stack = r.data.data?.stack ?? stack;
-    check(`${game} ${i}번째 장은 꽝 없음`, ok, `stack=${stack}`);
-    if (!ok) return;
-  }
-  check(`${game} 안전 구간 누적 = 2+3+4`, stack === 9, `stack=${stack}`);
-
-  // ── 잘못된 answer 는 거부하되 판을 끝내지 않습니다 ─────────
-  const bad = await post("/game/round", { game_type: game, session_id: sid, answer: "hmm" });
-  check(`${game} 잘못된 선택지는 판을 끝내지 않음`,
-    bad.data.game_over !== true, `game_over=${bad.data.game_over}`);
-
-  // ── '그만' 은 실패가 아니라 완주다 ─────────────────────────
-  const stop = await post("/game/round", { game_type: game, session_id: sid, answer: "stop" });
-  const res = stop.data.result;
-  check(`${game} 그만 = 완주로 종료`, stop.data.game_over === true && res != null,
-    `game_over=${stop.data.game_over}`);
-  if (!res) return;
-
-  const expected = Math.round(stack * 1.5);
-  check(`${game} 정지 보너스 1.5배 지급`, res.score === expected,
-    `score=${res.score} 기대=${expected} (stack=${stack})`);
-  check(`${game} 순위 지표는 지급액의 음수`, res.rank_metric === -expected,
-    `rank_metric=${res.rank_metric}`);
-  // detailOf 는 DB 에만 저장되고 응답에는 실리지 않습니다(finalize 의 detail 은 별도 인자).
-  // 클라이언트가 "멈춤/꽝" 을 가릴 수 있는 값은 completed 입니다.
-  check(`${game} 자발 정지는 완주로 기록`, res.completed === true, `completed=${res.completed}`);
-  check(`${game} 무보상 리그`, res.bucket === "all", `bucket=${res.bucket}`);
 }
 
 async function majorityFlow(game) {

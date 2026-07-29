@@ -1,5 +1,5 @@
 /**
- * ⑲ 한 줄로 이어요 — ENDLESS
+ * ⑰ 한 줄로 이어요 — ENDLESS
  *
  * 기획: ../../../../reward-minigame-research/plans/2026-07-28/PLAN-11_한줄로이어요.md
  *

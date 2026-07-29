@@ -1,5 +1,5 @@
 /**
- * ⑰ 딱 맞게 담기 — ENDLESS
+ * ⑯ 딱 맞게 담기 — ENDLESS
  *
  * 기획: ../../../../reward-minigame-research/plans/2026-07-28/PLAN-09_딱맞게담기.md
  *
