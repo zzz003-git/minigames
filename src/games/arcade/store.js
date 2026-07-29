@@ -143,8 +143,25 @@ const progressOf = (ext) => ({
   dex_count: (ext.dex ?? []).length,
   placed_today: ext.placedThisRun ?? 0,
   shelves_today: ext.shelvesThisRun ?? 0,
-  skipped_count: ext.skipped ?? 0,
+  missed: ext.missed ?? 0,
+  near: nearestShelf(ext.shelves ?? {}),
 });
+
+/**
+ * 완성에 가장 가까운(= 가장 많이 찬) 진행 중 선반.
+ *
+ * 기획서 8장의 종료 화면 문구 「이 선반, 2칸 남았어요 — 내일 상자로 완성」이 이 값입니다.
+ * 이 게임의 재방문 동기는 광고가 아니라 **미완의 선반**이라는 것이 기획의 전제입니다.
+ */
+function nearestShelf(shelves) {
+  let best = null;
+  for (const c of C.CORNERS) {
+    const filled = (shelves[c.key] ?? []).filter((v) => v != null).length;
+    if (filled === 0) continue;
+    if (!best || filled > best.filled) best = { corner: c.key, name: c.name, icon: c.icon, filled };
+  }
+  return best ? { ...best, left: C.SLOTS - best.filled, slots: C.SLOTS } : null;
+}
 
 /** 화면에 내려보내는 선반 상태 — 칸마다 상품 정보를 붙여 둡니다 */
 const viewShelves = (shelves) =>
@@ -180,7 +197,11 @@ export const spec = {
       placedThisRun: 0,
       shelvesThisRun: 0,
       newDex: [],
-      skipped: 0,
+      missed: 0,
+      // 상자에서 **처리를 마친** 상품 수. 라운드 번호가 아니라 이 값으로 상자를 짚습니다 —
+      // 엔진은 판정이 틀려도 라운드를 올리므로(arcade.js: meta.round += 1),
+      // 라운드 번호로 짚으면 칸을 잘못 눌렀을 때 그 상품이 그대로 사라집니다.
+      cursor: 0,
       box,
     };
 
@@ -196,22 +217,20 @@ export const spec = {
   makeRound(roundNo, meta) {
     const ext = meta.ext ?? {};
     const box = ext.box ?? [];
-    const idx = roundNo - 1;
+    const idx = ext.cursor ?? 0; // 라운드 번호가 아니라 커서로 짚습니다 (위 initSecret 주석 참조)
     if (idx >= box.length) return null; // 상자 소진 — 종료는 judgeRound 의 done 이 맡습니다
 
     const it = itemById(box[idx]);
     if (!it) return null;
 
-    const canPlace = hasRoom(ext.shelves ?? {}, it.corner);
-
     return {
       pub: {
-        no: roundNo,
+        no: idx + 1,
         total: box.length,
         item: { id: it.id, name: it.name, icon: it.icon, corner: it.corner },
         shelves: viewShelves(ext.shelves ?? {}),
-        // 놓을 자리가 없으면 화면이 건너뛰기만 제안하도록 알려 줍니다
-        can_place: canPlace,
+        // 새로고침으로 이어받았을 때도 지금까지의 점수가 화면에 그대로 나와야 합니다.
+        score: ext.score ?? 0,
         stage: stageOf(ext.doneShelves ?? 0),
         done_shelves: ext.doneShelves ?? 0,
         dex_count: (ext.dex ?? []).length,
@@ -223,45 +242,46 @@ export const spec = {
   },
 
   /**
-   * answer = 놓을 칸 번호(0 ~ SLOTS-1) 또는 "skip".
+   * answer = 놓을 칸 번호 (0 ~ SLOTS-1).
    *
-   * 잘못 누른 칸은 거부하되 **판을 끝내지 않습니다**(fatal: false).
+   * 잘못 누른 칸은 거부하되 **판을 끝내지도, 상품을 소모하지도 않습니다.**
+   * 커서를 올리지 않으므로 다음 라운드에 같은 상품이 다시 나옵니다.
    * 이 게임에는 실패가 없습니다 — 기획서 6장.
+   *
+   * 건너뛰기가 없는 이유: 선반은 4칸이 차는 순간 완성 처리되며 즉시 비워집니다.
+   * 그래서 **코너가 꽉 찬 채로 남는 상태가 존재하지 않고**, 놓을 자리는 항상 있습니다.
+   * 기획서 6장의 「못 채운 칸은 내일로 이월」은 상품이 아니라 **칸**의 이야기이고,
+   * 그건 진행 중인 선반이 그대로 저장되는 것으로 이미 성립합니다(nearestShelf).
    */
-  judgeRound({ answer, timedOut, roundSecret, meta, roundNo }) {
+  judgeRound({ answer, timedOut, roundSecret, meta }) {
     const ext = meta.ext ?? (meta.ext = {});
     const it = itemById(roundSecret?.itemId);
     const box = ext.box ?? [];
-    const last = roundNo >= box.length;
 
-    if (!it) return { ok: false, fatal: false, done: last, data: { invalid: "상품을 찾을 수 없습니다" } };
+    /** 이 상품의 처리를 마칩니다. 상자를 다 썼으면 판이 끝납니다. */
+    const advance = () => {
+      ext.cursor = (ext.cursor ?? 0) + 1;
+      return ext.cursor >= box.length;
+    };
+
+    if (!it) return { ok: false, fatal: false, done: advance(), data: { invalid: "상품을 찾을 수 없습니다" } };
 
     const row = ext.shelves[it.corner] ?? [];
-    const roomLeft = row.some((v) => v == null);
 
-    // ── 건너뛰기 · 시간 초과 ────────────────────────────────
-    // 놓을 자리가 없을 때만 건너뛸 수 있습니다. 자리가 있는데 건너뛰는 것은
-    // 거부하되(잘못 누른 것으로 봅니다) 판은 그대로 둡니다.
-    if (timedOut || answer === "skip") {
-      if (roomLeft && !timedOut) {
-        return { ok: false, fatal: false, data: { invalid: "아직 놓을 자리가 있어요" } };
-      }
-      ext.skipped = (ext.skipped ?? 0) + 1;
+    // ── 시간 초과 ───────────────────────────────────────────
+    // 30초는 판단 시간이라 넉넉합니다. 그래도 넘겼다면 그 상품은 다음 상자로 넘어갑니다.
+    if (timedOut) {
+      ext.missed = (ext.missed ?? 0) + 1;
       return {
         ok: false,
         fatal: false,
-        done: last,
-        data: {
-          skipped: true,
-          timed_out: Boolean(timedOut),
-          corner: it.corner,
-          reason: roomLeft ? "시간이 지나 다음 상품으로 넘어갔어요" : "이 코너가 가득 찼어요 — 내일 상자로",
-          ...progressOf(ext),
-        },
+        done: advance(),
+        data: { timed_out: true, corner: it.corner, ...progressOf(ext) },
       };
     }
 
     // ── 배치 ────────────────────────────────────────────────
+    // 아래 두 갈래는 커서를 올리지 않습니다 — 같은 상품을 다시 놓을 수 있어야 합니다.
     const slot = Number(answer);
     if (!Number.isInteger(slot) || slot < 0 || slot >= C.SLOTS) {
       return { ok: false, fatal: false, data: { invalid: "그 칸은 없어요" } };
@@ -299,7 +319,7 @@ export const spec = {
 
     return {
       ok: true,
-      done: last,
+      done: advance(),
       data: {
         slot,
         corner: it.corner,
@@ -330,7 +350,7 @@ export const spec = {
     placed_today: meta.ext?.placedThisRun ?? 0,
     shelves_today: meta.ext?.shelvesThisRun ?? 0,
     new_dex: (meta.ext?.newDex ?? []).length,
-    skipped: meta.ext?.skipped ?? 0,
+    missed: meta.ext?.missed ?? 0,
     stage: stageOf(meta.ext?.doneShelves ?? 0),
     done_shelves: meta.ext?.doneShelves ?? 0,
     placed_total: meta.ext?.placed ?? 0,

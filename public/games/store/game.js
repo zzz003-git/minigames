@@ -24,7 +24,7 @@ const AD_PER_DAY = 1;
 /** rank_metric = -(누적 진열 칸 수) */
 const formatBest = (metric) => `${Math.max(0, -metric)}칸`;
 
-const state = { corner: null, canPlace: true, busy: false };
+const state = { corner: null, busy: false };
 let lastResult = null;
 let lastDetail = null;
 
@@ -32,6 +32,9 @@ renderHeader($("#header"), { icon: "🏪", title: "내 가게 채우기", badge:
 
 const run = createEndlessRun({
   game: GAME,
+  // 하루 한 판이라 새로고침으로 진행분이 날아가면 그날 다시 못 합니다.
+  // 진행 중인 런이 있으면 그대로 이어받습니다(기회를 쓰지 않음).
+  fresh: false,
   // 이어하기가 없는 게임이라 boost 는 쓰이지 않지만, 컨트롤러가 요구하는 모양은 맞춥니다.
   boost: { label: "—", desc: "—" },
   hooks: {
@@ -44,7 +47,6 @@ const run = createEndlessRun({
 
 $("#startBtn").addEventListener("click", startRun);
 $("#retryBtn").addEventListener("click", () => loadReady());
-$("#skipBtn").addEventListener("click", () => submit("skip"));
 $("#statsBackBtn").addEventListener("click", () => {
   showScreen("over");
   renderOverRewards();
@@ -71,6 +73,19 @@ async function loadReady() {
     const btn = $("#startBtn");
     if (!btn.disabled) btn.textContent = "▶ 상자 열기";
     else btn.textContent = "오늘 상자를 다 썼어요";
+
+    // 하루 한 판이라 새로고침 한 번에 그날을 잃으면 안 됩니다.
+    // 기회가 0이면 **새 런이 생길 수 없으므로** 이어받기를 시도해도 안전합니다 —
+    // 진행 중인 런이 있으면 그대로 돌아오고, 없으면 NO_ATTEMPTS 로 떨어질 뿐입니다.
+    if ((st.attempts?.remaining ?? 0) <= 0) {
+      try {
+        await run.begin();
+        toast("이어서 채우기", "good", 1400);
+        return;
+      } catch {
+        /* 진행 중인 런이 없습니다 — 시작 화면 그대로 둡니다 */
+      }
+    }
   } catch (err) {
     toast(err.message ?? "정보를 불러올 수 없습니다.", "error");
   }
@@ -99,10 +114,9 @@ function renderRound(round) {
   if (!round) return;
 
   state.corner = round.item.corner;
-  state.canPlace = round.can_place;
   state.busy = false;
 
-  $("#hudScore").textContent = String(round.no > 1 ? $("#hudScore").textContent : 0);
+  $("#hudScore").textContent = String(round.score ?? 0);
   $("#hudStage").textContent = String(round.stage);
   $("#hudLeft").textContent = String(round.total - round.no + 1);
   setHeaderBadge(`${round.stage}단계`);
@@ -111,11 +125,8 @@ function renderRound(round) {
   $("#handName").textContent = round.item.name;
 
   const corner = round.shelves.find((s) => s.key === round.item.corner);
-  $("#handWhere").textContent = round.can_place
-    ? `${corner?.icon ?? ""} ${corner?.name ?? ""} 코너의 빈 칸에 넣어 주세요`
-    : `${corner?.icon ?? ""} ${corner?.name ?? ""} 코너가 가득 찼어요`;
+  $("#handWhere").textContent = `${corner?.icon ?? ""} ${corner?.name ?? ""} 코너의 빈 칸에 넣어 주세요`;
 
-  $("#skipBtn").hidden = round.can_place;
   renderShelves(round.shelves, round.item.corner);
 }
 
@@ -184,8 +195,8 @@ async function showVerdict(res) {
     return;
   }
 
-  if (d.skipped) {
-    toast(d.reason, "error", 1600);
+  if (d.timed_out) {
+    toast("시간이 지나 다음 상품으로 넘어갔어요", "error", 1600);
     return;
   }
 
@@ -221,11 +232,11 @@ function showOver(result) {
     formatBest,
   });
 
-  const left = d.skipped_count ?? 0;
-  $("#tomorrowText").textContent =
-    left > 0
-      ? `자리가 없어 못 놓은 상품 ${left}개는 내일 상자로 다시 와요.`
-      : "오늘 상자를 모두 진열했어요. 내일 새 상자가 도착합니다.";
+  // 기획서 8장의 종료 화면 — 재방문 동기는 광고가 아니라 미완의 선반입니다.
+  const near = d.near;
+  $("#tomorrowText").textContent = near
+    ? `${near.icon} ${near.name} 코너, ${near.left}칸 남았어요 — 내일 상자로 완성!`
+    : "선반을 모두 완성했어요. 내일 새 상자가 도착합니다.";
 
   renderOverRewards();
 }

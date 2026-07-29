@@ -441,14 +441,19 @@ export function statsReward(game, { desc, onOpen }) {
  * 이 분기가 게임마다 똑같이 반복되므로 여기서 처리하고, 게임 파일에는
  * "라운드를 어떻게 그리는가" 와 "판정 결과를 어떻게 연출하는가" 만 남깁니다.
  *
+ * `fresh` 는 기본이 true 입니다 — 하루 여러 판을 하는 게임에서는 「시작하기」가 늘 새 판을
+ * 여는 쪽이 자연스럽습니다. 하루 한 판인 게임(⑲ 내 가게 채우기)은 false 로 둡니다.
+ * 그러지 않으면 새로고침 한 번에 진행분이 사라지고 그날 다시 못 합니다.
+ *
  * @param {{ game:string,
+ *           fresh?:boolean,
  *           boost:{ label:string, desc:string },
  *           hooks:{ onRound:(round,state)=>void,
  *                   onJudged?:(res,state)=>void|Promise<void>,
  *                   onOver:(result,state)=>void,
  *                   pauseText:(state)=>{ sub:string, figure:string } } }} opts
  */
-export function createEndlessRun({ game, boost, hooks }) {
+export function createEndlessRun({ game, fresh = true, boost, hooks }) {
   const state = {
     sessionId: null,
     roundNo: 1,
@@ -462,9 +467,9 @@ export function createEndlessRun({ game, boost, hooks }) {
     paused: false,
   };
 
-  /** 새 런 시작 */
+  /** 런 시작. fresh=false 면 진행 중이던 런을 그대로 이어받습니다(기회를 쓰지 않음). */
   async function begin() {
-    const res = await runApi.start(game, { fresh: true });
+    const res = await runApi.start(game, { fresh });
     Object.assign(state, {
       sessionId: res.session_id,
       roundNo: res.round_no,

@@ -776,6 +776,14 @@ async function dropcatchFlow(game) {
  *   ④ 상자를 다 쓰면 종료되고, **가게가 저장되어 다음 판에 이어진다**
  *   ⑤ 하루 1판 — 기회를 다 쓰면 시작할 수 없다
  */
+/** 루프 안에서 같은 항목을 여러 번 찍지 않도록, 처음 한 번과 실패한 경우만 기록합니다 */
+const seenOnce = new Set();
+function check_once(name, cond, extra = "") {
+  if (cond && seenOnce.has(name)) return;
+  seenOnce.add(name);
+  check(name, cond, extra);
+}
+
 async function storeFlow(game) {
   const s = await post("/game/session/start", { game_type: game, fresh: true });
   check(`${game} 시작`, s.data.ok === true, `기회 소진 후 상태=${s.data.code ?? "정상"}`);
@@ -789,8 +797,11 @@ async function storeFlow(game) {
   check(`${game} 이어하기 없음`, s.data.max_boosts === 0, `max_boosts=${s.data.max_boosts}`);
   check(`${game} 선반 3코너 제공`, (round?.shelves ?? []).length === 3,
     `${(round?.shelves ?? []).map((x) => x.name).join(" ")}`);
-  check(`${game} 첫 상품은 놓을 자리가 있다 (첫 성공 보장)`, round?.can_place === true,
-    `${round?.item?.name} → ${round?.item?.corner}`);
+  // 첫 성공 보장(기획서 0-4). can_place 플래그가 아니라 실제 선반 상태로 확인합니다.
+  const firstCorner = (round?.shelves ?? []).find((x) => x.key === round?.item?.corner);
+  check(`${game} 첫 상품은 놓을 자리가 있다 (첫 성공 보장)`,
+    (firstCorner?.slots ?? []).some((v) => v == null),
+    `${round?.item?.name} → ${firstCorner?.name} ${firstCorner?.slots.filter(Boolean).length}/${firstCorner?.slots.length}`);
 
   const cornerOf = (r, key) => (r.shelves ?? []).find((x) => x.key === key);
   const freeSlot = (r) => {
@@ -804,20 +815,28 @@ async function storeFlow(game) {
     bad.data.correct === false && bad.data.game_over !== true,
     `사유=${bad.data.data?.invalid}`);
 
-  const early = await post("/game/round", { game_type: game, session_id: sid, answer: "skip" });
-  check(`${game} 자리가 있는데 건너뛰기는 거부`,
-    early.data.correct === false && early.data.game_over !== true,
-    `사유=${early.data.data?.invalid}`);
+  // 엔진은 판정이 틀려도 라운드를 올립니다(arcade.js: meta.round += 1).
+  // 그래서 잘못 누른 뒤에도 **같은 상품이 그대로 나와야** 합니다 — 아니면 상품이 사라집니다.
+  const item1 = round.item.name;
+  check(`${game} 잘못 눌러도 상품이 사라지지 않음`,
+    bad.data.round?.item?.name === item1 && bad.data.round?.no === round.no,
+    `${item1} → ${bad.data.round?.item?.name} (${round.no}번째 → ${bad.data.round?.no}번째)`);
+
+  const filledFirst = () => {
+    const c = (round.shelves ?? []).find((x) => x.key === round.item.corner);
+    return (c?.slots ?? []).findIndex((v) => v != null);
+  };
 
   // ── ③ 상자를 소진하며 배치 ─────────────────────────────────
   let completed = 0;
   let placed = 0;
   let last = null;
   for (let i = 0; i < 12 && round; i++) {
-    const slot = round.can_place ? freeSlot(round) : -1;
-    const answer = slot >= 0 ? slot : "skip";
+    // 선반은 4칸이 차는 순간 비워지므로 놓을 자리가 없는 경우는 존재하지 않습니다.
+    const slot = freeSlot(round);
+    check_once(`${game} 놓을 자리는 항상 있다`, slot >= 0, `${round.item.name} → ${round.item.corner}`);
 
-    last = await post("/game/round", { game_type: game, session_id: sid, answer });
+    last = await post("/game/round", { game_type: game, session_id: sid, answer: slot });
     if (last.data.code) break;
 
     if (last.data.correct) placed += 1;
@@ -838,14 +857,21 @@ async function storeFlow(game) {
     `score=${res.score} 진열=${placed}`);
   check(`${game} 순위 지표는 누적 진열 칸 수`, res.rank_metric === -(d.placed_today ?? 0) || res.rank_metric < 0,
     `rank_metric=${res.rank_metric}`);
+  // 기획서 8장의 재방문 문구 — 미완의 선반이 있으면 그걸 알려 줘야 합니다.
+  check(`${game} 완성에 가까운 선반을 알려 준다`,
+    d.near == null || (d.near.left >= 1 && d.near.left < 4),
+    d.near ? `${d.near.name} ${d.near.left}칸 남음` : "완성된 선반만 있음");
 
   // ── ④ 가게가 저장되어 다음 판에 이어지는가 ─────────────────
   // 하루 1판이라 광고로 기회를 한 번 더 받아 확인합니다.
   const ad = await post("/ad/reward", { trigger: `${game}_ATTEMPT` });
   check(`${game} 보너스 상자 광고`, ad.data.ok === true, `(${ad.data.code ?? "-"})`);
 
+  // ── ④ 가게가 저장되어 이어지는가 + 새로고침 재개 ───────────
+  // 보너스 상자 한 번으로 둘 다 확인합니다 (하루 기회가 1 + 광고 1뿐입니다).
   const s2 = await post("/game/session/start", { game_type: game, fresh: true });
   if (s2.data.ok) {
+    const sid2 = s2.data.session_id;
     const filled = (s2.data.round?.shelves ?? []).reduce(
       (n, sh) => n + sh.slots.filter(Boolean).length, 0);
     // 완성된 선반은 비워지므로, 완성 없이 놓은 만큼만 남아 있어야 합니다.
@@ -853,7 +879,23 @@ async function storeFlow(game) {
       `남은 진열 ${filled}칸 (놓음 ${placed} − 완성 ${completed}줄×4)`);
     check(`${game} 새 상자를 다시 배정`, (s2.data.round?.total ?? 0) > 0,
       `상자 ${s2.data.round?.total}개`);
-    await post("/game/finish", { game_type: game, session_id: s2.data.session_id });
+
+    // 한 개만 놓고 새로고침을 흉내 냅니다.
+    const slot2 = (s2.data.round.shelves.find((x) => x.key === s2.data.round.item.corner)?.slots ?? [])
+      .findIndex((v) => v == null);
+    await post("/game/round", { game_type: game, session_id: sid2, answer: slot2 });
+
+    const again = await post("/game/session/start", { game_type: game });
+    check(`${game} 새로고침하면 같은 런을 이어받는다`,
+      again.data.resumed === true && again.data.session_id === sid2,
+      `resumed=${again.data.resumed}`);
+    check(`${game} 이어받기는 기회를 쓰지 않는다`,
+      again.data.attempts?.used === s2.data.attempts?.used,
+      `used ${s2.data.attempts?.used} → ${again.data.attempts?.used}`);
+    check(`${game} 이어받아도 진행 점수가 남아 있다`, (again.data.round?.score ?? 0) > 0,
+      `score=${again.data.round?.score}`);
+
+    await post("/game/finish", { game_type: game, session_id: sid2 });
   }
 
   // ── ⑤ 하루 1판 (+ 광고 1회) ────────────────────────────────
@@ -885,23 +927,27 @@ function storeShelfRules(game) {
       placedThisRun: 0,
       shelvesThisRun: 0,
       newDex: [],
-      skipped: 0,
+      missed: 0,
+      cursor: 0,
       box: drinks.map((i) => i.id),
     },
   };
 
-  const place = (item, slot, roundNo) =>
-    spec.judgeRound({ answer: slot, roundSecret: { itemId: item.id }, meta, roundNo });
+  const place = (item, slot) =>
+    spec.judgeRound({ answer: slot, roundSecret: { itemId: item.id }, meta });
 
   // 같은 칸에 두 번 — 거부하되 판은 유지
-  place(drinks[0], 0, 1);
-  const dup = place(drinks[1], 0, 2);
+  place(drinks[0], 0);
+  const before = meta.ext.cursor;
+  const dup = place(drinks[1], 0);
   check(`${game} 이미 찬 칸은 거부`, dup.ok === false && dup.fatal === false,
     `사유=${dup.data?.invalid}`);
+  check(`${game} 거부된 배치는 상품을 소모하지 않음`, meta.ext.cursor === before,
+    `커서 ${before} → ${meta.ext.cursor}`);
 
   // 나머지 3칸을 채워 완성시킵니다
   let res = null;
-  for (let i = 1; i < C.SLOTS; i++) res = place(drinks[i], i, i + 1);
+  for (let i = 1; i < C.SLOTS; i++) res = place(drinks[i], i);
 
   check(`${game} 4칸을 채우면 선반 완성`, res?.data?.completed === true,
     `완성 선반=${res?.data?.done_shelves}줄`);
