@@ -21,6 +21,8 @@ const CARDS = C.PAIRS * 2;
 export const spec = {
   game: "CARDPAIR",
   mode: "ENDLESS",
+  // 목숨이 없는 게임이라 judgeRound 의 done 이 유일한 종료 조건입니다 (짝을 다 맞춤).
+  endsOnDone: true,
   boostLabel: "한 쌍 위치 공개",
 
   /** 런 내내 유지되는 비밀값 — 카드 배치 */

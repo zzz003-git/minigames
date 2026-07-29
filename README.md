@@ -1,4 +1,4 @@
-# 인스턴트 컨텐츠 — 미니게임 18종
+# 인스턴트 컨텐츠 — 미니게임 19종
 
 Cloudflare Workers 하나에서 정적 화면과 API 서버를 함께 서비스하고, 데이터는 D1(SQLite)에 저장합니다.
 
@@ -11,7 +11,7 @@ Cloudflare Workers 하나에서 정적 화면과 API 서버를 함께 서비스�
 | ③ | 타이핑 스피드 | WPM 또는 CPM × 정확도% |
 | ④ | 숫자 기억력 | 맞힌 자리 수 → 동일하면 소요 시간 |
 
-**아케이드 14종** — ⑤~⑭는 기획서 [`docs/arcade-10-games.md`](docs/arcade-10-games.md) 기준.
+**아케이드 15종** — ⑤~⑭는 기획서 [`docs/arcade-10-games.md`](docs/arcade-10-games.md) 기준.
 앱에 탑재되는 **광고 리워드용** 미니게임입니다. 한 판이 10~60초로 짧고, 규칙이 한 문장이며,
 실패 지점이 명확해서 "광고 보고 이어하기" 가 자연스럽게 붙습니다.
 
@@ -31,6 +31,21 @@ Cloudflare Workers 하나에서 정적 화면과 API 서버를 함께 서비스�
 | ⑯ | 딱 맞게 담기 | `basket` | 무한 | 점수 ↑ |
 | ⑰ | 한 줄로 이어요 | `pathline` | 무한 | 점수 ↑ |
 | ⑱ | 와르르 받기 | `dropcatch` | 45초~2분 | 점수 ↑ |
+| ⑲ | 내 가게 채우기 | `store` | 하루 1판 | 가게 크기 ↑ |
+
+**⑲ 내 가게 채우기** 는 기획서 `../reward-minigame-research/plans/2026-07-29/PLAN-13_내가게채우기.md` 기준입니다.
+매일 오는 상자의 상품을 코너에 맞는 빈 칸에 채워 가게를 키웁니다. 자사 배포분에
+**수집·성장형이 한 종도 없었습니다.**
+
+> **판이 끝나도 남는 유일한 게임입니다.** 앞의 18종은 기록만 남고 상태가 사라지는데,
+> 이 게임은 진열한 선반이 계정에 쌓입니다(`store_state`). 그래서 ⑮ 다들 뭐 골랐을까에
+> 이어 **두 번째로 DB 마이그레이션이 필요한 게임**입니다. 완성된 선반은 칸 내용을 버리고
+> 개수만 세는데, 전부 보관하면 오래 한 사용자의 행이 계속 자라기 때문입니다.
+
+> **실패가 없습니다**(`lives: 0`). 코너가 꽉 차 못 놓는 상품은 건너뛰어 내일로 이월되고,
+> 잘못 누른 칸도 판을 끝내지 않습니다. 미완의 선반이 곧 재방문 동기라는 것이 이 기획의
+> 전제라, 판을 끝내는 길은 오늘 상자를 다 쓰는 것뿐입니다.
+> 전체 내용은 [`docs/store-game.md`](docs/store-game.md).
 
 **⑱ 와르르 받기** 는 기획서 `../reward-minigame-research/plans/2026-07-29/PLAN-12_와르르받기.md` 기준입니다.
 떨어지는 상품을 바구니로 받고 폭탄만 피합니다. 자사 배포분에 **낙하·받기형이 한 종도 없었습니다** —
@@ -72,7 +87,7 @@ Cloudflare Workers 하나에서 정적 화면과 API 서버를 함께 서비스�
 정답이 미리 존재하지 않으므로 정답 아카이브가 성립하기 어렵고, 팽팽한 문항일수록
 점수가 높아 쏠린 문항을 외워 오는 것의 실익이 가장 작습니다.
 
-아케이드 14종의 광고 트리거는 게임마다 3종으로 같습니다 —
+아케이드 15종의 광고 트리거는 게임마다 3종으로 같습니다 —
 `{GAME}_ATTEMPT`(기회 +1, 하루 5회) · `{GAME}_BOOST`(런 중 보상, 1런당 2회) ·
 `{GAME}_STATS`(전체 순위 열람). 보상을 쓴 런은 bucket 에 `+` 가 붙어 별도 리그로 집계되므로
 순위표가 광고 시청량 순위가 되지 않습니다.
@@ -82,7 +97,7 @@ Cloudflare Workers 하나에서 정적 화면과 API 서버를 함께 서비스�
 ```
 minigames/
 ├── public/                  정적 파일 (Workers 정적 자산으로 그대로 서비스)
-│   ├── index.html           허브 (오리지널 4종 + 아케이드 14종)
+│   ├── index.html           허브 (오리지널 4종 + 아케이드 15종)
 │   ├── shared/              공통 모듈
 │   │   ├── base.css         디자인 시스템
 │   │   ├── api.js           API 호출 래퍼
@@ -96,17 +111,18 @@ minigames/
 │       ├── memory/          ④
 │       └── reaction/ oddcolor/ sequence/ numtap/ mathrush/
 │           stroop/ ringstop/ countdot/ cardpair/ rpsflash/
-│           majority/ basket/ pathline/ dropcatch/           ⑤~⑱
+│           majority/ basket/ pathline/ dropcatch/ store/    ⑤~⑲
 ├── src/                     Worker (API 서버)
 │   ├── index.js             라우터
 │   ├── games/               게임별 서버 로직
-│   │   └── arcade/          ⑤~⑱ spec + 레지스트리
+│   │   └── arcade/          ⑤~⑲ spec + 레지스트리
 │   ├── routes/              세션·광고·통계 라우트
 │   └── lib/                 설정·암호화·DB·검증 유틸
 │       └── arcade.js        아케이드 런 엔진
 ├── migrations/              D1 스키마 + 문장·문항 시드
 ├── docs/
 │   ├── arcade-10-games.md   아케이드 ⑤~⑭ 기획서
+│   ├── store-game.md        ⑲ 내 가게 채우기 구현 명세
 │   └── majority-game.md     ⑮ 다들 뭐 골랐을까 구현 명세
 ├── scripts/
 │   ├── gen-sentences.mjs           타이핑 문장 DB 생성 스크립트
@@ -267,7 +283,7 @@ node scripts/gen-majority-questions.mjs
 `AD_MODE=live` 로 바꿨는데 검증 구현이 비어 있으면 조용히 통과하지 않고 `501` 로 실패합니다
 (미구현 상태로 실서비스에 나가 보상이 무료 지급되는 것을 막는 안전장치).
 
-게임이 18개로 늘었지만 **연동 작업량은 그대로 두 파일**입니다. 아케이드 13종의 트리거는
+게임이 19개로 늘었지만 **연동 작업량은 그대로 두 파일**입니다. 아케이드 13종의 트리거는
 접미사 규칙(`_STATS` → Interstitial, 나머지 → Rewarded)으로 처리되므로 목록을 손으로
 관리하지 않습니다.
 

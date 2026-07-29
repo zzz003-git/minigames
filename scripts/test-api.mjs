@@ -149,6 +149,11 @@ const PLAYERS = {
     custom: dropcatchFlow,
   },
 
+  STORE: {
+    // 실패도 목숨도 없고 판이 끝나도 가게가 남는 유일한 게임이라 전용 시나리오를 씁니다.
+    custom: storeFlow,
+  },
+
   MAJORITY: {
     // 이 게임에는 "일부러 맞히는 방법" 이 없습니다 — 정답이 다른 사람들의 집계라
     // 클라이언트가 미리 알 수 없어야 하는 것이 규칙 그 자체입니다.
@@ -760,6 +765,160 @@ async function dropcatchFlow(game) {
 
   return ok.data.result; // 통계 게이팅은 이상치가 아닌 판으로 확인합니다
 }
+
+/**
+ * ⑲ 내 가게 채우기 — 전용 시나리오
+ *
+ * 확인하는 것
+ *   ① 오늘 상자와 선반 상태가 내려오고, **첫 상품은 반드시 놓을 자리가 있다**
+ *   ② 잘못 누른 칸은 거부하되 **판을 끝내지 않는다** (실패가 없는 게임)
+ *   ③ 선반 4칸을 채우면 완성 판정 + 그 자리에 새 빈 선반이 열린다
+ *   ④ 상자를 다 쓰면 종료되고, **가게가 저장되어 다음 판에 이어진다**
+ *   ⑤ 하루 1판 — 기회를 다 쓰면 시작할 수 없다
+ */
+async function storeFlow(game) {
+  const s = await post("/game/session/start", { game_type: game, fresh: true });
+  check(`${game} 시작`, s.data.ok === true, `기회 소진 후 상태=${s.data.code ?? "정상"}`);
+  if (!s.data.ok) return;
+
+  assertNoSecretLeak(game, s.data);
+  const sid = s.data.session_id;
+  let round = s.data.round;
+
+  check(`${game} 목숨 없는 게임`, s.data.lives === 0, `lives=${s.data.lives}`);
+  check(`${game} 이어하기 없음`, s.data.max_boosts === 0, `max_boosts=${s.data.max_boosts}`);
+  check(`${game} 선반 3코너 제공`, (round?.shelves ?? []).length === 3,
+    `${(round?.shelves ?? []).map((x) => x.name).join(" ")}`);
+  check(`${game} 첫 상품은 놓을 자리가 있다 (첫 성공 보장)`, round?.can_place === true,
+    `${round?.item?.name} → ${round?.item?.corner}`);
+
+  const cornerOf = (r, key) => (r.shelves ?? []).find((x) => x.key === key);
+  const freeSlot = (r) => {
+    const c = cornerOf(r, r.item.corner);
+    return (c?.slots ?? []).findIndex((v) => v == null);
+  };
+
+  // ── ② 잘못된 칸은 거부하되 판은 유지 ───────────────────────
+  const bad = await post("/game/round", { game_type: game, session_id: sid, answer: 99 });
+  check(`${game} 없는 칸은 거부하되 판을 끝내지 않음`,
+    bad.data.correct === false && bad.data.game_over !== true,
+    `사유=${bad.data.data?.invalid}`);
+
+  const early = await post("/game/round", { game_type: game, session_id: sid, answer: "skip" });
+  check(`${game} 자리가 있는데 건너뛰기는 거부`,
+    early.data.correct === false && early.data.game_over !== true,
+    `사유=${early.data.data?.invalid}`);
+
+  // ── ③ 상자를 소진하며 배치 ─────────────────────────────────
+  let completed = 0;
+  let placed = 0;
+  let last = null;
+  for (let i = 0; i < 12 && round; i++) {
+    const slot = round.can_place ? freeSlot(round) : -1;
+    const answer = slot >= 0 ? slot : "skip";
+
+    last = await post("/game/round", { game_type: game, session_id: sid, answer });
+    if (last.data.code) break;
+
+    if (last.data.correct) placed += 1;
+    if (last.data.data?.completed) completed += 1;
+    if (last.data.game_over) break;
+    round = last.data.round;
+  }
+
+  check(`${game} 상자를 다 쓰면 종료`, last?.data.game_over === true,
+    `진열 ${placed}개 · 완성 ${completed}줄`);
+
+  const res = last?.data.result;
+  check(`${game} 결과 확정`, res != null, `점수=${res?.score}`);
+  if (!res) return;
+
+  const d = last.data.data ?? {};
+  check(`${game} 점수는 배치·완성·도감의 누적`, res.score > 0 && res.score >= placed,
+    `score=${res.score} 진열=${placed}`);
+  check(`${game} 순위 지표는 누적 진열 칸 수`, res.rank_metric === -(d.placed_today ?? 0) || res.rank_metric < 0,
+    `rank_metric=${res.rank_metric}`);
+
+  // ── ④ 가게가 저장되어 다음 판에 이어지는가 ─────────────────
+  // 하루 1판이라 광고로 기회를 한 번 더 받아 확인합니다.
+  const ad = await post("/ad/reward", { trigger: `${game}_ATTEMPT` });
+  check(`${game} 보너스 상자 광고`, ad.data.ok === true, `(${ad.data.code ?? "-"})`);
+
+  const s2 = await post("/game/session/start", { game_type: game, fresh: true });
+  if (s2.data.ok) {
+    const filled = (s2.data.round?.shelves ?? []).reduce(
+      (n, sh) => n + sh.slots.filter(Boolean).length, 0);
+    // 완성된 선반은 비워지므로, 완성 없이 놓은 만큼만 남아 있어야 합니다.
+    check(`${game} 가게가 저장되어 이어진다`, filled === placed - completed * 4,
+      `남은 진열 ${filled}칸 (놓음 ${placed} − 완성 ${completed}줄×4)`);
+    check(`${game} 새 상자를 다시 배정`, (s2.data.round?.total ?? 0) > 0,
+      `상자 ${s2.data.round?.total}개`);
+    await post("/game/finish", { game_type: game, session_id: s2.data.session_id });
+  }
+
+  // ── ⑤ 하루 1판 (+ 광고 1회) ────────────────────────────────
+  const over = await post("/game/session/start", { game_type: game, fresh: true });
+  check(`${game} 하루 한도를 넘으면 시작 불가`, over.data.ok === false,
+    `(${over.data.code})`);
+
+  storeShelfRules(game);
+  return res;
+}
+
+/**
+ * 선반 완성 규칙은 서버 왕복으로 확인하기 어렵습니다 — 상자가 무작위라 6개 중 한 코너에
+ * 4개가 몰리는 일이 드물고, 하루 1판이라 여러 번 돌려 볼 수도 없습니다.
+ * 그래서 이 규칙만 spec 을 직접 호출해 **결정적으로** 검사합니다.
+ */
+function storeShelfRules(game) {
+  const spec = ARCADE_SPECS[game];
+  const C = ARCADE[game];
+  const drinks = C.ITEMS.filter((i) => i.corner === "drink").slice(0, C.SLOTS);
+
+  const meta = {
+    ext: {
+      shelves: Object.fromEntries(C.CORNERS.map((c) => [c.key, Array(C.SLOTS).fill(null)])),
+      dex: [],
+      doneShelves: 0,
+      placed: 0,
+      score: 0,
+      placedThisRun: 0,
+      shelvesThisRun: 0,
+      newDex: [],
+      skipped: 0,
+      box: drinks.map((i) => i.id),
+    },
+  };
+
+  const place = (item, slot, roundNo) =>
+    spec.judgeRound({ answer: slot, roundSecret: { itemId: item.id }, meta, roundNo });
+
+  // 같은 칸에 두 번 — 거부하되 판은 유지
+  place(drinks[0], 0, 1);
+  const dup = place(drinks[1], 0, 2);
+  check(`${game} 이미 찬 칸은 거부`, dup.ok === false && dup.fatal === false,
+    `사유=${dup.data?.invalid}`);
+
+  // 나머지 3칸을 채워 완성시킵니다
+  let res = null;
+  for (let i = 1; i < C.SLOTS; i++) res = place(drinks[i], i, i + 1);
+
+  check(`${game} 4칸을 채우면 선반 완성`, res?.data?.completed === true,
+    `완성 선반=${res?.data?.done_shelves}줄`);
+  check(`${game} 완성하면 그 자리에 새 빈 선반`,
+    meta.ext.shelves.drink.every((v) => v == null),
+    `남은 칸=${meta.ext.shelves.drink.filter(Boolean).length}`);
+  check(`${game} 완성 보너스가 붙는다`,
+    res?.data?.points === C.PLACE_POINT + C.DEX_BONUS + C.SHELF_BONUS,
+    `마지막 배치 ${res?.data?.points}점 (배치1+도감${C.DEX_BONUS}+완성${C.SHELF_BONUS})`);
+  check(`${game} 도감은 상품 종류마다 한 번만`, meta.ext.dex.length === C.SLOTS,
+    `도감 ${meta.ext.dex.length}종 / 놓은 상품 ${C.SLOTS}개`);
+  check(`${game} 완성 ${C.STAGE_PER_SHELF}줄마다 가게 단계 상승`,
+    res?.data?.stage === 1 && stageAt(C, C.STAGE_PER_SHELF) === 2,
+    `1줄=${res?.data?.stage}단계 · ${C.STAGE_PER_SHELF}줄=${stageAt(C, C.STAGE_PER_SHELF)}단계`);
+}
+
+const stageAt = (C, doneShelves) => 1 + Math.floor(doneShelves / C.STAGE_PER_SHELF);
 
 async function basketFlow(game) {
   const s = await post("/game/session/start", { game_type: game, fresh: true });

@@ -719,10 +719,17 @@ export function validateSpec(spec) {
     if (typeof spec.makeRound !== "function" && typeof spec.initSecret !== "function") {
       problems.push("makeRound 도 initSecret 도 없으면 문제를 만들 수단이 없습니다");
     }
-    // 목숨을 쓰지 않는 ENDLESS 게임은 done 으로만 끝나므로, 끝낼 방법이 있어야 합니다.
-    if ((cfg?.lives ?? 0) <= 0 && typeof spec.makeRound === "function") {
+    // 목숨을 쓰지 않는 ENDLESS 게임은 judgeRound 의 done 으로만 끝납니다.
+    //
+    // 예전에는 "makeRound 가 있으면 끝나지 않는다" 로 봤습니다. 당시 목숨 없는 게임이
+    // ⑬ 카드 짝 맞추기 하나뿐이었고 그 게임은 makeRound 가 없었기 때문인데,
+    // 그건 우연이지 규칙이 아닙니다 — 카드 짝 맞추기도 done 으로 끝납니다.
+    // 라운드마다 판을 다시 그려야 하는 게임(⑲ 내 가게 채우기)은 makeRound 가 필요하면서
+    // 끝이 정해져 있을 수 있습니다. 그래서 대리 지표 대신 **작성자가 직접 선언**하게 합니다.
+    if ((cfg?.lives ?? 0) <= 0 && spec.endsOnDone !== true) {
       problems.push(
-        "라운드를 계속 만드는데 목숨(config.lives)이 없습니다 — 런이 끝나지 않습니다",
+        "목숨(config.lives)이 없는데 endsOnDone 선언이 없습니다 — 런이 끝나지 않습니다. " +
+          "judgeRound 가 done 을 돌려주는 게임이면 spec.endsOnDone = true 로 적어 주세요",
       );
     }
   }

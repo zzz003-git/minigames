@@ -498,6 +498,68 @@ export const ARCADE = {
     // (한 번 어긋났다고 판 전체를 순위에서 빼면 손이 미끄러진 사람이 손해입니다)
     BAD_TIMING_PCT: 20,
   },
+  // ── ⑲ 내 가게 채우기 (기획서 plans/2026-07-29/PLAN-13_내가게채우기.md) ────
+  //
+  // 매일 오는 상자의 상품을 선반에 채워 가게를 키웁니다. 자사 배포분에 **수집·성장형이
+  // 한 종도 없었습니다** — 앞의 18종은 판이 끝나면 상태가 사라지는데, 이 게임만
+  // 진열한 선반이 계정에 영구히 쌓입니다(store_state 테이블 · docs/store-game.md).
+  //
+  // 실패가 없는 게임입니다(lives: 0). 코너가 꽉 차 못 놓는 상품은 건너뛰어 내일로
+  // 이월되고, 그것도 판을 끝내지 않습니다 — 기획서 6장 「실패: 없음」.
+  // 미완의 선반이 곧 재방문 동기라, 판을 끝내는 것은 오늘 상자를 다 쓰는 것뿐입니다.
+  STORE: {
+    mode: "ENDLESS",
+    category: "puzzle", // 반응속도 완전 비의존 (docs/store-game.md §7)
+    label: "내 가게 채우기",
+    icon: "🏪",
+    accent: "gold",
+    tagline: "오늘 온 상품을 선반에 채우세요",
+
+    baseAttempts: 1, // 하루 1판 (기획서 6장)
+    adAttemptsPerDay: 1, // 보너스 상자 1개 (기획서 8장)
+    boostsPerRun: 0, // 실패가 없어 되돌릴 것이 없습니다
+    lives: 0, // 실패 없음
+
+    SLOTS: 4, // 선반 한 줄 = 4칸 (기획서 6장 「첫 선반은 4칸」)
+    BOX_SIZE: 6, // 오늘 상자에 담기는 상품 수
+    LIMIT_MS: 30000, // 한 수당 제한. 판단 시간이지 반응속도가 아닙니다
+
+    PLACE_POINT: 1,
+    SHELF_BONUS: 10,
+    DEX_BONUS: 3, // 도감 신규 등록
+    STAGE_PER_SHELF: 3, // 완성 선반 이 개수마다 가게 단계 +1
+
+    CORNERS: [
+      { key: "drink", name: "음료", icon: "🥤" },
+      { key: "snack", name: "간식", icon: "🍪" },
+      { key: "living", name: "생활", icon: "🧻" },
+    ],
+
+    // 1차 구성은 상품 20종입니다 (기획서 16장 위험 2 — 최소 구성으로 시작).
+    // 광고주 입점은 이 배열을 DB 로 옮기면 되고 배치·판정 규칙은 그대로입니다.
+    ITEMS: [
+      { id: 1, corner: "drink", name: "아메리카노", icon: "☕" },
+      { id: 2, corner: "drink", name: "생수", icon: "💧" },
+      { id: 3, corner: "drink", name: "오렌지주스", icon: "🧃" },
+      { id: 4, corner: "drink", name: "우유", icon: "🥛" },
+      { id: 5, corner: "drink", name: "탄산음료", icon: "🥤" },
+      { id: 6, corner: "drink", name: "이온음료", icon: "🏺" },
+      { id: 7, corner: "drink", name: "녹차", icon: "🍵" },
+      { id: 8, corner: "snack", name: "초코바", icon: "🍫" },
+      { id: 9, corner: "snack", name: "감자칩", icon: "🍟" },
+      { id: 10, corner: "snack", name: "쿠키", icon: "🍪" },
+      { id: 11, corner: "snack", name: "껌", icon: "🍬" },
+      { id: 12, corner: "snack", name: "샌드위치", icon: "🥪" },
+      { id: 13, corner: "snack", name: "사탕", icon: "🍭" },
+      { id: 14, corner: "snack", name: "견과류", icon: "🥜" },
+      { id: 15, corner: "living", name: "휴지", icon: "🧻" },
+      { id: 16, corner: "living", name: "치약", icon: "🦷" },
+      { id: 17, corner: "living", name: "비누", icon: "🧼" },
+      { id: 18, corner: "living", name: "건전지", icon: "🔋" },
+      { id: 19, corner: "living", name: "양초", icon: "🕯" },
+      { id: 20, corner: "living", name: "우산", icon: "☂" },
+    ],
+  },
 };
 
 export const ARCADE_GAME_TYPES = Object.keys(ARCADE);
