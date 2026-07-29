@@ -1,0 +1,113 @@
+# 인스턴트 미니게임 — 작업 규칙
+
+Cloudflare Workers + D1. 정적 화면과 API 서버를 한 Worker 에서 서비스한다.
+현재 **19종** (오리지널 4 + 아케이드 15) · https://minigames.zzz00321.workers.dev
+
+기획서는 형제 디렉터리 `../reward-minigame-research/plans/` 에 있다(이 저장소 밖).
+
+---
+
+## ⚠️ push = 실서비스 배포
+
+`main` 에 push 하면 Cloudflare Workers Builds 가 **자동 배포**한다.
+`.github/workflows` 가 없어서 저장소만 봐서는 보이지 않는다.
+
+- **`npm run deploy`(wrangler deploy)를 직접 실행하지 않는다.** 수동 배포 후 push 하면
+  push 한 번에 버전이 두 개 생긴다.
+- **push 전에는 반드시 사용자 승인을 받는다.** 커밋까지는 로컬이라 멈출 필요가 없다.
+  승인을 물을 때 "실서비스에 즉시 반영됩니다" 를 명시한다.
+- 마이그레이션이 있으면 **`npm run db:migrate`(--remote)가 push 보다 먼저**다.
+  순서가 바뀌면 새 게임의 세션 시작이 전부 500 이 된다.
+
+---
+
+## 신규 아케이드 게임을 추가할 때 — 필수 (요청에 안 적혀 있어도 전부 한다)
+
+### A. 코드 (7개 · 앞의 5개는 `docs/arcade-10-games.md` §9.1 과 동일)
+
+1. **`src/lib/config.js`** 의 `ARCADE` 에 항목 추가
+   - 필수 필드: `mode` `category` `label` `icon` `accent` `tagline`
+     `baseAttempts` `adAttemptsPerDay` `boostsPerRun`
+   - `category` 는 **`"action"` 또는 `"puzzle"`** — 빠뜨리면 spec 계약 검증이 막는다.
+     기준은 *정답을 알아내야 하는가(puzzle) / 정답은 보이는데 제때 해내야 하는가(action)*.
+   - ENDLESS 면 `lives` 필수. `lives: 0`(실패 없는 게임)이면 spec 에 `endsOnDone: true`.
+   - `accent` 는 base.css 에 있는 값만: `coral` · `gold` · `mint`
+2. **`src/games/arcade/<게임>.js`** — spec (라운드 생성과 판정만)
+3. **`src/games/arcade/index.js`** — 레지스트리 등록
+4. **`public/games/<게임>/`** — `index.html` + `game.js`
+   - 화면 골격 id 약속은 `public/shared/run.js` 상단 주석
+   - ENDLESS 는 `createEndlessRun` 을 쓴다
+5. **`scripts/test-api.mjs`** 의 `PLAYERS` 에 항목 추가
+   - 없으면 「테스트 커버리지」가 **일부러 실패**한다. 테스트 없는 게임을 막는 장치다.
+6. **`public/index.html`** — 허브 카드를 **자기 category 묶음(`arcade-band`) 안**에 넣고,
+   그 묶음의 `ACTION n` / `PUZZLE n` 숫자와 `aria-label`, 섹션의 「짧은 판 n종」,
+   `<meta name="description">` 의 종수를 함께 고친다.
+7. **`README.md`** — 표 1행 + 설명 문단 + 종수(제목·아케이드 n종·광고 트리거 절·
+   폴더 구조 2곳·「게임이 n개로 늘었지만」)
+
+DB 마이그레이션은 **필요 없다**. `sessions.game_type` 은 형식 검사이고 허용 목록의
+단일 출처는 `GAME_TYPES` 다. (예외는 아래 B-1)
+
+### B. 상황별 — 해당하면 반드시
+
+1. **판이 끝나도 남는 상태가 있으면** 마이그레이션 신설
+   (⑮ `majority_questions`, ⑲ `store_state` 두 건이 선례) +
+   `initSecret` / `onRunEnd` 훅 사용 + 배포 시 위의 마이그레이션 순서
+2. **하루 1~2판짜리 게임이면** 클라이언트를 `createEndlessRun({ fresh: false })` 로 둔다.
+   새로고침 한 번에 그날을 통째로 잃는다. 기회가 0일 때도 이어받기를 시도해도
+   안전하다(기회가 없으면 새 런이 생길 수 없다).
+3. **아케이드 규격을 벗어나면** `docs/<게임>-game.md` 에 구현 명세를 쓴다
+   (규격: 1판 10~60초 · 조작은 탭 1종류 · 단일 세션 완결 · 광고 트리거 3종).
+   벗어난 항목과 그 이유를 표로 남긴다. 선례: `docs/store-game.md` `docs/majority-game.md`
+
+### C. 검증 — 전부 통과해야 완료
+
+```bash
+npm run db:migrate:local   # 마이그레이션을 추가했을 때만
+npm run dev                # 다른 터미널
+npm run test:api           # 등록된 게임 전부에 같은 시나리오
+npm run test:abuse
+```
+
+- **브라우저 확인은 생략하지 않는다.** API 가 통과해도 화면 배선(id 오타, 이벤트 미연결)은
+  테스트가 못 잡는다. 10종을 만들며 나온 버그의 절반이 여기서 나왔다.
+- **허브 마크업과 `config.category` 를 대조**한다 — 카드 수·묶음별 개수·링크한 화면의 실재.
+- **무작위 때문에 서버 왕복으로 재현되지 않는 규칙**은 spec 을 직접 호출해 결정적으로
+  검사한다 (⑱ 낙하 채점, ⑲ 선반 완성이 그 예). 로그에 "완성 0줄" 처럼 **한 번도 실행되지
+  않은 경로**가 보이면 그건 통과가 아니라 미검증이다.
+
+### D. 마무리
+
+커밋 → (승인) → 마이그레이션 → push → 운영 스모크(화면 200 · 세션 시작 · 종수).
+
+---
+
+## 반복해서 물린 함정
+
+`docs/arcade-10-games.md` §9.2 에 더 있다. 아래는 그 뒤에 실제로 겪은 것들.
+
+| 함정 | 실제 증상 | 대응 |
+|---|---|---|
+| **판정이 틀려도 라운드가 올라간다** (`arcade.js` 의 `meta.round += 1`) | 칸을 잘못 눌렀더니 그 문제/상품이 사라짐 | 재발급이 필요하면 라운드 번호 말고 **cursor** 로 짚는다 (⑯·⑲) |
+| **ENDLESS 는 `result.detail` 이 비어 있다** | 결과 화면이 전부 0 으로 나옴 | 필요한 값을 `judgeRound` 의 `data` 에 실어 보낸다 (`detailOf` 는 DB 기록용) |
+| **rAF 는 백그라운드에서 멈춘다** | 앱을 잠깐 벗어났다 오면 기록이 이상치로 걸림 | 종료는 `run.js` 의 `countdown`(setTimeout). 밀려서 늦게 판정된 건 **시각을 신고하지 않는다** |
+| **`lives: 0` + `makeRound`** | spec 계약 검증에서 "런이 끝나지 않습니다" | `endsOnDone: true` 를 선언한다 |
+| **"한 번이라도 어긋나면 이상치"** | 실수 한 번으로 판 전체가 순위에서 빠짐 | 비율로 판정한다(`hasImpossibleTiming` 방식) |
+| **테스트를 합치다 검사가 조용히 안 돌 수 있다** | `if (...)` 안에 들어간 check 가 기회 부족으로 미실행 | 통과 로그에 그 항목이 **찍히는지** 눈으로 확인 |
+
+---
+
+## 게임을 제거할 때
+
+추가의 역순 + `scripts/test-api.mjs` 의 `PLAYERS` 항목과 **전용 flow 함수**,
+`base.css` 의 그 게임 전용 클래스까지 지운다. 남은 게임의 번호(⑤~)를 연속되게 다시 붙인다.
+DB 의 기존 기록(`results`)은 지우지 않는다 — 조회 경로만 사라진다.
+
+---
+
+## 조사·기획 저장소
+
+`../reward-minigame-research` 는 기획만 하는 곳이고 **원격을 두지 않는다(사용자 결정).**
+게임을 추가·제거하면 그쪽 `data/deployed_games.csv` 와
+`scripts/sync_deployed_games.py` 의 `FOLDER_TO_NAME`, `CLAUDE.md` 의 종수도 같이 고친다.
+낡으면 신규 기획의 중복 점검이 새 게임을 보지 못한다.
