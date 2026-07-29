@@ -19,6 +19,7 @@ import { spec as rpsflash } from "./rpsflash.js";
 import { spec as majority } from "./majority.js";
 import { spec as basket } from "./basket.js";
 import { spec as pathline } from "./pathline.js";
+import { spec as dropcatch } from "./dropcatch.js";
 
 export const ARCADE_SPECS = {
   REACTION: reaction,
@@ -34,6 +35,7 @@ export const ARCADE_SPECS = {
   MAJORITY: majority,
   BASKET: basket,
   PATHLINE: pathline,
+  DROPCATCH: dropcatch,
 };
 
 export const isArcade = (gameType) => Object.hasOwn(ARCADE_SPECS, gameType);

@@ -1992,6 +1992,85 @@ h1, h2, h3 { margin: 0; font-weight: 700; letter-spacing: -0.01em; }
    모션 최소화 선호
    ══════════════════════════════════════════════════════════════ */
 
+/* ── ⑱ 와르르 받기 ── */
+
+/* 낙하 무대. touch-action: none 이라야 손가락을 끌 때 페이지가 같이 스크롤되지 않습니다. */
+.fallfield {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  max-height: 58vh;
+  margin: var(--sp-sm) 0;
+  border: 1px solid var(--border-mid);
+  border-radius: var(--r-card);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(0, 0, 0, 0.14));
+  overflow: hidden;
+  touch-action: none;
+  user-select: none;
+  cursor: pointer;
+}
+
+.fallfield__items { position: absolute; inset: 0; }
+
+/* 바구니가 받는 높이. 여기 닿는 순간 판정합니다 */
+.fallfield__line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 14%;
+  border-top: 1px dashed var(--border-mid);
+  opacity: 0.5;
+}
+
+.fallfield__combo {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2;
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: rgba(233, 146, 127, 0.16);
+  color: var(--coral);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+/* 물건. top 은 0%(위) → 100%(바구니 선)로 rAF 가 직접 씁니다 */
+.falling {
+  position: absolute;
+  top: 0;
+  transform: translate(-50%, -50%);
+  font-size: 26px;
+  line-height: 1;
+  will-change: top;
+}
+
+.falling--bomb { filter: drop-shadow(0 0 6px rgba(233, 146, 127, 0.5)); }
+.falling--bonus { filter: drop-shadow(0 0 6px rgba(214, 177, 102, 0.6)); }
+
+.falling.is-caught { animation: catch-pop 220ms ease-out forwards; }
+.falling.is-missed { animation: catch-drop 220ms ease-in forwards; }
+
+@keyframes catch-pop {
+  to { transform: translate(-50%, -90%) scale(1.35); opacity: 0; }
+}
+@keyframes catch-drop {
+  to { transform: translate(-50%, 40%); opacity: 0; }
+}
+
+.basket {
+  position: absolute;
+  bottom: 8%;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 34px;
+  line-height: 1;
+  pointer-events: none;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.4));
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;

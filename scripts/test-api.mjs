@@ -144,6 +144,11 @@ const PLAYERS = {
     custom: basketFlow,
   },
 
+  DROPCATCH: {
+    // 실시간 낙하 게임이라 BATCH 지만 흐름이 달라(목숨·이어받기) 전용 시나리오를 씁니다.
+    custom: dropcatchFlow,
+  },
+
   MAJORITY: {
     // 이 게임에는 "일부러 맞히는 방법" 이 없습니다 — 정답이 다른 사람들의 집계라
     // 클라이언트가 미리 알 수 없어야 하는 것이 규칙 그 자체입니다.
@@ -615,6 +620,145 @@ async function pathlineFlow(game) {
   check(`${game} 보상 소진 후 결과 확정`, fin.data.game_over === true && res != null,
     `game_over=${fin.data.game_over}`);
   if (res) check(`${game} 보상 사용 런은 별도 리그`, res.bucket === "all+", `bucket=${res.bucket}`);
+}
+
+/**
+ * ⑱ 와르르 받기 — 전용 시나리오
+ *
+ * 낙하 일정은 서버가 확정해 내려주므로, 클라이언트가 "무엇을 받았는가" 만 신고합니다.
+ * 그래서 검증 대상은 **신고를 서버가 어떻게 되받아 채점하는가** 입니다.
+ *
+ * 45초를 실제로 기다리지 않습니다. 신고한 플레이 시간이 서버 관측 시간창을 넘으면
+ * TIME_TAMPERED 로 막히므로(그게 정상입니다), **짧은 시간 안에 바구니 선에 닿는
+ * 앞부분 물건만** 처리하고 나머지는 null(손대지 못함)로 둡니다.
+ */
+const landAt = (item) => item.t + item.fall_ms;
+
+/** budget 안에 판정이 끝나는 앞쪽 물건들의 index */
+const playableItems = (items, budgetMs) => {
+  const out = [];
+  for (let i = 0; i < items.length; i++) {
+    if (landAt(items[i]) > budgetMs) break; // 일정 순서대로 착지하므로 여기서 끊으면 됩니다
+    out.push(i);
+  }
+  return out;
+};
+
+async function dropcatchFlow(game) {
+  const BUDGET_MS = 3600;
+
+  // ── ① 일정 자체가 기획 규칙을 지키는가 ─────────────────────
+  const s = await post("/game/session/start", { game_type: game, fresh: true });
+  check(`${game} 시작`, s.data.ok === true, `보상=0/${s.data.max_boosts}`);
+  if (!s.data.ok) return;
+
+  assertNoSecretLeak(game, s.data);
+  const sid = s.data.session_id;
+  const round = s.data.round;
+  const items = round?.items ?? [];
+
+  check(`${game} 낙하 일정을 미리 발급`, items.length > 0, `${items.length}개 · 제한 ${round?.limit_ms}ms`);
+  if (items.length === 0) return;
+
+  check(`${game} 첫 물건은 바구니 자리로 (첫 판 성공 보장)`,
+    items[0].lane === 2 && items[0].kind !== "bomb", `lane=${items[0].lane} kind=${items[0].kind}`);
+  check(`${game} 첫 ${round.safe_ms / 1000}초는 폭탄 없음`,
+    items.filter((it) => it.t < round.safe_ms && it.kind === "bomb").length === 0,
+    `안전구간 물건 ${items.filter((it) => it.t < round.safe_ms).length}개`);
+  check(`${game} 목숨 ${round.lives}개로 시작`, round.lives === 3, `lives=${round.lives}`);
+
+  // ── ② 정상 플레이 — 좋은 것만 받고 폭탄은 피합니다 ─────────
+  const play = playableItems(items, BUDGET_MS);
+  check(`${game} 예산 안에 판정되는 물건이 있다`, play.length > 0, `${play.length}개`);
+
+  const answers = [];
+  const times = [];
+  let expect = 0;
+  for (const i of play) {
+    const it = items[i];
+    const take = it.kind !== "bomb";
+    answers[i] = take ? 1 : 0;
+    times[i] = landAt(it);
+    if (take) expect += it.kind === "bonus" ? round.bonus_point : 1;
+  }
+
+  await sleep(1500); // 서버 관측 시간창을 신고값보다 크게 만듭니다
+  const ok = await post("/game/submit", {
+    game_type: game, session_id: sid, answers, times, elapsed_ms: BUDGET_MS,
+  });
+
+  check(`${game} 제출 성공`, ok.data.ok === true, `(${ok.data.code ?? "-"})`);
+  check(`${game} 점수를 서버가 다시 계산`, ok.data.result?.score === expect,
+    `서버=${ok.data.result?.score} 기대=${expect}`);
+  check(`${game} 정상 플레이는 이상치 아님`, ok.data.result?.suspect === false,
+    `어긋난 신고=${ok.data.detail?.bad_timing}`);
+  check(`${game} 손대지 못한 물건은 세지 않음`, ok.data.detail?.handled === play.length,
+    `handled=${ok.data.detail?.handled} / 전체 ${items.length}개`);
+
+  // ── ③ 받은 시각을 위조하면 이상치 ──────────────────────────
+  const s2 = await post("/game/session/start", { game_type: game, fresh: true });
+  if (s2.data.ok) {
+    const it2 = s2.data.round.items;
+    const play2 = playableItems(it2, BUDGET_MS);
+    const a2 = [];
+    const t2 = [];
+    for (const i of play2) {
+      a2[i] = it2[i].kind !== "bomb" ? 1 : 0;
+      t2[i] = 0; // 전부 "시작하자마자 받았다" 는 물리적으로 불가능합니다
+    }
+    await sleep(1500);
+    const faked = await post("/game/submit", {
+      game_type: game, session_id: s2.data.session_id, answers: a2, times: t2, elapsed_ms: BUDGET_MS,
+    });
+    check(`${game} 착지 시각 위조는 이상치`, faked.data.result?.suspect === true,
+      `어긋난 신고=${faked.data.detail?.bad_timing}/${play2.length}`);
+  }
+
+  // ── ④ 신고 시간 부풀리기는 거부 ────────────────────────────
+  const s3 = await post("/game/session/start", { game_type: game, fresh: true });
+  if (!s3.data.ok) return;
+  const sid3 = s3.data.session_id;
+  const it3 = s3.data.round.items;
+
+  const inflated = await post("/game/submit", {
+    game_type: game, session_id: sid3, answers: [1], times: [landAt(it3[0])], elapsed_ms: 45000,
+  });
+  check(`${game} 신고 시간 부풀리기 거부`, inflated.data.code === "TIME_TAMPERED", `(${inflated.data.code})`);
+
+  // ── ⑤ 이어받기 — 목숨 +1 · 일정 연장 · 점수 유지 ───────────
+  const boost = await post("/ad/reward", { trigger: `${game}_BOOST`, session_id: sid3 });
+  const bd = boost.data.reward?.data;
+  check(`${game} 이어받기로 목숨 +1`, bd?.lives_added === 1 && bd?.total_lives === 4,
+    `+${bd?.lives_added} → 총 ${bd?.total_lives}개 (기본 3)`);
+  check(`${game} 연장분 일정을 이어붙임`,
+    (bd?.items?.length ?? 0) > 0 && bd?.from_index === it3.length,
+    `+${bd?.items?.length}개 · from_index=${bd?.from_index} (기존 ${it3.length}개)`);
+  check(`${game} 제한 시간도 함께 연장`, bd?.limit_ms > s3.data.round.limit_ms,
+    `${s3.data.round.limit_ms} → ${bd?.limit_ms}ms`);
+
+  await post("/ad/reward", { trigger: `${game}_BOOST`, session_id: sid3 });
+  const over = await post("/ad/reward", { trigger: `${game}_BOOST`, session_id: sid3 });
+  check(`${game} 런당 보상 2회 제한`, over.data.ok === false, `(${over.data.code})`);
+
+  // 보상을 쓴 런은 별도 리그로 확정합니다.
+  const play3 = playableItems(it3, BUDGET_MS);
+  const a3 = [];
+  const t3 = [];
+  for (const i of play3) {
+    a3[i] = it3[i].kind !== "bomb" ? 1 : 0;
+    t3[i] = landAt(it3[i]);
+  }
+  await sleep(1500);
+  const fin = await post("/game/submit", {
+    game_type: game, session_id: sid3, answers: a3, times: t3, elapsed_ms: BUDGET_MS,
+  });
+  const res = fin.data.result;
+  check(`${game} 보상 사용 런은 별도 리그`, res?.bucket === "all+", `bucket=${res?.bucket}`);
+  // 늘린 목숨이 채점에도 쓰여야 합니다. 여기서 3이면 이어받은 구간이 통째로 잘립니다.
+  check(`${game} 늘린 목숨이 채점에 반영`, fin.data.detail?.allowed_lives === 5,
+    `allowed_lives=${fin.data.detail?.allowed_lives} (기본 3 + 이어받기 2회)`);
+
+  return ok.data.result; // 통계 게이팅은 이상치가 아닌 판으로 확인합니다
 }
 
 async function basketFlow(game) {
