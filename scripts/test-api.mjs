@@ -163,6 +163,51 @@ const PLAYERS = {
     custom: scratchFlow,
   },
 
+  DETECTIVE: {
+    // 실패가 없고(lives 0) 사건 5건으로 끝나며 미해결이 다음 날로 넘어갑니다 → 전용 시나리오
+    custom: detectiveFlow,
+    // 바뀌기 전·후 장면을 둘 다 그려야 하므로 공개가 불가피합니다 (⑦ 과 같은 제약)
+    publicFields: ["icons", "after"],
+  },
+
+  RHYTHM: {
+    // 패턴(간격 배열)은 빛으로 재생해야 하므로 공개가 불가피합니다
+    publicFields: ["gaps"],
+    answer: (round, correct) => {
+      // 첫 탭을 0 으로 두고 간격을 누적합니다 — 판정은 상대 간격만 봅니다
+      const taps = [0];
+      round.gaps.forEach((g, i) => {
+        const err = correct ? 0 : i === 0 ? round.tol_ms + 200 : 0;
+        taps.push(taps[taps.length - 1] + g + err);
+      });
+      return { answer: { taps } };
+    },
+  },
+
+  BALANCE: {
+    answer: (round, correct) => {
+      // 토크 = Σ(무게 × 위치). 상쇄하는 위치가 정답이고, 같은 쪽으로 놓으면 더 기웁니다
+      const cancel = Math.max(-round.arm, Math.min(round.arm, -round.torque / round.drop_w));
+      const worse = round.torque < 0 ? -round.arm : round.arm;
+      return { answer: { pos: Number((correct ? cancel : worse).toFixed(2)) } };
+    },
+  },
+
+  POUR: {
+    // 하루 1잔 · 실패 없음 · 조작이 누름 지속이라 전용 시나리오를 씁니다
+    custom: pourFlow,
+  },
+
+  MERGE3: {
+    // 합체하지 못한 것은 실패가 아니고 기둥 초과만 판을 끝내므로 전용 시나리오를 씁니다
+    custom: merge3Flow,
+  },
+
+  GAUGE: {
+    // 사용자 간 공용 전역 카운터를 쓰는 게임이라 전용 시나리오를 씁니다
+    custom: gaugeFlow,
+  },
+
   STACK: {
     // 블록이 목표 지점에 올 때까지 **실제로 기다린 뒤** 탭합니다 (⑪ 링 스톱과 같은 방식).
     // 위치는 화면에 보이는 값(왕복 시간·위상·폭)으로만 계산합니다 — 사람과 같은 정보 상태입니다.
@@ -1135,6 +1180,279 @@ async function scratchFlow(game) {
   check(`${game} 카드를 더 주는 광고는 없다`, noAd.status === 429, `(${noAd.data.code})`);
 
   scratchCardRules(game);
+  return res;
+}
+
+/**
+ * ㉒ 3초 탐정 — 전용 시나리오
+ *
+ * 확인하는 것
+ *   ① 사건 5건으로 끝나고, 틀려도 판이 끝나지 않는다(실패 없음)
+ *   ② 정답 위치는 응답에 미리 내려가지 않는다 — 장면 두 개는 그려야 하니 공개다
+ *   ③ 못 푼 사건은 **다음 판에 그 장면 그대로** 다시 온다(미해결 이월)
+ */
+async function detectiveFlow(game) {
+  const C = ARCADE[game];
+
+  /** 두 장면을 비교해 바뀐 자리를 찾습니다 — 사람이 눈으로 하는 것과 같은 정보입니다 */
+  const diffIndex = (round) => {
+    const a = round.icons ?? [];
+    const b = round.after ?? [];
+    for (let i = 0; i < a.length; i++) {
+      const x = a[i];
+      const y = b[i] ?? {};
+      if (y.gone || x.color !== y.color || x.col !== y.col || x.row !== y.row) return i;
+    }
+    return 0;
+  };
+
+  const s = await post("/game/session/start", { game_type: game, fresh: true });
+  check(`${game} 시작`, s.data.ok === true, `(${s.data.code ?? "정상"})`);
+  if (!s.data.ok) return;
+  assertNoSecretLeak(game, s.data);
+
+  const sid = s.data.session_id;
+  let round = s.data.round;
+  check(`${game} 목숨 없는 게임`, s.data.lives === 0, `lives=${s.data.lives}`);
+  check(`${game} 찾는 시간 제한 없음`, s.data.limit_ms == null, `limit_ms=${s.data.limit_ms}`);
+  check(`${game} 첫 사건은 사라짐 유형`, (round.after ?? []).some((i) => i.gone), "규칙을 몸으로 알려주는 배정");
+  check(`${game} 정답 위치 비노출`, JSON.stringify(s.data).includes('"changed"') === false);
+
+  // 첫 사건은 일부러 틀립니다 — 미해결 이월을 확인하려면 남겨야 합니다
+  let last = await post("/game/round", {
+    game_type: game, session_id: sid, answer: (diffIndex(round) + 1) % (round.icons ?? []).length,
+  });
+  check(`${game} 틀려도 판이 끝나지 않음`, last.data.correct === false && last.data.game_over !== true,
+    `미해결=${last.data.data?.unsolved_today}`);
+  check(`${game} 틀리면 정답을 알려 준다`, Number.isInteger(last.data.data?.answer_index));
+  const missedKind = last.data.data?.kind;
+
+  // 나머지는 전부 맞힙니다
+  let solved = 0;
+  for (let i = 1; i < C.CASES && !last.data.game_over; i++) {
+    round = last.data.round;
+    if (!round) break;
+    last = await post("/game/round", { game_type: game, session_id: sid, answer: diffIndex(round) });
+    if (last.data.correct) solved += 1;
+  }
+
+  check(`${game} 사건 ${C.CASES}건으로 종료`, last.data.game_over === true, `해결 ${solved}건`);
+  const res = last.data.result;
+  check(`${game} 결과 확정`, res?.rank_metric === -solved, `metric=${res?.rank_metric} 해결=${solved}`);
+  check(`${game} 점수는 해결한 사건의 누적`, res?.score > 0, `score=${res?.score}`);
+
+  // ── ③ 미해결 이월 ──────────────────────────────────────────
+  const s2 = await post("/game/session/start", { game_type: game, fresh: true });
+  if (s2.data.ok) {
+    check(`${game} 미해결 사건이 다음 판에 다시 온다`, s2.data.round?.redo === true,
+      `redo=${s2.data.round?.redo} (직전 미해결 유형=${missedKind})`);
+    const r2 = await post("/game/round", {
+      game_type: game, session_id: s2.data.session_id, answer: diffIndex(s2.data.round),
+    });
+    check(`${game} 재해결에 보너스가 붙는다`, r2.data.data?.redone_today === 1,
+      `재해결=${r2.data.data?.redone_today}`);
+    await post("/game/finish", { game_type: game, session_id: s2.data.session_id });
+  }
+
+  return res;
+}
+
+/**
+ * ㉕ 오늘의 한 잔 — 전용 시나리오
+ *
+ * 확인하는 것
+ *   ① 세 층을 다 부으면 끝나고 실패가 없다 · 시간 제한이 없다
+ *   ② 목표선 등급은 마지막 층에서만 나오고, 넘쳐도 층당 확정은 전액이다
+ *   ③ 「그 층만 다시 붓기」가 마지막 층만 걷어낸다 (앞 층은 그대로)
+ *   ④ 하루 1잔 — 광고로 잔을 더 주지 않는다
+ */
+async function pourFlow(game) {
+  const C = ARCADE[game];
+  const s = await post("/game/session/start", { game_type: game, fresh: true });
+  check(`${game} 시작`, s.data.ok === true, `(${s.data.code ?? "정상"})`);
+  if (!s.data.ok) return;
+
+  const sid = s.data.session_id;
+  let round = s.data.round;
+  check(`${game} 목숨 없는 게임`, s.data.lives === 0, `lives=${s.data.lives}`);
+  check(`${game} 시간 제한 없음`, s.data.limit_ms == null, `limit_ms=${s.data.limit_ms}`);
+  check(`${game} 병 ${C.LAYERS}개 배정`, (round?.bottles ?? []).length === C.LAYERS);
+  check(`${game} 목표선이 배정된다`, round?.target > 0, `target=${round?.target}`);
+
+  /** 누른 시간과 양이 비례해야 합니다 — 서버가 그 비례를 검사합니다 */
+  const pourOnce = (amount) =>
+    post("/game/round", {
+      game_type: game, session_id: sid,
+      answer: { amount: Number(amount.toFixed(3)) },
+      elapsed_ms: Math.round((amount / C.POUR_RATE) * 1000),
+    });
+
+  // 목표선을 **넘기도록** 부어 구원 광고 자리를 만듭니다
+  const target = round.target;
+  let last = await pourOnce(target * 0.5);
+  check(`${game} 붓기는 늘 성립한다 (꽝 없음)`, last.data.correct === true, `층=${last.data.data?.poured}`);
+  check(`${game} 등급은 마지막 층에서만`, last.data.data?.grade == null, `grade=${last.data.data?.grade}`);
+  last = await pourOnce(target * 0.5);
+  last = await pourOnce(0.4); // 마지막 층 — 넘칩니다
+
+  check(`${game} 세 층을 다 부으면 종료`, last.data.game_over === true, `층=${last.data.data?.poured}`);
+  check(`${game} 넘침 판정`, last.data.data?.over === true, `등급=${last.data.data?.grade_name}`);
+  const res = last.data.result;
+  check(`${game} 넘쳐도 층당 확정은 받는다`, res?.score >= C.LAYER_POINT * C.LAYERS,
+    `score=${res?.score} (층당 ${C.LAYER_POINT}×${C.LAYERS})`);
+  check(`${game} 순위 지표는 목표선과의 차이`, res?.rank_metric > 0, `metric=${res?.rank_metric}`);
+
+  // ── ④ 하루 1잔 · 잔 추가 광고 없음 ─────────────────────────
+  const over = await post("/game/session/start", { game_type: game, fresh: true });
+  check(`${game} 하루 한 잔을 넘으면 시작 불가`, over.data.ok === false, `(${over.data.code})`);
+  const noAd = await post("/ad/reward", { trigger: `${game}_ATTEMPT` });
+  check(`${game} 잔을 더 주는 광고는 없다`, noAd.status === 429, `(${noAd.data.code})`);
+
+  pourRedoRule(game);
+  return res;
+}
+
+/**
+ * 「그 층만 다시 붓기」는 서버 왕복으로 확인하기 어렵습니다 — 하루 1잔이라 광고 자리를
+ * 만들려면 판을 또 열어야 합니다. 그래서 이 규칙만 spec 을 직접 불러 검사합니다.
+ */
+function pourRedoRule(game) {
+  const spec = ARCADE_SPECS[game];
+  const C = ARCADE[game];
+  const meta = {
+    ext: {
+      target: 0.8, bottles: C.SYRUPS.slice(0, 3).map((s) => ({ key: s.key, name: s.name, hex: s.hex })),
+      layers: [
+        { key: C.SYRUPS[0].key, hex: C.SYRUPS[0].hex, amount: 0.3 },
+        { key: C.SYRUPS[1].key, hex: C.SYRUPS[1].hex, amount: 0.6 },
+      ],
+      level: 0.9, cursor: 2, score: 0, over: true, album: [], cups: 0, runs: 0,
+    },
+  };
+  spec.applyBoost(meta);
+  check(`${game} 다시 붓기는 마지막 층만 걷어낸다`,
+    meta.ext.layers.length === 1 && Math.abs(meta.ext.level - 0.3) < 1e-6 && meta.ext.cursor === 1,
+    `남은 층 ${meta.ext.layers.length} · 액면 ${meta.ext.level.toFixed(2)}`);
+  check(`${game} 앞 층은 그대로 남는다`, meta.ext.layers[0].amount === 0.3);
+}
+
+/**
+ * ㉖ 세 칸 쌓기 — 전용 시나리오
+ *
+ * 확인하는 것
+ *   ① 첫 3수는 어디에 놓아도 합쳐진다 (규칙을 글 없이 알려주는 배정)
+ *   ② 합체하지 못한 것은 실패가 아니고, 기둥 초과만 판을 끝낸다
+ *   ③ 「맨 위 하나 치우기」가 가장 높은 기둥을 줄이고 판을 다시 연다
+ */
+async function merge3Flow(game) {
+  const C = ARCADE[game];
+  const s = await post("/game/session/start", { game_type: game, fresh: true });
+  check(`${game} 시작`, s.data.ok === true, `(${s.data.code ?? "정상"})`);
+  if (!s.data.ok) return;
+
+  const sid = s.data.session_id;
+  let round = s.data.round;
+  check(`${game} 기둥 ${C.COLUMNS}개`, (round?.cols ?? []).length === C.COLUMNS);
+  check(`${game} 시간 제한 없음`, s.data.limit_ms == null);
+
+  // ── ① 첫 3수는 아무 기둥에 놓아도 합쳐진다 ─────────────────
+  let merged = 0;
+  let last = null;
+  for (let i = 0; i < C.FREE_MERGES; i++) {
+    last = await post("/game/round", { game_type: game, session_id: sid, answer: i % C.COLUMNS });
+    if (last.data.data?.merged) merged += 1;
+    round = last.data.round;
+  }
+  check(`${game} 첫 ${C.FREE_MERGES}수 안에 합체가 일어난다`, merged >= 1, `합체 ${merged}회`);
+
+  // ── ② 기둥을 채워 초과를 만든다 ────────────────────────────
+  let exhausted = null;
+  for (let i = 0; i < 60; i++) {
+    // 합체가 안 되는 자리를 일부러 골라 기둥을 높입니다
+    const cols = round?.cols ?? [];
+    const heights = cols.map((c) => c.length);
+    const target = heights.indexOf(Math.max(...heights));
+    last = await post("/game/round", { game_type: game, session_id: sid, answer: target });
+    if (last.data.code) break;
+    if (last.data.exhausted || last.data.game_over) { exhausted = last; break; }
+    round = last.data.round;
+  }
+
+  check(`${game} 기둥 초과로 소진`, exhausted != null, `상한=${round?.height}`);
+  if (!exhausted) return;
+  check(`${game} 소진 시 세션 유지`, exhausted.data.exhausted === true && exhausted.data.game_over === false,
+    `can_boost=${exhausted.data.can_boost}`);
+
+  // ── ③ 맨 위 하나 치우기 ────────────────────────────────────
+  const boost = await post("/ad/reward", { trigger: `${game}_BOOST`, session_id: sid });
+  const before = (round?.cols ?? []).reduce((n, c) => n + c.length, 0);
+  const after = (boost.data.reward?.data?.cols ?? []).reduce((n, c) => n + c.length, 0);
+  check(`${game} 치우기 보상이 기둥을 줄인다`, boost.data.reward?.lives === 1 && after < before,
+    `${before}개 → ${after}개`);
+
+  const fin = await post("/game/finish", { game_type: game, session_id: sid });
+  const res = fin.data.result;
+  check(`${game} 결과 확정`, res?.rank_metric != null, `등급=${res?.detail?.best_name ?? "-"} 점수=${res?.score}`);
+  check(`${game} 보상 사용 런은 별도 리그`, res?.bucket?.endsWith("+") === true, `bucket=${res?.bucket}`);
+  return res;
+}
+
+/**
+ * ㉗ 오늘의 전국 게이지 — 전용 시나리오
+ *
+ * 확인하는 것
+ *   ① 토큰을 다 밀어 넣으면 끝난다 (실패 없음)
+ *   ② 기여가 **전역 게이지에 실제로 누적**된다 — 다음 판의 시작값이 올라가 있어야 한다
+ *   ③ 「기여 2배」 보상이 남은 토큰의 반영량을 두 배로 만든다
+ */
+async function gaugeFlow(game) {
+  const C = ARCADE[game];
+  const s = await post("/game/session/start", { game_type: game, fresh: true });
+  check(`${game} 시작`, s.data.ok === true, `(${s.data.code ?? "정상"})`);
+  if (!s.data.ok) return;
+
+  const sid = s.data.session_id;
+  const start = s.data.round;
+  check(`${game} 목숨 없는 게임`, s.data.lives === 0, `lives=${s.data.lives}`);
+  check(`${game} 토큰 ${C.TOKENS}개`, start?.tokens_left === C.TOKENS, `left=${start?.tokens_left}`);
+  check(`${game} 오늘 목표와 단계를 알려 준다`,
+    start?.target === C.DAILY_TARGET && (start?.stages ?? []).length === C.STAGES.length,
+    `목표=${start?.target} 단계=${start?.stages}`);
+
+  const totalBefore = start.total;
+
+  // ③ 첫 토큰 뒤에 2배 보상을 받습니다
+  let last = await post("/game/round", { game_type: game, session_id: sid, answer: 0 });
+  check(`${game} 토큰 하나가 게이지를 올린다`, last.data.data?.added === C.TOKEN_VALUE,
+    `+${last.data.data?.added}`);
+
+  const boost = await post("/ad/reward", { trigger: `${game}_BOOST`, session_id: sid });
+  check(`${game} 기여 2배 보상`, boost.data.reward?.data?.multiplier === 2,
+    `배수=${boost.data.reward?.data?.multiplier}`);
+
+  for (let i = 0; i < C.TOKENS && !last.data.game_over; i++) {
+    last = await post("/game/round", { game_type: game, session_id: sid, answer: 0 });
+    if (last.data.code) break;
+  }
+  check(`${game} 토큰을 다 쓰면 종료`, last.data.game_over === true,
+    `총 기여=${last.data.data?.added_total}`);
+  // added 는 그 토큰 하나의 증가분, added_total 은 판 전체 — 이름을 나눠 두었습니다
+  check(`${game} 2배가 적용된다`, (last.data.data?.added_total ?? 0) > C.TOKENS * C.TOKEN_VALUE,
+    `총 기여=${last.data.data?.added_total} (기본 ${C.TOKENS * C.TOKEN_VALUE})`);
+
+  const res = last.data.result;
+
+  // ── ② 전역 누적 확인 (광고로 한 번 더 참여) ────────────────
+  const ad = await post("/ad/reward", { trigger: `${game}_ATTEMPT` });
+  check(`${game} 참여 기회 충전 광고`, ad.data.ok === true, `(${ad.data.code ?? "-"})`);
+
+  const s2 = await post("/game/session/start", { game_type: game, fresh: true });
+  if (s2.data.ok) {
+    check(`${game} 기여가 전역 게이지에 누적된다`, s2.data.round.total > totalBefore,
+      `${totalBefore} → ${s2.data.round.total}`);
+    check(`${game} 내 기여량이 이어진다`, s2.data.round.my_tokens > 0, `내 기여=${s2.data.round.my_tokens}`);
+    await post("/game/finish", { game_type: game, session_id: s2.data.session_id });
+  }
   return res;
 }
 

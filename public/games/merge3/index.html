@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>세 칸 쌓기</title>
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#0F1420">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../shared/base.css">
+</head>
+<body class="game game--accent-gold">
+  <div class="app">
+    <header class="topbar" id="header"></header>
+
+    <main class="app__body">
+
+      <!-- 시작 -->
+      <section class="screen is-active" data-screen="ready">
+        <div class="card card--accent card--center card--hero">
+          <div class="card__label card__label--mono">MERGE THREE</div>
+          <div class="headline">같은 것끼리 붙여 키워요</div>
+          <p class="footnote">세 기둥 중 하나를 눌러 <b>맨 위에 쌓습니다</b>.<br>바로 아래와 같으면 <b>붙어서 커집니다</b>.</p>
+        </div>
+
+        <div class="stats">
+          <div class="stat stat--accent">
+            <div class="stat__label">최고 등급</div>
+            <div class="stat__value" id="bestValue">-</div>
+          </div>
+          <div class="stat">
+            <div class="stat__label">플레이</div>
+            <div class="stat__value" id="playsValue">-</div>
+          </div>
+        </div>
+
+        <button class="btn btn--primary" id="startBtn" disabled>&#9654; 시작하기</button>
+
+        <div class="card card--info">
+          <div class="meter">
+            <div class="meter__text">
+              <span class="card__label">오늘 남은 기회</span>
+              <span class="figure figure--md" id="attemptText">-</span>
+            </div>
+            <div class="pips" id="attemptDots"></div>
+          </div>
+        </div>
+
+        <div id="adbar"></div>
+      </section>
+
+      <!-- 플레이 -->
+      <section class="screen" data-screen="play">
+        <div class="hud">
+          <div class="hud__item">
+            <span class="hud__label">최고</span>
+            <span class="hud__value hud__value--accent" id="hud1">0</span>
+          </div>
+          <div class="hud__item">
+            <span class="hud__label">합체</span>
+            <span class="hud__value" id="hud2">0</span>
+          </div>
+          <div class="hud__item hud__item--right">
+            <span class="hud__label">점수</span>
+            <span class="hud__value" id="hud3">0</span>
+          </div>
+        </div>
+
+        <div class="stage stage--tight merge" id="mergeStage">
+          <div class="merge__next" id="mergeNext">-</div>
+          <div class="merge__cols" id="mergeCols"></div>
+        </div>
+
+        <p class="footnote center" id="playHint">어느 기둥에 놓을까요</p>
+        <div id="adbarPlay"></div>
+      </section>
+
+      <!-- 소진 - 이어하기 -->
+      <section class="screen" data-screen="pause">
+        <div class="card card--center card--hero">
+          <div class="badge-round badge-round--quiet" aria-hidden="true">&#129689;</div>
+          <div class="headline" id="pauseHeadline">기둥이 꽉 찼어요</div>
+          <div class="footnote" id="pauseSub">-</div>
+          <div class="figure figure--result" id="pauseFigure">-</div>
+        </div>
+
+        <div id="adbarBoost"></div>
+        <button class="btn" id="pauseEndBtn">여기서 끝내고 결과 보기</button>
+      </section>
+
+      <!-- 결과 -->
+      <section class="screen" data-screen="over">
+        <div class="card card--accent card--center card--hero celebrate" id="overCard">
+          <div class="badge-round" id="overBadge" aria-hidden="true">&#129689;</div>
+          <div class="headline" id="overHeadline">-</div>
+          <div class="footnote" id="overSub">-</div>
+          <div class="figure figure--result" id="overFigure">-</div>
+          <div class="chips" id="overChips"></div>
+          <div class="stats stats--inset" id="overTiles"></div>
+        </div>
+
+        <button class="btn btn--primary" id="retryBtn">다시 도전하기</button>
+        <div id="adbarStats"></div>
+        <div class="footnote--dim center" id="overNote"></div>
+      </section>
+
+      <!-- 전체 순위 -->
+      <section class="screen" data-screen="stats">
+        <div class="card">
+          <div class="card__head">
+            <span class="card__title" id="statsTitle">전체 통계</span>
+          </div>
+          <div id="statsChart"></div>
+          <div class="stats mt-md" id="statsTiles"></div>
+        </div>
+
+        <div class="card card--info">
+          <div class="card__label">TOP 20</div>
+          <div class="rank-list mt-sm" id="statsRank"></div>
+        </div>
+
+        <div class="card card--info">
+          <div class="card__label">리그별 기록 수</div>
+          <div class="rank-list mt-sm" id="statsLeagues"></div>
+        </div>
+
+        <button class="btn" id="statsBackBtn">&#8592; 결과로 돌아가기</button>
+      </section>
+
+    </main>
+  </div>
+
+  <script type="module" src="game.js"></script>
+</body>
+</html>

@@ -695,6 +695,191 @@ export const ARCADE = {
     // 신고 좌표가 서버 재현값과 이만큼 넘게 어긋나면 조작 신호로 남깁니다(판정에는 영향 없음)
     X_TOLERANCE: 0.06,
   },
+  // ── ㉒ 3초 탐정 (기획서 plans/2026-07-30/PLAN-21_3초탐정.md) ──────────────
+  //
+  // 3초간 본 장면에서 무엇이 바뀌었는지 찾습니다. DEP-006 색 다른 타일 찾기와 조작은
+  // 같지만 **비교 대상이 화면이 아니라 기억 속**에 있습니다(기획서 11장).
+  // 실패가 없습니다 — 못 찾은 사건은 「미해결」로 남아 다음 날 다시 옵니다.
+  DETECTIVE: {
+    mode: "ENDLESS",
+    category: "puzzle",
+    label: "3초 탐정",
+    icon: "🔍",
+    accent: "mint",
+    tagline: "무엇이 바뀌었을까요",
+    baseAttempts: 3,
+    adAttemptsPerDay: 3,
+    boostsPerRun: 3, // 「그 장면 한 번 더 보기」 (기획서 4장 6번)
+    lives: 0, // 실패 없음 — 틀리면 미해결로 남깁니다
+    CASES: 5, // 오늘의 사건 5건
+    ICONS_MIN: 8,
+    ICONS_MAX: 12,
+    EXPOSE_MS: 3000, // 노출 3초
+    ROOKIE_EXPOSE_MS: 4500, // 첫 주는 4.5초 (기획서 4장 2번)
+    ROOKIE_RUNS: 7,
+    MASK_MS: 700, // 장면이 덮여 있는 시간
+    LOCK_MS: 500, // 판정 직후 입력 잠금 — 잔여 탭이 오답으로 먹히지 않게 (기획서 0절)
+    CASE_POINT: 3,
+    REDO_BONUS: 2, // 미해결 사건을 다음 날 해결하면
+    // 변화 유형 세 가지. 비율을 바꾸면 난이도가 바뀝니다
+    KINDS: ["gone", "color", "move"],
+    SYMBOLS: ["☕", "🍔", "🥤", "🍩", "🍗", "🍰", "🍫", "🧃", "🍪", "🥛", "🍇", "🍓"],
+    COLORS: ["#E8C65C", "#6FA8F5", "#F0705C", "#6FD39A", "#B18EF0"],
+  },
+  // ── ㉓ 리듬 에코 (기획서 plans/2026-07-30/PLAN-19_리듬에코.md) ────────────
+  //
+  // 빛나는 박자를 그대로 두드려 따라 합니다. DEP-007 순서 기억과 조작은 같지만
+  // **기억 대상이 위치가 아니라 간격**이라 판정이 좌표 비교가 아니라 시각차 비교입니다.
+  // 시간 제한이 없습니다 — 빠른 반응이 아니라 간격의 재현이 과제입니다(기획서 0절).
+  RHYTHM: {
+    mode: "ENDLESS",
+    category: "puzzle",
+    label: "리듬 에코",
+    icon: "🥁",
+    accent: "mint",
+    tagline: "빛나는 박자를 그대로",
+    baseAttempts: 3,
+    adAttemptsPerDay: 3,
+    boostsPerRun: 3, // 「이 패턴 다시 보기」 = 같은 레벨 재시도
+    lives: 1,
+    START_BEATS: 2, // 1레벨은 2박 — 규칙을 글 없이 알려주는 최소 단위 (기획서 0-2)
+    MAX_BEATS: 9,
+    GAP_MIN_MS: 320, // 박 간격
+    GAP_MAX_MS: 900,
+    GAP_STEP_MS: 20, // 이 단위로만 뽑습니다 (사람이 재현할 수 있는 해상도)
+    TOL_START_MS: 250, // 관용도 ±250ms 에서
+    TOL_STEP_MS: 20,
+    TOL_MIN_MS: 100, // ±100ms 까지만 좁힙니다 (하한 고정)
+    LEVEL_POINT: 2,
+  },
+  // ── ㉔ 밸런스 드롭 (기획서 plans/2026-07-30/PLAN-20_밸런스드롭.md) ────────
+  //
+  // 물건을 떨어뜨려 저울을 수평에 맞춥니다. 자사에 물리 축이 없어 첫 원형입니다.
+  // **무게가 전부 보입니다** — 숨기면 기대값 게임이 되기 때문입니다(기획서 0절).
+  // 조작에 좌우 밀기가 있어 아케이드 규격(탭 1종류)을 벗어납니다 → docs/balance-game.md
+  BALANCE: {
+    mode: "ENDLESS",
+    category: "action",
+    label: "밸런스 드롭",
+    icon: "⚖",
+    accent: "coral",
+    tagline: "저울을 수평에 맞추세요",
+    baseAttempts: 3,
+    adAttemptsPerDay: 3,
+    boostsPerRun: 3, // 「한 개 더 놓기」 — 현재 저울 상태 그대로
+    lives: 1,
+    // 접시 위치는 -1(왼쪽 끝) ~ +1(오른쪽 끝). 토크 = Σ(무게 × 위치)
+    ARM: 1,
+    WEIGHT_MIN: 1,
+    WEIGHT_MAX: 9,
+    PRELOAD_MIN: 1, // 처음 얹혀 있는 물건 수
+    PRELOAD_MAX: 3,
+    TOL_START: 1.6, // 초록 목표 구간(토크 절대값)에서
+    TOL_STEP: 0.12,
+    TOL_MIN: 0.45, // 이만큼까지 좁아집니다
+    FIRST_LEVEL_TOL: 4.0, // 첫 판은 어디에 놓아도 들어옵니다 (기획서 0-4)
+    LEVEL_POINT: 2,
+    ROUND_MAX_MS: 30000,
+  },
+  // ── ㉕ 오늘의 한 잔 (기획서 plans/2026-07-30/PLAN-15_오늘의한잔.md) ───────
+  //
+  // 시럽을 부어 목표선에 맞게 세 층을 쌓습니다. 조작이 **누름 지속**이라 규격(탭)을
+  // 벗어납니다 → docs/pour-game.md. 넘쳐도 잃는 것이 없습니다(기획서 4장 5번).
+  POUR: {
+    mode: "ENDLESS",
+    category: "puzzle", // 반응속도 완전 비의존
+    label: "오늘의 한 잔",
+    icon: "🥤",
+    accent: "gold",
+    tagline: "목표선에 딱 맞게 세 층",
+    baseAttempts: 1, // 하루 1잔 (기획서 6장)
+    adAttemptsPerDay: 0, // 잔을 더 주지 않습니다 — 광고는 「그 층만 다시 붓기」뿐
+    boostsPerRun: 1, // 넘친 직후의 구원 광고 (기획서 8장)
+    lives: 0, // 실패 없음 — 세 층을 다 부으면 끝납니다
+    LAYERS: 3,
+    TARGET_MIN: 0.55, // 목표선 높이(잔의 비율)
+    TARGET_MAX: 0.92,
+    ROOKIE_TARGET_MIN: 0.78, // 첫 주는 목표선을 높게 둡니다 (여유가 넓다 · 기획서 6장)
+    ROOKIE_RUNS: 7,
+    POUR_RATE: 0.45, // 1초 누르면 잔의 이만큼이 찹니다
+    MAX_HOLD_MS: 4000,
+    GRADE: [
+      // 목표선과의 차이(잔 비율) 구간별 등급. 숫자를 화면에 쓰지 않습니다(기획서 16장 4)
+      { key: "perfect", name: "딱 맞음", within: 0.03, bonus: 30 },
+      { key: "near", name: "근접", within: 0.08, bonus: 18 },
+      { key: "loose", name: "여유", within: 1, bonus: 8 },
+    ],
+    LAYER_POINT: 6, // 층당 확정
+    NEW_MIX_BONUS: 12, // 새 색 조합 최초 발견
+    SYRUPS: [
+      { key: "pink", name: "핑크", hex: "#F07AA0" },
+      { key: "yellow", name: "레몬", hex: "#E8C65C" },
+      { key: "mint", name: "민트", hex: "#6FD39A" },
+      { key: "blue", name: "블루", hex: "#6FA8F5" },
+      { key: "purple", name: "그레이프", hex: "#B18EF0" },
+      { key: "cream", name: "크림", hex: "#F2E4CE" },
+    ],
+  },
+  // ── ㉖ 세 칸 쌓기 (기획서 plans/2026-07-30/PLAN-16_세칸쌓기.md) ───────────
+  //
+  // 세 기둥 중 하나를 눌러 쌓고, 같은 것이 붙으면 한 등급 올라갑니다(엔진 G 첫 원형).
+  // **첫 3수는 어디에 놓아도 반드시 합쳐집니다** — 규칙을 글 없이 알려줍니다(기획서 4장 5번).
+  // 한 판이 1~3분이라 규격(10~60초)을 넘습니다 → docs/merge3-game.md
+  MERGE3: {
+    mode: "ENDLESS",
+    category: "puzzle",
+    label: "세 칸 쌓기",
+    icon: "🪙",
+    accent: "gold",
+    tagline: "같은 것끼리 붙여 키우기",
+    baseAttempts: 3,
+    adAttemptsPerDay: 3,
+    boostsPerRun: 3, // 「맨 위 하나 치우기」
+    lives: 1,
+    COLUMNS: 3,
+    HEIGHT_START: 7, // 기둥 상한 (기획서 4장 7번)
+    HEIGHT_MIN: 5,
+    HEIGHT_TIGHTEN_AT: 4, // 최고 등급이 이 값을 넘을 때마다 상한 -1
+    FREE_MERGES: 3, // 첫 3수 합체 보장
+    TIERS: [
+      { name: "동전", icon: "🪙" },
+      { name: "지폐", icon: "💵" },
+      { name: "카드", icon: "💳" },
+      { name: "지갑", icon: "👛" },
+      { name: "금고", icon: "🔐" },
+      { name: "금괴", icon: "🧈" },
+      { name: "왕관", icon: "👑" },
+    ],
+    SPAWN_TOP_TIER: 2, // 새로 나오는 물건은 이 등급까지만 (0부터)
+    MERGE_POINT: 2, // 합체 1회당
+    CHAIN_BONUS: 3, // 연쇄 1단계당 추가
+  },
+  // ── ㉗ 오늘의 전국 게이지 (기획서 plans/2026-07-30/PLAN-17_오늘의전국게이지.md)
+  //
+  // 게임이 아니라 **전 게임을 묶는 시즌 레이어**로 쓰려는 기획입니다. 여기서는
+  // 그 게이지를 눈으로 보고 직접 기여하는 **참여 화면**으로 구현합니다 → docs/gauge-game.md
+  //
+  // 전역 카운터는 D1 의 단일 문장 증가로 올립니다(`total = total + ?`). SQLite 는 쓰기를
+  // 직렬화하므로 그 자체는 원자적입니다. 대규모에서 걸리는 것은 정확성이 아니라 쓰기
+  // 처리량이고, 그때는 캐시 계층이나 Durable Objects 로 옮겨야 합니다.
+  GAUGE: {
+    mode: "ENDLESS",
+    category: "puzzle", // 반응속도·판단 없음 — 순발력 묶음에 두면 오해를 부릅니다
+    label: "오늘의 전국 게이지",
+    icon: "🇰🇷",
+    accent: "mint",
+    tagline: "다 같이 채우는 오늘의 목표",
+    baseAttempts: 1, // 하루 1회 참여
+    adAttemptsPerDay: 1,
+    boostsPerRun: 1, // 「광고 보고 기여 2배」 (기획서 8장)
+    lives: 0, // 실패 없음
+    TOKENS: 3, // 밀어 넣을 기여 토큰 수
+    TOKEN_VALUE: 1, // 토큰 1개가 게이지에 더하는 값
+    DAILY_TARGET: 500, // 오늘의 전국 목표
+    STAGES: [30, 60, 100], // 해금 단계(%) — 전원 일괄 지급
+    STAGE_POINT: 5,
+    TOKEN_POINT: 2,
+  },
 };
 
 export const ARCADE_GAME_TYPES = Object.keys(ARCADE);

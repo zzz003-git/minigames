@@ -81,7 +81,7 @@ Why: an agent that only ships code leaves the user unable to maintain it. They s
 # 인스턴트 미니게임 — 작업 규칙
 
 Cloudflare Workers + D1. 정적 화면과 API 서버를 한 Worker 에서 서비스한다.
-현재 **20종** (오리지널 4 + 아케이드 16) · [https://minigames.zzz00321.workers.dev](https://minigames.zzz00321.workers.dev)
+현재 **27종** (오리지널 4 + 아케이드 23) · [https://minigames.zzz00321.workers.dev](https://minigames.zzz00321.workers.dev)
 
 기획서는 형제 디렉터리 `../reward-minigame-research/plans/` 에 있다(이 저장소 밖).
 
@@ -172,16 +172,19 @@ DB 마이그레이션은 **필요 없다**. `sessions.game_type` 은 형식 검�
 ### B. 상황별 — 해당하면 반드시
 
 1. **판이 끝나도 남는 상태가 있으면** 마이그레이션 신설
-  (⑮ `majority_questions`, ⑲ `store_state`, ⑳ `scratch_state` 세 건이 선례) +
+  (⑮ `majority_questions`, ⑲ `store_state`, ⑳ `scratch_state`,
+  ㉒ `detective_state`, ㉕ `pour_album`, ㉗ `gauge_daily`+`gauge_contrib` 여섯 건이 선례) +
    `initSecret` / `onRunEnd` 훅 사용 + 배포 시 위의 마이그레이션 순서
 2. **하루 1~2판짜리 게임이면** 클라이언트를 `createEndlessRun({ fresh: false })` 로 둔다.
-  ⑲ 내 가게 채우기 · ⑳ 슥슥 긁기가 그렇다.
+  ⑲ 내 가게 채우기 · ⑳ 슥슥 긁기 · ㉕ 오늘의 한 잔 · ㉗ 전국 게이지가 그렇다.
    새로고침 한 번에 그날을 통째로 잃는다. 기회가 0일 때도 이어받기를 시도해도
    안전하다(기회가 없으면 새 런이 생길 수 없다).
 3. **아케이드 규격을 벗어나면** `docs/<게임>-game.md` 에 구현 명세를 쓴다
   (규격: 1판 10~60초 · 조작은 탭 1종류 · 단일 세션 완결 · 광고 트리거 3종).
    벗어난 항목과 그 이유를 표로 남긴다. 선례: `docs/store-game.md` `docs/majority-game.md`
-   `docs/scratch-game.md`(⑳ — 조작이 탭이 아닌 **문지르기**. 규격을 실제로 벗어난 첫 사례)
+   `docs/scratch-game.md`(⑳ 문지르기) `docs/balance-game.md`(㉔ 좌우 밀기)
+   `docs/pour-game.md`(㉕ 누름 지속) `docs/merge3-game.md`(㉖ 한 판 1~3분)
+   `docs/gauge-game.md`(㉗ 게임이 아닌 플랫폼 레이어)
 
 
 

@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>오늘의 전국 게이지</title>
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#0F1420">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../shared/base.css">
+</head>
+<body class="game game--accent-mint">
+  <div class="app">
+    <header class="topbar" id="header"></header>
+
+    <main class="app__body">
+
+      <!-- 시작 -->
+      <section class="screen is-active" data-screen="ready">
+        <div class="card card--accent card--center card--hero">
+          <div class="card__label card__label--mono">NATIONAL GAUGE</div>
+          <div class="headline">다 같이 채우는 오늘의 목표</div>
+          <p class="footnote">기여 토큰을 <b>밀어 넣어</b> 전국 게이지를 올립니다.<br>단계가 열리면 <b>모두가</b> 보상을 받습니다.</p>
+        </div>
+
+        <div class="stats">
+          <div class="stat stat--accent">
+            <div class="stat__label">내 기여</div>
+            <div class="stat__value" id="bestValue">-</div>
+          </div>
+          <div class="stat">
+            <div class="stat__label">참여</div>
+            <div class="stat__value" id="playsValue">-</div>
+          </div>
+        </div>
+
+        <button class="btn btn--primary" id="startBtn" disabled>&#9654; 참여하기</button>
+
+        <div class="card card--info">
+          <div class="meter">
+            <div class="meter__text">
+              <span class="card__label">오늘 남은 참여</span>
+              <span class="figure figure--md" id="attemptText">-</span>
+            </div>
+            <div class="pips" id="attemptDots"></div>
+          </div>
+        </div>
+
+        <div id="adbar"></div>
+      </section>
+
+      <!-- 플레이 -->
+      <section class="screen" data-screen="play">
+        <div class="hud">
+          <div class="hud__item">
+            <span class="hud__label">전국</span>
+            <span class="hud__value hud__value--accent" id="hud1">0</span>
+          </div>
+          <div class="hud__item">
+            <span class="hud__label">내 기여</span>
+            <span class="hud__value" id="hud2">0</span>
+          </div>
+          <div class="hud__item hud__item--right">
+            <span class="hud__label">남은 토큰</span>
+            <span class="hud__value" id="hud3">0</span>
+          </div>
+        </div>
+
+        <div class="stage stage--tight natgauge" id="gaugeStage">
+          <div class="natgauge__pct" id="gaugePct">0%</div>
+          <div class="natgauge__bar"><div class="natgauge__fill" id="gaugeFill"></div>
+            <div class="natgauge__marks" id="gaugeMarks"></div></div>
+          <div class="natgauge__num" id="gaugeNum">0 / 0</div>
+          <button class="btn btn--primary natgauge__push" id="pushBtn" type="button">토큰 밀어 넣기</button>
+          <div class="natgauge__tokens" id="gaugeTokens"></div>
+        </div>
+
+        <p class="footnote center" id="playHint">토큰을 밀어 넣으세요</p>
+        <!-- 「기여 2배」는 남은 토큰이 있을 때 제안합니다.
+             boostReward 는 항상 #adbarBoost 에 그리므로 그 자리가 여기 있어야 합니다. -->
+        <div id="adbarBoost"></div>
+      </section>
+
+      <!-- 결과 -->
+      <section class="screen" data-screen="over">
+        <div class="card card--accent card--center card--hero celebrate" id="overCard">
+          <div class="badge-round" id="overBadge" aria-hidden="true">&#127472;&#127479;</div>
+          <div class="headline" id="overHeadline">-</div>
+          <div class="footnote" id="overSub">-</div>
+          <div class="figure figure--result" id="overFigure">-</div>
+          <div class="chips" id="overChips"></div>
+          <div class="stats stats--inset" id="overTiles"></div>
+        </div>
+        <div class="card card--info" id="stageCard">
+          <div class="card__label">해금 단계</div>
+          <p class="footnote" id="stageText">-</p>
+        </div>
+
+        <button class="btn btn--primary" id="retryBtn">처음 화면으로</button>
+        <div id="adbarStats"></div>
+        <div class="footnote--dim center" id="overNote"></div>
+      </section>
+
+      <!-- 전체 순위 -->
+      <section class="screen" data-screen="stats">
+        <div class="card">
+          <div class="card__head">
+            <span class="card__title" id="statsTitle">전체 통계</span>
+          </div>
+          <div id="statsChart"></div>
+          <div class="stats mt-md" id="statsTiles"></div>
+        </div>
+
+        <div class="card card--info">
+          <div class="card__label">TOP 20</div>
+          <div class="rank-list mt-sm" id="statsRank"></div>
+        </div>
+
+        <div class="card card--info">
+          <div class="card__label">리그별 기록 수</div>
+          <div class="rank-list mt-sm" id="statsLeagues"></div>
+        </div>
+
+        <button class="btn" id="statsBackBtn">&#8592; 결과로 돌아가기</button>
+      </section>
+
+    </main>
+  </div>
+
+  <script type="module" src="game.js"></script>
+</body>
+</html>

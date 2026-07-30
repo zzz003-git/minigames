@@ -23,6 +23,12 @@ import { spec as dropcatch } from "./dropcatch.js";
 import { spec as store } from "./store.js";
 import { spec as scratch } from "./scratch.js";
 import { spec as stack } from "./stack.js";
+import { spec as detective } from "./detective.js";
+import { spec as rhythm } from "./rhythm.js";
+import { spec as balance } from "./balance.js";
+import { spec as pour } from "./pour.js";
+import { spec as merge3 } from "./merge3.js";
+import { spec as gauge } from "./gauge.js";
 
 export const ARCADE_SPECS = {
   REACTION: reaction,
@@ -42,6 +48,12 @@ export const ARCADE_SPECS = {
   STORE: store,
   SCRATCH: scratch,
   STACK: stack,
+  DETECTIVE: detective,
+  RHYTHM: rhythm,
+  BALANCE: balance,
+  POUR: pour,
+  MERGE3: merge3,
+  GAUGE: gauge,
 };
 
 export const isArcade = (gameType) => Object.hasOwn(ARCADE_SPECS, gameType);
