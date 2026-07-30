@@ -25,6 +25,8 @@
 import { ARCADE_SPECS } from "../src/games/arcade/index.js";
 import { validateSpec } from "../src/lib/arcade.js";
 import { ARCADE } from "../src/lib/config.js";
+// ⑳ 슥슥 긁기 — 카드 생성·연속 일수 규칙은 서버 왕복으로 재현되지 않아 직접 호출합니다
+import { makeCard, streakFor, shiftDay } from "../src/games/arcade/scratch.js";
 
 const BASE = process.env.TEST_BASE ?? "http://127.0.0.1:8787";
 
@@ -152,6 +154,11 @@ const PLAYERS = {
   STORE: {
     // 실패도 목숨도 없고 판이 끝나도 가게가 남는 유일한 게임이라 전용 시나리오를 씁니다.
     custom: storeFlow,
+  },
+
+  SCRATCH: {
+    // 하루 카드 한 장 · 꽝 없음 · 목숨이 "남은 긁기" 를 뜻하는 게임이라 전용 시나리오를 씁니다.
+    custom: scratchFlow,
   },
 
   MAJORITY: {
@@ -965,6 +972,268 @@ function storeShelfRules(game) {
 }
 
 const stageAt = (C, doneShelves) => 1 + Math.floor(doneShelves / C.STAGE_PER_SHELF);
+
+/**
+ * ⑳ 슥슥 긁기 — 전용 시나리오
+ *
+ * 확인하는 것
+ *   ① 긁지 않은 칸의 그림은 내려오지 않고, 힌트는 **색만** 비친다
+ *   ② 없는 칸·이미 긁은 칸은 거부하되 긁기를 소모하지 않는다 (꽝 없음의 전제)
+ *   ③ 새로고침하면 같은 카드를 이어받고 기회를 다시 쓰지 않는다 (하루 한 장)
+ *   ④ 다섯 칸을 다 긁으면 세션이 유지된 채 구원 광고를 기다리고, 보상은 한 칸만 늘린다
+ *   ⑤ 순위 지표는 연속 일수이고, 하루 한 장을 넘겨 시작할 수 없다
+ *   ⑥ 카드를 더 주는 광고는 없다 (기획서 8장 — 광고는 「한 칸 더」 하나뿐)
+ */
+async function scratchFlow(game) {
+  const C = ARCADE[game];
+  const s = await post("/game/session/start", { game_type: game, fresh: true });
+  check(`${game} 시작`, s.data.ok === true, `(${s.data.code ?? "정상"})`);
+  if (!s.data.ok) return;
+
+  assertNoSecretLeak(game, s.data);
+  const sid = s.data.session_id;
+  let round = s.data.round;
+
+  const rub = (cell, extra = {}) =>
+    post("/game/round", {
+      game_type: game,
+      session_id: sid,
+      answer: { cell, strokes: 24 },
+      elapsed_ms: 900,
+      ...extra,
+    });
+
+  check(`${game} 카드 ${C.CELLS}칸`, (round?.cells ?? []).length === C.CELLS, `${round?.cells?.length}칸`);
+  check(`${game} 오늘의 긁기 ${C.SCRATCHES}번`, round?.scratches_left === C.SCRATCHES,
+    `left=${round?.scratches_left}`);
+  check(`${game} 구원 광고 1회`, s.data.max_boosts === 1, `max_boosts=${s.data.max_boosts}`);
+  check(`${game} 제한 시간 없음`, s.data.limit_ms == null, `limit_ms=${s.data.limit_ms}`);
+  check(`${game} 첫 카드는 첫 주 배정`, round?.rookie === true, `rookie=${round?.rookie}`);
+
+  // ── ① 카드 내용 비노출 ─────────────────────────────────────
+  const closed = (round.cells ?? []).filter((c) => !c.open && !c.sure);
+  check(`${game} 긁지 않은 칸의 그림 비노출`,
+    closed.length > 0 && closed.every((c) => c.icon == null && c.name == null),
+    `닫힌 칸 ${closed.length}개`);
+
+  const peeks = (round.cells ?? []).filter((c) => c.peek);
+  check(`${game} 힌트는 색만 비친다`,
+    peeks.length === C.ROOKIE_HINT_CELLS && peeks.every((c) => !c.icon),
+    `힌트 ${peeks.length}칸 · ${peeks.map((c) => c.peek).join(" ")}`);
+  check(`${game} 연속 7일 미만은 완전 공개 힌트 없음`,
+    (round.cells ?? []).every((c) => !c.sure), `연속=${round?.streak}일`);
+
+  // ── ② 잘못된 입력은 거부하되 긁기를 소모하지 않는다 ─────────
+  const bad = await post("/game/round", {
+    game_type: game, session_id: sid, answer: { cell: 99, strokes: 24 }, elapsed_ms: 900,
+  });
+  check(`${game} 없는 칸은 거부하되 판을 끝내지 않음`,
+    bad.data.correct === false && bad.data.game_over !== true, `사유=${bad.data.data?.invalid}`);
+  check(`${game} 거부는 긁기를 소모하지 않음`,
+    bad.data.round?.scratches_left === C.SCRATCHES, `left=${bad.data.round?.scratches_left}`);
+
+  const first = await rub(0);
+  check(`${game} 긁으면 그림과 포인트가 온다`,
+    first.data.correct === true && first.data.data?.icon != null && first.data.data?.points > 0,
+    `${first.data.data?.icon} +${first.data.data?.points}`);
+  check(`${game} 꽝 없음 — 긁기는 늘 성공`, first.data.data?.invalid == null);
+
+  const dup = await rub(0);
+  check(`${game} 이미 긁은 칸은 거부`, dup.data.correct === false && dup.data.game_over !== true,
+    `사유=${dup.data.data?.invalid}`);
+  check(`${game} 거부 뒤에도 남은 긁기가 유지된다`,
+    dup.data.round?.scratches_left === C.SCRATCHES - 1, `left=${dup.data.round?.scratches_left}`);
+
+  // ── ③ 새로고침 재개 ────────────────────────────────────────
+  const again = await post("/game/session/start", { game_type: game });
+  check(`${game} 새로고침하면 같은 카드를 이어받는다`,
+    again.data.resumed === true && again.data.session_id === sid, `resumed=${again.data.resumed}`);
+  check(`${game} 이어받기는 카드를 다시 쓰지 않는다`,
+    again.data.attempts?.used === s.data.attempts?.used,
+    `used ${s.data.attempts?.used} → ${again.data.attempts?.used}`);
+  check(`${game} 이어받아도 긁은 칸이 남아 있다`,
+    (again.data.round?.cells ?? []).filter((c) => c.open).length === 1,
+    `긁은 칸=${(again.data.round?.cells ?? []).filter((c) => c.open).length}`);
+
+  // ── ④ 다섯 칸 소진 → 구원 광고 ─────────────────────────────
+  let last = null;
+  const got = [first.data.data];
+  for (let i = 1; i < C.CELLS && got.length < C.SCRATCHES; i++) {
+    last = await rub(i);
+    if (last.data.code) break;
+    if (last.data.correct) got.push(last.data.data);
+    if (last.data.exhausted || last.data.game_over) break;
+  }
+
+  check(`${game} 모든 칸에 포인트가 있다 (꽝 없음)`,
+    got.length === C.SCRATCHES && got.every((d) => d.points > 0),
+    `${got.map((d) => d.points).join("+")}`);
+  check(`${game} 다 긁으면 세션 유지 + 구원 광고 대기`,
+    last?.data.exhausted === true && last?.data.game_over === false,
+    `can_boost=${last?.data.can_boost}`);
+
+  const extra = await rub(8);
+  check(`${game} 소진 후 추가 응답 거부`, extra.data.code === "RUN_EXHAUSTED", `(${extra.data.code})`);
+
+  const boost = await post("/ad/reward", { trigger: `${game}_BOOST`, session_id: sid });
+  check(`${game} 한 칸 더 긁기 보상`,
+    boost.data.reward?.lives === 1 && boost.data.reward?.round != null,
+    `목숨=${boost.data.reward?.lives}`);
+  check(`${game} 보상은 긁기를 한 칸만 늘린다`, boost.data.reward?.round?.scratches_left === 1,
+    `left=${boost.data.reward?.round?.scratches_left}`);
+
+  const open = (boost.data.reward?.round?.cells ?? []).find((c) => !c.open);
+  const fin = await rub(open?.i ?? 8);
+  check(`${game} 긁기를 다 쓰면 종료`, fin.data.game_over === true, `보상 후 ${got.length + 1}칸`);
+
+  const res = fin.data.result;
+  check(`${game} 결과 확정`, res?.rank_metric != null, `점수=${res?.score} 리그=${res?.bucket}`);
+  if (!res) return;
+
+  const d = fin.data.data ?? {};
+  check(`${game} 순위 지표는 연속 긁기 일수`, res.rank_metric === -(d.streak ?? 0) && res.rank_metric === -1,
+    `metric=${res.rank_metric} 연속=${d.streak}일`);
+  check(`${game} 점수는 획득 포인트`, res.score === d.score && res.score > 0,
+    `score=${res.score} 화면=${d.score}`);
+  check(`${game} 정상 긁기는 이상치 아님`, res.suspect === false, `suspect=${res.suspect}`);
+  check(`${game} 보상 사용 런은 별도 리그`, res.bucket?.endsWith("+") === true, `bucket=${res.bucket}`);
+
+  // ── ⑤·⑥ 하루 한 장 · 카드 추가 광고 없음 ───────────────────
+  const over = await post("/game/session/start", { game_type: game, fresh: true });
+  check(`${game} 하루 한 장을 넘으면 시작 불가`, over.data.ok === false, `(${over.data.code})`);
+
+  const noAd = await post("/ad/reward", { trigger: `${game}_ATTEMPT` });
+  check(`${game} 카드를 더 주는 광고는 없다`, noAd.status === 429, `(${noAd.data.code})`);
+
+  scratchCardRules(game);
+  return res;
+}
+
+/**
+ * 카드 생성·매칭·연속 일수 규칙은 서버 왕복으로 확인할 수 없습니다 —
+ * 카드가 무작위라 "같은 그림 3개" 가 나오는 판이 드물고, 하루 한 장이라 여러 번
+ * 돌려 볼 수도 없습니다. 그래서 이 규칙만 spec 을 직접 호출해 **결정적으로** 검사합니다.
+ */
+function scratchCardRules(game) {
+  const spec = ARCADE_SPECS[game];
+  const C = ARCADE[game];
+  const hueOf = (key) => C.SYMBOLS.find((s) => s.key === key)?.hue;
+
+  // ── 카드 구성 (200장) ──────────────────────────────────────
+  for (const rookie of [false, true]) {
+    const want = rookie ? C.ROOKIE_TARGET_COPIES : C.TARGET_COPIES;
+    let bad = null;
+    let liar = null;
+    for (let t = 0; t < 200 && !bad; t++) {
+      const card = makeCard({ rookie, sureHint: false });
+      const n = {};
+      for (const c of card.cells) n[c.key] = (n[c.key] ?? 0) + 1;
+
+      const reachable = Object.values(n).filter((v) => v >= C.MATCH_NEED);
+      if (
+        card.cells.length !== C.CELLS ||
+        reachable.length !== 1 ||
+        reachable[0] !== want ||
+        card.cells.some((c) => !(c.points > 0)) ||
+        card.hints.length !== (rookie ? C.ROOKIE_HINT_CELLS : C.HINT_CELLS)
+      ) {
+        bad = { cells: card.cells.length, reachable, hints: card.hints.length };
+      }
+      // 힌트가 정직한가 — 비친 색은 그 칸의 실제 심볼의 색이어야 합니다
+      for (const h of card.hints) {
+        if (hueOf(card.cells[h.i].key) !== h.hue) liar = h;
+      }
+    }
+    check(`${game} 카드 구성 (${rookie ? "첫 주" : "일반"})`, bad === null,
+      bad ? JSON.stringify(bad) : `3개 도달 가능 심볼 1종 · 타겟 ${want}개 · 꽝 0칸 (200장)`);
+    check(`${game} 힌트 색은 실제 심볼의 색 (${rookie ? "첫 주" : "일반"})`, liar === null,
+      liar ? JSON.stringify(liar) : "200장 일치");
+  }
+
+  const sure = makeCard({ rookie: false, sureHint: true });
+  check(`${game} 연속 7일째만 완전 공개 힌트`,
+    sure.hints.filter((h) => h.sure).length === 1 &&
+      makeCard({ rookie: false, sureHint: false }).hints.every((h) => !h.sure),
+    `공개 ${sure.hints.filter((h) => h.sure).length}칸`);
+
+  // ── 매칭 배수 ──────────────────────────────────────────────
+  // 손으로 만든 카드입니다. A 만 3개에 도달할 수 있고 나머지는 2개까지입니다
+  // (makeCard 가 지키는 규칙과 같은 모양). 칸마다 10점이라 계산이 눈에 보입니다.
+  const [A, B, D, E] = C.SYMBOLS.map((s) => s.key);
+  const cells = [A, B, A, D, A, B, D, E, E].map((key) => ({ key, points: 10 }));
+
+  const stage = () => ({
+    cells,
+    meta: {
+      ext: {
+        day: "2026-07-30", streak: 1, rookie: false, cards: 0, matches: 0, dayBonus: 0,
+        hints: [], scratches: C.SCRATCHES, opened: [], base: 0,
+        matched: false, matchIcon: null, matchName: null, rough: 0,
+      },
+    },
+  });
+  const judge = (st, cell, strokes = 24, elapsedMs = 900) =>
+    spec.judgeRound({ answer: { cell, strokes }, elapsedMs, runSecret: { cells: st.cells }, meta: st.meta });
+
+  const st = stage();
+  let v = null;
+  for (const i of [0, 2, 4]) v = judge(st, i); // A 세 칸 — 매칭 성립
+  check(`${game} 같은 그림 ${C.MATCH_NEED}개 → 획득 ${C.MATCH_MULTIPLIER}배`,
+    v.data.matched === true && v.data.score === 30 * C.MATCH_MULTIPLIER,
+    `기본 ${v.data.base} → ${v.data.score}점`);
+
+  const after = judge(st, 1); // 네 번째 칸
+  check(`${game} 매칭은 성립한 순간에만 알린다`, v.data.match === true && after.data.match === false);
+  check(`${game} 매칭 뒤에 긁은 칸도 2배로 쌓인다`, after.data.score === 40 * C.MATCH_MULTIPLIER,
+    `기본 ${after.data.base} → ${after.data.score}`);
+
+  const closing = judge(st, 3); // 다섯 번째 칸 — 소진
+  check(`${game} 다섯 번째 긁기가 판을 닫는다`,
+    closing.fatal === true && closing.data.scratches_left === 0 &&
+      closing.data.score === 50 * C.MATCH_MULTIPLIER,
+    `fatal=${closing.fatal} 점수=${closing.data.score}`);
+
+  // 매칭이 없는 판도 획득분은 전액입니다 (꽝 없음)
+  const plain = stage();
+  let p = null;
+  for (const i of [1, 3, 5, 6, 7]) p = judge(plain, i); // B2 · D2 · E1 — 3개가 없습니다
+  check(`${game} 매칭이 없어도 획득분은 전액`, p.data.matched === false && p.data.score === 50,
+    `score=${p.data.score}`);
+  check(`${game} 매칭 ${C.MATCH_NEED - 1}개에서 멈춘 판을 알아본다`,
+    p.data.near?.have === C.MATCH_NEED - 1, `${p.data.near?.name} ${p.data.near?.have}개`);
+
+  // ── 구원 광고 ──────────────────────────────────────────────
+  const boosted = stage();
+  for (const i of [1, 3, 5, 6, 7]) judge(boosted, i);
+  spec.applyBoost(boosted.meta);
+  check(`${game} 보상은 긁기를 한 칸만 늘린다`,
+    boosted.meta.ext.scratches === C.SCRATCHES + 1 && boosted.meta.lives === 1,
+    `긁기 ${boosted.meta.ext.scratches}칸 · 목숨 ${boosted.meta.lives}`);
+  check(`${game} 늘어난 칸을 긁을 수 있다`, judge(boosted, 0).ok === true);
+
+  // ── 긁기 궤적 ──────────────────────────────────────────────
+  const rough = stage();
+  let rv = null;
+  for (const i of [0, 1, 2]) rv = judge(rough, i, 1, 20);
+  check(`${game} 궤적 없는 긁기는 이상치`, rv.suspect === true,
+    `거친 칸 ${rough.meta.ext.rough}/3`);
+
+  const slip = stage();
+  judge(slip, 0, 1, 20);
+  check(`${game} 한 번 미끄러진 것은 이상치 아님`, judge(slip, 1).suspect === false,
+    `거친 칸 ${slip.meta.ext.rough}/2`);
+
+  // ── 연속 긁기 일수 ────────────────────────────────────────
+  check(`${game} 어제 긁었으면 연속 +1`,
+    streakFor({ lastDay: "2026-07-29", streak: 3 }, "2026-07-30") === 4);
+  check(`${game} 하루라도 건너뛰면 연속 1`,
+    streakFor({ lastDay: "2026-07-28", streak: 9 }, "2026-07-30") === 1);
+  check(`${game} 같은 날 두 번째 판은 연속을 두 번 세지 않음`,
+    streakFor({ lastDay: "2026-07-30", streak: 5 }, "2026-07-30") === 5);
+  check(`${game} 첫 방문은 연속 1`, streakFor({ lastDay: null, streak: 0 }, "2026-07-30") === 1);
+  check(`${game} 달을 넘겨도 어제를 안다`, shiftDay("2026-08-01", -1) === "2026-07-31",
+    `2026-08-01 의 어제=${shiftDay("2026-08-01", -1)}`);
+}
 
 async function basketFlow(game) {
   const s = await post("/game/session/start", { game_type: game, fresh: true });

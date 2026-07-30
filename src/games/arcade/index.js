@@ -21,6 +21,7 @@ import { spec as basket } from "./basket.js";
 import { spec as pathline } from "./pathline.js";
 import { spec as dropcatch } from "./dropcatch.js";
 import { spec as store } from "./store.js";
+import { spec as scratch } from "./scratch.js";
 
 export const ARCADE_SPECS = {
   REACTION: reaction,
@@ -38,6 +39,7 @@ export const ARCADE_SPECS = {
   PATHLINE: pathline,
   DROPCATCH: dropcatch,
   STORE: store,
+  SCRATCH: scratch,
 };
 
 export const isArcade = (gameType) => Object.hasOwn(ARCADE_SPECS, gameType);

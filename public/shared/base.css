@@ -2187,6 +2187,117 @@ h1, h2, h3 { margin: 0; font-weight: 700; letter-spacing: -0.01em; }
   filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.4));
 }
 
+/* ── ⑳ 슥슥 긁기 ── */
+
+/* 은박 카드. 카드처럼 보이도록 안쪽에 얇은 테두리를 하나 더 둡니다 */
+.scratchcard {
+  gap: 12px;
+  padding: 14px;
+  background: linear-gradient(160deg, rgba(214, 177, 102, 0.1), rgba(255, 255, 255, 0.02));
+  border-color: var(--border-mid);
+}
+
+.scratchcard__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 22px;
+  font-size: 12px;
+  color: var(--text-sub);
+}
+.scratchcard__label { font-weight: 700; color: var(--text-2); }
+.scratchcard__match { margin-left: auto; }
+
+/* 매칭 성립 — 카드 전체가 한 번 반짝입니다 (기획서 「카드가 반짝하고」) */
+.scratchcard.is-hit { animation: cardhit 900ms ease-out; }
+@keyframes cardhit {
+  0% { box-shadow: 0 0 0 0 rgba(214, 177, 102, 0); }
+  25% { box-shadow: 0 0 0 6px rgba(214, 177, 102, 0.35); }
+  100% { box-shadow: 0 0 0 0 rgba(214, 177, 102, 0); }
+}
+
+.scratchgrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  width: 100%;
+}
+
+/* 한 칸. 아래에 그림, 위에 은박 캔버스가 겹칩니다 */
+.scell {
+  position: relative;
+  aspect-ratio: 1;
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--well-soft);
+  border: 1px solid var(--border-strong);
+}
+
+.scell__face {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  gap: 2px;
+  text-align: center;
+}
+.scell__icon { font-size: 30px; line-height: 1.1; }
+.scell__pt {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+/* 은박. touch-action: none 이라야 문지를 때 페이지가 같이 스크롤되지 않습니다 */
+.scell__foil {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+  cursor: grab;
+  border: 0;
+}
+.scell__foil:focus-visible { outline: 2px solid var(--gold); outline-offset: -2px; }
+
+.scell.is-rubbing .scell__foil { cursor: grabbing; }
+
+/* 서버 판정을 기다리는 동안 — 그림이 도착하기 전의 한 박자 */
+.scell.is-waiting { animation: foilwait 700ms ease-in-out infinite alternate; }
+@keyframes foilwait {
+  from { filter: brightness(1); }
+  to { filter: brightness(1.25); }
+}
+
+/* 그림이 확정되는 순간 (기획서 0-3 「마지막 문지름에 반짝하며 확정」) */
+.scell.is-open {
+  border-color: var(--border-mid);
+  background: var(--surface);
+  animation: reveal 420ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes reveal {
+  0% { transform: scale(0.9); filter: brightness(1.9); }
+  100% { transform: scale(1); filter: brightness(1); }
+}
+
+/* 연속 7일째의 완전 공개 힌트 — 은박 위에 그림을 흐리게 얹습니다 */
+.scell__sure {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  font-size: 26px;
+  opacity: 0.42;
+  pointer-events: none;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.35));
+}
+
+@media (max-width: 380px) {
+  .scratchgrid { gap: 6px; }
+  .scell__icon { font-size: 26px; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;

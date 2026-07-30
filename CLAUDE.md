@@ -1,7 +1,7 @@
 # 인스턴트 미니게임 — 작업 규칙
 
 Cloudflare Workers + D1. 정적 화면과 API 서버를 한 Worker 에서 서비스한다.
-현재 **19종** (오리지널 4 + 아케이드 15) · https://minigames.zzz00321.workers.dev
+현재 **20종** (오리지널 4 + 아케이드 16) · https://minigames.zzz00321.workers.dev
 
 기획서는 형제 디렉터리 `../reward-minigame-research/plans/` 에 있다(이 저장소 밖).
 
@@ -86,14 +86,16 @@ DB 마이그레이션은 **필요 없다**. `sessions.game_type` 은 형식 검�
 ### B. 상황별 — 해당하면 반드시
 
 1. **판이 끝나도 남는 상태가 있으면** 마이그레이션 신설
-   (⑮ `majority_questions`, ⑲ `store_state` 두 건이 선례) +
+   (⑮ `majority_questions`, ⑲ `store_state`, ⑳ `scratch_state` 세 건이 선례) +
    `initSecret` / `onRunEnd` 훅 사용 + 배포 시 위의 마이그레이션 순서
 2. **하루 1~2판짜리 게임이면** 클라이언트를 `createEndlessRun({ fresh: false })` 로 둔다.
+   ⑲ 내 가게 채우기 · ⑳ 슥슥 긁기가 그렇다.
    새로고침 한 번에 그날을 통째로 잃는다. 기회가 0일 때도 이어받기를 시도해도
    안전하다(기회가 없으면 새 런이 생길 수 없다).
 3. **아케이드 규격을 벗어나면** `docs/<게임>-game.md` 에 구현 명세를 쓴다
    (규격: 1판 10~60초 · 조작은 탭 1종류 · 단일 세션 완결 · 광고 트리거 3종).
    벗어난 항목과 그 이유를 표로 남긴다. 선례: `docs/store-game.md` `docs/majority-game.md`
+   `docs/scratch-game.md`(⑳ — 조작이 탭이 아닌 **문지르기**. 규격을 실제로 벗어난 첫 사례)
 
 ### C. 검증 — 전부 통과해야 완료
 
@@ -129,6 +131,8 @@ npm run test:abuse
 | **`lives: 0` + `makeRound`** | spec 계약 검증에서 "런이 끝나지 않습니다" | `endsOnDone: true` 를 선언한다 |
 | **"한 번이라도 어긋나면 이상치"** | 실수 한 번으로 판 전체가 순위에서 빠짐 | 비율로 판정한다(`hasImpossibleTiming` 방식) |
 | **테스트를 합치다 검사가 조용히 안 돌 수 있다** | `if (...)` 안에 들어간 check 가 기회 부족으로 미실행 | 통과 로그에 그 항목이 **찍히는지** 눈으로 확인 |
+| **실패 없는 게임에 `lives: 0` 을 쓰면 광고 보상을 붙일 자리가 없다** | 판이 끝나는 순간 세션이 닫혀 `_BOOST` 가 `getOpenSession` 에서 막힘 | 끝을 **소진**으로 보고 `lives: 1` + 마지막 판정에 `fatal` (⑳). 화면에는 실패로 표시하지 않는다 |
+| **화면이 바뀌는 순간의 제스처가 탭을 멈춘다** | 마지막 입력으로 화면이 넘어가도 손은 아직 닿아 있다. 숨은 요소의 rect 는 0×0 → 좌표가 Infinity → 보간 루프가 무한 (⑳ 에서 실제로 걸림) | rect 가 0 이면 좌표를 만들지 말고 멈춘다 + 보간 횟수에 상한. **드래그·문지르기 게임은 반드시 화면 전환 순간을 손을 대고 확인**한다 |
 
 ---
 
