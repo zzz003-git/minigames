@@ -1,4 +1,4 @@
-# 인스턴트 컨텐츠 — 미니게임 20종
+# 인스턴트 컨텐츠 — 미니게임 21종
 
 Cloudflare Workers 하나에서 정적 화면과 API 서버를 함께 서비스하고, 데이터는 D1(SQLite)에 저장합니다.
 
@@ -11,7 +11,7 @@ Cloudflare Workers 하나에서 정적 화면과 API 서버를 함께 서비스�
 | ③ | 타이핑 스피드 | WPM 또는 CPM × 정확도% |
 | ④ | 숫자 기억력 | 맞힌 자리 수 → 동일하면 소요 시간 |
 
-**아케이드 16종** — ⑤~⑭는 기획서 [`docs/arcade-10-games.md`](docs/arcade-10-games.md) 기준.
+**아케이드 17종** — ⑤~⑭는 기획서 [`docs/arcade-10-games.md`](docs/arcade-10-games.md) 기준.
 앱에 탑재되는 **광고 리워드용** 미니게임입니다. 한 판이 10~60초로 짧고, 규칙이 한 문장이며,
 실패 지점이 명확해서 "광고 보고 이어하기" 가 자연스럽게 붙습니다.
 
@@ -33,6 +33,7 @@ Cloudflare Workers 하나에서 정적 화면과 API 서버를 함께 서비스�
 | ⑱ | 와르르 받기 | `dropcatch` | 45초~2분 | 점수 ↑ |
 | ⑲ | 내 가게 채우기 | `store` | 하루 1판 | 가게 크기 ↑ |
 | ⑳ | 슥슥 긁기 | `scratch` | 하루 1장 | 연속 긁기 일수 ↑ |
+| ㉑ | 퍼펙트 스택 | `stack` | 무한 | 도달 층수 ↑ |
 
 **⑳ 슥슥 긁기** 는 기획서 `../reward-minigame-research/plans/2026-07-30/PLAN-14_슥슥긁기.md` 기준입니다.
 매일 아침 오는 은박 카드 9칸 중 5칸을 문질러 긁고 같은 그림 3개를 모읍니다. 자사 배포분에
@@ -104,7 +105,7 @@ Cloudflare Workers 하나에서 정적 화면과 API 서버를 함께 서비스�
 정답이 미리 존재하지 않으므로 정답 아카이브가 성립하기 어렵고, 팽팽한 문항일수록
 점수가 높아 쏠린 문항을 외워 오는 것의 실익이 가장 작습니다.
 
-아케이드 16종의 광고 트리거는 게임마다 3종으로 같습니다 —
+아케이드 17종의 광고 트리거는 게임마다 3종으로 같습니다 —
 `{GAME}_ATTEMPT`(기회 +1, 하루 5회) · `{GAME}_BOOST`(런 중 보상, 1런당 2회) ·
 `{GAME}_STATS`(전체 순위 열람). 보상을 쓴 런은 bucket 에 `+` 가 붙어 별도 리그로 집계되므로
 순위표가 광고 시청량 순위가 되지 않습니다.
@@ -114,7 +115,7 @@ Cloudflare Workers 하나에서 정적 화면과 API 서버를 함께 서비스�
 ```
 minigames/
 ├── public/                  정적 파일 (Workers 정적 자산으로 그대로 서비스)
-│   ├── index.html           허브 (오리지널 4종 + 아케이드 16종)
+│   ├── index.html           허브 (오리지널 4종 + 아케이드 17종)
 │   ├── shared/              공통 모듈
 │   │   ├── base.css         디자인 시스템
 │   │   ├── api.js           API 호출 래퍼
@@ -129,11 +130,11 @@ minigames/
 │       └── reaction/ oddcolor/ sequence/ numtap/ mathrush/
 │           stroop/ ringstop/ countdot/ cardpair/ rpsflash/
 │           majority/ basket/ pathline/ dropcatch/ store/
-│           scratch/                                        ⑤~⑳
+│           scratch/ stack/                                 ⑤~㉑
 ├── src/                     Worker (API 서버)
 │   ├── index.js             라우터
 │   ├── games/               게임별 서버 로직
-│   │   └── arcade/          ⑤~⑳ spec + 레지스트리
+│   │   └── arcade/          ⑤~㉑ spec + 레지스트리
 │   ├── routes/              세션·광고·통계 라우트
 │   └── lib/                 설정·암호화·DB·검증 유틸
 │       └── arcade.js        아케이드 런 엔진
@@ -309,7 +310,7 @@ node scripts/gen-majority-questions.mjs
 `AD_MODE=live` 로 바꿨는데 검증 구현이 비어 있으면 조용히 통과하지 않고 `501` 로 실패합니다
 (미구현 상태로 실서비스에 나가 보상이 무료 지급되는 것을 막는 안전장치).
 
-게임이 20개로 늘었지만 **연동 작업량은 그대로 두 파일**입니다. 아케이드 13종의 트리거는
+게임이 21개로 늘었지만 **연동 작업량은 그대로 두 파일**입니다. 아케이드 13종의 트리거는
 접미사 규칙(`_STATS` → Interstitial, 나머지 → Rewarded)으로 처리되므로 목록을 손으로
 관리하지 않습니다.
 

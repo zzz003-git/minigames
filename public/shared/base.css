@@ -2187,6 +2187,34 @@ h1, h2, h3 { margin: 0; font-weight: 700; letter-spacing: -0.01em; }
   filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.4));
 }
 
+/* ── ㉑ 퍼펙트 스택 ── */
+
+/* 무대 전체가 버튼이다 — 조작이 탭 하나뿐이라 조준점을 따로 누를 필요가 없다 */
+.stacktower {
+  width: 100%;
+  padding: 0;
+  overflow: hidden;
+  /* .stage 는 남은 높이를 다 먹는다(flex: 1). 여기서는 캔버스에 딱 맞아야
+     무대 안에 빈 띠가 생기지 않는다 */
+  flex: 0 0 auto;
+  min-height: 0;
+  cursor: pointer;
+  -webkit-user-select: none;
+  user-select: none;
+  touch-action: manipulation; /* 두 번 탭 확대로 조준이 끊기지 않게 */
+  background: linear-gradient(180deg, rgba(233, 146, 127, 0.05), transparent 55%), var(--surface);
+}
+.stacktower:active { border-color: var(--coral); }
+.stacktower:focus-visible { outline: 2px solid var(--coral); outline-offset: 2px; }
+
+.stacktower__canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  /* 탑은 바닥에서 위로 자란다 — 세로가 길면 초반에 빈 공간만 보인다 */
+  aspect-ratio: 1 / 1;
+}
+
 /* ── ⑳ 슥슥 긁기 ── */
 
 /* 은박 카드. 카드처럼 보이도록 안쪽에 얇은 테두리를 하나 더 둡니다 */

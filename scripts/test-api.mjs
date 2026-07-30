@@ -27,6 +27,8 @@ import { validateSpec } from "../src/lib/arcade.js";
 import { ARCADE } from "../src/lib/config.js";
 // ⑳ 슥슥 긁기 — 카드 생성·연속 일수 규칙은 서버 왕복으로 재현되지 않아 직접 호출합니다
 import { makeCard, streakFor, shiftDay } from "../src/games/arcade/scratch.js";
+// ㉑ 퍼펙트 스택 — 블록 위치는 서버와 **같은 식**으로 계산해야 탭 시각을 잡을 수 있습니다
+import { blockX } from "../src/games/arcade/stack.js";
 
 const BASE = process.env.TEST_BASE ?? "http://127.0.0.1:8787";
 
@@ -159,6 +161,33 @@ const PLAYERS = {
   SCRATCH: {
     // 하루 카드 한 장 · 꽝 없음 · 목숨이 "남은 긁기" 를 뜻하는 게임이라 전용 시나리오를 씁니다.
     custom: scratchFlow,
+  },
+
+  STACK: {
+    // 블록이 목표 지점에 올 때까지 **실제로 기다린 뒤** 탭합니다 (⑪ 링 스톱과 같은 방식).
+    // 위치는 화면에 보이는 값(왕복 시간·위상·폭)으로만 계산합니다 — 사람과 같은 정보 상태입니다.
+    answer: async (round, correct) => {
+      const room = Math.max(0, 1 - round.width);
+      const [sl, sr] = round.support;
+      // 맞힐 때는 받침 중앙, 틀릴 때는 받침을 거의 벗어난 자리를 노립니다
+      const wantX = correct
+        ? (sl + sr) / 2 - round.width / 2
+        : Math.min(room, Math.max(0, sr - 0.01));
+      const tri = room > 0 ? Math.min(1, Math.max(0, wantX / room)) : 0;
+
+      // 삼각파의 오름 구간에서 목표 위치에 도달하는 첫 시각
+      const phaseWant = tri / 2;
+      const cur = ((round.phase0 % 1) + 1) % 1;
+      let dPhase = phaseWant - cur;
+      while (dPhase < 0.02) dPhase += 1; // 이미 지난 위상이면 다음 왕복을 기다립니다
+      const waitMs = Math.round(dPhase * round.sweep_ms);
+
+      const t0 = Date.now();
+      await sleep(waitMs);
+      const elapsed = Date.now() - t0;
+      const x = blockX(elapsed, round.sweep_ms, round.phase0, round.width);
+      return { answer: { x: Number(x.toFixed(3)) }, extra: { elapsed_ms: elapsed } };
+    },
   },
 
   MAJORITY: {

@@ -1,7 +1,87 @@
+Behavioral guidelines to reduce common LLM coding mistakes. Merge with project-specific instructions as needed.
+
+**Scope:** Only what current models still get wrong. If the model or the harness already handles something reliably, it doesn't belong here - a rule that restates default behavior burns context and buys nothing.
+
+**Tradeoff:** These guidelines bias toward caution over speed. For trivial tasks, use judgment.
+
+## **1. State Assumptions, Then Proceed**
+
+**Say what you assumed. Keep going. Default the rest.**
+
+Before implementing:
+
+- State your assumptions in one line, then start.
+- If multiple interpretations exist, pick the likeliest and say which one you picked.
+- If a simpler approach exists, say so while doing the work - not as a question that blocks it.
+- Ask only when the answer changes what gets built, not how well, and the wrong choice can't be cheaply undone.
+
+A stated assumption gets corrected in seconds. A question costs a round-trip and hands the work back to the user. If you're about to ask a second question in one task, you're doing it wrong.
+
+## **2. Simplicity First**
+
+**Minimum code that solves the problem. Nothing speculative.**
+
+- No features beyond what was asked.
+- No abstractions for single-use code.
+- No "flexibility" or "configurability" that wasn't requested.
+- No error handling for impossible scenarios.
+- If you write 200 lines and it could be 50, rewrite it.
+
+Ask yourself: "Would a senior engineer say this is overcomplicated?" If yes, simplify.
+
+## **3. Surgical Changes**
+
+**Touch only what you must. Clean up only your own mess.**
+
+When editing existing code:
+
+- Don't "improve" adjacent code, comments, or formatting.
+- Don't refactor things that aren't broken.
+- Match existing style, even if you'd do it differently.
+- If you notice unrelated dead code, mention it - don't delete it.
+
+When your changes create orphans:
+
+- Remove imports/variables/functions that YOUR changes made unused.
+- Don't remove pre-existing dead code unless asked.
+
+The test: Every changed line should trace directly to the user's request.
+
+## **4. Verify Before Done**
+
+**If you touched code, run the check before saying "done" - and report what actually ran.**
+
+- `npm test`, `pytest`, `cargo test`, whatever the project uses. Smallest relevant check first, broader checks when risk is high.
+- No test setup? At minimum, verify the project builds or typechecks.
+- Report the exact command and its result: "passed", "failed with X", or "not run because Y".
+- Never write "done", "fixed", or "works" unless a concrete check backs it.
+- Run it proactively, before the user signals "끝", "완료", "다 됐어".
+
+This is the step LLMs skip most often. Treat it as non-negotiable.
+
+## **5. Teach One Thing On The Way Out**
+
+**End with what the user would want to know next time. Two or three sentences.**
+
+When the work is done:
+
+- Name the one concept, tradeoff, or gotcha that actually mattered here.
+- Teach what the code doesn't show: why this way over the obvious one, which default you leaned on, what breaks first at scale.
+- If it needs a heading, it's too long. If it restates the diff, delete it.
+- Skip it when the change is trivial, or when the user is the one who taught you the thing.
+
+Why: an agent that only ships code leaves the user unable to maintain it. They should finish each task slightly more able to do it without you.
+
+---
+
+**These guidelines are working if:** fewer unnecessary changes in diffs, fewer rewrites due to overcomplication, and stated assumptions get corrected early instead of surfacing as mistakes late.
+
+
+
 # 인스턴트 미니게임 — 작업 규칙
 
 Cloudflare Workers + D1. 정적 화면과 API 서버를 한 Worker 에서 서비스한다.
-현재 **20종** (오리지널 4 + 아케이드 16) · https://minigames.zzz00321.workers.dev
+현재 **20종** (오리지널 4 + 아케이드 16) · [https://minigames.zzz00321.workers.dev](https://minigames.zzz00321.workers.dev)
 
 기획서는 형제 디렉터리 `../reward-minigame-research/plans/` 에 있다(이 저장소 밖).
 
@@ -12,14 +92,16 @@ Cloudflare Workers + D1. 정적 화면과 API 서버를 한 Worker 에서 서비
 `main` 에 push 하면 Cloudflare Workers Builds 가 **자동 배포**한다.
 `.github/workflows` 가 없어서 저장소만 봐서는 보이지 않는다.
 
-- **`npm run deploy`(wrangler deploy)를 직접 실행하지 않는다.** 수동 배포 후 push 하면
-  push 한 번에 버전이 두 개 생긴다.
+- `npm run deploy`**(wrangler deploy)를 직접 실행하지 않는다.** 수동 배포 후 push 하면
+push 한 번에 버전이 두 개 생긴다.
 - **push 전에는 반드시 사용자 승인을 받는다.** 커밋까지는 로컬이라 멈출 필요가 없다.
-  승인을 물을 때 "실서비스에 즉시 반영됩니다" 를 명시한다.
-- 마이그레이션이 있으면 **`npm run db:migrate`(--remote)가 push 보다 먼저**다.
-  순서가 바뀌면 새 게임의 세션 시작이 전부 500 이 된다.
+승인을 물을 때 "실서비스에 즉시 반영됩니다" 를 명시한다.
+- 마이그레이션이 있으면 `npm run db:migrate`**(--remote)가 push 보다 먼저**다.
+순서가 바뀌면 새 게임의 세션 시작이 전부 500 이 된다.
 
 ---
+
+
 
 ## 작업 보고 방식 — 시작 전에 범위를 먼저 알린다
 
@@ -56,29 +138,33 @@ Cloudflare Workers + D1. 정적 화면과 API 서버를 한 Worker 에서 서비
 
 ---
 
+
+
 ## 신규 아케이드 게임을 추가할 때 — 필수 (요청에 안 적혀 있어도 전부 한다)
+
+
 
 ### A. 코드 (7개 · 앞의 5개는 `docs/arcade-10-games.md` §9.1 과 동일)
 
-1. **`src/lib/config.js`** 의 `ARCADE` 에 항목 추가
-   - 필수 필드: `mode` `category` `label` `icon` `accent` `tagline`
-     `baseAttempts` `adAttemptsPerDay` `boostsPerRun`
-   - `category` 는 **`"action"` 또는 `"puzzle"`** — 빠뜨리면 spec 계약 검증이 막는다.
-     기준은 *정답을 알아내야 하는가(puzzle) / 정답은 보이는데 제때 해내야 하는가(action)*.
-   - ENDLESS 면 `lives` 필수. `lives: 0`(실패 없는 게임)이면 spec 에 `endsOnDone: true`.
-   - `accent` 는 base.css 에 있는 값만: `coral` · `gold` · `mint`
-2. **`src/games/arcade/<게임>.js`** — spec (라운드 생성과 판정만)
-3. **`src/games/arcade/index.js`** — 레지스트리 등록
-4. **`public/games/<게임>/`** — `index.html` + `game.js`
-   - 화면 골격 id 약속은 `public/shared/run.js` 상단 주석
-   - ENDLESS 는 `createEndlessRun` 을 쓴다
-5. **`scripts/test-api.mjs`** 의 `PLAYERS` 에 항목 추가
-   - 없으면 「테스트 커버리지」가 **일부러 실패**한다. 테스트 없는 게임을 막는 장치다.
-6. **`public/index.html`** — 허브 카드를 **자기 category 묶음(`arcade-band`) 안**에 넣고,
-   그 묶음의 `ACTION n` / `PUZZLE n` 숫자와 `aria-label`, 섹션의 「짧은 판 n종」,
+1. `src/lib/config.js` 의 `ARCADE` 에 항목 추가
+  - 필수 필드: `mode` `category` `label` `icon` `accent` `tagline`
+   `baseAttempts` `adAttemptsPerDay` `boostsPerRun`
+  - `category` 는 `"action"` **또는** `"puzzle"` — 빠뜨리면 spec 계약 검증이 막는다.
+  기준은 *정답을 알아내야 하는가(puzzle) / 정답은 보이는데 제때 해내야 하는가(action)*.
+  - ENDLESS 면 `lives` 필수. `lives: 0`(실패 없는 게임)이면 spec 에 `endsOnDone: true`.
+  - `accent` 는 base.css 에 있는 값만: `coral` · `gold` · `mint`
+2. `src/games/arcade/<게임>.js` — spec (라운드 생성과 판정만)
+3. `src/games/arcade/index.js` — 레지스트리 등록
+4. `public/games/<게임>/` — `index.html` + `game.js`
+  - 화면 골격 id 약속은 `public/shared/run.js` 상단 주석
+  - ENDLESS 는 `createEndlessRun` 을 쓴다
+5. `scripts/test-api.mjs` 의 `PLAYERS` 에 항목 추가
+  - 없으면 「테스트 커버리지」가 **일부러 실패**한다. 테스트 없는 게임을 막는 장치다.
+6. `public/index.html` — 허브 카드를 **자기 category 묶음(**`arcade-band`**) 안**에 넣고,
+  그 묶음의 `ACTION n` / `PUZZLE n` 숫자와 `aria-label`, 섹션의 「짧은 판 n종」,
    `<meta name="description">` 의 종수를 함께 고친다.
-7. **`README.md`** — 표 1행 + 설명 문단 + 종수(제목·아케이드 n종·광고 트리거 절·
-   폴더 구조 2곳·「게임이 n개로 늘었지만」)
+7. `README.md` — 표 1행 + 설명 문단 + 종수(제목·아케이드 n종·광고 트리거 절·
+  폴더 구조 2곳·「게임이 n개로 늘었지만」)
 
 DB 마이그레이션은 **필요 없다**. `sessions.game_type` 은 형식 검사이고 허용 목록의
 단일 출처는 `GAME_TYPES` 다. (예외는 아래 B-1)
@@ -86,16 +172,18 @@ DB 마이그레이션은 **필요 없다**. `sessions.game_type` 은 형식 검�
 ### B. 상황별 — 해당하면 반드시
 
 1. **판이 끝나도 남는 상태가 있으면** 마이그레이션 신설
-   (⑮ `majority_questions`, ⑲ `store_state`, ⑳ `scratch_state` 세 건이 선례) +
+  (⑮ `majority_questions`, ⑲ `store_state`, ⑳ `scratch_state` 세 건이 선례) +
    `initSecret` / `onRunEnd` 훅 사용 + 배포 시 위의 마이그레이션 순서
 2. **하루 1~2판짜리 게임이면** 클라이언트를 `createEndlessRun({ fresh: false })` 로 둔다.
-   ⑲ 내 가게 채우기 · ⑳ 슥슥 긁기가 그렇다.
+  ⑲ 내 가게 채우기 · ⑳ 슥슥 긁기가 그렇다.
    새로고침 한 번에 그날을 통째로 잃는다. 기회가 0일 때도 이어받기를 시도해도
    안전하다(기회가 없으면 새 런이 생길 수 없다).
 3. **아케이드 규격을 벗어나면** `docs/<게임>-game.md` 에 구현 명세를 쓴다
-   (규격: 1판 10~60초 · 조작은 탭 1종류 · 단일 세션 완결 · 광고 트리거 3종).
+  (규격: 1판 10~60초 · 조작은 탭 1종류 · 단일 세션 완결 · 광고 트리거 3종).
    벗어난 항목과 그 이유를 표로 남긴다. 선례: `docs/store-game.md` `docs/majority-game.md`
    `docs/scratch-game.md`(⑳ — 조작이 탭이 아닌 **문지르기**. 규격을 실제로 벗어난 첫 사례)
+
+
 
 ### C. 검증 — 전부 통과해야 완료
 
@@ -107,11 +195,13 @@ npm run test:abuse
 ```
 
 - **브라우저 확인은 생략하지 않는다.** API 가 통과해도 화면 배선(id 오타, 이벤트 미연결)은
-  테스트가 못 잡는다. 10종을 만들며 나온 버그의 절반이 여기서 나왔다.
-- **허브 마크업과 `config.category` 를 대조**한다 — 카드 수·묶음별 개수·링크한 화면의 실재.
+테스트가 못 잡는다. 10종을 만들며 나온 버그의 절반이 여기서 나왔다.
+- **허브 마크업과** `config.category` **를 대조**한다 — 카드 수·묶음별 개수·링크한 화면의 실재.
 - **무작위 때문에 서버 왕복으로 재현되지 않는 규칙**은 spec 을 직접 호출해 결정적으로
-  검사한다 (⑱ 낙하 채점, ⑲ 선반 완성이 그 예). 로그에 "완성 0줄" 처럼 **한 번도 실행되지
-  않은 경로**가 보이면 그건 통과가 아니라 미검증이다.
+검사한다 (⑱ 낙하 채점, ⑲ 선반 완성이 그 예). 로그에 "완성 0줄" 처럼 **한 번도 실행되지
+않은 경로**가 보이면 그건 통과가 아니라 미검증이다.
+
+
 
 ### D. 마무리
 
@@ -119,22 +209,29 @@ npm run test:abuse
 
 ---
 
+
+
 ## 반복해서 물린 함정
 
 `docs/arcade-10-games.md` §9.2 에 더 있다. 아래는 그 뒤에 실제로 겪은 것들.
 
-| 함정 | 실제 증상 | 대응 |
-|---|---|---|
-| **판정이 틀려도 라운드가 올라간다** (`arcade.js` 의 `meta.round += 1`) | 칸을 잘못 눌렀더니 그 문제/상품이 사라짐 | 재발급이 필요하면 라운드 번호 말고 **cursor** 로 짚는다 (⑯·⑲) |
-| **ENDLESS 는 `result.detail` 이 비어 있다** | 결과 화면이 전부 0 으로 나옴 | 필요한 값을 `judgeRound` 의 `data` 에 실어 보낸다 (`detailOf` 는 DB 기록용) |
-| **rAF 는 백그라운드에서 멈춘다** | 앱을 잠깐 벗어났다 오면 기록이 이상치로 걸림 | 종료는 `run.js` 의 `countdown`(setTimeout). 밀려서 늦게 판정된 건 **시각을 신고하지 않는다** |
-| **`lives: 0` + `makeRound`** | spec 계약 검증에서 "런이 끝나지 않습니다" | `endsOnDone: true` 를 선언한다 |
-| **"한 번이라도 어긋나면 이상치"** | 실수 한 번으로 판 전체가 순위에서 빠짐 | 비율로 판정한다(`hasImpossibleTiming` 방식) |
-| **테스트를 합치다 검사가 조용히 안 돌 수 있다** | `if (...)` 안에 들어간 check 가 기회 부족으로 미실행 | 통과 로그에 그 항목이 **찍히는지** 눈으로 확인 |
-| **실패 없는 게임에 `lives: 0` 을 쓰면 광고 보상을 붙일 자리가 없다** | 판이 끝나는 순간 세션이 닫혀 `_BOOST` 가 `getOpenSession` 에서 막힘 | 끝을 **소진**으로 보고 `lives: 1` + 마지막 판정에 `fatal` (⑳). 화면에는 실패로 표시하지 않는다 |
-| **화면이 바뀌는 순간의 제스처가 탭을 멈춘다** | 마지막 입력으로 화면이 넘어가도 손은 아직 닿아 있다. 숨은 요소의 rect 는 0×0 → 좌표가 Infinity → 보간 루프가 무한 (⑳ 에서 실제로 걸림) | rect 가 0 이면 좌표를 만들지 말고 멈춘다 + 보간 횟수에 상한. **드래그·문지르기 게임은 반드시 화면 전환 순간을 손을 대고 확인**한다 |
+
+| 함정                                                      | 실제 증상                                                                                     | 대응                                                                                |
+| ------------------------------------------------------- | ----------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| **판정이 틀려도 라운드가 올라간다** (`arcade.js` 의 `meta.round += 1`) | 칸을 잘못 눌렀더니 그 문제/상품이 사라짐                                                                   | 재발급이 필요하면 라운드 번호 말고 **cursor** 로 짚는다 (⑯·⑲)                                        |
+| **ENDLESS 는** `result.detail` **이 비어 있다**               | 결과 화면이 전부 0 으로 나옴                                                                         | 필요한 값을 `judgeRound` 의 `data` 에 실어 보낸다 (`detailOf` 는 DB 기록용)                       |
+| **rAF 는 백그라운드에서 멈춘다**                                   | 앱을 잠깐 벗어났다 오면 기록이 이상치로 걸림                                                                 | 종료는 `run.js` 의 `countdown`(setTimeout). 밀려서 늦게 판정된 건 **시각을 신고하지 않는다**             |
+| `lives: 0` **+** `makeRound`                            | spec 계약 검증에서 "런이 끝나지 않습니다"                                                                | `endsOnDone: true` 를 선언한다                                                         |
+| **"한 번이라도 어긋나면 이상치"**                                   | 실수 한 번으로 판 전체가 순위에서 빠짐                                                                    | 비율로 판정한다(`hasImpossibleTiming` 방식)                                                |
+| **테스트를 합치다 검사가 조용히 안 돌 수 있다**                           | `if (...)` 안에 들어간 check 가 기회 부족으로 미실행                                                     | 통과 로그에 그 항목이 **찍히는지** 눈으로 확인                                                      |
+| **실패 없는 게임에** `lives: 0` **을 쓰면 광고 보상을 붙일 자리가 없다**      | 판이 끝나는 순간 세션이 닫혀 `_BOOST` 가 `getOpenSession` 에서 막힘                                        | 끝을 **소진**으로 보고 `lives: 1` + 마지막 판정에 `fatal` (⑳). 화면에는 실패로 표시하지 않는다                |
+| **화면이 바뀌는 순간의 제스처가 탭을 멈춘다**                             | 마지막 입력으로 화면이 넘어가도 손은 아직 닿아 있다. 숨은 요소의 rect 는 0×0 → 좌표가 Infinity → 보간 루프가 무한 (⑳ 에서 실제로 걸림) | rect 가 0 이면 좌표를 만들지 말고 멈춘다 + 보간 횟수에 상한. **드래그·문지르기 게임은 반드시 화면 전환 순간을 손을 대고 확인**한다 |
+| **연타의 다음 탭이 새 화면의 버튼을 누른다**                              | ㉑ 에서 첫 탭이 실패해 `[pause]` 가 뜨자 **두 번째 탭이 「끝내고 결과 보기」를 눌러 0층으로 종료**됐다. `[over]` 의 「다시 도전하기」가 눌리면 **하루 기회가 날아간다** | 화면을 바꾼 직후 400ms 동안 그 화면의 버튼을 `pointer-events: none` 으로 둔다. 기준은 손이 화면에 머무는지가 아니라 **다음 입력이 몇 ms 뒤에 오는지**다 — 연타 게임은 조작이 「탭 1종류」여도 대상이다 |
+
 
 ---
+
+
 
 ## 게임을 제거할 때
 
@@ -143,6 +240,8 @@ npm run test:abuse
 DB 의 기존 기록(`results`)은 지우지 않는다 — 조회 경로만 사라진다.
 
 ---
+
+
 
 ## 조사·기획 저장소
 
