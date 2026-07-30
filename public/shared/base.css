@@ -2232,6 +2232,11 @@ h1, h2, h3 { margin: 0; font-weight: 700; letter-spacing: -0.01em; }
   overflow: hidden;
   background: var(--well-soft);
   border: 1px solid var(--border-strong);
+
+  /* 마우스로 문지르면 드래그가 텍스트 선택으로도 잡혀 포인트 숫자가 파랗게 반전됩니다.
+     긁는 면은 글을 고르는 곳이 아니므로 선택 자체를 끕니다. */
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 .scell__face {

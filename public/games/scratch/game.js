@@ -39,8 +39,15 @@ const OCC = 8;
 /** 키보드 한 번 누름당 벗겨지는 비율 (4번 = COMMIT_AT) */
 const KEY_STEP = 0.14;
 
-/** rank_metric = -(연속 일수) */
-const formatBest = (metric) => `${Math.max(1, -metric)}일 연속`;
+/**
+ * rank_metric = -(연속 일수)
+ *
+ * 두 가지로 씁니다. 좁은 통계 타일(stat)에 「1일 연속」을 넣으면 한 줄에 들어가지 않아
+ * 「1일 연…」으로 잘립니다 — 타일에는 짧은 쪽을, 문장·순위표에는 온전한 쪽을 씁니다.
+ */
+const streakDays = (metric) => Math.max(1, -metric);
+const formatBest = (metric) => `${streakDays(metric)}일 연속`;
+const formatDays = (metric) => `${streakDays(metric)}일`;
 
 const HUE_HEX = { gold: "#E8C65C", blue: "#6FA8F5", red: "#F0705C" };
 const HUE_NAME = { gold: "노란빛", blue: "푸른빛", red: "붉은빛" };
@@ -89,7 +96,7 @@ async function loadReady() {
       base: st.base_attempts,
       best: st.my_best,
       plays: st.my_plays,
-      formatBest,
+      formatBest: formatDays, // 「최장 연속」 타일 — 좁아서 짧은 쪽을 씁니다
     });
 
     // 공통 문구를 이 게임의 말로 바꿉니다
@@ -537,7 +544,30 @@ function showResumedPause(round) {
   });
 }
 
+/**
+ * 마지막 칸을 긁으면 그 자리에 곧바로 [pause] 화면이 오고, **손은 아직 문지르고
+ * 있습니다.** 그 잔여 동작이 「광고 보고 이어하기」 카드를 눌러 광고가 의도 없이
+ * 열립니다(실서비스에서 실제로 겪었습니다). 기획서 8장의 「광고는 선택형」이
+ * 지켜지지 않는 자리라, 화면이 바뀐 직후 잠깐 카드를 못 누르게 막습니다.
+ *
+ * 공용 run.js 가 아니라 여기서 처리합니다 — pauseText 는 showPause 가 화면을 바꾸기
+ * 전에 부르고, 보상 카드는 그 뒤에 같은 host 에 그려지므로 host 의 인라인 스타일이
+ * 그대로 살아 있습니다(clearRewardCard 는 자식만 비웁니다).
+ */
+const ARM_DELAY_MS = 350;
+
+function armBoostLater() {
+  const host = $("#adbarBoost");
+  if (!host) return;
+  host.style.pointerEvents = "none";
+  setTimeout(() => {
+    host.style.pointerEvents = "";
+  }, ARM_DELAY_MS);
+}
+
 function pauseText() {
+  armBoostLater();
+
   const d = lastData ?? {};
   const near = d.near;
   const nearMiss = !d.matched && (near?.have ?? 0) >= (d.need ?? 3) - 1;
@@ -612,6 +642,16 @@ async function showStats() {
         mine: lastResult?.rank_metric ?? null,
         caption: "연속 긁기 일수 분포 · 왼쪽이 길게 이어옴",
         formatBest,
+        // 기본 타일은 formatBest 를 쓰는데 「내 최고」 칸이 좁아 잘립니다 — 짧은 쪽으로 바꿉니다
+        tiles: [
+          {
+            label: "내 최고",
+            value: stats.my_best == null ? "—" : formatDays(stats.my_best),
+            accent: true,
+          },
+          { label: "내 플레이", value: `${comma(stats.my_plays ?? 0)}판` },
+          { label: "전체 기록", value: `${comma(stats.distribution?.count ?? 0)}건` },
+        ],
       });
       loadRankList(GAME, lastResult?.bucket, formatBest);
       clearRewards();
