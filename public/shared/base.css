@@ -2708,6 +2708,122 @@ button.sicon:active { transform: scale(0.94); }
   .scell__icon { font-size: 26px; }
 }
 
+/* ── ㉘ 톡톡 ── */
+
+/* 뽁뽁이 판.
+   높이로 크기를 정하고 너비를 비율로 받습니다 — 세로가 긴 판이라 너비를 100% 로 두면
+   작은 화면에서 판이 화면 밖으로 나갑니다.
+   touch-action: none 이라야 훑을 때 페이지가 같이 스크롤되지 않습니다. */
+.popboard {
+  --board-h: 56vh;
+  position: relative;
+  width: min(100%, calc(var(--board-h) * var(--cols) / var(--rows)));
+  aspect-ratio: var(--cols) / var(--rows);
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(var(--cols), 1fr);
+  grid-template-rows: repeat(var(--rows), 1fr);
+  gap: 3px;
+  padding: 6px;
+  border-radius: 14px;
+  background: var(--well-soft);
+  border: 1px solid var(--border-strong);
+  touch-action: none;
+  cursor: grab;
+  -webkit-user-select: none;
+  user-select: none;
+  /* 훑는 동안 길게 누르기 메뉴·이미지 드래그가 뜨면 손이 끊깁니다 */
+  -webkit-touch-callout: none;
+}
+.popboard.is-drawing { cursor: grabbing; }
+.popboard:focus-visible { outline: 2px solid var(--mint); outline-offset: 2px; }
+
+/* 판정을 기다리는 동안에는 손을 받지 않습니다 (기획서 0-H) */
+.popboard.is-locked { pointer-events: none; opacity: 0.65; }
+
+.bub { position: relative; }
+
+/* 한 알. 색은 「오늘의 포장」이 --pack 으로 넣습니다 (기획서 9장) */
+.bub__cap {
+  position: absolute;
+  inset: 0;
+  border-radius: 46%;
+  background:
+    radial-gradient(circle at 32% 28%, rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0.06) 46%),
+    radial-gradient(circle at 50% 55%, var(--pack, #7FD8C0), color-mix(in srgb, var(--pack, #7FD8C0) 55%, #000) 100%);
+  box-shadow: inset 0 -2px 4px rgba(0, 0, 0, 0.22);
+  transform-origin: 50% 50%;
+}
+
+/* 터지는 순간 — 짧고 세게. 이 게임의 재미가 전부 여기입니다 (기획서 16장 위험 1) */
+.bub.is-pop .bub__cap {
+  animation: bubpop 150ms cubic-bezier(0.36, 0, 0.66, -0.4) forwards;
+}
+@keyframes bubpop {
+  0% { transform: scale(1); filter: brightness(1); }
+  35% { transform: scale(1.18); filter: brightness(1.7); }
+  100% { transform: scale(0.15); opacity: 0; filter: brightness(2.2); }
+}
+
+/* 터진 자리 아래에서 새 뽁뽁이가 밀려 올라옵니다 (기획서 4장 3번) */
+.bub.is-rise .bub__cap {
+  animation: bubrise 240ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes bubrise {
+  0% { transform: translateY(115%) scale(0.7); opacity: 0; }
+  100% { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+/* 상품 뽁뽁이 — 배너가 아니라 **내가 뜯어서 나온 것** (기획서 10장) */
+.bub__prize {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  font-size: 22px;
+  opacity: 0;
+  pointer-events: none;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.45));
+}
+.bub.is-prize .bub__prize { animation: prizeup 1100ms ease-out; }
+@keyframes prizeup {
+  0% { opacity: 0; transform: scale(0.5); }
+  18% { opacity: 1; transform: scale(1.25); }
+  60% { opacity: 1; transform: scale(1) translateY(-6px); }
+  100% { opacity: 0; transform: scale(1) translateY(-20px); }
+}
+
+/* 연속 개수 — 훑는 동안 눈이 가는 유일한 숫자 */
+.popcount {
+  font-family: var(--mono);
+  font-size: 40px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--mint);
+  font-variant-numeric: tabular-nums;
+}
+.popcount.is-bump { animation: countbump 140ms ease-out; }
+@keyframes countbump {
+  from { transform: scale(1.18); }
+  to { transform: scale(1); }
+}
+
+/* 소리 끄기 — 소리가 이 게임의 절반이라 끄는 길을 화면에 둡니다 */
+.mutebtn {
+  margin-left: auto;
+  padding: 4px 10px;
+  font-size: 12px;
+  color: var(--text-sub);
+  background: var(--well-soft);
+  border: 1px solid var(--border-mid);
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+@media (max-width: 380px) {
+  .popboard { --board-h: 50vh; gap: 2px; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;

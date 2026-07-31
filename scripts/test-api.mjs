@@ -29,6 +29,8 @@ import { ARCADE } from "../src/lib/config.js";
 import { makeCard, streakFor, shiftDay } from "../src/games/arcade/scratch.js";
 // ㉑ 퍼펙트 스택 — 블록 위치는 서버와 **같은 식**으로 계산해야 탭 시각을 잡을 수 있습니다
 import { blockX } from "../src/games/arcade/stack.js";
+// ㉘ 톡톡 — 궤적 판정은 속도·균일함의 경계값이 핵심이라 서버 왕복 없이 직접 부릅니다
+import { gradeStroke } from "../src/games/arcade/toktok.js";
 
 const BASE = process.env.TEST_BASE ?? "http://127.0.0.1:8787";
 
@@ -206,6 +208,12 @@ const PLAYERS = {
   GAUGE: {
     // 사용자 간 공용 전역 카운터를 쓰는 게임이라 전용 시나리오를 씁니다
     custom: gaugeFlow,
+  },
+
+  TOKTOK: {
+    // 라운드 = 한 번의 훑기라 "정답/오답" 이 없습니다 — 정상 훑기는 늘 성공이고 늘 소진입니다.
+    // 경로 인접성 검사와 균일함(매크로) 검사가 이 게임의 전부라 전용 시나리오를 씁니다
+    custom: toktokFlow,
   },
 
   STACK: {
@@ -1181,6 +1189,184 @@ async function scratchFlow(game) {
 
   scratchCardRules(game);
   return res;
+}
+
+/**
+ * ㉘ 톡톡 — 전용 시나리오
+ *
+ * 이 게임에는 오답이 없습니다. 정상적인 훑기는 늘 성공이고, 손을 뗀 것이 곧 소진이라
+ * 라운드 하나가 판 하나입니다. 그래서 공통 endlessFlow(정답 3연속 → 오답)를 쓸 수 없습니다.
+ *
+ * 확인하는 것
+ *   ① 살짝 닿았다 뗀 것(0개)으로 판이 끝나지 않는다
+ *   ② 이웃하지 않은 칸으로 건너뛴 경로는 **그 자리에서 잘린다**
+ *   ③ 판 밖으로 나갔다 돌아온 이음매(-1)는 터짐이 아니지만 경로를 잇는다
+ *   ④ 이어하기가 연속 수를 그대로 유지한다 (기획서 8장)
+ *   ⑤ 상품 뽁뽁이는 서버 스케줄대로만 나온다
+ *   ⑥ 간격이 완벽히 균일하면(매크로) 이상치로 표시된다
+ */
+
+/** 격자를 지그재그로 훑는 경로 — 이웃 칸끼리만 이어집니다 */
+function toktokPath(cols, rows, n, gapOf) {
+  const cells = [];
+  const times = [];
+  let t = 0;
+  for (let r = 0; r < rows && cells.length < n; r++) {
+    for (let k = 0; k < cols && cells.length < n; k++) {
+      cells.push(r * cols + (r % 2 === 0 ? k : cols - 1 - k));
+      times.push(t);
+      t += gapOf(cells.length);
+    }
+  }
+  return { cells, times };
+}
+
+/** 사람 손가락처럼 흔들리는 간격 (등속 검사에 걸리지 않아야 합니다) */
+const humanGap = (i) => 70 + ((i * 37) % 60);
+
+async function toktokFlow(game) {
+  const C = ARCADE[game];
+  const s = await post("/game/session/start", { game_type: game, fresh: true });
+  check(`${game} 시작`, s.data.ok === true, `(${s.data.code ?? "정상"})`);
+  if (!s.data.ok) return;
+
+  assertNoSecretLeak(game, s.data);
+  const sid = s.data.session_id;
+
+  const stroke = (cells, times) =>
+    post("/game/round", {
+      game_type: game,
+      session_id: sid,
+      answer: { cells, times },
+      elapsed_ms: times[times.length - 1] ?? 0,
+    });
+
+  check(`${game} 판 ${C.COLS}×${C.ROWS}`,
+    s.data.round?.cols === C.COLS && s.data.round?.rows === C.ROWS,
+    `${s.data.round?.cols}×${s.data.round?.rows}`);
+  check(`${game} 제한 시간 없음`, s.data.limit_ms == null, `limit_ms=${s.data.limit_ms}`);
+  check(`${game} 이어하기 ${C.boostsPerRun}회`, s.data.max_boosts === C.boostsPerRun,
+    `max_boosts=${s.data.max_boosts}`);
+  check(`${game} 오늘의 포장이 붙는다`, s.data.round?.pack?.hex != null,
+    `${s.data.round?.pack?.name}`);
+  check(`${game} 상품 순번을 미리 준다`, (s.data.round?.prizes ?? []).length > 0,
+    `첫 상품 ${s.data.round?.prizes?.[0]?.at}번째`);
+
+  // ── ① 0개 스트로크는 판을 끝내지 않는다 ────────────────────
+  const empty = await stroke([], []);
+  check(`${game} 닿기만 한 것은 판정하지 않는다`,
+    empty.data.correct === false && empty.data.game_over !== true && empty.data.exhausted !== true,
+    `사유=${empty.data.data?.invalid}`);
+
+  // ── ② 이웃하지 않은 칸으로 건너뛰면 거기서 잘린다 ──────────
+  const jump = await stroke([0, 1, 2, 5 * C.COLS, 5 * C.COLS + 1], [0, 90, 180, 270, 360]);
+  check(`${game} 끊긴 경로는 그 자리에서 잘린다`, jump.data.data?.stroke_pops === 3,
+    `인정 ${jump.data.data?.stroke_pops}개 / 신고 5개`);
+  check(`${game} 손을 떼면 세션 유지 + 이어하기 대기`,
+    jump.data.exhausted === true && jump.data.game_over === false,
+    `can_boost=${jump.data.can_boost}`);
+
+  const extra = await stroke([0, 1], [0, 90]);
+  check(`${game} 소진 후 추가 응답 거부`, extra.data.code === "RUN_EXHAUSTED", `(${extra.data.code})`);
+
+  // ── ④ 이어하기는 연속 수를 그대로 유지한다 ─────────────────
+  const boost1 = await post("/ad/reward", { trigger: `${game}_BOOST`, session_id: sid });
+  const r1 = boost1.data.reward;
+  check(`${game} 이어하기 보상이 유효`, r1?.lives === 1 && r1?.round != null, `목숨=${r1?.lives}`);
+  check(`${game} 이어해도 기록은 그대로`, r1?.round?.pops === 3, `pops=${r1?.round?.pops}`);
+
+  // ── ⑤ 상품은 서버 스케줄대로만 ─────────────────────────────
+  // 간격 표본이 균일함 검사의 하한을 넘도록 충분히 길게 훑습니다 — 사람처럼 흔들리는
+  // 간격이라 이상치로 찍히지 않아야 합니다(이 검사의 반대편이 아래 ⑥ 입니다).
+  const N = C.UNIFORM_MIN_GAPS + 2;
+  const long = toktokPath(C.COLS, C.ROWS, N, humanGap);
+  const wantPrizes = (r1?.round?.prizes ?? []).filter((p) => p.at <= N).length;
+  const second = await stroke(long.cells, long.times);
+  check(`${game} ${N}칸을 이어 터뜨린다`, second.data.data?.stroke_pops === N,
+    `${second.data.data?.stroke_pops}개`);
+  check(`${game} 연속이 이어진다`, second.data.data?.pops === 3 + N, `pops=${second.data.data?.pops}`);
+  check(`${game} 상품은 서버 스케줄과 일치`,
+    (second.data.data?.prizes ?? []).length === wantPrizes,
+    `${second.data.data?.prizes?.length}개 (예상 ${wantPrizes}개)`);
+
+  // ── ③ 판 밖으로 나갔다 돌아온 이음매 ───────────────────────
+  const boost2 = await post("/ad/reward", { trigger: `${game}_BOOST`, session_id: sid });
+  check(`${game} 이어하기 2회차`, boost2.data.reward?.boosts === 2, `${boost2.data.reward?.boosts}회`);
+
+  const seam = await stroke([0, 1, -1, 5 * C.COLS, 5 * C.COLS + 1], [0, 90, 200, 300, 390]);
+  check(`${game} 이음매는 터짐이 아니지만 경로를 잇는다`, seam.data.data?.stroke_pops === 4,
+    `인정 ${seam.data.data?.stroke_pops}개`);
+  check(`${game} 이어하기를 다 쓰면 종료`, seam.data.game_over === true,
+    `boosts=${boost2.data.reward?.boosts}/${C.boostsPerRun}`);
+
+  const res = seam.data.result;
+  check(`${game} 결과 확정`, res?.rank_metric != null, `점수=${res?.score} 리그=${res?.bucket}`);
+  if (!res) return;
+
+  check(`${game} 점수는 이어 터뜨린 개수`, res.score === 3 + N + 4, `score=${res.score} (3+${N}+4)`);
+  check(`${game} 순위 지표에 속도 보정이 없다`, res.rank_metric === -(3 + N + 4),
+    `metric=${res.rank_metric}`);
+  check(`${game} 정상 훑기는 이상치 아님`, res.suspect === false, `suspect=${res.suspect}`);
+  check(`${game} 보상 사용 런은 별도 리그`, res.bucket?.endsWith("+") === true, `bucket=${res.bucket}`);
+
+  // ── ⑥ 등속은 매크로 ────────────────────────────────────────
+  const macro = await post("/game/session/start", { game_type: game, fresh: true });
+  const flat = toktokPath(C.COLS, C.ROWS, C.UNIFORM_MIN_GAPS + 1, () => 80);
+  await post("/game/round", {
+    game_type: game,
+    session_id: macro.data.session_id,
+    answer: { cells: flat.cells, times: flat.times },
+    elapsed_ms: flat.times[flat.times.length - 1],
+  });
+  const macroEnd = await post("/game/finish", { game_type: game, session_id: macro.data.session_id });
+  check(`${game} 등속으로 훑으면 이상치`, macroEnd.data.result?.suspect === true,
+    `간격 ${C.UNIFORM_MIN_GAPS}개가 전부 80ms`);
+
+  toktokStrokeRules(game);
+  return res;
+}
+
+/**
+ * 궤적 판정의 경계값 — 서버 왕복으로는 재현이 어려워 gradeStroke 를 직접 부릅니다.
+ *
+ * 여기 있는 첫 항목이 **브라우저 확인에서 잡힌 오탐의 회귀 검사**입니다.
+ * 한 번의 pointermove 로 두세 칸이 터지는 것은 이 게임의 정상 동작인데, 칸당 최소
+ * 시간으로 판단하던 초안이 그것을 전부 이상치로 찍었습니다 — 손가락이 빠른 사용자만
+ * 순위에서 빠지는 판정이었습니다.
+ */
+function toktokStrokeRules(game) {
+  const C = ARCADE[game];
+  const line = (n, gapMs) => {
+    const { cells, times } = toktokPath(C.COLS, C.ROWS, n, () => gapMs);
+    return gradeStroke({ cells, times, prizes: [], sinceIssuedMs: n * gapMs + 1000 });
+  };
+
+  // 칸당 20ms = 초당 50칸. 빠르지만 손가락으로 낼 수 있는 속도입니다.
+  const fast = line(30, 20);
+  check(`${game} 빠른 훑기는 이상치가 아니다`, fast.pops === 30 && fast.tooFast === false,
+    `${Math.round((fast.pops / fast.spanMs) * 1000)}칸/초`);
+
+  // 칸당 8ms = 초당 125칸. 스무 칸 넘게 유지되면 손이 아닙니다.
+  const bot = line(40, 8);
+  check(`${game} 사람이 못 내는 지속 속도는 이상치`, bot.tooFast === true,
+    `${Math.round((bot.pops / bot.spanMs) * 1000)}칸/초`);
+
+  // 표본이 적으면 우연히 균일할 수 있어 균일함을 판단하지 않습니다
+  const few = line(6, 90);
+  check(`${game} 짧은 훑기는 균일해도 이상치가 아니다`, few.uniform === false,
+    `간격 ${few.pops - 1}개`);
+
+  // 이음매(-1)를 무제한 허용하면 경로 검사 자체가 무의미해집니다
+  const seams = [];
+  const seamT = [];
+  for (let i = 0; i <= C.MAX_BREAKS + 1; i++) {
+    seams.push(0, -1);
+    seamT.push(i * 200, i * 200 + 100);
+  }
+  const broken = gradeStroke({ cells: seams, times: seamT, prizes: [], sinceIssuedMs: 60000 });
+  check(`${game} 이음매 남용은 그 자리에서 잘린다`,
+    broken.cut === "breaks" && broken.breaks === C.MAX_BREAKS + 1,
+    `이음매 ${broken.breaks}개에서 중단`);
 }
 
 /**

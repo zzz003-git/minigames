@@ -81,7 +81,7 @@ Why: an agent that only ships code leaves the user unable to maintain it. They s
 # 인스턴트 미니게임 — 작업 규칙
 
 Cloudflare Workers + D1. 정적 화면과 API 서버를 한 Worker 에서 서비스한다.
-현재 **27종** (오리지널 4 + 아케이드 23) · [https://minigames.zzz00321.workers.dev](https://minigames.zzz00321.workers.dev)
+현재 **28종** (오리지널 4 + 아케이드 24) · [https://minigames.zzz00321.workers.dev](https://minigames.zzz00321.workers.dev)
 
 기획서는 형제 디렉터리 `../reward-minigame-research/plans/` 에 있다(이 저장소 밖).
 
