@@ -8,10 +8,15 @@
  * 핵심이 원리 2 손맛(톡 터지는 촉감)이고 종료 조건이 「손을 뗌」이라, 탭으로 바꾸면
  * 게임이 통째로 남지 않습니다. 벗어난 항목과 대체 경로는 docs/toktok-game.md §5.
  *
- * ── 판정은 손을 뗄 때 한 번만 ────────────────────────────────────────────
+ * ── 판정은 조각 단위로 ───────────────────────────────────────────────────
  * 터짐마다 서버에 물으면 판이 성립하지 않습니다(왕복 약 470ms). 화면은 훑는 동안
- * **지나간 칸과 시각을 모으기만** 하고, 손을 뗄 때 경로 전체를 한 번에 보냅니다.
+ * **지나간 칸과 시각을 모으기만** 하고, FLUSH_AT 개마다 한 조각씩 보냅니다.
  * 서버가 같은 규칙으로 다시 세므로 개수를 화면이 정하지 않습니다.
+ *
+ * 조각으로 나누는 이유는 **마우스에 손목 제약이 없기 때문**입니다. 버튼을 누른 채
+ * 계속 돌리면 훑기가 몇 분이고 이어지는데, 한 번에 보내려던 초안은 상한에서 잘려
+ * 화면 2000개가 400개로 기록됐습니다. 조각은 판을 끝내지 않습니다(`ongoing: true`) —
+ * 끝내는 것은 여전히 손을 떼는 것뿐입니다. 자세한 것은 docs/toktok-game.md §2.
  *
  * ── 히트가 새지 않게 (기획서 16장 위험 2) ────────────────────────────────
  * 손가락이 빠르면 프레임 사이의 칸을 건너뜁니다. 그래서 점 단위가 아니라 **직전
@@ -37,6 +42,8 @@ const formatBest = (metric) => `${Math.max(0, -metric)}개`;
 const REFILL_MS = 200;
 /** 한 번의 이동으로 걸어갈 수 있는 칸 수 상한 — 격자가 유한하므로 닿지 않는 안전장치입니다 */
 const MAX_WALK = 16;
+/** 손을 떼지 않아도 이만큼 모이면 한 조각을 보냅니다 (config.ARCADE.TOKTOK.FLUSH_AT 과 같은 값) */
+const FLUSH_AT = 150;
 /** 화면이 바뀐 직후 그 화면의 버튼을 못 누르게 두는 시간 (기획서 0-H) */
 const ARM_DELAY_MS = 400;
 
@@ -48,14 +55,22 @@ const state = {
   drawing: false,
   locked: true, // 판정 중·화면 전환 중에는 손을 받지 않습니다
   last: null, // 마지막으로 터뜨린 칸
-  lastT: 0, // 마지막으로 터뜨린 시각 (스트로크 시작 이후 ms)
+  lastT: 0, // 마지막으로 터뜨린 시각 (조각 시작 이후 ms)
   path: [],
   times: [],
-  t0: 0,
-  strokePops: 0, // 이번 훑기에서 터뜨린 수 (음정·상품 순번의 기준)
-  base: 0, // 이전 훑기까지의 누적 (이어하기로 이어집니다)
+  segT0: 0, // 지금 조각이 시작된 시각
+  // 화면에 띄우는 개수 = 서버가 확인한 것 + 날아가는 중 + 아직 안 보낸 것.
+  // 셋으로 나눠 두어야 조각을 보내는 순간에도 숫자가 뒤로 가지 않습니다.
+  confirmed: 0,
+  inflight: 0,
+  pending: 0, // 지금 조각의 터짐 수 (상품 순번의 기준 — 조각마다 다시 셉니다)
+  pitch: 0, // 음정 — 훑기 시작부터 계속 오릅니다
+  popped: false, // 이번 훑기에서 하나라도 터뜨렸는가
   prizeHits: 0,
 };
+
+/** 날아가는 중인 조각. 손을 뗄 때 이것을 먼저 기다려야 순서가 지켜집니다 */
+let flight = null;
 
 let lastResult = null;
 let lastData = null;
@@ -199,19 +214,26 @@ function renderRound(round) {
     return;
   }
 
+  // 훑는 도중에 도착한 다음 조각의 판입니다 — 화면을 다시 그리면 손이 붙어 있는데
+  // 판이 갈아엎어집니다. 상품 순번만 새것으로 바꾸고 그대로 둡니다.
+  if (state.drawing) {
+    state.prizes = new Map((round.prizes ?? []).map((p) => [p.at, p]));
+    return;
+  }
+
   state.cols = round.cols;
   state.rows = round.rows;
-  state.base = round.pops ?? 0;
   state.prizeHits = round.prize_hits ?? 0;
   state.prizes = new Map((round.prizes ?? []).map((p) => [p.at, p]));
   resetStroke();
+  state.confirmed = round.pops ?? 0;
 
   const pack = round.pack ?? {};
   setHeaderBadge(pack.name ?? "오늘의 포장");
-  $("#hudPops").textContent = String(state.base);
+  $("#hudPops").textContent = String(state.confirmed);
   $("#hudPrize").textContent = String(state.prizeHits);
   $("#playHint").innerHTML =
-    state.base > 0
+    state.confirmed > 0
       ? "이어서 <b>죽</b> 끌어 보세요 — 지금 기록은 그대로예요"
       : "손가락을 대고 <b>죽</b> 끌어 보세요";
 
@@ -225,8 +247,20 @@ function resetStroke() {
   state.lastT = 0;
   state.path = [];
   state.times = [];
-  state.strokePops = 0;
-  state.t0 = 0;
+  state.segT0 = 0;
+  state.inflight = 0;
+  state.pending = 0;
+  state.pitch = 0;
+  state.popped = false;
+}
+
+/** 화면에 띄우는 연속 개수 */
+function showCount() {
+  const n = $("#hudPops");
+  n.textContent = String(state.confirmed + state.inflight + state.pending);
+  n.classList.remove("is-bump");
+  void n.offsetWidth; // 애니메이션 재시작
+  n.classList.add("is-bump");
 }
 
 function buildBoard(hex) {
@@ -239,8 +273,9 @@ function buildBoard(hex) {
   state.cells = [];
   for (let i = 0; i < state.cols * state.rows; i++) {
     const cap = el("span", { class: "bub__cap" });
+    const ring = el("span", { class: "bub__ring", "aria-hidden": "true" });
     const prize = el("span", { class: "bub__prize", "aria-hidden": "true" });
-    const node = el("div", { class: "bub" }, cap, prize);
+    const node = el("div", { class: "bub" }, cap, ring, prize);
     state.cells.push({ node, cap, prize });
     board.append(node);
   }
@@ -285,30 +320,59 @@ function walkTo(cell, tNow) {
   }
 }
 
-function pop(cell, tNow = performance.now() - state.t0) {
+function pop(cell, tNow = performance.now() - state.segT0) {
   if (cell === state.last) return;
 
   state.path.push(cell);
   state.times.push(Math.round(Math.max(0, tNow)));
   state.lastT = tNow;
   state.last = cell;
-  state.strokePops += 1;
+  state.pending += 1;
+  state.pitch += 1;
+  state.popped = true;
 
-  const prize = state.prizes.get(state.strokePops) ?? null;
+  // 상품 순번은 **조각 안에서** 셉니다 — 서버도 조각마다 자기 스케줄로 다시 셉니다
+  const prize = state.prizes.get(state.pending) ?? null;
   burst(cell, prize);
-  tok(state.strokePops, Boolean(prize));
-  navigator.vibrate?.(prize ? [10, 30, 20] : 7);
+  tok(state.pitch, Boolean(prize));
+  navigator.vibrate?.(prize ? [12, 30, 24] : 8);
 
   if (prize) {
     state.prizeHits += 1;
     $("#hudPrize").textContent = String(state.prizeHits);
   }
 
-  const n = $("#hudPops");
-  n.textContent = String(state.base + state.strokePops);
-  n.classList.remove("is-bump");
-  void n.offsetWidth; // 애니메이션 재시작
-  n.classList.add("is-bump");
+  showCount();
+
+  // 손을 떼지 않아도 조각을 보냅니다 — 마우스는 손목 제약이 없어 훑기가 몇 분이고
+  // 이어지는데, 한 번에 보내려 하면 상한에서 잘려 화면과 기록이 어긋납니다.
+  if (state.pending >= FLUSH_AT && !flight) sendSegment(false);
+}
+
+/**
+ * 지금까지 모은 경로를 한 조각으로 보냅니다.
+ *
+ * `final=false` 면 판을 끝내지 않고 누적만 합니다(서버의 `ongoing`).
+ * 보내는 즉시 버퍼를 비우고 시각 기준을 새로 잡으므로, 날아가는 동안에도 손은
+ * 멈추지 않고 다음 조각을 채웁니다.
+ */
+function sendSegment(final) {
+  const cells = state.path;
+  const times = state.times;
+  state.path = [];
+  state.times = [];
+  state.segT0 = performance.now();
+  state.lastT = 0;
+  state.inflight += state.pending;
+  state.pending = 0;
+
+  const p = run
+    .answer({ cells, times, ongoing: !final }, { elapsed_ms: times[times.length - 1] ?? 0 })
+    .finally(() => {
+      if (flight === p) flight = null;
+    });
+  flight = p;
+  return p;
 }
 
 /** 터짐 연출 + 아래에서 새 뽁뽁이가 올라오는 되돌림 */
@@ -349,7 +413,7 @@ board.addEventListener("pointerdown", (e) => {
   openAudio();
 
   state.drawing = true;
-  state.t0 = performance.now();
+  state.segT0 = performance.now();
   board.classList.add("is-drawing");
   // 캡처하면 손이 판 밖으로 나가도 그 훑기가 이어집니다 — 손을 떼지 않는 한
   // 판은 끝나지 않아야 합니다.
@@ -374,7 +438,7 @@ board.addEventListener("pointermove", (e) => {
     // 판 밖으로 나갔습니다. 손은 아직 붙어 있으므로 훑기는 살아 있고,
     // 돌아왔을 때 경로가 이어지지 않는 자리만 이음매로 남깁니다.
     if (state.last != null) {
-      const t = performance.now() - state.t0;
+      const t = performance.now() - state.segT0;
       state.path.push(-1);
       state.times.push(Math.round(t));
       state.lastT = t;
@@ -383,7 +447,7 @@ board.addEventListener("pointermove", (e) => {
     return;
   }
 
-  walkTo(cell, performance.now() - state.t0);
+  walkTo(cell, performance.now() - state.segT0);
 });
 
 board.addEventListener("pointerup", endStroke);
@@ -402,7 +466,7 @@ board.addEventListener("keydown", (e) => {
     if (!state.drawing || state.last == null) {
       openAudio();
       state.drawing = true;
-      if (!state.t0) state.t0 = performance.now();
+      if (!state.segT0) state.segT0 = performance.now();
       pop(Math.floor((state.rows * state.cols) / 2));
       return;
     }
@@ -430,7 +494,7 @@ async function endStroke() {
   board.classList.remove("is-drawing");
   board.classList.add("is-locked");
 
-  if (state.strokePops === 0) {
+  if (!state.popped) {
     // 살짝 닿았다 뗀 것으로 판을 끝내지 않습니다
     state.locked = false;
     board.classList.remove("is-locked");
@@ -438,10 +502,10 @@ async function endStroke() {
     return;
   }
 
-  await run.answer(
-    { cells: state.path, times: state.times },
-    { elapsed_ms: Math.round(performance.now() - state.t0) },
-  );
+  // 날아가는 조각이 있으면 먼저 끝냅니다 — 순서가 뒤집히면 마지막 조각이
+  // 「이미 소진된 런」에 도착해 판이 끝나지 않습니다.
+  if (flight) await flight;
+  await sendSegment(true);
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -456,15 +520,20 @@ async function showVerdict(res) {
     state.locked = false;
     board.classList.remove("is-locked");
     resetStroke();
+    showCount();
     return;
   }
 
   // ENDLESS 는 result.detail 이 비어 있어(엔진 구조상) 결과 화면이 쓸 값을 여기서 챙깁니다
   lastData = d;
 
-  // 서버가 센 값으로 맞춥니다 — 경로가 어긋나 잘렸다면 여기서 줄어듭니다
-  $("#hudPops").textContent = String(d.pops ?? 0);
-  $("#hudPrize").textContent = String(d.prize_hits ?? 0);
+  // 서버가 센 값으로 맞춥니다 — 경로가 어긋나 잘렸다면 여기서 줄어듭니다.
+  // 아직 안 보낸 조각(pending)은 그대로 두고 더합니다 — 손은 계속 움직이고 있습니다.
+  state.confirmed = d.pops ?? state.confirmed;
+  state.inflight = 0;
+  state.prizeHits = d.prize_hits ?? state.prizeHits;
+  showCount();
+  $("#hudPrize").textContent = String(state.prizeHits);
 
   if ((d.prizes ?? []).length > 0) {
     const names = d.prizes.map((p) => `${p.icon} ${p.name}`).join(" · ");

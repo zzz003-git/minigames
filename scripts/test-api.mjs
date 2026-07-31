@@ -1322,8 +1322,88 @@ async function toktokFlow(game) {
   check(`${game} 등속으로 훑으면 이상치`, macroEnd.data.result?.suspect === true,
     `간격 ${C.UNIFORM_MIN_GAPS}개가 전부 80ms`);
 
+  await toktokLongStroke(game);
   toktokStrokeRules(game);
   return res;
+}
+
+/**
+ * 손을 떼지 않는 긴 훑기 — 조각으로 나눠 보낸다.
+ *
+ * **PC 마우스 확인에서 나온 결함의 회귀 검사입니다.** 마우스에는 손목 제약이 없어
+ * 훑기가 몇 분이고 이어지는데, 초안은 그 훑기를 한 번에 받으려다 조각 상한(MAX_POPS)
+ * 에서 잘랐습니다 — **화면 2000개가 400개로 기록됐습니다.**
+ * 이제 손을 떼지 않아도 조각(`ongoing: true`)을 보내고, 조각은 판을 끝내지 않습니다.
+ */
+async function toktokLongStroke(game) {
+  const C = ARCADE[game];
+  const s = await post("/game/session/start", { game_type: game, fresh: true });
+  if (!s.data.ok) {
+    check(`${game} 긴 훑기 시작`, false, `(${s.data.code})`);
+    return;
+  }
+  const sid = s.data.session_id;
+
+  /** 판 안에서 튕겨 다니는 훑기 — 격자를 다 돌아도 멈추지 않습니다(대각선이라 늘 이웃 칸) */
+  const walk = (n) => {
+    const cells = [];
+    const times = [];
+    let c = 0, r = 0, dc = 1, dr = 1, t = 0;
+    for (let i = 0; i < n; i++) {
+      cells.push(r * C.COLS + c);
+      times.push(t);
+      t += 20 + ((i * 7) % 9); // 사람처럼 흔들리는 간격 · 초당 약 42칸
+      let nc = c + dc;
+      if (nc < 0 || nc >= C.COLS) { dc = -dc; nc = c + dc; }
+      let nr = r + dr;
+      if (nr < 0 || nr >= C.ROWS) { dr = -dr; nr = r + dr; }
+      c = nc; r = nr;
+    }
+    return { cells, times };
+  };
+
+  const seg = async (n, ongoing) => {
+    const { cells, times } = walk(n);
+    // 신고한 시각이 서버가 관측한 시간창 안이어야 합니다 — 화면은 실시간으로
+    // 보내지만 테스트는 즉시 보내므로 그만큼 기다립니다.
+    await sleep(1200);
+    return post("/game/round", {
+      game_type: game,
+      session_id: sid,
+      answer: { cells, times, ongoing },
+      elapsed_ms: times[times.length - 1],
+    });
+  };
+
+  // 화면이 FLUSH_AT 개마다 보내는 조각 세 개 — 손은 아직 붙어 있습니다
+  let last = null;
+  for (let i = 0; i < 3; i++) last = await seg(C.FLUSH_AT, true);
+  const total = C.FLUSH_AT * 3;
+
+  check(`${game} 조각은 판을 끝내지 않는다`,
+    last.data.game_over === false && last.data.exhausted !== true,
+    `lives=${last.data.lives}`);
+  check(`${game} 조각이 누적된다`, last.data.data?.pops === total,
+    `${last.data.data?.pops}개 (조각 3 × ${C.FLUSH_AT})`);
+  check(`${game} 조각 상한(${C.MAX_POPS})보다 많이 이어 터뜨릴 수 있다`,
+    (last.data.data?.pops ?? 0) > C.MAX_POPS, `${last.data.data?.pops}개`);
+
+  // 손을 뗍니다 — 마지막 조각이 비어 있어도 판이 끝나야 합니다
+  const done = await post("/game/round", {
+    game_type: game, session_id: sid, answer: { cells: [], times: [], ongoing: false }, elapsed_ms: 0,
+  });
+  check(`${game} 손을 떼면 빈 조각이어도 판이 끝난다`,
+    done.data.exhausted === true || done.data.game_over === true,
+    `exhausted=${done.data.exhausted}`);
+  check(`${game} 조각을 가로질러 한 번의 훑기로 센다`,
+    done.data.data?.best_stroke === total && done.data.data?.strokes === 1,
+    `한 번에 최다=${done.data.data?.best_stroke} 훑은 횟수=${done.data.data?.strokes}`);
+
+  const fin = await post("/game/finish", { game_type: game, session_id: sid });
+  const r = fin.data.result;
+  check(`${game} 화면이 센 개수가 그대로 기록된다`, r?.score === total,
+    `기록=${r?.score} 화면=${total}`);
+  check(`${game} 긴 훑기는 이상치가 아니다`, r?.suspect === false, `suspect=${r?.suspect}`);
 }
 
 /**

@@ -234,13 +234,25 @@ export const spec = {
   },
 
   /**
-   * answer = { cells: [칸 번호 …], times: [스트로크 시작 이후 ms …] }
+   * answer = { cells: [칸 번호 …], times: [조각 시작 이후 ms …], ongoing: boolean }
    *
    * 두 배열은 길이가 같고, `cells` 에 섞인 -1 은 손이 판 밖으로 나갔다 돌아온 자리입니다.
+   *
+   * ── 한 번의 훑기가 여러 조각으로 옵니다 ──────────────────────────────
+   * 손을 떼지 않는 한 판이 끝나지 않는 것이 이 게임의 규칙인데, **마우스에는 손목
+   * 제약이 없어** 몇 분이고 이어집니다(기획서 0-I 이 가정한 종료 압력이 PC 에는
+   * 없습니다). 그 훑기를 한 번에 받으려 하면 요청이 수십 KB 로 커지고, 상한에서
+   * 잘려 **화면이 센 개수와 기록이 어긋납니다** — 실제로 화면 2000개가 400개로
+   * 기록됐습니다.
+   *
+   * 그래서 화면이 훑는 도중에도 조각을 보냅니다(`ongoing: true`). 조각은 판을
+   * 끝내지 않고 누적만 하며, 손을 뗀 마지막 조각(`ongoing: false`)이 판을 끝냅니다.
+   * 규칙은 그대로입니다 — 끝내는 것은 여전히 손을 떼는 것뿐입니다.
    */
   judgeRound({ answer, roundSecret, meta, sinceIssuedMs }) {
     const ext = (meta.ext ??= {});
     const prizes = roundSecret?.prizes ?? [];
+    const ongoing = answer?.ongoing === true;
     const graded = gradeStroke({
       cells: answer?.cells,
       times: answer?.times,
@@ -248,17 +260,42 @@ export const spec = {
       sinceIssuedMs,
     });
 
-    // 살짝 닿았다 뗀 것으로 판을 끝내지 않습니다 — 실수로 화면에 손이 스치기만 해도
-    // 도전 기회가 날아가는 것을 막습니다. 아무것도 소모하지 않고 다시 훑게 둡니다.
     if (graded.pops === 0) {
-      return { ok: false, fatal: false, data: { invalid: "손가락을 대고 끌어 주세요" } };
+      // 조각이 비어서 온 것은 아무 일도 아닙니다(날아가는 사이에 손을 뗀 경우).
+      if (ongoing) return { ok: false, fatal: false, data: progressOf(ext) };
+
+      // 앞 조각으로 이미 터뜨린 훑기라면 여기서 끝냅니다 — 마지막 조각이 비었다고
+      // 판이 안 끝나면 손을 떼도 결과 화면이 오지 않습니다.
+      if ((ext.cur ?? 0) <= 0) {
+        // 살짝 닿았다 뗀 것으로 판을 끝내지 않습니다 — 실수로 손이 스치기만 해도
+        // 도전 기회가 날아가는 것을 막습니다.
+        return { ok: false, fatal: false, data: { invalid: "손가락을 대고 끌어 주세요" } };
+      }
     }
 
     ext.pops = (ext.pops ?? 0) + graded.pops;
-    ext.strokes = (ext.strokes ?? 0) + 1;
-    ext.best = Math.max(ext.best ?? 0, graded.pops);
+    ext.cur = (ext.cur ?? 0) + graded.pops; // 지금 훑기의 누적 (조각을 가로질러 이어집니다)
+    ext.best = Math.max(ext.best ?? 0, ext.cur);
     ext.prizeHits = (ext.prizeHits ?? 0) + graded.prizeHits.length;
+    ext.segs = (ext.segs ?? 0) + 1;
     if (graded.tooFast || graded.uniform) ext.rough = (ext.rough ?? 0) + 1;
+
+    // 조각 하나가 어긋난 것으로 판을 빼지 않습니다 — 긴 훑기는 조각이 열 개를
+    // 넘으므로, 하나만 걸려도 이상치로 보면 오래 훑은 사람이 걸립니다.
+    const suspect = (ext.rough ?? 0) >= 1 && (ext.rough ?? 0) / ext.segs > 0.5;
+
+    const data = {
+      ongoing,
+      stroke_pops: graded.pops,
+      prizes: graded.prizeHits,
+      ...progressOf(ext),
+    };
+
+    // 아직 손을 떼지 않았습니다 — 판을 끝내지 않고 누적만 합니다.
+    if (ongoing) return { ok: true, fatal: false, suspect, data };
+
+    ext.strokes = (ext.strokes ?? 0) + 1;
+    ext.cur = 0;
 
     // 소진된 판에는 엔진이 다음 라운드를 내지 않습니다. 그대로 두면 이어받기가 직전
     // 라운드를 그리므로 여기서 갱신합니다 (⑳ 과 같은 처리).
@@ -267,12 +304,8 @@ export const spec = {
     return {
       ok: true,
       fatal: true, // 손을 뗐다 = 소진. **실패가 아닙니다**
-      suspect: (ext.rough ?? 0) > 0,
-      data: {
-        stroke_pops: graded.pops,
-        prizes: graded.prizeHits,
-        ...progressOf(ext),
-      },
+      suspect,
+      data: { ...data, strokes: ext.strokes },
     };
   },
 
