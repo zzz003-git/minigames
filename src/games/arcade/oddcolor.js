@@ -8,7 +8,7 @@
  * 채점은 전적으로 서버가 하므로 결과 위조는 불가능합니다.
  */
 
-import { ARCADE } from "../../lib/config.js";
+import { ARCADE, adSetOf } from "../../lib/config.js";
 import { randomInt } from "../../lib/crypto.js";
 import { decay } from "../../lib/arcade.js";
 
@@ -27,22 +27,39 @@ export const spec = {
     const grid = gridOf(roundNo);
     const count = grid * grid;
 
-    const hue = randomInt(0, 359);
-    const sat = randomInt(48, 72);
-    const light = randomInt(44, 60);
-
     // 명도 차이가 라운드마다 좁아집니다. 위아래 어느 쪽으로 벌릴지도 매번 바꿉니다.
     const delta = decay(roundNo, C.DELTA_START, C.DELTA_STEP, C.DELTA_MIN);
     const dir = randomInt(0, 1) === 0 ? -1 : 1;
-
-    const base = `hsl(${hue} ${sat}% ${light}%)`;
-    const odd = `hsl(${hue} ${sat}% ${(light + delta * dir).toFixed(1)}%)`;
-
     const index = randomInt(0, count - 1);
-    const colors = Array.from({ length: count }, (_, i) => (i === index ? odd : base));
+
+    const set = adSetOf("ODDCOLOR");
+    // 광고 세트가 걸려 있으면 판별 대상이 색 자체가 아니라 상품이 됩니다. 한 칸만
+    // 밝기를 틀어 두는데, 그 폭은 위의 delta 를 그대로 쓰므로 난이도 곡선이 같습니다.
+    const pub =
+      set.kind === "glyph"
+        ? {
+            round: roundNo,
+            grid,
+            glyph: set.glyphs[randomInt(0, set.glyphs.length - 1)],
+            tints: Array.from({ length: count }, (_, i) =>
+              i === index ? `brightness(${(1 + (delta / 100) * dir).toFixed(3)})` : "none",
+            ),
+          }
+        : (() => {
+            const hue = randomInt(0, 359);
+            const sat = randomInt(48, 72);
+            const light = randomInt(44, 60);
+            const base = `hsl(${hue} ${sat}% ${light}%)`;
+            const odd = `hsl(${hue} ${sat}% ${(light + delta * dir).toFixed(1)}%)`;
+            return {
+              round: roundNo,
+              grid,
+              colors: Array.from({ length: count }, (_, i) => (i === index ? odd : base)),
+            };
+          })();
 
     return {
-      pub: { round: roundNo, grid, colors },
+      pub,
       secret: { index },
       limitMs: Math.round(decay(roundNo, C.LIMIT_START_MS, C.LIMIT_STEP_MS, C.LIMIT_MIN_MS)),
     };

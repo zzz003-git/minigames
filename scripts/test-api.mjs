@@ -99,9 +99,12 @@ const PLAYERS = {
   // preDelay(round) → 답을 보내기 전에 기다려야 하는 시간(선택)
 
   ODDCOLOR: {
+    // 광고 소재 세트가 걸리면 색 배열 대신 밝기 배열이 옵니다(AD_SETS). 어느 쪽이든
+    // 「빈도가 1인 값」이 정답이라는 규칙은 같으므로 같은 눈으로 봅니다.
     answer: (round, correct) => {
-      const i = oddIndex(round.colors);
-      return { answer: correct ? i : (i + 1) % round.colors.length };
+      const cells = round.colors ?? round.tints;
+      const i = oddIndex(cells);
+      return { answer: correct ? i : (i + 1) % cells.length };
     },
   },
 

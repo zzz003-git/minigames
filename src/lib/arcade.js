@@ -186,6 +186,9 @@ export async function start(ctx, spec) {
     max_lives: cfg.lives ?? 0,
     boosts: 0,
     max_boosts: cfg.boostsPerRun ?? 0,
+    // 라운드가 없는 게임(카드 짝 맞추기)은 판을 그릴 값이 여기에만 있습니다.
+    // publicRun(이어하기)과 같은 자리를 씁니다.
+    ext: meta.ext ?? {},
     attempts,
   };
 }

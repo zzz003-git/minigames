@@ -383,12 +383,23 @@ export function attemptReward(game, { perDay, onGranted }) {
 }
 
 /**
+ * 광고를 쓴 판은 순위 버킷에 '+' 가 붙어 따로 집계됩니다(`src/lib/arcade.js` finalize).
+ * 기록이 깎이지는 않지만 순위표가 갈리므로 그 사실을 카드에 문자로 적습니다 —
+ * 「광고를 봐도 손해가 없다」는 구조로만 보장하고 표기하지 않으면 이용자는 모릅니다.
+ * (배포게임_개선안_2026-07-30 B절 ② — 광고 보상이 있는 전 게임 표준)
+ */
+const LEAGUE_NOTE = "이어한 판은 '+' 리그로 따로 집계돼요 — 광고를 본 사람끼리 겨룹니다";
+
+/**
  * 결과 화면 — 이어하기.
  *
  * 「다시 도전」 버튼보다 아래에 둡니다. 무료 재도전 경로를 가리면
  * 단기 광고 수익은 늘지만 리텐션이 떨어집니다 (docs/arcade-10-games.md §3.4).
+ *
+ * `note` 는 리그가 갈린다는 사실을 적는 자리입니다 — 기본값을 두는 이유가
+ * `LEAGUE_NOTE` 주석에 있습니다. 버킷을 나누지 않는 게임만 `note: null` 로 끕니다.
  */
-export function boostReward(game, { sessionId, label, desc, used, max, onBoosted }) {
+export function boostReward(game, { sessionId, label, desc, note = LEAGUE_NOTE, used, max, onBoosted }) {
   const host = $("#adbarBoost");
   if (!host) return;
 
@@ -398,6 +409,7 @@ export function boostReward(game, { sessionId, label, desc, used, max, onBoosted
     icon: "▶",
     title: exhausted ? "이어하기를 모두 사용했습니다" : `광고 보고 이어하기 · ${label}`,
     desc: exhausted ? "새로 시작하면 처음부터 도전합니다" : `${desc} · 이 판에서 ${used}/${max}회 사용`,
+    note: exhausted ? null : note,
     cta: exhausted ? "불가" : "이어하기",
     disabled: exhausted,
     onClick: async () => {

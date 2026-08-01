@@ -214,7 +214,7 @@ export async function watchAdForReward(trigger, { sessionId, copy } = {}) {
  *           onClick:()=>void, disabled?:boolean }} opts
  * @returns {HTMLButtonElement}
  */
-export function renderRewardCard(host, { icon = "🎁", title, desc, cta = "광고 보기", onClick, disabled = false }) {
+export function renderRewardCard(host, { icon = "🎁", title, desc, note, cta = "광고 보기", onClick, disabled = false }) {
   clear(host);
 
   const btn = el(
@@ -226,6 +226,7 @@ export function renderRewardCard(host, { icon = "🎁", title, desc, cta = "광�
       { class: "reward__text" },
       el("span", { class: "reward__title" }, title),
       desc ? el("span", { class: "reward__desc" }, desc) : null,
+      note ? el("span", { class: "reward__note" }, note) : null,
     ),
     el("span", { class: "reward__cta" }, disabled ? "불가" : cta),
   );

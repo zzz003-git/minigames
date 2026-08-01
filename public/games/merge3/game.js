@@ -29,7 +29,7 @@ renderHeader($("#header"), { icon: "🪙", title: "세 칸 쌓기" });
 
 const run = createEndlessRun({
   game: GAME,
-  boost: { label: "맨 위 하나 치우기", desc: "가장 높은 기둥의 맨 위를 걷어냅니다" },
+  boost: { label: "맨 위 하나 치우기", desc: "지금 점수와 최고 등급은 그대로 두고 가장 높은 기둥의 맨 위만 걷어냅니다" },
   hooks: { onRound: renderRound, onJudged: showVerdict, onOver: onOver, pauseText: pauseText },
 });
 

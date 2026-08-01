@@ -25,7 +25,7 @@ renderHeader($("#header"), { icon: "🎨", title: "색 다른 타일 찾기", ba
 
 const run = createEndlessRun({
   game: GAME,
-  boost: { label: "목숨 +1", desc: "같은 라운드부터 이어서 도전합니다" },
+  boost: { label: "목숨 +1", desc: "지금까지 통과한 라운드는 그대로 두고 이어서 도전합니다" },
   hooks: { onRound, onJudged, onOver, pauseText },
 });
 
@@ -92,15 +92,26 @@ function onRound(round, state) {
   const host = clear($("#tiles"));
   host.style.setProperty("--cols", String(round.grid));
 
-  round.colors.forEach((color, index) => {
+  // 광고 소재 세트가 걸리면 색 대신 상품 한 종이 깔리고 한 칸만 밝기가 틀어집니다
+  // (서버 spec 이 정합니다 — 화면은 받은 대로 그립니다).
+  const glyph = round.glyph ?? null;
+  const cells = glyph ? round.tints : round.colors;
+
+  cells.forEach((value, index) => {
     host.append(
-      el("button", {
-        class: "tile",
-        type: "button",
-        style: `background:${color}`,
-        "aria-label": `${index + 1}번 칸`,
-        onclick: () => pick(index),
-      }),
+      el(
+        "button",
+        {
+          class: glyph ? "tile tile--glyph" : "tile",
+          type: "button",
+          style: glyph ? `filter:${value}` : `background:${value}`,
+          "aria-label": `${index + 1}번 칸`,
+          onclick: () => pick(index),
+        },
+        // 상품은 span 으로 감쌉니다 — 칸 너비에 맞춰 키우려면(cqw) 칸이 컨테이너가
+        // 되어야 하고, 컨테이너 자신의 font-size 에는 그 단위를 쓸 수 없습니다.
+        glyph ? el("span", { class: "tile__glyph" }, glyph) : null,
+      ),
     );
   });
 

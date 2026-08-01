@@ -11,7 +11,7 @@
  * 광고 보상은 "아직 못 맞춘 한 쌍의 위치 공개" 입니다.
  */
 
-import { ARCADE } from "../../lib/config.js";
+import { ARCADE, adSetOf } from "../../lib/config.js";
 import { randomInt } from "../../lib/crypto.js";
 import { shuffled } from "../../lib/arcade.js";
 
@@ -27,10 +27,19 @@ export const spec = {
 
   /** 런 내내 유지되는 비밀값 — 카드 배치 */
   initSecret(meta) {
-    const symbols = shuffled(C.SYMBOLS, randomInt).slice(0, C.PAIRS);
+    // 앞면(상품)과 뒷면(브랜드 아트)은 광고 소재 세트에서 옵니다 — config 의 AD_SETS.
+    const set = adSetOf("CARDPAIR");
+    const symbols = shuffled(set.symbols, randomInt).slice(0, C.PAIRS);
     const layout = shuffled([...symbols, ...symbols], randomInt);
 
-    meta.ext = { flips: 0, pending: null, matched: [], pairs: C.PAIRS, cards: CARDS };
+    meta.ext = {
+      flips: 0,
+      pending: null,
+      matched: [],
+      pairs: C.PAIRS,
+      cards: CARDS,
+      back: set.back,
+    };
     return { layout };
   },
 

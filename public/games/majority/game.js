@@ -35,7 +35,7 @@ renderHeader($("#header"), { icon: "🗳", title: "다들 뭐 골랐을까", bad
 
 const run = createEndlessRun({
   game: GAME,
-  boost: { label: "되돌리기 1회", desc: "빗나간 문항을 새 문항으로 바꿔 이어갑니다" },
+  boost: { label: "되돌리기 1회", desc: "지금까지 맞힌 문항은 그대로 두고 빗나간 문항만 새 문항으로 바꿉니다" },
   hooks: { onRound, onJudged, onOver, pauseText },
 });
 

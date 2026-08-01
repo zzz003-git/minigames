@@ -62,7 +62,7 @@ const run = createEndlessRun({
   game: GAME,
   // 하루 카드 한 장이라 새로고침으로 진행분이 날아가면 그날 다시 못 긁습니다.
   fresh: false,
-  boost: { label: "한 칸 더 긁기", desc: "은박 카드에 한 칸을 더 긁습니다" },
+  boost: { label: "한 칸 더 긁기", desc: "긁은 칸은 그대로 두고 한 칸을 더 긁습니다" },
   hooks: {
     onRound: renderRound,
     onJudged: showVerdict,
@@ -532,7 +532,7 @@ function showResumedPause(round) {
   boostReward(GAME, {
     sessionId: run.state.sessionId,
     label: "한 칸 더 긁기",
-    desc: "은박 카드에 한 칸을 더 긁습니다",
+    desc: "긁은 칸은 그대로 두고 한 칸을 더 긁습니다",
     used: round.boosts_used ?? 0,
     max: run.state.maxBoosts,
     onBoosted: (reward) => {

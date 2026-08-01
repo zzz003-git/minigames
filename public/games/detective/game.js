@@ -31,7 +31,7 @@ renderHeader($("#header"), { icon: "🔍", title: "3초 탐정" });
 
 const run = createEndlessRun({
   game: GAME,
-  boost: { label: "장면 다시 보기", desc: "그 장면을 한 번 더 보여드려요" },
+  boost: { label: "장면 다시 보기", desc: "해결한 사건은 그대로 두고 그 장면을 한 번 더 보여드려요" },
   hooks: { onRound: renderRound, onJudged: showVerdict, onOver: onOver, pauseText: () => ({ sub: "", figure: "" }) },
 });
 

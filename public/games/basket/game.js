@@ -31,7 +31,7 @@ renderHeader($("#header"), { icon: "🧺", title: "딱 맞게 담기", badge: "R
 
 const run = createEndlessRun({
   game: GAME,
-  boost: { label: "상품 1개 교체 + 시도 1회", desc: "같은 문제를 한 번 더 풀 수 있습니다" },
+  boost: { label: "상품 1개 교체 + 시도 1회", desc: "지금 점수는 그대로 두고 같은 문제를 한 번 더 풉니다" },
   hooks: { onRound, onJudged, onOver, pauseText },
 });
 

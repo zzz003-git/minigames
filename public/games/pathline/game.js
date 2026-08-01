@@ -29,7 +29,7 @@ renderHeader($("#header"), { icon: "🧵", title: "한 줄로 이어요", badge:
 
 const run = createEndlessRun({
   game: GAME,
-  boost: { label: "정답 경로 3칸 공개", desc: "같은 판을 힌트와 함께 다시 풉니다" },
+  boost: { label: "정답 경로 3칸 공개", desc: "지금 점수는 그대로 두고 같은 판을 힌트와 함께 다시 풉니다" },
   hooks: { onRound, onJudged, onOver, pauseText },
 });
 

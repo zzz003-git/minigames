@@ -227,7 +227,10 @@ function timeUp() {
   boostReward(GAME, {
     sessionId: state.sessionId,
     label: "+15초",
-    desc: "연장한 판은 75초 · 90초 리그로 따로 집계됩니다",
+    desc: "지금 맞힌 문제는 그대로 두고 시간만 늘립니다",
+    // 이 게임은 버킷 이름 자체가 리그(45·75·90초)라 '+' 를 붙이지 않습니다
+    // (spec 의 boostBucketSuffix: false). 공통 안내 대신 실제 리그명을 적습니다.
+    note: "연장한 판은 75초 · 90초 리그로 따로 집계돼요",
     used: state.boosts,
     max: state.maxBoosts,
     onBoosted: (reward) => {

@@ -26,7 +26,7 @@ renderHeader($("#header"), { icon: "🔔", title: "순서 기억", badge: "R1" }
 
 const run = createEndlessRun({
   game: GAME,
-  boost: { label: "목숨 +1", desc: "같은 길이의 새 문제로 이어서 도전합니다" },
+  boost: { label: "목숨 +1", desc: "지금까지 통과한 라운드는 그대로 두고 같은 길이의 새 문제로 이어갑니다" },
   hooks: { onRound, onJudged, onOver, pauseText },
 });
 

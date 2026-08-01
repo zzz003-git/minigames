@@ -1061,6 +1061,17 @@ h1, h2, h3 { margin: 0; font-weight: 700; letter-spacing: -0.01em; }
 
 .reward__desc { font-size: 11px; color: var(--text-dim); line-height: 1.45; }
 
+/* 「광고를 봐도 손해가 없다」를 문자로 적는 줄. desc 보다 한 단 낮춰 보상 설명과
+   구분하되, 읽히지 않으면 있으나 마나라 대비는 남깁니다. */
+.reward__note {
+  display: block;
+  margin-top: 3px;
+  font-size: 10px;
+  color: var(--text-dim);
+  opacity: 0.85;
+  line-height: 1.4;
+}
+
 .reward__cta {
   flex: none;
   padding: 5px 11px;
@@ -1442,9 +1453,26 @@ h1, h2, h3 { margin: 0; font-weight: 700; letter-spacing: -0.01em; }
   transition: transform 120ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+/* 버튼은 그리드 칸에 맞춰 늘어나지 않습니다(폼 컨트롤은 stretch 대상이 아닙니다).
+   지정하지 않으면 칸이 정사각형이어도 타일만 한 줄 높이로 납작해집니다. */
+.tile-grid > .tile { width: 100%; height: 100%; }
+
 .tile:active { transform: scale(0.94); }
 .tile:focus-visible { outline: 2px solid var(--text-main); outline-offset: 2px; }
 .tile.is-answer { box-shadow: inset 0 0 0 3px var(--mint); }
+
+/* ⑥ 광고 소재 세트가 걸린 칸 — 배경색 대신 상품이 깔리고 한 칸만 밝기가 다릅니다.
+   칸 크기가 격자에 따라 변하므로 글자 크기를 칸에 맞춥니다(cqmin). */
+.tile--glyph {
+  display: grid;
+  place-items: center;
+  align-self: stretch;
+  background: var(--surface-2);
+  container-type: inline-size;
+}
+
+/* 칸이 좁아질수록(격자가 커질수록) 상품도 같이 작아집니다. */
+.tile__glyph { font-size: 62cqw; line-height: 1; }
 
 /* ⑰ 한 줄로 이어요 — 지나온 줄, 번호가 적힌 칸, 광고로 열어 준 정답 경로 */
 .tile.is-path { background: rgba(127, 216, 192, 0.14); border-color: var(--mint); color: var(--text-sub); }

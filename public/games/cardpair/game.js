@@ -36,6 +36,7 @@ const state = {
   pending: null, // 첫 장을 뒤집어 둔 카드 index
   t0: 0,
   clock: 0,
+  back: "?", // 카드 뒷면 — 광고 소재 세트가 걸리면 브랜드 아트로 바뀝니다
 };
 
 let lastResult = null;
@@ -88,6 +89,8 @@ async function startRun() {
       busy: false,
       pending: null,
       t0: performance.now(),
+      // 뒷면은 광고 소재 세트가 정합니다(브랜드 아트). 세트가 없으면 "?" 입니다.
+      back: res.ext?.back ?? "?",
     });
 
     buildBoard();
@@ -116,7 +119,7 @@ function buildBoard() {
       el(
         "button",
         { class: "mcard", type: "button", "aria-label": `${i + 1}번 카드`, onclick: () => flip(i) },
-        el("span", { class: "mcard__back", "aria-hidden": "true" }, "?"),
+        el("span", { class: "mcard__back", "aria-hidden": "true" }, state.back),
       ),
     );
   }
@@ -150,7 +153,7 @@ function showFace(index, symbol) {
 function showBack(index) {
   const card = cardAt(index);
   card.classList.remove("is-face", "is-miss", "is-waiting");
-  clear(card).append(el("span", { class: "mcard__back", "aria-hidden": "true" }, "?"));
+  clear(card).append(el("span", { class: "mcard__back", "aria-hidden": "true" }, state.back));
 }
 
 function renderHud() {
@@ -229,7 +232,7 @@ function renderBoost() {
   boostReward(GAME, {
     sessionId: state.sessionId,
     label: "한 쌍 위치 공개",
-    desc: "아직 못 맞춘 카드 중 한 쌍의 자리를 알려 줍니다",
+    desc: "뒤집기 횟수를 늘리지 않고 아직 못 맞춘 한 쌍의 자리를 알려 줍니다",
     used: state.boosts,
     max: state.maxBoosts,
     onBoosted: async (reward) => {

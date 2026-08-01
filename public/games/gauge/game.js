@@ -30,7 +30,7 @@ renderHeader($("#header"), { icon: "🇰🇷", title: "오늘의 전국 게이�
 const run = createEndlessRun({
   game: GAME,
   fresh: false, // 하루 한 번 참여 — 새로고침으로 잃으면 안 됩니다
-  boost: { label: "기여 2배", desc: "남은 토큰의 반영량이 두 배가 됩니다" },
+  boost: { label: "기여 2배", desc: "이미 밀어 넣은 기여는 그대로 두고 남은 토큰의 반영량이 두 배가 됩니다" },
   hooks: { onRound: renderRound, onJudged: showVerdict, onOver: onOver, pauseText: () => ({ sub: "", figure: "" }) },
 });
 
@@ -166,7 +166,7 @@ function renderBoostCard(round) {
   boostReward(GAME, {
     sessionId: run.state.sessionId,
     label: "기여 2배",
-    desc: "남은 토큰의 반영량이 두 배가 됩니다",
+    desc: "이미 밀어 넣은 기여는 그대로 두고 남은 토큰의 반영량이 두 배가 됩니다",
     used: 0,
     max: run.state.maxBoosts ?? 1,
     onBoosted: (reward) => {

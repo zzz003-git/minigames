@@ -28,7 +28,7 @@ renderHeader($("#header"), { icon: "🥁", title: "리듬 에코" });
 
 const run = createEndlessRun({
   game: GAME,
-  boost: { label: "패턴 다시 보기", desc: "같은 레벨을 다시 시도합니다" },
+  boost: { label: "패턴 다시 보기", desc: "도달한 레벨은 그대로 두고 같은 레벨을 다시 시도합니다" },
   hooks: { onRound: renderRound, onJudged: showVerdict, onOver: onOver, pauseText: pauseText },
 });
 
