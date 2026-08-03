@@ -1292,6 +1292,20 @@ export const SUITE = {
   },
 
   /**
+   * 페어 링크 (SUITE 1.6) — 값은 전부 가안이고 오픈이슈 2 에서 승인 대기 중이다.
+   *
+   * 생성 상한이 **서비스 통합**인 것이 핵심이다. 서비스별로 3건씩 두면 하루 9건이
+   * 되고, 그건 초대가 아니라 스팸이다.
+   */
+  PAIR: {
+    RELATIONS: ["lover", "friend", "family", "coworker"],
+    MAX_PER_DAY: 3, // 이용자당·서비스 통합
+    EXPIRE_MS: 72 * 60 * 60 * 1000, // 72시간
+    KEEP_MS: 30 * 24 * 60 * 60 * 1000, // 30일 뒤 행 삭제
+    QUESTIONS: 3, // 추측 문항 수 (심리 M-05)
+  },
+
+  /**
    * 분포 공개 유예 (SUITE 1.5).
    *
    * 참여자가 몇십 명일 때 "4.5%" 를 보여 주면 그 값은 사람 한두 명을 뜻하고,
@@ -1361,6 +1375,7 @@ export const AD_TRIGGERS = {
   TAROT_STATS: { service: "tarot", type: "INTERSTITIAL", perDay: 1 },
 
   MIND_ARCHIVE: { service: "mind", type: "REWARDED", perDay: MIND.AD_ARCHIVE_PER_DAY },
+  MIND_CHEMI: { service: "mind", type: "REWARDED", perDay: 1 },
   MIND_STATS: { service: "mind", type: "INTERSTITIAL", perDay: 1 },
 };
 

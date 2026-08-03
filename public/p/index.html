@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>너를 맞혀볼게</title>
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#0F1420">
+  <meta name="robots" content="noindex">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../shared/base.css">
+  <link rel="stylesheet" href="../mind/mind.css">
+</head>
+<!--
+  응답자 랜딩 — 마찰 0 (SUITE 3.2 랜딩 3원칙)
+
+  가입·설치·이름 입력이 하나도 없다. 상단 헤더조차 두지 않는다 — 처음 온 사람에게
+  브랜드를 먼저 들이밀지 않고 **받는 재미부터** 준다. 다음 행동은 버튼 하나뿐이다.
+-->
+<body class="game suite suite--mind">
+  <div class="app">
+    <main class="app__body">
+
+      <!-- 초대 -->
+      <section class="screen is-active" data-screen="intro">
+        <div class="card card--accent card--center card--hero">
+          <div class="type__glyph">💌</div>
+          <div class="headline" id="introTitle">누군가 당신을 맞혀 보려 해요</div>
+          <p class="scene__text" id="introText">
+            세 가지 질문에 답해 주세요. 그 사람이 당신을 얼마나 알고 있는지 나옵니다.
+          </p>
+        </div>
+        <button class="btn btn--primary" id="startBtn">답해 주기</button>
+        <p class="footnote--dim center">이름도 가입도 없어요 · 답한 내용은 저장되지 않아요</p>
+      </section>
+
+      <!-- 문항 -->
+      <section class="screen" data-screen="quiz">
+        <div class="qbar"><span id="qbarFill"></span></div>
+        <p class="qstep" id="qStep">1 / 3</p>
+        <div class="card card--center"><div class="qtext" id="qText">—</div></div>
+        <div class="opts" id="opts"></div>
+      </section>
+
+      <!-- 결과 -->
+      <section class="screen" data-screen="result">
+        <div class="card card--accent card--center card--hero">
+          <div class="figure figure--result" id="pctValue">—</div>
+          <div class="headline" id="pctHeadline">—</div>
+          <p class="scene__text" id="pctSub">—</p>
+        </div>
+
+        <div class="card card--info">
+          <div class="card__label">문항별로 보기</div>
+          <div class="paircards" id="pairCards"></div>
+        </div>
+
+        <!-- 다음 행동은 하나만 (SUITE 3.2 랜딩 3원칙) -->
+        <a class="btn btn--primary" id="tryBtn" href="/tarot/?from=pair">당신의 오늘도 30초면 나와요</a>
+        <button class="btn" id="backBtn">이번엔 내가 맞혀 보기</button>
+        <p class="footnote--dim center">결과를 다시 보려면 나의 오늘을 시작해 주세요 — 이 화면은 저장되지 않아요</p>
+      </section>
+
+      <!-- 안내 (만료·중복) -->
+      <section class="screen" data-screen="info">
+        <div class="card card--center card--hero">
+          <div class="type__glyph" id="infoGlyph">🕰️</div>
+          <div class="headline" id="infoTitle">—</div>
+          <p class="scene__text" id="infoText">—</p>
+        </div>
+        <a class="btn btn--primary" href="/tarot/?from=pair">그래도 오늘의 카드 뽑아 보기</a>
+      </section>
+
+    </main>
+  </div>
+
+  <script type="module" src="pair.js"></script>
+</body>
+</html>

@@ -97,3 +97,25 @@
 }
 .collcell.is-have { border-color: var(--m-key-dim); background: var(--m-surface); }
 .collcell.is-miss { color: var(--text-faint); font-size: 12px; }
+
+/* ── 페어 결과 카드 (SUITE S-4) ── */
+.paircards { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
+.paircard {
+  padding: 12px 14px; border-radius: 12px;
+  border: 1px solid var(--border-mid); background: var(--well-soft);
+}
+.paircard.is-hit { border-color: var(--m-key-dim); }
+.paircard__q { font-size: 13.5px; font-weight: 700; line-height: 1.5; }
+.paircard__line { margin-top: 7px; font-size: 12.5px; color: var(--text-sub); line-height: 1.6; }
+.paircard__vs { display: block; }
+.paircard__more {
+  margin-top: 9px; padding: 6px 12px;
+  font-size: 12px; color: var(--m-key);
+  background: none; border: 1px solid var(--m-line); border-radius: 999px;
+  cursor: pointer;
+}
+/* 마음 읽기는 **접힘이 기본**이다 — 자동으로 펼치면 고민의 페이싱이 사라진다 */
+.paircard__psy { margin-top: 9px; font-size: 12.5px; line-height: 1.65; color: var(--text-sub); }
+.paircard__psy p + p { margin-top: 5px; }
+.paircard__care { color: var(--m-key); }
+.paircard__avoid { color: var(--text-faint); }

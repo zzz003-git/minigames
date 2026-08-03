@@ -29,6 +29,8 @@ function grantServiceReward(env, userId, triggerKey) {
       return tarot.unlockStats(env, userId);
     case "MIND_ARCHIVE":
       return mind.grantArchive(env, userId);
+    case "MIND_CHEMI":
+      return mind.unlockChemi(env, userId);
     case "MIND_STATS":
       return mind.unlockStats(env, userId);
     default:

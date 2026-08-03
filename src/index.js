@@ -182,7 +182,32 @@ const ROUTES = {
   "GET /api/mind/state": mind.state,
   "POST /api/mind/submit": mind.submit,
   "GET /api/mind/stats": mind.stats,
+  "POST /api/mind/pair": mind.pairCreate,
+  "GET /api/mind/pairs": mind.pairList,
+
+  // 페어 응답 — **로그인도 소유 확인도 하지 않는다.** 토큰을 가진 사람이 곧
+  // 응답자다(SUITE 3.2 마찰 0). 서비스별 채점은 mind 가 넘긴다.
+  "GET /api/pair/open": mind.pairOpen,
+  "POST /api/pair/answer": mind.pairAnswer,
 };
+
+/**
+ * `/p/{token}` — 응답자가 여는 랜딩.
+ *
+ * 라우터가 정확 일치 표라 동적 경로를 태울 자리가 없다. 토큰은 화면이
+ * `location.pathname` 에서 읽으므로, 여기서는 **같은 정적 파일을 돌려주기만** 한다.
+ * 토큰을 쿼리스트링으로 옮기지 않는 이유는 기획서가 `/p/{token}` 을 규격으로
+ * 적었고, 공유 링크는 한번 나가면 형태를 바꿀 수 없기 때문이다.
+ */
+function pairLanding(request, env) {
+  const url = new URL(request.url);
+  // **디렉터리 경로로 가져온다.** `/p/index.html` 로 요청하면 자산 핸들러가 `/p/` 로
+  // 301 리다이렉트하고, 브라우저가 그것을 따라가면서 **주소에서 토큰이 사라진다**
+  // (브라우저 확인에서 그대로 걸렸다 — 화면이 「링크가 올바르지 않아요」로 떨어졌다).
+  url.pathname = "/p/";
+  url.search = "";
+  return env.ASSETS.fetch(new Request(url, request));
+}
 
 export default {
   /**
@@ -233,6 +258,12 @@ export default {
 
   async fetch(request, env) {
     const url = new URL(request.url);
+
+    // 페어 랜딩은 경로에 토큰이 들어 있어 정확 일치 표로 잡히지 않는다
+    if (request.method === "GET" && /^\/p\/[A-Za-z0-9_-]+\/?$/.test(url.pathname)) {
+      return pairLanding(request, env);
+    }
+
     const key = `${request.method} ${url.pathname}`;
     const handler = ROUTES[key];
 

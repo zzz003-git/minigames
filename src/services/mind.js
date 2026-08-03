@@ -23,6 +23,7 @@ import { MIND, SUITE } from "../lib/config.js";
 import { ApiError } from "../lib/http.js";
 import { dayKey } from "../lib/time.js";
 import { grantMany, completeDaily, dailyState, distribution, touchUser, pointState } from "../lib/suite.js";
+import { createLink, answerLink, openLink, myLinks } from "../lib/pair.js";
 
 /** 'YYYY-MM' — 지도의 월간 리셋 키 */
 const monthKey = (day = dayKey()) => day.slice(0, 7);
@@ -326,4 +327,163 @@ export async function unlockStats(env, userId, day = dayKey()) {
     .bind(userId, day)
     .run();
   return { kind: "UNLOCK", scope: "mind_stats" };
+}
+
+// ══════════════════════════════════════════════════════════════
+// 페어 「너를 맞혀볼게」 (SUITE S-4)
+// ══════════════════════════════════════════════════════════════
+
+/**
+ * 오늘·관계별로 뽑는 추측 문항 번호.
+ *
+ * 날짜와 관계로만 정해지므로 **서버와 화면이 따로 계산해도 같은 문항**이 나온다.
+ * 저장할 상태가 없고, 같은 관계로 하루에 두 번 보내도 같은 문항이라 「문항 쇼핑」이
+ * 성립하지 않는다.
+ */
+export function pairQuestionIds(day, relation, pool, count = SUITE.PAIR.QUESTIONS) {
+  let h = 2166136261;
+  for (const c of `${day}|${relation}`) {
+    h ^= c.charCodeAt(0);
+    h = Math.imul(h, 16777619);
+  }
+  const seed = Math.abs(h);
+  const out = [];
+  for (let i = 0; out.length < count && i < pool * 4; i++) {
+    const v = (seed + i * 7919) % pool;
+    if (!out.includes(v)) out.push(v);
+  }
+  return out;
+}
+
+/**
+ * POST /api/mind/pair — 링크 생성
+ *
+ * body: { relation, guesses:[3], reasons:[3], pool }
+ *   guesses 는 **내가 추측한 상대의 선택지**, reasons 는 문항별 근거 번호다.
+ *   근거를 함께 받는 이유는 결과 화면에서 「무엇을 근거로 봤는가」를 되돌려 주기
+ *   위해서다(기획서 M-05) — 맞히든 틀리든 그 한 줄이 대화 소재가 된다.
+ *
+ * **오늘의 실험을 마치기 전에는 만들 수 없다.** 자기 마음을 안 본 채 남을 맞히는
+ * 것부터 하면 서비스의 순서가 뒤집힌다(기획서 1절 홈 엣지).
+ */
+export async function pairCreate({ env, userId, body }) {
+  const day = dayKey();
+  const st = await loadDay(env, userId, day);
+  if (!st.done) {
+    throw new ApiError("MIND_NOT_DONE", "오늘의 실험을 먼저 마쳐 주세요.", 409);
+  }
+
+  const relation = String(body?.relation ?? "");
+  const pool = Number(body?.pool);
+  const guesses = body?.guesses;
+  const reasons = body?.reasons;
+  const n = SUITE.PAIR.QUESTIONS;
+
+  if (!Number.isInteger(pool) || pool < n) {
+    throw new ApiError("BAD_PARAM", "문항 묶음이 올바르지 않습니다.", 400);
+  }
+  if (!Array.isArray(guesses) || guesses.length !== n) {
+    throw new ApiError("BAD_PARAM", `추측은 ${n}개여야 합니다.`, 400);
+  }
+  if (!guesses.every((g) => Number.isInteger(g) && g >= 0 && g < MIND.OPTIONS)) {
+    throw new ApiError("BAD_PARAM", "추측한 선택지 번호가 올바르지 않습니다.", 400);
+  }
+  // 근거는 문항마다 반드시 하나씩 골라야 한다 (기획서 1절 「근거 선택 없이는 진행 불가」)
+  if (!Array.isArray(reasons) || reasons.length !== n || reasons.some((r) => !Number.isInteger(r))) {
+    throw new ApiError("BAD_PARAM", "문항마다 근거를 하나씩 골라 주세요.", 400);
+  }
+
+  const q = pairQuestionIds(day, relation, pool);
+  const link = await createLink(env, userId, {
+    service: "mind",
+    relation,
+    payload: { q, guess: guesses, reasons },
+  });
+
+  return link;
+}
+
+/**
+ * POST /api/pair/answer — 상대의 응답
+ *
+ * 응답자에게는 계정이 없다. 그래서 이 경로는 **로그인도 소유 확인도 하지 않는다** —
+ * 토큰을 가진 사람이 곧 응답자다(기획서 3.2 마찰 0).
+ */
+export async function pairAnswer({ env, body }) {
+  const picks = body?.answers;
+  const n = SUITE.PAIR.QUESTIONS;
+
+  if (!Array.isArray(picks) || picks.length !== n) {
+    throw new ApiError("BAD_PARAM", `응답은 ${n}개여야 합니다.`, 400);
+  }
+  if (!picks.every((p) => Number.isInteger(p) && p >= 0 && p < MIND.OPTIONS)) {
+    throw new ApiError("BAD_PARAM", "선택지 번호가 올바르지 않습니다.", 400);
+  }
+
+  const { row, payload, hits, pct, gained } = await answerLink(
+    env,
+    body?.token,
+    picks,
+    // 「맞혔다」의 뜻 — 심리는 **같은 선택지**다
+    (p, ans) => {
+      const guess = p.guess ?? [];
+      const hitArr = ans.map((v, i) => v === guess[i]);
+      return { hits: hitArr, pct: Math.round((hitArr.filter(Boolean).length / hitArr.length) * 100) };
+    },
+  );
+
+  // 관계별 최고 지수 — "엄마와 64%" 를 다음에 보여 주기 위한 것
+  await env.DB.prepare(
+    `INSERT INTO mind_pair_best (user_id, relation, best_pct, last_day) VALUES (?, ?, ?, ?)
+     ON CONFLICT (user_id, relation) DO UPDATE SET
+       best_pct = MAX(mind_pair_best.best_pct, excluded.best_pct),
+       last_day = excluded.last_day`,
+  )
+    .bind(row.owner_id, row.relation, pct, dayKey())
+    .run();
+
+  return {
+    pct,
+    hits,
+    question_ids: payload.q ?? [],
+    // 응답자도 owner 와 **같은 데이터**를 본다(기획서 M-06). 받는 재미가 먼저다
+    guess: payload.guess ?? [],
+    reasons: payload.reasons ?? [],
+    relation: row.relation,
+    owner_gained: gained,
+  };
+}
+
+/** GET /api/pair/open?token= — 응답자 화면이 여는 링크 */
+export async function pairOpen({ env, url }) {
+  return openLink(env, url.searchParams.get("token"));
+}
+
+/** GET /api/mind/pairs — 내가 오늘 보낸 링크들 (푸시가 없으므로 재방문 시 여기서 본다) */
+export async function pairList({ env, userId }) {
+  const day = dayKey();
+  const links = await myLinks(env, userId, day);
+  const rows = await env.DB.prepare(
+    `SELECT relation, best_pct FROM mind_pair_best WHERE user_id = ?`,
+  )
+    .bind(userId)
+    .all();
+
+  return {
+    links,
+    best: Object.fromEntries((rows?.results ?? []).map((r) => [r.relation, r.best_pct])),
+    max_per_day: SUITE.PAIR.MAX_PER_DAY,
+    remaining_today: Math.max(0, SUITE.PAIR.MAX_PER_DAY - links.length),
+  };
+}
+
+/** 케미 리포트 (광고) — 지수 구간 코멘트. 열람 해제만 하고 내용은 화면이 고른다 */
+export async function unlockChemi(env, userId, day = dayKey()) {
+  await env.DB.prepare(
+    `INSERT INTO mind_daily (user_id, day, pair_reward_paid) VALUES (?, ?, 1)
+     ON CONFLICT (user_id, day) DO UPDATE SET pair_reward_paid = 1`,
+  )
+    .bind(userId, day)
+    .run();
+  return { kind: "UNLOCK", scope: "mind_chemi" };
 }
