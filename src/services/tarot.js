@@ -214,7 +214,7 @@ export async function draw({ env, userId, body }) {
   const gained = await grantMany(env, userId, grants);
 
   // 허브 갱신·분포·트리플 판정은 **첫 뽑기에서만**. 두 번째 카드로 오늘의 축이
-  // 바뀌면 「심리테스트 한 장」이 뽑을 때마다 달라진다.
+  // 바뀌면 「오늘의 나 한 장」이 뽑을 때마다 달라진다.
   let suiteResult = null;
   if (isFirstDraw) {
     suiteResult = await completeDaily(env, userId, "tarot", cardId, day);

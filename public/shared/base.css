@@ -3129,7 +3129,7 @@ button.sicon:active { transform: scale(0.94); }
   .confetti { display: none; }
 }
 
-/* ── 스위트 「심리테스트」 진입점 (미니게임 허브 상단) ── */
+/* ── 스위트 「오늘의 나」 진입점 (미니게임 허브 상단) ── */
 .todaybar {
   display: flex; align-items: center; gap: 13px;
   margin: 0 0 18px; padding: 15px 16px;
@@ -3147,7 +3147,7 @@ button.sicon:active { transform: scale(0.94); }
 .todaybar__go { margin-left: auto; color: var(--text-faint); font-size: 18px; }
 
 /* ══════════════════════════════════════════════════════════════
-   공용 상단 내비 — 게임 / 심리테스트
+   공용 상단 내비 — 게임 / 오늘의 나
    디자인: docs/design/오늘의나-스위트-v3.dc.html
    ══════════════════════════════════════════════════════════════ */
 
@@ -3167,7 +3167,7 @@ button.sicon:active { transform: scale(0.94); }
   display: flex; align-items: center; gap: 9px;
   margin-right: auto; text-decoration: none; color: var(--text);
 }
-/* 두 영역의 색을 한 마크에 겹쳐 둔다 — 게임(민트)과 심리테스트(보라) */
+/* 두 영역의 색을 한 마크에 겹쳐 둔다 — 게임(민트)과 오늘의 나(보라) */
 .sitebar__mark {
   width: 26px; height: 26px; border-radius: 9px;
   background: linear-gradient(140deg, #7fd8c0, #a98be0);
@@ -3198,7 +3198,7 @@ button.sicon:active { transform: scale(0.94); }
 .sitetab.is-soon { color: #5c6880; border-color: rgba(255, 255, 255, 0.07); cursor: default; }
 
 /* ══ 게임 영역 카드 (디자인 v3 D-2) ══
-   두 묶음(오리지널·아케이드)을 하나의 영역으로 감싼다. 심리테스트 영역과 나란히
+   두 묶음(오리지널·아케이드)을 하나의 영역으로 감싼다. 오늘의 나 영역과 나란히
    놓였을 때 「두 영역」이 눈으로 갈리게 하는 장치다. */
 .gamearea {
   border: 1px solid rgba(127, 216, 192, 0.14);
@@ -3239,7 +3239,7 @@ button.sicon:active { transform: scale(0.94); }
 .arcade-card[hidden] { display: none; }
 .bandmore[hidden] { display: none; }
 
-/* ══ 심리테스트 영역 카드 (디자인 v3 D-3) ══
+/* ══ 오늘의 나 영역 카드 (디자인 v3 D-3) ══
    게임 영역이 민트라면 이쪽은 보라다. 두 영역이 「전체」 화면에 나란히 놓였을 때
    스크롤 중에도 색만 보고 갈리게 하는 장치다. */
 .hubarea {

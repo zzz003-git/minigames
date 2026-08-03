@@ -175,7 +175,7 @@ const ROUTES = {
   "GET /game/config": config,
   "GET /user/attempts": statsRoutes.attempts,
 
-  // ── 스위트 「심리테스트」 ────────────────────────────────────────────────
+  // ── 스위트 「오늘의 나」 ────────────────────────────────────────────────
   // 게임이 아니라 별도 라우트다(SUITE-SPEC-01). 경로 앞에 /api 가 붙는 것은
   // 기획서 4절 규격이며, wrangler.jsonc 의 run_worker_first 에 /api/* 를 넣어야
   // 정적 자산 핸들러가 먼저 가로채지 않는다.

@@ -1,9 +1,9 @@
 /**
- * 심리테스트 영역 — 「전체」 화면과 허브가 함께 쓴다
+ * 오늘의 나 영역 — 「전체」 화면과 허브가 함께 쓴다
  *
- * 디자인: docs/design/오늘의나-스위트-v3.dc.html (`data-screen-label="심리테스트 허브"`)
+ * 디자인: docs/design/오늘의나-스위트-v3.dc.html (`data-screen-label="오늘의 나 허브"`)
  *
- * 원안에서 **전체 화면은 게임과 심리테스트를 함께 보여 준다.** 그래서 이 영역이
+ * 원안에서 **전체 화면은 게임과 오늘의 나를 함께 보여 준다.** 그래서 이 영역이
  * 필요하다 — 두 영역을 오가게만 하면 「한 제품」이 아니라 「두 제품 사이의
  * 스위치」가 된다.
  *
@@ -14,7 +14,7 @@
  * 그대로 쓴다.
  *
  * ── 원안에서 빼 둔 것 ────────────────────────────────────────────────────
- * - **「심리테스트 한 장」(교차 리딩)** — 220문장 DB(`cross_db_v1.json`)가 아직 없다.
+ * - **「오늘의 나 한 장」(교차 리딩)** — 220문장 DB(`cross_db_v1.json`)가 아직 없다.
  *   문장 없이 틀만 띄우면 빈 카드가 남는다. 트리플 안내 줄로 대신해 둔다.
  * - **아카이브 달력** — 월 단위 조회 API 가 없다. `daily_agg` 에 데이터는 쌓이고
  *   있으므로 API 하나만 붙이면 되는데, 그건 이 단계(외형)의 일이 아니다.
@@ -48,7 +48,7 @@ export async function renderTodaySection(host, { heading = true } = {}) {
   try {
     data = await apiGet("/api/today");
   } catch {
-    // 심리테스트가 안 열려도 게임 영역은 멀쩡해야 한다 — 조용히 비운다
+    // 오늘의 나가 안 열려도 게임 영역은 멀쩡해야 한다 — 조용히 비운다
     host.hidden = true;
     return null;
   }
@@ -59,7 +59,7 @@ export async function renderTodaySection(host, { heading = true } = {}) {
 
   if (heading) host.append(areaHead(data));
 
-  const grid = el("nav", { class: "hubarea__grid", "aria-label": "심리테스트 3종" });
+  const grid = el("nav", { class: "hubarea__grid", "aria-label": "오늘의 나 3종" });
   for (const s of data.services) grid.append(serviceCard(s));
   host.append(grid);
 
@@ -81,7 +81,7 @@ function areaHead(data) {
     el(
       "span",
       { class: "hubarea__text" },
-      el("b", {}, "심리테스트"),
+      el("b", {}, "오늘의 나"),
       el("span", {}, greeting(data)),
     ),
     dots,
