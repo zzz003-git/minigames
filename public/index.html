@@ -13,7 +13,9 @@
   <link rel="stylesheet" href="shared/base.css">
 </head>
 <body>
-  <main class="hub">
+  <!-- 공용 상단 내비 (디자인 v3) — 두 영역을 한 제품으로 묶는다 -->
+  <div id="siteNav"></div>
+  <main class="hub hub--wide">
     <header class="hub__header">
       <h1>인스턴트 미니게임</h1>
       <p class="subtext">하고 싶은 게임을 골라보세요</p>
@@ -22,17 +24,6 @@
     <!-- 테스트 빌드 표시. 한도가 풀린 빌드인지 테스터가 알아야 「왜 무한이지?」를
          버그로 적어 오지 않습니다. 프로덕션에서는 이 자리가 비어 있습니다. -->
     <div id="testBanner" hidden></div>
-
-    <!-- 스위트 「오늘의 나」 — 게임이 아니라 별도 서비스라 묶음 위에 따로 둔다.
-         사주가 아직 준비 중이라 3칸 중 2칸만 열려 있고, 그 사실은 허브가 적는다. -->
-    <a class="todaybar" href="/today/">
-      <span class="todaybar__icons" aria-hidden="true">🔮 🌤️ 🔬</span>
-      <span class="todaybar__text">
-        <b>오늘의 나</b>
-        <span>타로 · 기운 · 마음 — 오늘의 나를 세 조각으로</span>
-      </span>
-      <span class="todaybar__go" aria-hidden="true">›</span>
-    </a>
 
     <!-- 오리지널 4종 — 한 판이 길고 기록 경신형이라 설명을 함께 보여줍니다 -->
     <section class="hub__section">
@@ -281,6 +272,12 @@
 
   <!-- 테스트 빌드일 때만 띠를 답니다. 프로덕션에서는 요청 한 번으로 끝나고
        아무것도 그리지 않습니다(이 응답은 D1 을 건드리지 않습니다). -->
+  <script type="module">
+    import { renderSiteNav } from "./shared/sitenav.js";
+    import { $ } from "./shared/ui.js";
+    renderSiteNav($("#siteNav"), "games");
+  </script>
+
   <script>
     fetch("/game/config")
       .then((r) => r.json())

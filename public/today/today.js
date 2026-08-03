@@ -17,9 +17,11 @@
 import { apiGet } from "../shared/api.js";
 import { $, el, clear, renderHeader, toast } from "../shared/ui.js";
 import { HUB_INDEX } from "./hub-index.js";
+import { renderSiteNav } from "../shared/sitenav.js";
 
 const TINT = { tarot: "#e8c46a", saju: "#9ab6f0", mind: "#7fd8c0" };
 
+renderSiteNav($("#siteNav"), "today");
 renderHeader($("#header"), { icon: "✦", title: "오늘의 나" });
 
 boot();

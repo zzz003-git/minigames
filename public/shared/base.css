@@ -3099,3 +3099,51 @@ button.sicon:active { transform: scale(0.94); }
 .todaybar__text b { font-size: 15px; }
 .todaybar__text span { font-size: 12.5px; color: var(--text-sub); line-height: 1.4; }
 .todaybar__go { margin-left: auto; color: var(--text-faint); font-size: 18px; }
+
+/* ══════════════════════════════════════════════════════════════
+   공용 상단 내비 — 게임 / 오늘의 나
+   디자인: docs/design/오늘의나-스위트-v3.dc.html
+   ══════════════════════════════════════════════════════════════ */
+
+.sitebar {
+  position: sticky; top: 0; z-index: 20;
+  background: rgba(15, 20, 32, 0.88);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  margin: 0 0 18px;
+}
+.sitebar__inner {
+  max-width: 1120px; margin: 0 auto;
+  padding: 12px clamp(16px, 4vw, 28px);
+  display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+}
+.sitebar__brand {
+  display: flex; align-items: center; gap: 9px;
+  margin-right: auto; text-decoration: none; color: var(--text);
+}
+/* 두 영역의 색을 한 마크에 겹쳐 둔다 — 게임(민트)과 오늘의 나(보라) */
+.sitebar__mark {
+  width: 26px; height: 26px; border-radius: 9px;
+  background: linear-gradient(140deg, #7fd8c0, #a98be0);
+  display: grid; place-items: center;
+  color: #0f1420; font-weight: 700; font-size: 13px;
+}
+.sitebar__name { font-weight: 700; font-size: 15px; letter-spacing: -0.01em; }
+.sitebar__tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+
+.sitetab {
+  padding: 7px 14px; border-radius: 999px;
+  font-size: 13px; font-weight: 700; letter-spacing: -0.01em;
+  color: var(--text-sub); text-decoration: none;
+  background: transparent; border: 1px solid var(--border-mid);
+  transition: 0.15s;
+}
+.sitetab:hover { color: var(--text); border-color: var(--border-strong); }
+.sitetab.is-on {
+  color: #0f1420;
+  background: linear-gradient(140deg, #7fd8c0, #a98be0);
+  border-color: transparent;
+}
+
+/* 내비가 있는 화면은 본문 폭을 디자인에 맞춘다 */
+.hub--wide { max-width: 1120px; padding-left: clamp(16px, 4vw, 28px); padding-right: clamp(16px, 4vw, 28px); }
