@@ -216,6 +216,17 @@ deck.addEventListener("keydown", (e) => {
  * 결과에 영향을 주지 않고, **매번 같은 자리에 펼쳐지지 않게** 하기 위한 것뿐이다.
  * 실제 카드는 서버가 정한다.
  */
+/**
+ * 카드를 들어올리는 높이(px).
+ *
+ * 무대는 `overflow: hidden` 이라 **이만큼을 무대 위쪽에 미리 비워 둬야** 한다.
+ * 비워 두지 않으면 들린 카드가 무대 경계를 넘어 잘리고, 위의 안내 문구와도 겹친다
+ * (폰에서 실제로 그랬다). 그래서 배치의 머리 공간과 같은 상수를 쓴다 — 둘이 따로
+ * 놀면 값을 하나만 고쳤을 때 다시 잘린다.
+ */
+const LIFT = { PICK: 20, CHOSEN: 26 };
+const LIFT_MAX = Math.max(LIFT.PICK, LIFT.CHOSEN);
+
 function openFan() {
   const stage = clear($("#fanStage"));
   stage.classList.remove("is-locked");
@@ -254,7 +265,9 @@ function openFan() {
   // 잘린다.** 회전 후의 외접 폭으로 빼야 맞다.
   const spanW = cardW * Math.cos(rad) + cardH * Math.sin(rad);
   const R = Math.max(160, (stageW - spanW - 8) / (2 * Math.sin(rad)));
-  const pivotY = R + cardH * 0.5 + 8; // 회전 중심은 무대 위쪽 기준 이만큼 아래
+  // 회전 중심은 무대 위쪽 기준 이만큼 아래.
+  // `LIFT_MAX` 를 더해 **들어올릴 자리를 미리 비운다** (없으면 들린 카드가 잘린다).
+  const pivotY = R + cardH * 0.5 + LIFT_MAX + 8;
 
   for (let i = 0; i < n; i++) {
     const deg = -spread + ((spread * 2) / (n - 1)) * i;
@@ -312,7 +325,7 @@ function bindFanPicker() {
     picked?.node.classList.remove("is-picking");
     picked = item;
     if (!item) return;
-    item.node.style.setProperty("--lift", "-20px");
+    item.node.style.setProperty("--lift", `-${LIFT.PICK}px`);
     item.node.classList.add("is-picking");
     navigator.vibrate?.(6);
   };
@@ -367,7 +380,7 @@ async function choose(node) {
   if (state.busy) return;
   state.busy = true;
   $("#fanStage").classList.add("is-locked");
-  node.style.setProperty("--lift", "-26px");
+  node.style.setProperty("--lift", `-${LIFT.CHOSEN}px`);
   node.classList.add("is-chosen");
   navigator.vibrate?.(18);
 
