@@ -87,17 +87,50 @@ Cloudflare Workers + D1. 정적 화면과 API 서버를 한 Worker 에서 서비
 
 ---
 
-## ⚠️ push = 실서비스 배포
+## ⚠️ 배포 — 두 갈래
+
+배포 대상이 **두 개**이고 경로가 다르다. 헷갈리면 실서비스가 잘못 나간다.
+
+| | 프로덕션 | 스테이징 (외부 테스터용) |
+| --- | --- | --- |
+| Worker | `minigames` | `minigames-staging` |
+| 주소 | minigames.zzz00321.workers.dev | minigames-staging.zzz00321.workers.dev |
+| D1 | `minigames-db` | `minigames-staging-db` |
+| 한도 | 살아 있음 | `TEST_MODE` 로 하루 한도 풀림 |
+| **배포 명령** | **`main` push** (Workers Builds 자동) | **`npx wrangler deploy --env staging`** |
+| 마이그레이션 | `npm run db:migrate` | `npx wrangler d1 migrations apply minigames-staging-db --remote --env staging` |
+
+### 프로덕션
 
 `main` 에 push 하면 Cloudflare Workers Builds 가 **자동 배포**한다.
 `.github/workflows` 가 없어서 저장소만 봐서는 보이지 않는다.
 
-- `npm run deploy`**(wrangler deploy)를 직접 실행하지 않는다.** 수동 배포 후 push 하면
-push 한 번에 버전이 두 개 생긴다.
+- `npm run deploy`**(인자 없는 wrangler deploy)를 직접 실행하지 않는다.** 수동 배포 후
+push 하면 push 한 번에 버전이 두 개 생긴다.
 - **push 전에는 반드시 사용자 승인을 받는다.** 커밋까지는 로컬이라 멈출 필요가 없다.
 승인을 물을 때 "실서비스에 즉시 반영됩니다" 를 명시한다.
 - 마이그레이션이 있으면 `npm run db:migrate`**(--remote)가 push 보다 먼저**다.
 순서가 바뀌면 새 게임의 세션 시작이 전부 500 이 된다.
+- 문서만 바꾼 커밋도 push 하면 배포가 돈다.
+
+### 스테이징
+
+`--env staging` 이 **유일한 배포 경로**다. Workers Builds 는 프로덕션만 빌드하므로
+위의 「직접 실행 금지」(프로덕션에 버전이 두 개 생기는 것을 막는 규칙)에 걸리지 않는다.
+
+- **git 과 무관하다.** 커밋도 push 도 필요 없고 **작업 트리가 그대로 올라간다.**
+그래서 배포 전에 무엇이 올라가는지 말한다 — 커밋 안 한 실험 코드가 섞이기 쉽다.
+- 스테이징 배포도 **승인 게이트다.** 외부에 나가는 동작이고 테스터가 그 주소를 본다.
+- 프로덕션과 DB 가 다르므로 스테이징 기록은 마음껏 지워도 된다.
+
+### 어느 쪽인지 불분명하면 묻는다
+
+"배포해줘" 만으로는 갈리지 않는다. 아래를 기준으로 읽고, 그래도 애매하면 확인한다.
+
+```
+"스테이징 배포" · "테스터용 배포" · "테스트 서버에 올려"   → wrangler deploy --env staging
+"배포" · "라이브 배포" · "실서비스 반영" · "push"          → main push (승인 필수)
+```
 
 ---
 
