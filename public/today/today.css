@@ -1,0 +1,74 @@
+/**
+ * ✦ 허브 「오늘의 나」 — 전용 스타일
+ *
+ * 세 서비스의 색을 각 타일이 자기 것으로 갖는다(--t). 허브 자체는 색을 주장하지
+ * 않는다 — 오늘의 나는 세 조각의 합이지 네 번째 서비스가 아니다.
+ */
+
+.suite--today { --hub-line: rgba(255, 255, 255, 0.08); }
+.suite .center { text-align: center; }
+
+/* ── 인사 ── */
+.greet { padding: 6px 2px 14px; }
+.greet__day { font-size: 12.5px; color: var(--text-faint); font-family: var(--mono); }
+.greet__line { margin-top: 5px; font-size: 19px; font-weight: 700; line-height: 1.45; }
+
+/* ── 트리플 진행도 ── */
+.tripcard { padding: 13px 16px; }
+.trip { display: flex; align-items: center; gap: 13px; }
+.trip__dots { display: flex; gap: 6px; }
+.trip__dots i {
+  width: 10px; height: 10px; border-radius: 50%;
+  background: rgba(255, 255, 255, 0.12);
+  transition: background 0.3s ease;
+}
+.trip__dots i.is-on { background: var(--gold); }
+/* 아직 열리지 않은 서비스의 칸 — 켜질 수 없다는 것을 모양으로 알린다 */
+.trip__dots i.is-locked { background: none; border: 1px dashed rgba(255, 255, 255, 0.18); }
+.trip__text { display: flex; flex-direction: column; gap: 2px; }
+.trip__text b { font-size: 14px; font-family: var(--mono); }
+.trip__text span { font-size: 12px; color: var(--text-sub); line-height: 1.45; }
+
+/* ── 3칸 타일 ── */
+/* 클래스 이름이 `hubtile` 인 이유: base.css 에 이미 `.tile` 이 있다(⑥ 색 다른 타일
+   찾기의 정사각 타일). 그대로 쓰면 그쪽의 고정 크기가 먹혀 **행이 34px 로 눌리고
+   50px 아이콘이 밖으로 삐져나와 겹친다**(브라우저 확인에서 그렇게 보였다).
+   공용 base.css 위에 얹는 화면은 클래스 이름을 먼저 확인한다.
+
+   `flex: none` 은 `.screen` 이 flex 컬럼이라 자식이 기본으로 수축하기 때문이다. */
+.hubtiles { display: flex; flex-direction: column; gap: 10px; margin: 12px 0 4px; flex: none; }
+.hubtile {
+  display: flex; align-items: center; gap: 14px;
+  flex: none;
+  padding: 16px;
+  border-radius: 16px;
+  border: 1px solid var(--hub-line);
+  background: var(--well-soft);
+  color: var(--text);
+  text-decoration: none;
+  transition: transform 0.16s ease, border-color 0.16s ease;
+}
+.hubtile:not(.is-locked):hover { transform: translateY(-2px); border-color: var(--t); }
+.hubtile__icon {
+  width: 50px; height: 50px; flex: none;
+  border-radius: 14px;
+  display: grid; place-items: center;
+  font-size: 25px;
+  background: color-mix(in srgb, var(--t) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--t) 26%, transparent);
+}
+.hubtile__body { min-width: 0; }
+.hubtile__name { font-size: 15px; font-weight: 700; }
+.hubtile__meta { margin-top: 3px; font-size: 12.5px; color: var(--text-sub); line-height: 1.45; }
+.hubtile__go { margin-left: auto; color: var(--text-faint); font-size: 18px; }
+
+/* 완료 — 결과 미니 카드 */
+.hubtile.is-done { border-color: color-mix(in srgb, var(--t) 40%, transparent); }
+.hubtile.is-done .hubtile__meta { color: var(--t); }
+
+/* 봉인 — 아직 안 한 것. 잠긴 것이 아니라 **기다리는 것**이라 흐리게 두지 않는다 */
+.hubtile.is-todo .hubtile__icon { opacity: 0.75; }
+
+/* 준비 중 — 아직 열리지 않은 서비스 */
+.hubtile.is-locked { opacity: 0.5; cursor: default; }
+.hubtile.is-locked .hubtile__icon { filter: grayscale(1); }

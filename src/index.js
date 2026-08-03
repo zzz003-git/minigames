@@ -51,6 +51,7 @@ import { ARCADE_SPECS } from "./games/arcade/index.js";
 import { rollDailySnapshot } from "./games/arcade/majority.js";
 import * as tarot from "./services/tarot.js";
 import * as mind from "./services/mind.js";
+import * as todayHub from "./services/today.js";
 import * as arcade from "./lib/arcade.js";
 import * as adRoutes from "./routes/ad.js";
 import * as statsRoutes from "./routes/stats.js";
@@ -184,6 +185,9 @@ const ROUTES = {
   "GET /api/mind/stats": mind.stats,
   "POST /api/mind/pair": mind.pairCreate,
   "GET /api/mind/pairs": mind.pairList,
+
+  // 허브는 **쓰기가 없다.** 세 서비스가 남긴 것을 읽어서 모으기만 한다.
+  "GET /api/today": todayHub.today,
 
   // 페어 응답 — **로그인도 소유 확인도 하지 않는다.** 토큰을 가진 사람이 곧
   // 응답자다(SUITE 3.2 마찰 0). 서비스별 채점은 mind 가 넘긴다.

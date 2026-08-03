@@ -3082,3 +3082,20 @@ button.sicon:active { transform: scale(0.94); }
 
   .confetti { display: none; }
 }
+
+/* ── 스위트 「오늘의 나」 진입점 (미니게임 허브 상단) ── */
+.todaybar {
+  display: flex; align-items: center; gap: 13px;
+  margin: 0 0 18px; padding: 15px 16px;
+  border-radius: 16px;
+  border: 1px solid rgba(232, 196, 106, 0.22);
+  background: linear-gradient(135deg, rgba(232, 196, 106, 0.09), rgba(127, 216, 192, 0.07));
+  color: var(--text); text-decoration: none;
+  flex: none;
+}
+.todaybar:hover { border-color: rgba(232, 196, 106, 0.42); }
+.todaybar__icons { font-size: 19px; letter-spacing: -2px; flex: none; }
+.todaybar__text { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.todaybar__text b { font-size: 15px; }
+.todaybar__text span { font-size: 12.5px; color: var(--text-sub); line-height: 1.4; }
+.todaybar__go { margin-left: auto; color: var(--text-faint); font-size: 18px; }

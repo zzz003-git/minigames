@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>오늘의 나</title>
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#0F1420">
+  <meta name="description" content="타로 · 기운 · 마음 — 오늘의 나를 세 조각으로.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../shared/base.css">
+  <link rel="stylesheet" href="today.css">
+</head>
+<body class="game suite suite--today">
+  <div class="app">
+    <header class="topbar" id="header"></header>
+
+    <main class="app__body">
+      <section class="screen is-active" data-screen="home">
+
+        <div class="greet">
+          <div class="greet__day" id="greetDay">—</div>
+          <div class="greet__line" id="greetLine">오늘의 나를 세 조각으로 만나요</div>
+        </div>
+
+        <!-- 트리플 진행도 -->
+        <div class="card card--info tripcard">
+          <div class="trip">
+            <div class="trip__dots" id="tripDots" aria-hidden="true"></div>
+            <div class="trip__text">
+              <b id="tripCount">0 / 3</b>
+              <span id="tripNote">—</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3칸 -->
+        <!-- 클래스 이름이 hubtile 인 이유는 today.css 주석 참조 (base.css 와 충돌) -->
+        <nav class="hubtiles" id="hubtiles" aria-label="오늘의 3종"></nav>
+
+        <div class="stats">
+          <div class="stat stat--accent">
+            <div class="stat__label">오늘 적립</div>
+            <div class="stat__value" id="ptToday">—</div>
+          </div>
+          <div class="stat">
+            <div class="stat__label">모은 포인트</div>
+            <div class="stat__value" id="ptTotal">—</div>
+          </div>
+        </div>
+
+        <a class="btn" href="/">← 미니게임으로</a>
+        <p class="footnote--dim center">매일 자정에 새 하루가 열려요</p>
+      </section>
+    </main>
+  </div>
+
+  <script type="module" src="today.js"></script>
+</body>
+</html>
