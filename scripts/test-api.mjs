@@ -38,7 +38,7 @@ import { gradeRoom, makeRoom } from "../src/games/arcade/lightout.js";
 // 테스트 모드 잠금 — 환경 변수를 바꿔 재기동해야 재현되므로 판별 함수를 직접 부릅니다
 import { isTestMode } from "../src/lib/testmode.js";
 // 🌤️ 만세력 — 일주 기준일이 틀리면 서비스 전체가 틀리므로 여기가 관문입니다
-import { dayGanzhi, ganzhiName, correctClock, dayAndHourPillar } from "../src/lib/saju-calendar.js";
+import { dayGanzhi, ganzhiName, correctClock, dayAndHourPillar, natalChart } from "../src/lib/saju-calendar.js";
 import { readFileSync } from "node:fs";
 
 const BASE = process.env.TEST_BASE ?? "http://127.0.0.1:8787";
@@ -1490,6 +1490,45 @@ function testModeSwitch() {
 }
 
 /**
+ * 🌤️ 명식 네 기둥 — 절기 경계가 제대로 갈리는가
+ *
+ * 프로토는 입춘을 2/4 로 고정했다. 그러면 **입춘 당일 출생자의 연주가 통째로
+ * 틀린다** — 입춘은 시각이 있고 그 전후로 해가 갈리기 때문이다.
+ * 여기가 절기 표를 들여온 이유이자, 표가 실제로 쓰이는지 확인하는 자리다.
+ */
+function natalChartRules() {
+  // 1990년 입춘은 2/4 09:14 (KST). 보정(−30분)을 감안하면 새벽은 전년, 저녁은 당년.
+  const dawn = natalChart("1990-02-04", 5);
+  const dusk = natalChart("1990-02-04", 20);
+  check("입춘 전후로 연주가 갈린다", dawn.year.name !== dusk.year.name,
+    `새벽 ${dawn.year.name} / 저녁 ${dusk.year.name}`);
+  check("입춘 전은 전년 기해년 계열", dawn.jeol.name === "소한" && dusk.jeol.name === "입춘",
+    `${dawn.jeol.name} → ${dusk.jeol.name}`);
+
+  // 월주는 절 기준이라 달력 월과 다르다 — 5/15 는 입하(4월절)에 속한다
+  const may = natalChart("1990-05-15", 14);
+  check("월주는 달력 월이 아니라 절 기준", may.jeol.name === "입하" && may.month.name === "신사",
+    `${may.jeol.name} · 월주 ${may.month.name}`);
+
+  // 시각 보정이 명식에 반영되는가
+  const dst = natalChart("1988-08-15", 14);
+  check("서머타임이 명식에 반영", dst.notes.some((n) => n.includes("서머타임")), dst.notes.join(" · "));
+
+  const half = natalChart("1958-06-15", 11);
+  check("UTC+8:30 이 명식에 반영", half.notes.some((n) => n.includes("8:30")), half.notes.join(" · "));
+
+  // 시간 모름 → 3기둥
+  const noHour = natalChart("2006-01-15", null);
+  check("시간 모름이면 3기둥", noHour.hour === null && noHour.year && noHour.month && noHour.day,
+    `${noHour.year.name} ${noHour.month.name} ${noHour.day.name}`);
+
+  // 표 범위 밖은 거부한다 — 조용히 틀린 값을 주지 않는다
+  let rejected = false;
+  try { natalChart("1920-05-05", 12); } catch { rejected = true; }
+  check("표 범위 밖은 거부", rejected);
+}
+
+/**
  * 🌤️ 절기 — KASI 정답지(2000~2028 · 696건) 전건 대조
  *
  * KASI 24절기 API 는 2000~2028 만 준다. 사주는 출생 연도가 필요해 계산으로 갔고,
@@ -2553,6 +2592,7 @@ async function commonRules() {
   testModeSwitch();
   sajuCalendarRules();
   solarTermRules();
+  natalChartRules();
 
   // 시간 조작 — 두 단계로 걸립니다
   const s = await post("/game/session/start", { game_type: "STROOP", fresh: true });

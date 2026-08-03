@@ -14,6 +14,9 @@
  * (일일 꽂기)가 쓰는 값이 그것이라, 표가 늦어도 코어는 먼저 검증할 수 있다.
  */
 
+import { ApiError } from "./http.js";
+import JEOL_TABLE from "../../data/saju-jeol.json" with { type: "json" };
+
 export const STEMS = ["갑", "을", "병", "정", "무", "기", "경", "신", "임", "계"];
 export const BRANCHES = ["자", "축", "인", "묘", "진", "사", "오", "미", "신", "유", "술", "해"];
 
@@ -157,5 +160,117 @@ export function dayAndHourPillar(day, hour, minute = 0) {
       name: STEMS[hourStem % 10] + BRANCHES[hb],
     },
     corrected: c,
+  };
+}
+
+// ══════════════════════════════════════════════════════════════
+// 연주 · 월주 — 절기 경계로 세운다
+// ══════════════════════════════════════════════════════════════
+
+/**
+ * 12 「절」만 쓴다 — 중기(우수·춘분 등)는 월주에 쓰지 않는다.
+ *
+ * 표는 `data/saju-jeol.json` 이고 계산으로 만들어 KASI 2000~2028 과 대조 검증했다
+ * (docs/saju-calendar.md §6). **런타임은 표만 읽는다** — 계산도 외부 호출도 없다.
+ * 24절기 전체(132KB) 대신 절만 실어 55KB 다.
+ */
+const JEOL = JEOL_TABLE.jeol;
+
+/** 절 이름 → 월지 (인월=2 부터 시작) */
+const JEOL_BRANCH = {
+  입춘: 2, 경칩: 3, 청명: 4, 입하: 5, 망종: 6, 소서: 7,
+  입추: 8, 백로: 9, 한로: 10, 입동: 11, 대설: 0, 소한: 1,
+};
+
+/** 인월(2)로부터 몇 번째 달인가 — 월간(月干)을 뽑을 때 쓴다 */
+const monthOrdinal = (branch) => (branch - 2 + 12) % 12;
+
+/**
+ * 그 시각이 속한 절을 찾는다 — **이하 중 마지막 절**.
+ *
+ * 시각까지 비교하는 것이 핵심이다. 절기일에 태어난 사람은 몇 시에 태어났느냐로
+ * 월주가 갈리고, 입춘일이면 연주까지 갈린다. 날짜만 보던 프로토가 여기서 틀렸다.
+ *
+ * @param {string} at 'YYYY-MM-DDTHH:MM' (보정된 시각)
+ */
+function jeolAt(at) {
+  let lo = 0;
+  let hi = JEOL.length - 1;
+  let found = -1;
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    if (JEOL[mid].at <= at) {
+      found = mid;
+      lo = mid + 1;
+    } else {
+      hi = mid - 1;
+    }
+  }
+  return found >= 0 ? { ...JEOL[found], index: found } : null;
+}
+
+/** 표가 덮는 범위인가 */
+export const inTableRange = (at) =>
+  JEOL.length > 0 && at >= JEOL[0].at && at <= JEOL[JEOL.length - 1].at;
+
+/**
+ * 명식 네 기둥.
+ *
+ * @param {string} day 시계 기준 생년월일 'YYYY-MM-DD'
+ * @param {number|null} hour 0~23. null = 시간 모름 → 시주 없음(3기둥)
+ * @param {number} minute
+ * @returns {{ year, month, day, hour, corrected, notes }} 각 기둥은 {stem, branch, name}
+ */
+export function natalChart(day, hour = null, minute = 0) {
+  // 시각 보정이 먼저다 — 경도·서머타임 보정으로 날짜가 바뀌면 절기 판정도 바뀐다
+  const c = hour == null ? null : correctClock(day, hour, minute);
+  const effDay = c ? c.day : day;
+  const at = c
+    ? `${c.day}T${String(c.hour).padStart(2, "0")}:${String(c.minute).padStart(2, "0")}`
+    : `${day}T12:00`; // 시간을 모르면 정오로 본다 — 절기 경계일이면 아래에서 알린다
+
+  if (!inTableRange(at)) {
+    throw new ApiError(
+      "OUT_OF_RANGE",
+      `${JEOL_TABLE.from}~${JEOL_TABLE.to}년만 지원합니다.`,
+      400,
+    );
+  }
+
+  const j = jeolAt(at);
+  const branch = JEOL_BRANCH[j.n];
+
+  // ── 연주 ───────────────────────────────────────────────────
+  // 입춘이 새해다. 절 목록에서 **직전 입춘**을 찾아 그 연도를 쓴다.
+  let y = Number(at.slice(0, 4));
+  for (let i = j.index; i >= 0; i--) {
+    if (JEOL[i].n === "입춘") {
+      y = Number(JEOL[i].at.slice(0, 4));
+      break;
+    }
+  }
+  const yearIdx = (((y - 1984) % 60) + 60) % 60;
+  const yearStem = yearIdx % 10;
+
+  // ── 월주 ───────────────────────────────────────────────────
+  // 오호둔 — 갑기년은 병인월부터, 을경년은 무인월부터 …
+  const firstStem = ((yearStem % 5) * 2 + 2) % 10;
+  const monthStem = (firstStem + monthOrdinal(branch)) % 10;
+
+  // ── 일주·시주 ──────────────────────────────────────────────
+  const dh = dayAndHourPillar(day, hour, minute);
+
+  const notes = [...(c?.notes ?? [])];
+  if (hour == null) notes.push("시간 모름 — 시주 없음 (절기 경계일이면 월주가 달라질 수 있어요)");
+
+  return {
+    year: { stem: yearStem, branch: yearIdx % 12, name: ganzhiName(yearIdx) },
+    month: { stem: monthStem, branch, name: STEMS[monthStem] + BRANCHES[branch] },
+    day: { stem: dh.dayIdx % 10, branch: dh.dayIdx % 12, name: dh.dayName },
+    hour: dh.hour,
+    jeol: { name: j.n, at: j.at },
+    corrected: c,
+    notes,
+    effDay,
   };
 }
