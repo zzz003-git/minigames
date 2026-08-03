@@ -13,11 +13,12 @@
  * 실제로 D-1 에서 한 번 어긋났다. 그래서 영역을 이 파일 하나로 두고 허브는 이것을
  * 그대로 쓴다.
  *
- * ── 원안에서 빼 둔 것 ────────────────────────────────────────────────────
- * - **「오늘의 나 한 장」(교차 리딩)** — 220문장 DB(`cross_db_v1.json`)가 아직 없다.
- *   문장 없이 틀만 띄우면 빈 카드가 남는다. 트리플 안내 줄로 대신해 둔다.
- * - **아카이브 달력** — 월 단위 조회 API 가 없다. `daily_agg` 에 데이터는 쌓이고
- *   있으므로 API 하나만 붙이면 되는데, 그건 이 단계(외형)의 일이 아니다.
+ * ── 세 조각을 다 모으면 한 장이 열린다 ──────────────────────────────────
+ * 「오늘의 나 한 장」은 십신 × 타로 교차 리딩(`cross-db.js` 220문장)이다. 사주와
+ * 타로를 각각 읽어서는 나올 수 없는 문장이라, 세 조각을 다 모은 사람에게만 준다.
+ *
+ * DB 는 **필요할 때만 불러온다**(동적 import). 트리플을 못 채운 사람에게는 쓸 일이
+ * 없는 10KB 라, 「전체」 화면 첫 로딩에 얹을 이유가 없다.
  */
 
 import { el, clear } from "./ui.js";
@@ -62,6 +63,9 @@ export async function renderTodaySection(host, { heading = true } = {}) {
   const grid = el("nav", { class: "hubarea__grid", "aria-label": "오늘의 나 3종" });
   for (const s of data.services) grid.append(serviceCard(s));
   host.append(grid);
+
+  // 「한 장」은 세 조각을 다 모았을 때만. 못 채운 사람에게 빈 틀을 보여 주지 않는다
+  if (data.triple) renderOneCard(host, data).catch(() => {});
 
   host.append(footRow(data));
   host.append(el("div", { class: "archive", hidden: true, id: "archiveBox" }));
@@ -272,4 +276,80 @@ async function renderArchive(box, month) {
   }
 
   box.append(grid, note);
+}
+
+// ══════════════════════════════════════════════════════════════
+// 오늘의 나 한 장 (교차 리딩)
+// ══════════════════════════════════════════════════════════════
+
+/**
+ * 원안의 `crossReading` 블록.
+ *
+ * 축은 **서버가 준 key** 두 개다 — 사주의 십신 idx 와 타로의 카드 id. 화면이
+ * 다시 계산하지 않는다(그러면 두 곳이 어긋난다).
+ */
+async function renderOneCard(host, data) {
+  const svc = Object.fromEntries(data.services.map((s) => [s.key, s]));
+  const god = Number(svc.saju?.key_value);
+  const card = Number(svc.tarot?.key_value);
+  if (!Number.isInteger(god) || !Number.isInteger(card)) return;
+
+  // 트리플을 채운 사람에게만 필요한 10KB — 여기서 처음 불러온다
+  const { crossLine, GOD_NAMES, CARD_NAMES } = await import("./cross-db.js");
+  const line = crossLine(god, card);
+  if (!line) return;
+
+  const [expId, ti] = String(svc.mind?.key_value ?? "").split(":");
+  const type = HUB_INDEX.mind[expId]?.[Number(ti)];
+
+  const chips = el("div", { class: "onecard__chips" });
+  for (const t of [
+    `🔮 ${CARD_NAMES[card] ?? "카드"}`,
+    `🌤️ ${GOD_NAMES[god] ?? "기운"}`,
+    type ? `${type.g} ${type.n}` : "🔬 오늘의선택",
+  ]) {
+    chips.append(el("span", { class: "onecard__chip" }, t));
+  }
+
+  const box = el(
+    "div",
+    { class: "onecard" },
+    el(
+      "div",
+      { class: "onecard__head" },
+      el("b", {}, "오늘의 나 한 장"),
+      el("span", { class: "onecard__tag" }, `TRIPLE +${data.triple_points}P`),
+    ),
+    chips,
+    el("p", { class: "onecard__line" }, line),
+  );
+
+  const share = el("button", { type: "button", class: "onecard__share" }, "카드 공유하기");
+  share.addEventListener("click", async () => {
+    // **결과의 모양만** 나간다. 무엇을 골랐는지는 담지 않는다(기획서 공유 규격)
+    const text = `오늘의 나 한 장
+${chips.textContent.trim().replace(/\s+/g, " · ")}
+${line}`;
+    try {
+      if (navigator.share) await navigator.share({ title: "오늘의 나 한 장", text });
+      else {
+        await navigator.clipboard.writeText(text);
+        share.textContent = "복사했어요";
+        setTimeout(() => { share.textContent = "카드 공유하기"; }, 1600);
+      }
+    } catch {
+      // 취소도 여기로 온다 — 조용히 둔다
+    }
+  });
+
+  box.append(
+    el(
+      "div",
+      { class: "onecard__foot" },
+      share,
+      el("span", {}, "응답 내용은 담기지 않고 결과의 모양만 공유돼요"),
+    ),
+  );
+
+  host.append(box);
 }

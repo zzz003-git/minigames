@@ -123,7 +123,7 @@ showHub:   isHome || isHub,     // ← 오늘의 나도 함께 보인다
 | 원안 요소 | 막힌 것 | 풀리는 조건 |
 | --- | --- | --- |
 | ~~카드 순위 · 「어제 상위」~~ | **적용** — `GET /api/games/popular` (어제 플레이 수) |
-| 「오늘의 나 한 장」 교차 리딩 | 220문장 DB(`cross_db_v1.json`)가 없다 | Master 미결 (S-3) |
+| ~~「오늘의 나 한 장」 교차 리딩~~ | **적용** — `public/shared/cross-db.js` 220문장 |
 | ~~아카이브 달력~~ | **적용** — `GET /api/today/archive?month=` |
 | ~~「우리 · 너를 맞혀볼게」~~ | **적용** — `/pair/` 발급 화면 |
 

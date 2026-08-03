@@ -3391,3 +3391,36 @@ a.hubcard:focus-visible { outline: 2px solid var(--t); outline-offset: 2px; }
   color: var(--card-accent, var(--mint));
   opacity: 0.85;
 }
+
+/* ══ 오늘의 나 한 장 (교차 리딩) ══ */
+.onecard {
+  display: flex; flex-direction: column; gap: 12px;
+  padding: 18px; border-radius: 24px;
+  background: linear-gradient(150deg, rgba(214, 177, 102, 0.14), rgba(169, 139, 224, 0.14));
+  border: 1px solid rgba(214, 177, 102, 0.34);
+}
+.onecard__head { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
+.onecard__head b { font-size: 15px; color: #f4e8cd; }
+.onecard__tag {
+  font-family: var(--mono); font-size: 10px; letter-spacing: 0.06em; color: #d6b166;
+}
+.onecard__chips { display: flex; gap: 9px; flex-wrap: wrap; }
+.onecard__chip {
+  padding: 8px 13px; border-radius: 14px; font-size: 12.5px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #ece0ff;
+}
+.onecard__line {
+  margin: 0; font-size: 14.5px; line-height: 1.75; color: #f0e8db; word-break: keep-all;
+}
+.onecard__foot { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.onecard__foot span { font-size: 11px; color: #a79ac2; }
+.onecard__share {
+  padding: 10px 16px; border-radius: 999px;
+  font-size: 12.5px; font-weight: 700;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: #f4e8cd; cursor: pointer;
+}
+.onecard__share:hover { background: rgba(255, 255, 255, 0.14); }
