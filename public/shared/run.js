@@ -179,6 +179,26 @@ export function countdown({ ms, onTick, onEnd }) {
   };
 }
 
+/**
+ * 화면을 바꾼 직후 그 화면의 버튼을 잠깐 못 누르게 둡니다.
+ *
+ * 판을 끝내는 입력이 **손이 화면에 닿아 있는 동안** 일어나는 게임(드래그·누름 지속)은
+ * 그 잔여 동작이 새 화면의 버튼을 누릅니다. ㉑ 에서 「다시 도전하기」가 눌려 하루 기회가
+ * 날아갔습니다. 기준은 손이 머무는지가 아니라 **다음 입력이 몇 ms 뒤에 오는지**입니다.
+ *
+ * 버튼 위치를 피해 배치하는 방식으로 막지 않습니다 — 화면 크기가 바뀌면 깨집니다.
+ *
+ * @param {string} name  data-screen 값
+ */
+export function armScreen(name, ms = 400) {
+  const screen = document.querySelector(`[data-screen="${name}"]`);
+  if (!screen) return;
+  screen.style.pointerEvents = "none";
+  setTimeout(() => {
+    screen.style.pointerEvents = "";
+  }, ms);
+}
+
 // ══════════════════════════════════════════════════════════════
 // 결과 화면
 // ══════════════════════════════════════════════════════════════

@@ -1,4 +1,4 @@
-# 인스턴트 컨텐츠 — 미니게임 28종
+# 인스턴트 컨텐츠 — 미니게임 30종
 
 Cloudflare Workers 하나에서 정적 화면과 API 서버를 함께 서비스하고, 데이터는 D1(SQLite)에 저장합니다.
 
@@ -11,7 +11,7 @@ Cloudflare Workers 하나에서 정적 화면과 API 서버를 함께 서비스�
 | ③ | 타이핑 스피드 | WPM 또는 CPM × 정확도% |
 | ④ | 숫자 기억력 | 맞힌 자리 수 → 동일하면 소요 시간 |
 
-**아케이드 24종** — ⑤~⑭는 기획서 [`docs/arcade-10-games.md`](docs/arcade-10-games.md) 기준.
+**아케이드 26종** — ⑤~⑭는 기획서 [`docs/arcade-10-games.md`](docs/arcade-10-games.md) 기준.
 앱에 탑재되는 **광고 리워드용** 미니게임입니다. 한 판이 10~60초로 짧고, 규칙이 한 문장이며,
 실패 지점이 명확해서 "광고 보고 이어하기" 가 자연스럽게 붙습니다.
 
@@ -41,11 +41,25 @@ Cloudflare Workers 하나에서 정적 화면과 API 서버를 함께 서비스�
 | ㉖ | 세 칸 쌓기 | `merge3` | 무한 | 최고 등급 ↑ |
 | ㉗ | 오늘의 전국 게이지 | `gauge` | 하루 1회 | 내 기여량 ↑ |
 | ㉘ | 톡톡 | `toktok` | 훑기 1~3회 | 이어 터뜨린 개수 ↑ |
+| ㉙ | 소등 | `lightout` | 하루 3방 | 방을 끄는 데 걸린 시간 ↓ |
+| ㉚ | 쭉 | `stretch` | 끌기 1~3회 | 늘린 길이 ↑ |
 
 **㉘ 톡톡**은 기획서 `../reward-minigame-research/plans/2026-07-31/PLAN-22_톡톡.md` 기준입니다.
 화면 가득한 뽁뽁이를 손을 떼지 않고 훑어 연달아 터뜨리고, **손을 떼는 순간 판이 끝납니다.**
 2026-07-31 정성 신호 4건이 재방문 이유로 「부담 없음」을 일관되게 말한 것에 답하는 기획이라
 의도적으로 가장 단순한 쪽입니다 — 조작 1종, 규칙 한 문장, 실패 개념 없음.
+
+**㉙ 소등**은 기획서 `../reward-minigame-research/plans/2026-08-03/PLAN-24_소등.md` 기준입니다.
+캄캄한 화면의 불빛 24개를 하나씩 꾹 눌러 끄고, 완전한 어둠까지 걸린 시간을 겨룹니다.
+앞의 24건이 전부 「밝은 곳·서 있음·급함」 맥락이었던 데 반해 **취침 맥락을 조건으로 잡은
+첫 기획**이라, 화면이 어디서도 밝아지지 않고 소리도 쓰지 않습니다. 급하게 톡톡 치면
+안 꺼지고 깜빡이기만 해서 오히려 느려집니다 — 침착한 쪽이 유리합니다.
+
+**㉚ 쭉**은 기획서 `../reward-minigame-research/plans/2026-08-01/PLAN-23_쭉.md` 기준입니다.
+말랑한 덩어리를 잡아당겨 끊어지기 직전까지 늘립니다. 원리 사전의 **원리 7 「커지는 것」을
+정면으로 쓰는 첫 기획**이고, 끊어지는 지점은 난수가 아니라 **길이와 손가락 속도로 결정되는
+손상 모형**의 결과입니다(화면과 서버가 같은 식을 씁니다). 제한 시간이 없고 급하게 당길수록
+빨리 끊어져, 최적 속도는 약 0.22 화면/초 — 그때 약 2.2 화면을 10초에 늘립니다.
 
 **㉒~㉗ 여섯 종**은 기획서 `../reward-minigame-research/plans/2026-07-30/` 의
 PLAN-21 · 19 · 20 · 15 · 16 · 17 을 구현한 것입니다. 넷은 아케이드 규격을 벗어나
@@ -58,6 +72,8 @@ PLAN-21 · 19 · 20 · 15 · 16 · 17 을 구현한 것입니다. 넷은 아케�
 | ㉖ 세 칸 쌓기 | 한 판이 **1~3분**으로 10~60초를 넘는다 | [`docs/merge3-game.md`](docs/merge3-game.md) |
 | ㉗ 오늘의 전국 게이지 | **게임이 아니라 플랫폼 레이어**로 쓰인 기획이다 · 사용자 간 공용 상태 | [`docs/gauge-game.md`](docs/gauge-game.md) |
 | ㉘ 톡톡 | 조작이 **연속 드래그**다(탭 1종류가 아님) · 27종에 없던 **사운드**를 넣었다 | [`docs/toktok-game.md`](docs/toktok-game.md) |
+| ㉙ 소등 | 조작이 **누름 지속**이다 · 어제 기록이 계정에 남는다 · 화면이 어디서도 밝아지지 않는다 | [`docs/lightout-game.md`](docs/lightout-game.md) |
+| ㉚ 쭉 | 조작이 **연속 드래그**다 · **제한 시간도 실패도 없다** | [`docs/stretch-game.md`](docs/stretch-game.md) |
 
 > ㉒ 3초 탐정은 미해결 사건이 다음 날로 넘어가 **마이그레이션이 필요합니다**
 > (`detective_state`). ㉕ 는 앨범(`pour_album`), ㉗ 은 전역 게이지(`gauge_daily` ·
@@ -133,7 +149,7 @@ PLAN-21 · 19 · 20 · 15 · 16 · 17 을 구현한 것입니다. 넷은 아케�
 정답이 미리 존재하지 않으므로 정답 아카이브가 성립하기 어렵고, 팽팽한 문항일수록
 점수가 높아 쏠린 문항을 외워 오는 것의 실익이 가장 작습니다.
 
-아케이드 24종의 광고 트리거는 게임마다 3종으로 같습니다 —
+아케이드 26종의 광고 트리거는 게임마다 3종으로 같습니다 —
 `{GAME}_ATTEMPT`(기회 +1, 하루 5회) · `{GAME}_BOOST`(런 중 보상, 1런당 2회) ·
 `{GAME}_STATS`(전체 순위 열람). 보상을 쓴 런은 bucket 에 `+` 가 붙어 별도 리그로 집계되므로
 순위표가 광고 시청량 순위가 되지 않습니다.
@@ -143,7 +159,7 @@ PLAN-21 · 19 · 20 · 15 · 16 · 17 을 구현한 것입니다. 넷은 아케�
 ```
 minigames/
 ├── public/                  정적 파일 (Workers 정적 자산으로 그대로 서비스)
-│   ├── index.html           허브 (오리지널 4종 + 아케이드 24종)
+│   ├── index.html           허브 (오리지널 4종 + 아케이드 26종)
 │   ├── shared/              공통 모듈
 │   │   ├── base.css         디자인 시스템
 │   │   ├── api.js           API 호출 래퍼
@@ -159,11 +175,11 @@ minigames/
 │           stroop/ ringstop/ countdot/ cardpair/ rpsflash/
 │           majority/ basket/ pathline/ dropcatch/ store/
 │           scratch/ stack/ detective/ rhythm/ balance/
-│           pour/ merge3/ gauge/ toktok/                     ⑤~㉘
+│           pour/ merge3/ gauge/ toktok/ lightout/ stretch/   ⑤~㉚
 ├── src/                     Worker (API 서버)
 │   ├── index.js             라우터
 │   ├── games/               게임별 서버 로직
-│   │   └── arcade/          ⑤~㉘ spec + 레지스트리
+│   │   └── arcade/          ⑤~㉚ spec + 레지스트리
 │   ├── routes/              세션·광고·통계 라우트
 │   └── lib/                 설정·암호화·DB·검증 유틸
 │       └── arcade.js        아케이드 런 엔진
@@ -177,6 +193,8 @@ minigames/
 │   ├── merge3-game.md       ㉖ 세 칸 쌓기 구현 명세
 │   ├── gauge-game.md        ㉗ 오늘의 전국 게이지 구현 명세
 │   ├── toktok-game.md       ㉘ 톡톡 구현 명세
+│   ├── lightout-game.md     ㉙ 소등 구현 명세
+│   ├── stretch-game.md      ㉚ 쭉 구현 명세
 │   └── majority-game.md     ⑮ 다들 뭐 골랐을까 구현 명세
 ├── scripts/
 │   ├── gen-sentences.mjs           타이핑 문장 DB 생성 스크립트

@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>소등</title>
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#0F1420">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../shared/base.css">
+</head>
+<!-- game--nightmode: 화면 전체가 밝아지는 연출을 전부 끕니다 (기획서 10장 · 취침 맥락) -->
+<body class="game game--accent-gold game--nightmode">
+  <div class="app">
+    <header class="topbar" id="header"></header>
+
+    <main class="app__body">
+
+      <!-- 시작 -->
+      <section class="screen is-active" data-screen="ready">
+        <div class="card card--accent card--center card--hero">
+          <div class="card__label card__label--mono">LIGHTS OUT</div>
+          <div class="headline">불빛을 하나씩 꺼요</div>
+          <p class="footnote">불빛에 손가락을 대고 <b>누르고 있으면</b> 사그라들어 꺼집니다.<br>
+            <b>제한 시간도 실패도 없어요.</b> 급하게 치면 오히려 느려집니다.</p>
+        </div>
+
+        <div class="stats">
+          <div class="stat stat--accent">
+            <div class="stat__label">최고 기록</div>
+            <div class="stat__value" id="bestValue">—</div>
+          </div>
+          <div class="stat">
+            <div class="stat__label">끈 방</div>
+            <div class="stat__value" id="playsValue">—</div>
+          </div>
+        </div>
+
+        <button class="btn btn--primary" id="startBtn" disabled>▶ 방 들어가기</button>
+
+        <div class="card card--info">
+          <div class="meter">
+            <div class="meter__text">
+              <span class="card__label">오늘 남은 방</span>
+              <span class="figure figure--md" id="attemptText">—</span>
+            </div>
+            <div class="pips" id="attemptDots"></div>
+          </div>
+          <p class="footnote--dim mt-sm" id="yesterdayText">방은 매일 밤 12시에 새로 열립니다. 광고로 방을 더 받을 수는 없어요.</p>
+        </div>
+
+        <div id="adbar"></div>
+      </section>
+
+      <!-- 플레이 -->
+      <section class="screen" data-screen="play">
+        <div class="hud hud--quiet">
+          <div class="hud__item">
+            <span class="hud__label">남은 불빛</span>
+            <span class="hud__value hud__value--accent" id="hudLeft">0</span>
+          </div>
+          <div class="hud__item hud__item--right">
+            <span class="hud__label">어제</span>
+            <span class="hud__value" id="hudYesterday">—</span>
+          </div>
+        </div>
+
+        <div class="darkroom" id="room" role="application" tabindex="0"
+             aria-label="불빛을 하나씩 누르고 있어 끄세요. 키보드는 Tab 으로 옮기고 Enter 를 누르고 있으면 꺼집니다."></div>
+
+        <p class="footnote center" id="playHint">불빛 하나를 <b>꾹</b> 눌러 보세요</p>
+      </section>
+
+      <!-- 방을 다 껐음 — 어제보다 느렸을 때만 구원 광고 (기획서 8장) -->
+      <section class="screen" data-screen="pause">
+        <div class="card card--center card--hero">
+          <div class="badge-round badge-round--quiet" aria-hidden="true">🌙</div>
+          <div class="headline">불이 다 꺼졌어요</div>
+          <div class="figure figure--result" id="pauseFigure">—</div>
+          <div class="footnote" id="pauseSub">—</div>
+        </div>
+
+        <div id="adbarBoost"></div>
+        <button class="btn" id="pauseEndBtn">여기서 끝내고 결과 보기</button>
+      </section>
+
+      <!-- 결과 -->
+      <section class="screen" data-screen="over">
+        <div class="card card--accent card--center card--hero celebrate" id="overCard">
+          <div class="badge-round" id="overBadge" aria-hidden="true">🌙</div>
+          <div class="headline" id="overHeadline">—</div>
+          <div class="footnote" id="overSub">—</div>
+          <div class="figure figure--result" id="overFigure">—</div>
+          <div class="chips" id="overChips"></div>
+          <div class="stats stats--inset" id="overTiles"></div>
+        </div>
+
+        <button class="btn btn--primary" id="retryBtn">처음 화면으로</button>
+        <div id="adbarStats"></div>
+        <div class="footnote--dim center" id="overNote"></div>
+      </section>
+
+      <!-- 전체 순위 -->
+      <section class="screen" data-screen="stats">
+        <div class="card">
+          <div class="card__head">
+            <span class="card__title" id="statsTitle">전체 통계</span>
+          </div>
+          <div id="statsChart"></div>
+          <div class="stats mt-md" id="statsTiles"></div>
+        </div>
+
+        <div class="card card--info">
+          <div class="card__label">TOP 20</div>
+          <div class="rank-list mt-sm" id="statsRank"></div>
+        </div>
+
+        <div class="card card--info">
+          <div class="card__label">리그별 기록 수</div>
+          <div class="rank-list mt-sm" id="statsLeagues"></div>
+        </div>
+
+        <button class="btn" id="statsBackBtn">← 결과로 돌아가기</button>
+      </section>
+
+    </main>
+  </div>
+
+  <script type="module" src="game.js"></script>
+</body>
+</html>

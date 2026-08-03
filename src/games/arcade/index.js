@@ -30,6 +30,8 @@ import { spec as pour } from "./pour.js";
 import { spec as merge3 } from "./merge3.js";
 import { spec as gauge } from "./gauge.js";
 import { spec as toktok } from "./toktok.js";
+import { spec as lightout } from "./lightout.js";
+import { spec as stretch } from "./stretch.js";
 
 export const ARCADE_SPECS = {
   REACTION: reaction,
@@ -56,6 +58,8 @@ export const ARCADE_SPECS = {
   MERGE3: merge3,
   GAUGE: gauge,
   TOKTOK: toktok,
+  LIGHTOUT: lightout,
+  STRETCH: stretch,
 };
 
 export const isArcade = (gameType) => Object.hasOwn(ARCADE_SPECS, gameType);

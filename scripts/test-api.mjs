@@ -31,6 +31,10 @@ import { makeCard, streakFor, shiftDay } from "../src/games/arcade/scratch.js";
 import { blockX } from "../src/games/arcade/stack.js";
 // ㉘ 톡톡 — 궤적 판정은 속도·균일함의 경계값이 핵심이라 서버 왕복 없이 직접 부릅니다
 import { gradeStroke } from "../src/games/arcade/toktok.js";
+// ㉚ 쭉 — 「어떤 속도가 유리한가」는 요청을 실제 속도로 보내야 재현되므로 직접 부릅니다
+import { simulate as simulateStretch } from "../src/games/arcade/stretch.js";
+// ㉙ 소등 — 방 채점은 시간이 실제로 흘러야 재현되므로 경계값만 직접 부릅니다
+import { gradeRoom, makeRoom } from "../src/games/arcade/lightout.js";
 
 const BASE = process.env.TEST_BASE ?? "http://127.0.0.1:8787";
 
@@ -217,6 +221,16 @@ const PLAYERS = {
     // 라운드 = 한 번의 훑기라 "정답/오답" 이 없습니다 — 정상 훑기는 늘 성공이고 늘 소진입니다.
     // 경로 인접성 검사와 균일함(매크로) 검사가 이 게임의 전부라 전용 시나리오를 씁니다
     custom: toktokFlow,
+  },
+
+  LIGHTOUT: {
+    // 라운드 = 방 하나. 실패가 없고 「어제보다 느렸을 때만 광고」라 전용 시나리오를 씁니다
+    custom: lightoutFlow,
+  },
+
+  STRETCH: {
+    // 라운드 = 한 번의 끌기. 끊어짐이 손상 모형의 결과라 전용 시나리오를 씁니다
+    custom: stretchFlow,
   },
 
   STACK: {
@@ -1450,6 +1464,347 @@ function toktokStrokeRules(game) {
   check(`${game} 이음매 남용은 그 자리에서 잘린다`,
     broken.cut === "breaks" && broken.breaks === C.MAX_BREAKS + 1,
     `이음매 ${broken.breaks}개에서 중단`);
+}
+
+/**
+ * ㉙ 소등 — 전용 시나리오
+ *
+ * 확인하는 것
+ *   ① 방을 다 꺼야 판이 끝난다 — 하나라도 남기면 판정하지 않고 방이 살아 있다
+ *   ② 기록은 **누른 시간의 합보다 짧을 수 없다** (화면이 시간을 정하지 못한다)
+ *   ③ 어제 기록이 없으면(= 이긴 판) 이어하기 자리를 열지 않는다 (기획서 8장)
+ *   ④ 방을 더 주는 광고가 없다
+ *   ⑤ 유지 시간이 완벽히 균일하면(매크로) 이상치로 표시된다
+ *   ⑥ 첫 방은 16개, 다음 방부터 24개 — 그리고 불빛이 겹치지 않는다
+ */
+
+/** 사람처럼 조금씩 다른 유지 시간으로 방 하나를 끕니다 */
+function lightoutHolds(lights, jitter = (i) => 40 + ((i * 53) % 90)) {
+  return lights.map((l, i) => ({ i: l.i, ms: l.hold_ms + jitter(i) }));
+}
+
+const holdsTotal = (holds, movePerLight = 180) =>
+  holds.reduce((a, h) => a + h.ms, 0) + holds.length * movePerLight;
+
+async function lightoutFlow(game) {
+  const C = ARCADE[game];
+  const s = await post("/game/session/start", { game_type: game, fresh: true });
+  check(`${game} 시작`, s.data.ok === true, `(${s.data.code ?? "정상"})`);
+  if (!s.data.ok) return;
+
+  assertNoSecretLeak(game, s.data);
+  const sid = s.data.session_id;
+  const round = s.data.round;
+  const lights = round?.lights ?? [];
+
+  check(`${game} 제한 시간 없음`, s.data.limit_ms == null, `limit_ms=${s.data.limit_ms}`);
+  check(`${game} 첫 방은 ${C.FIRST_ROOM_LIGHTS}개`, lights.length === C.FIRST_ROOM_LIGHTS,
+    `${lights.length}개 (${round?.room_no}번째 방)`);
+
+  // ── ⑥ 불빛이 겹치지 않는다 (겹치면 엄지 하나가 두 개를 건드립니다) ──
+  let minGap = Infinity;
+  for (let i = 0; i < lights.length; i++) {
+    for (let k = i + 1; k < lights.length; k++) {
+      minGap = Math.min(minGap, Math.hypot(lights[i].x - lights[k].x, lights[i].y - lights[k].y));
+    }
+  }
+  check(`${game} 불빛이 겹치지 않는다`, minGap >= C.MIN_GAP * 0.9,
+    `최소 간격 ${minGap.toFixed(3)} (기준 ${C.MIN_GAP})`);
+  check(`${game} 꺼지는 시간이 불빛마다 다르다`,
+    new Set(lights.map((l) => l.hold_ms)).size > 1,
+    `${C.HOLD_MIN_MS}~${C.HOLD_MAX_MS}ms`);
+
+  const submit = (holds, totalMs) =>
+    post("/game/round", {
+      game_type: game, session_id: sid,
+      answer: { holds, total_ms: totalMs }, elapsed_ms: totalMs,
+    });
+
+  // ── ① 하나를 남기면 판정하지 않는다 ────────────────────────
+  const full = lightoutHolds(lights);
+  const partial = await submit(full.slice(0, -1), holdsTotal(full.slice(0, -1)));
+  check(`${game} 불빛이 남으면 판을 끝내지 않는다`,
+    partial.data.correct === false && partial.data.game_over !== true && partial.data.exhausted !== true,
+    `사유=${partial.data.data?.invalid}`);
+  // 반려된 신고로 방이 바뀌면 화면이 옛 방을 보여 주는 채로 새 방이 채점됩니다
+  check(`${game} 반려된 신고가 방을 바꾸지 않는다`, partial.data.round == null,
+    `round=${partial.data.round == null ? "그대로" : "새 방"}`);
+
+  // 방을 실제로 끄는 데 걸리는 시간만큼 기다립니다.
+  //
+  // **누른 시간의 합은 방이 열린 뒤 흐른 시간을 넘을 수 없습니다**(gradeRoom).
+  // 즉시 제출하면 그 검사에 정당하게 걸리므로, 여기서만 실제 시간을 씁니다.
+  // 나머지 시간 규칙은 아래 lightoutRoomRules 가 gradeRoom 을 직접 불러 검사합니다.
+  const floor = full.reduce((a, h) => a + h.ms, 0);
+  await sleep(floor + 300);
+
+  const done = await submit(full, holdsTotal(full));
+  check(`${game} 기록은 누른 시간의 합보다 짧을 수 없다`,
+    done.data.data?.room_ms >= floor,
+    `인정 ${done.data.data?.room_ms}ms (누른 시간 합 ${floor}ms)`);
+
+  // ── ③ 어제 기록이 없으면 이긴 판이라 이어하기를 열지 않는다 ──
+  check(`${game} 방을 다 끄면 판이 끝난다`, done.data.game_over === true,
+    `faster=${done.data.data?.faster}`);
+  check(`${game} 이긴 판에는 이어하기를 열지 않는다`, done.data.exhausted !== true,
+    `어제 기록 ${done.data.data?.yesterday_ms ?? "없음"}`);
+
+  const res = done.data.result;
+  check(`${game} 순위 지표는 소등 시간`, res?.rank_metric === done.data.data?.room_ms,
+    `metric=${res?.rank_metric}`);
+  check(`${game} 불빛 수만큼 확정 적립`, res?.score >= C.LIGHT_POINT * lights.length + C.CLEAR_POINT,
+    `score=${res?.score}`);
+  check(`${game} 사람처럼 흔들리는 유지는 이상치 아님`, res?.suspect === false,
+    `suspect=${res?.suspect} bucket=${res?.bucket} 초과분 40~130ms 로 흔들림`);
+
+  // ── ④ 방을 더 주는 광고는 없다 ─────────────────────────────
+  const noAd = await post("/ad/reward", { trigger: `${game}_ATTEMPT` });
+  check(`${game} 방을 더 주는 광고는 없다`, noAd.status === 429, `(${noAd.data.code})`);
+
+  lightoutRoomRules(game);
+  lightoutBoostRule(game);
+  return res;
+}
+
+/**
+ * 방 채점 규칙 — 서버 왕복으로는 **시간이 실제로 흘러야** 재현되므로 직접 부릅니다.
+ *
+ * 위 흐름에서 한 방을 끄는 데만 10초 넘게 기다립니다. 경계값을 전부 그렇게 검사하면
+ * 테스트가 분 단위로 늘어나므로, 시간이 얽힌 규칙은 여기서 결정적으로 봅니다
+ * (⑳ 의 카드 생성 · ㉕ 의 다시 붓기와 같은 이유).
+ */
+function lightoutRoomRules(game) {
+  const C = ARCADE[game];
+  const lights = makeRoom(2, (a, b) => Math.floor((a + b) / 2)); // 결정적 난수
+  const need = lights.map((l) => l.hold_ms);
+  const floor = need.reduce((a, b) => a + b, 0);
+
+  check(`${game} 두 번째 방부터 ${C.LIGHTS}개`, lights.length === C.LIGHTS, `${lights.length}개`);
+  check(`${game} 첫 방은 ${C.FIRST_ROOM_LIGHTS}개`,
+    makeRoom(1, (a, b) => Math.floor((a + b) / 2)).length === C.FIRST_ROOM_LIGHTS);
+
+  const grade = (holds, totalMs, since) =>
+    gradeRoom({ holds, totalMs, lights, sinceIssuedMs: since });
+
+  // 사람 — 초과분이 흔들립니다
+  const human = lights.map((l, i) => ({ i: l.i, ms: l.hold_ms + 40 + ((i * 53) % 90) }));
+  const okRoom = grade(human, floor + 4000, 60000);
+  check(`${game} 정상 소등은 이상치 아님`, okRoom.ok && !okRoom.uniform && okRoom.short === 0,
+    `기록 ${okRoom.totalMs}ms`);
+
+  // 매크로 — 초과분이 늘 같습니다
+  const macro = lights.map((l) => ({ i: l.i, ms: l.hold_ms + 30 }));
+  check(`${game} 초과분이 늘 같으면 이상치`, grade(macro, floor + 800, 60000).uniform === true,
+    `초과분 ${lights.length}개가 전부 30ms — 사람은 꺼진 것을 보고 뗍니다`);
+
+  // 필요 시간보다 짧게 눌렀다면 그 불빛은 꺼지지 않았어야 합니다
+  const shortRoom = grade(lights.map((l) => ({ i: l.i, ms: l.hold_ms - 200 })), floor, 60000);
+  check(`${game} 덜 누르고 껐다는 신고는 이상치`, shortRoom.short === lights.length,
+    `${shortRoom.short}개가 필요 시간 미만`);
+
+  // 줄여 신고해도 누른 시간의 합이 하한입니다
+  check(`${game} 화면이 시간을 정하지 못한다`, grade(human, 1000, 60000).totalMs >= floor,
+    `신고 1000ms → 인정 ${grade(human, 1000, 60000).totalMs}ms (합 ${floor}ms)`);
+
+  // 방이 열린 시간보다 오래 눌렀다는 신고는 물리적으로 불가능합니다
+  check(`${game} 방이 열린 시간보다 오래 누를 수 없다`,
+    grade(human, floor, 500).ok === false,
+    `누른 합 ${floor}ms > 방이 열린 지 500ms`);
+
+  // 하나라도 남기면 판정하지 않습니다
+  check(`${game} 하나를 남기면 미완주`, grade(human.slice(0, -1), floor, 60000).reason === "incomplete");
+}
+
+/**
+ * 「어제보다 느렸을 때만 이어하기를 연다」는 서버 왕복으로 재현할 수 없습니다 —
+ * 어제 행이 있어야 하는데 그건 어제 플레이한 사람에게만 있습니다. 그래서 이 규칙만
+ * spec 을 직접 불러 결정적으로 검사합니다 (㉕ 의 pourRedoRule 과 같은 이유).
+ */
+function lightoutBoostRule(game) {
+  const spec = ARCADE_SPECS[game];
+  const C = ARCADE[game];
+  const lights = [
+    { i: 0, x: 0.3, y: 0.3, hold_ms: 500 },
+    { i: 1, x: 0.7, y: 0.7, hold_ms: 600 },
+  ];
+  const holds = [{ i: 0, ms: 520 }, { i: 1, ms: 640 }];
+
+  const judge = (yesterdayBest, totalMs) => {
+    const meta = { boosts: 0, lives: 1, ext: { roomNo: 2, yesterdayBest, score: 0 } };
+    const v = spec.judgeRound({
+      answer: { holds, total_ms: totalMs },
+      roundSecret: { lights }, meta, sinceIssuedMs: 60000,
+    });
+    return { meta, v };
+  };
+
+  // 느린 판은 목숨을 써서(fatal) 「이어하기 아니면 종료」로 갑니다
+  const slow = judge(20000, 30000); // 어제 20초 · 오늘 30초
+  check(`${game} 어제보다 느리면 이어하기가 열린다`, slow.v.fatal === true && slow.v.done !== true,
+    `fatal=${slow.v.fatal} done=${slow.v.done}`);
+
+  // 빠른 판은 완주로 끝냅니다 — 이어하기 화면 자체가 오지 않습니다
+  const fast = judge(40000, 30000); // 어제 40초 · 오늘 30초
+  check(`${game} 어제보다 빠르면 이어하기가 없다`, fast.v.done === true && fast.v.fatal === false,
+    `done=${fast.v.done} (이미 이긴 사람에게 팔 것이 없다)`);
+
+  // **광고를 보지 않은 판이 '+' 리그로 가면 안 됩니다** (브라우저 확인에서 걸린 회귀)
+  check(`${game} 이긴 판은 보상 리그로 가지 않는다`,
+    fast.meta.boosts === 0 && slow.meta.boosts === 0,
+    `boosts=${fast.meta.boosts} — 광고를 본 판만 '+' 리그입니다`);
+
+  check(`${game} 어제를 넘기면 단축 보너스`, fast.meta.ext.score > slow.meta.ext.score,
+    `${fast.meta.ext.score} vs ${slow.meta.ext.score}`);
+
+  // 이어하기는 **이번 시도의 시간만** 지웁니다 — 오늘 기록과 점수는 그대로입니다
+  const before = slow.meta.ext.score;
+  spec.applyBoost(slow.meta);
+  check(`${game} 이어해도 점수는 그대로`,
+    slow.meta.ext.score === before && slow.meta.ext.roomMs == null && slow.meta.lives === 1,
+    `score=${slow.meta.ext.score} lives=${slow.meta.lives}`);
+}
+
+/**
+ * ㉚ 쭉 — 전용 시나리오
+ *
+ * 확인하는 것
+ *   ① 조각(ongoing)은 판을 끝내지 않고 길이를 누적한다
+ *   ② 서버가 **끊어졌어야 할 지점까지만** 인정한다 (길이를 부풀린 신고를 앞에서 자른다)
+ *   ③ 첫 GRACE_MS 동안은 끊어지지 않는다 (초보자 보장)
+ *   ④ 천천히 끈 쪽이 급하게 끈 쪽보다 길다 (설계의 전부 · 기획서 15장 가설 2)
+ *   ⑤ 이어 붙이기가 길이를 그대로 유지한다 (기획서 8장)
+ *   ⑥ 등속은 매크로로 표시된다
+ */
+
+/**
+ * 일정한 속도로 끄는 표본 열. jitter 를 주면 사람 손가락처럼 흔들립니다.
+ *
+ * `startLen` 은 **앞 조각의 마지막 길이**입니다. 길이는 조각을 가로질러 절대값으로
+ * 이어지고(화면이 그렇게 보냅니다), 줄어드는 신고는 서버가 거부합니다.
+ */
+function stretchSamples(speed, seconds, stepMs, jitter = 0, startLen = 0) {
+  const out = [];
+  let len = startLen;
+  for (let t = 0; t <= seconds * 1000; t += stepMs) {
+    if (t > 0) len += Math.min(speed, ARCADE.STRETCH.MAX_STRETCH_RATE) * (stepMs / 1000);
+    const wob = jitter ? Math.abs(Math.sin(t / 37)) * jitter : 0;
+    out.push({ t, len: Number(Math.max(startLen, len + wob).toFixed(4)) });
+  }
+  return out;
+}
+
+async function stretchFlow(game) {
+  const C = ARCADE[game];
+  const s = await post("/game/session/start", { game_type: game, fresh: true });
+  check(`${game} 시작`, s.data.ok === true, `(${s.data.code ?? "정상"})`);
+  if (!s.data.ok) return;
+
+  assertNoSecretLeak(game, s.data);
+  const sid = s.data.session_id;
+  const round = s.data.round;
+
+  check(`${game} 제한 시간 없음`, s.data.limit_ms == null, `limit_ms=${s.data.limit_ms}`);
+  check(`${game} 손상 모형 상수를 화면에 내려준다`,
+    round?.model?.capacity === C.CAPACITY && round?.model?.grace_ms === C.GRACE_MS,
+    `capacity=${round?.model?.capacity} grace=${round?.model?.grace_ms}ms`);
+  check(`${game} 오늘의 재료가 붙는다`, round?.dough?.hex != null, `${round?.dough?.name}`);
+  check(`${game} 상품 길이를 미리 준다`, (round?.prizes ?? []).length > 0,
+    `첫 상품 ${round?.prizes?.[0]?.at} 화면`);
+
+  const pull = (samples, ongoing) =>
+    post("/game/round", {
+      game_type: game, session_id: sid,
+      answer: { samples, ongoing },
+      elapsed_ms: samples[samples.length - 1]?.t ?? 0,
+    });
+
+  // ── ③ 첫 3초 동안은 끊어지지 않는다 ────────────────────────
+  // 상한 속도로 당겨 손상이 임계를 한참 넘게 만든 뒤에도 보장 안이면 살아 있어야 합니다.
+  const yank = stretchSamples(C.MAX_STRETCH_RATE, (C.GRACE_MS - 400) / 1000, 40);
+  const g = await pull(yank, true);
+  check(`${game} 첫 ${C.GRACE_MS / 1000}초는 끊어지지 않는다`,
+    g.data.data?.broke === false && g.data.exhausted !== true,
+    `길이 ${g.data.data?.len} 화면`);
+
+  // ── ① 조각은 판을 끝내지 않고 누적한다 ──────────────────────
+  check(`${game} 조각은 길이를 누적한다`, g.data.data?.len > 0 && g.data.game_over !== true,
+    `len=${g.data.data?.len}`);
+
+  // ── ② 보장이 풀리면 그 자리에서 끊어진다 (급하게 끈 대가) ───
+  const after = stretchSamples(C.MAX_STRETCH_RATE, 4, 40, 0, g.data.data?.len ?? 0);
+  const snap = await pull(after, true);
+  check(`${game} 보장이 풀리면 끊어진다`, snap.data.data?.broke === true,
+    `길이 ${snap.data.data?.len} 화면`);
+  const fastLen = snap.data.data?.len ?? 0;
+  check(`${game} 끊어지면 세션 유지 + 이어하기 대기`,
+    snap.data.exhausted === true && snap.data.game_over === false,
+    `can_boost=${snap.data.can_boost}`);
+
+  // ── ⑤ 이어 붙이기는 길이를 그대로 유지한다 ─────────────────
+  const boost = await post("/ad/reward", { trigger: `${game}_BOOST`, session_id: sid });
+  const r1 = boost.data.reward;
+  check(`${game} 이어 붙여도 지금 길이는 그대로`, r1?.round?.start_len === fastLen,
+    `${r1?.round?.start_len} = ${fastLen}`);
+  check(`${game} 이어 붙이면 손상만 0 으로`, r1?.round?.start_dmg === 0 && r1?.lives === 1,
+    `dmg=${r1?.round?.start_dmg} lives=${r1?.lives}`);
+
+  // ── ② 길이를 부풀린 신고는 앞에서 잘린다 ────────────────────
+  // 상한 속도로 60초를 당겼다고 신고하면 신고 길이는 30 화면입니다. 피로항 때문에
+  // 이 모형이 인정하는 길이는 그보다 훨씬 앞에서 막힙니다.
+  const huge = stretchSamples(C.MAX_STRETCH_RATE, 60, 200, 0, r1?.round?.start_len ?? 0);
+  const claimed = huge[huge.length - 1].len;
+  const cut = await pull(huge, false);
+  check(`${game} 끊어졌어야 할 지점까지만 인정한다`,
+    cut.data.data?.len < claimed / 4,
+    `신고 ${claimed} 화면 → 인정 ${cut.data.data?.len} 화면`);
+  check(`${game} 이어 붙이기를 다 쓰면 종료`, cut.data.game_over === true || cut.data.exhausted === true,
+    `game_over=${cut.data.game_over}`);
+
+  stretchModelRules(game);
+
+  const res = cut.data.result ?? (await post("/game/finish", { game_type: game, session_id: sid })).data.result;
+  check(`${game} 결과 확정`, res?.rank_metric != null, `점수=${res?.score} 리그=${res?.bucket}`);
+  check(`${game} 보상 사용 런은 별도 리그`, res?.bucket?.endsWith("+") === true, `bucket=${res?.bucket}`);
+  return res;
+}
+
+/**
+ * 손상 모형은 이 게임의 전부입니다. 서버 왕복으로는 「어떤 속도가 유리한가」를
+ * 재현할 수 없으므로(요청을 실제 속도로 보내야 합니다) simulate 를 직접 부릅니다.
+ *
+ * ④ 가 무너지면 기획이 통째로 무너집니다 — 「천천히 끌수록 유리」가 이 게임의
+ * 존재 이유이고(기획서 3·4장), 15장의 우선 검증 가설 2 가 그것입니다.
+ */
+function stretchModelRules(game) {
+  const C = ARCADE[game];
+  const runAt = (speed) => {
+    const sim = simulateStretch({ samples: stretchSamples(speed, 90, 40) });
+    return sim.len;
+  };
+
+  const slow = runAt(0.2); // 천천히
+  const rush = runAt(1.5); // 급하게 (상한에 걸려 길이는 못 얻고 응력만 얻습니다)
+  const crawl = runAt(0.03); // 너무 느림 (피로가 잡습니다)
+
+  check(`${game} 천천히 끈 쪽이 급하게 끈 쪽보다 길다`, slow > rush,
+    `0.2 화면/초 → ${slow} · 1.5 화면/초 → ${rush}`);
+  check(`${game} 무한히 느린 것은 유리하지 않다`, slow > crawl,
+    `0.2 화면/초 → ${slow} · 0.03 화면/초 → ${crawl}`);
+  check(`${game} 길이에 하드 상한이 없다`, slow > 1.5 && slow < 4,
+    `최적 속도에서 ${slow} 화면 (모형이 정하는 값)`);
+
+  // 등속 = 매크로. 사람 손가락은 방향을 꺾을 때마다 느려집니다.
+  const flat = simulateStretch({ samples: stretchSamples(0.2, 3, 40) });
+  const human = simulateStretch({ samples: stretchSamples(0.2, 3, 40, 0.01) });
+  const cv = (xs) => {
+    const m = xs.reduce((a, b) => a + b, 0) / xs.length;
+    return Math.sqrt(xs.reduce((a, b) => a + (b - m) ** 2, 0) / xs.length) / m;
+  };
+  check(`${game} 등속은 균일함 검사에 걸린다`,
+    flat.steps.length >= C.UNIFORM_MIN_STEPS && cv(flat.steps) < C.UNIFORM_CV,
+    `변동계수 ${cv(flat.steps).toFixed(4)} (기준 ${C.UNIFORM_CV})`);
+  check(`${game} 흔들리는 손가락은 걸리지 않는다`, cv(human.steps) >= C.UNIFORM_CV,
+    `변동계수 ${cv(human.steps).toFixed(4)}`);
 }
 
 /**
