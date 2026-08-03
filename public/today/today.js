@@ -20,7 +20,7 @@ import { renderTodaySection } from "../shared/todaysection.js";
 // 서비스 화면(타로·기운·마음·페어)에서도 이 탭이 켜진다 — 원안의
 // `activeView = inSuite ? 'hub' : v` 와 같다
 renderSiteNav($("#siteNav"), "hub");
-renderHeader($("#header"), { icon: "✦", title: "오늘의 나" });
+renderHeader($("#header"), { icon: "✦", title: "오늘의 나", back: "/" });
 
 boot();
 

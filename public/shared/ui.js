@@ -44,7 +44,15 @@ export const currentScreen = () => $(".screen.is-active")?.dataset.screen ?? nul
  * @param {HTMLElement} host  <header class="topbar" id="header">
  * @param {{ icon?:string, title:string, badge?:string }} opts
  */
-export function renderHeader(host, { icon, title, badge } = {}) {
+/**
+ * 화면 상단 머리. `back` 은 **나가는 곳**이다.
+ *
+ * 기본값이 `/games/` 인 이유: 이 함수를 쓰는 화면의 대부분이 게임 30종이고,
+ * 「전체」 화면(`/`)이 생기면서 게임에서 나오면 게임 목록이 아니라 전체에
+ * 떨어지게 됐다. 라벨은 여전히 「게임 목록으로」였으므로 말과 동작이 어긋났다.
+ * 스위트 화면은 `back: "/today/"` 를 넘긴다.
+ */
+export function renderHeader(host, { icon, title, badge, back = "/games/" } = {}) {
   clear(host);
   host.classList.add("topbar");
 
@@ -53,7 +61,7 @@ export function renderHeader(host, { icon, title, badge } = {}) {
   // el() 은 자식의 null 을 알아서 건너뛰지만 append() 는 그렇지 않습니다.
   host.append(
     ...[
-      el("a", { class: "topbar__back", href: "/", "aria-label": "게임 목록으로 돌아가기" }, "‹"),
+      el("a", { class: "topbar__back", href: back, "aria-label": "이전 화면으로 돌아가기" }, "‹"),
       icon ? el("span", { class: "topbar__icon", "aria-hidden": "true" }, icon) : null,
       el("span", { class: "topbar__title" }, title),
       badge ? el("span", { class: "topbar__badge", id: "headerBadge" }, badge) : null,

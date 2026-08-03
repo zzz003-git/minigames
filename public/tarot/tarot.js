@@ -43,7 +43,7 @@ const state = {
 // 원안의 `activeView = inSuite ? 'hub' : v` — 서비스 화면에서도 「오늘의 나」 탭이
 // 켜진 채 남는다. 게임 화면과 달리 여기는 판 중이 아니라 결과를 보는 자리다.
 renderSiteNav($("#siteNav"), "hub");
-renderHeader($("#header"), { icon: "🔮", title: "오늘의 타로" });
+renderHeader($("#header"), { icon: "🔮", title: "오늘의 타로", back: "/today/" });
 
 $("#collBtn").addEventListener("click", showCollection);
 $("#collBackBtn").addEventListener("click", () => {
