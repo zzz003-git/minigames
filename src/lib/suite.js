@@ -15,7 +15,7 @@
  * 두 번째 시도는 조용히 무시되므로 동시 요청이 와도 한 번만 들어간다.
  */
 
-import { SUITE } from "./config.js";
+import { MIND, SAJU, SUITE, TAROT } from "./config.js";
 import { dayKey, now } from "./time.js";
 
 // ══════════════════════════════════════════════════════════════
@@ -66,6 +66,45 @@ export async function pointState(env, userId, day = dayKey()) {
     .bind(day, userId)
     .first();
   return { total: row?.total ?? 0, today: row?.today ?? 0 };
+}
+
+/**
+ * 세 서비스의 **모으기 진행도**. 허브 카드의 진행 막대가 쓴다.
+ *
+ * ── 마음만 기준이 다른 이유 ──────────────────────────────────────────────
+ * 타로(22장)와 사주(60갑자)는 총계가 서버 상수라 「모은 칸 / 전체」가 바로 나온다.
+ * 마음은 다르다 — 실험 목록(`public/mind/mind-db.js`)을 **화면이 가진다.** 서버는
+ * 실험이 몇 개인지 모르고, 알아서도 안 된다(config.js MIND 주석: 주 2~3개씩 공급).
+ *
+ * 그래서 마음은 도감 대신 **축**으로 잰다. `mind_axes` 는 서버가 온전히 아는 값이고,
+ * 「마음 지도가 얼마나 또렷해졌나」가 카드에 적히기에도 도감보다 낫다.
+ */
+export async function collectionState(env, userId, day = dayKey()) {
+  const month = day.slice(0, 7);
+
+  const [tarot, saju, axes] = await Promise.all([
+    env.DB.prepare(`SELECT COUNT(*) AS n FROM tarot_coll WHERE user_id = ?`).bind(userId).first(),
+    env.DB.prepare(`SELECT COUNT(*) AS n FROM saju_stamp WHERE user_id = ?`).bind(userId).first(),
+    env.DB.prepare(`SELECT ax FROM mind_axes WHERE user_id = ? AND month = ?`)
+      .bind(userId, month)
+      .first(),
+  ]);
+
+  // 축은 |값| 이 기준치를 넘으면 「또렷하다」고 본다. 부호는 방향일 뿐이라 절댓값이다.
+  let clear = 0;
+  try {
+    for (const v of JSON.parse(axes?.ax ?? "[]")) {
+      if (Math.abs(v) >= MIND.AXIS_GOAL) clear += 1;
+    }
+  } catch {
+    // 값이 깨져 있어도 허브는 떠야 한다 — 0 으로 둔다
+  }
+
+  return {
+    tarot: { got: tarot?.n ?? 0, total: TAROT.CARDS, unit: "장" },
+    saju: { got: saju?.n ?? 0, total: SAJU.STAMPS_TOTAL, unit: "칸" },
+    mind: { got: clear, total: MIND.AXES, unit: "축" },
+  };
 }
 
 // ══════════════════════════════════════════════════════════════

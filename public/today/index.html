@@ -15,31 +15,16 @@
 </head>
 <body class="game suite suite--today">
   <div id="siteNav"></div>
-  <div class="app">
+  <!-- 원안의 허브는 영역 폭(1120px)을 쓴다. 좁은 판 폭이면 3칸이 세로로 쌓인다 -->
+  <div class="app hub--wide">
     <header class="topbar" id="header"></header>
 
     <main class="app__body">
       <section class="screen is-active" data-screen="home">
 
-        <div class="greet">
-          <div class="greet__day" id="greetDay">—</div>
-          <div class="greet__line" id="greetLine">오늘의 나를 세 조각으로 만나요</div>
-        </div>
-
-        <!-- 트리플 진행도 -->
-        <div class="card card--info tripcard">
-          <div class="trip">
-            <div class="trip__dots" id="tripDots" aria-hidden="true"></div>
-            <div class="trip__text">
-              <b id="tripCount">0 / 3</b>
-              <span id="tripNote">—</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- 3칸 -->
-        <!-- 클래스 이름이 hubtile 인 이유는 today.css 주석 참조 (base.css 와 충돌) -->
-        <nav class="hubtiles" id="hubtiles" aria-label="오늘의 3종"></nav>
+        <!-- 오늘의 나 영역 — 「전체」 화면과 같은 모듈이 그린다.
+             두 벌을 두면 카드 한 줄을 고칠 때마다 두 곳을 고쳐야 한다. -->
+        <div id="todayArea"></div>
 
         <div class="stats">
           <div class="stat stat--accent">
@@ -52,7 +37,7 @@
           </div>
         </div>
 
-        <a class="btn" href="/">← 미니게임으로</a>
+        <a class="btn" href="/games/">← 게임으로</a>
         <p class="footnote--dim center">매일 자정에 새 하루가 열려요</p>
       </section>
     </main>

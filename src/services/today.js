@@ -20,7 +20,7 @@
 
 import { SUITE } from "../lib/config.js";
 import { dayKey } from "../lib/time.js";
-import { dailyState, pointState, touchUser } from "../lib/suite.js";
+import { collectionState, dailyState, pointState, touchUser } from "../lib/suite.js";
 
 /**
  * 서비스별 준비 상태.
@@ -39,9 +39,10 @@ export async function today({ env, userId }) {
   const day = dayKey();
   await touchUser(env, userId, day);
 
-  const [state, points] = await Promise.all([
+  const [state, points, coll] = await Promise.all([
     dailyState(env, userId, day),
     pointState(env, userId, day),
+    collectionState(env, userId, day),
   ]);
 
   const services = SUITE.SERVICES.map((k) => ({
@@ -50,6 +51,9 @@ export async function today({ env, userId }) {
     // 완료한 서비스의 축. 화면이 이것으로 미니 결과 카드를 그린다
     // (카드id / 십신idx / 유형key — 콘텐츠는 화면이 갖고 있다).
     key_value: state[k]?.key ?? null,
+    // 모으기 진행도 — 화면의 진행 막대가 쓴다. 서비스마다 세는 단위가 다르다
+    // (장 / 칸 / 축). 이유는 suite.js `collectionState` 주석 참조.
+    collect: coll[k],
   }));
 
   const live = services.filter((s) => s.ready);

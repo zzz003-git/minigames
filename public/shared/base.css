@@ -3156,41 +3156,8 @@ button.sicon:active { transform: scale(0.94); }
 /* 내비가 있는 화면은 본문 폭을 디자인에 맞춘다 */
 .hub--wide { max-width: 1120px; padding-left: clamp(16px, 4vw, 28px); padding-right: clamp(16px, 4vw, 28px); }
 
-/* 「전체」 화면의 오늘의 나 영역 — 게임 카드와 같은 폭·리듬을 쓴다 */
-.todaygrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-.todaycard {
-  display: flex; flex-direction: column; gap: 4px;
-  padding: 16px 14px;
-  border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: color-mix(in srgb, var(--t) 6%, transparent);
-  color: var(--text); text-decoration: none;
-  transition: transform 0.16s ease, border-color 0.16s ease;
-}
-.todaycard:not(.is-locked):hover { transform: translateY(-2px); border-color: var(--t); }
-.todaycard__icon { font-size: 26px; line-height: 1; }
-.todaycard__title { font-size: 14px; font-weight: 700; margin-top: 4px; }
-.todaycard__desc { font-size: 12px; color: var(--text-sub); line-height: 1.4; }
-.todaycard.is-done { border-color: color-mix(in srgb, var(--t) 40%, transparent); }
-.todaycard.is-done .todaycard__desc { color: var(--t); }
-.todaycard.is-locked { opacity: 0.5; }
-.todaycard.is-locked .todaycard__icon { filter: grayscale(1); }
-
-.todaymore {
-  display: flex; align-items: center; gap: 10px;
-  margin-top: 10px; padding: 12px 14px;
-  border-radius: 12px; border: 1px dashed rgba(255, 255, 255, 0.12);
-  color: var(--text-sub); text-decoration: none; font-size: 12.5px;
-}
-.todaymore b { margin-left: auto; color: var(--text); font-size: 13px; }
-.todaymore:hover { border-color: rgba(255, 255, 255, 0.24); }
-
 /* 아직 열리지 않은 영역 — 원안이 onClick 을 막아 뒀다 */
 .sitetab.is-soon { color: #5c6880; border-color: rgba(255, 255, 255, 0.07); cursor: default; }
-
-@media (max-width: 560px) {
-  .todaygrid { grid-template-columns: 1fr; }
-}
 
 /* ══ 게임 영역 카드 (디자인 v3 D-2) ══
    두 묶음(오리지널·아케이드)을 하나의 영역으로 감싼다. 오늘의 나 영역과 나란히
@@ -3233,3 +3200,100 @@ button.sicon:active { transform: scale(0.94); }
 .bandmore:hover { background: rgba(255, 255, 255, 0.08); }
 .arcade-card[hidden] { display: none; }
 .bandmore[hidden] { display: none; }
+
+/* ══ 오늘의 나 영역 카드 (디자인 v3 D-3) ══
+   게임 영역이 민트라면 이쪽은 보라다. 두 영역이 「전체」 화면에 나란히 놓였을 때
+   스크롤 중에도 색만 보고 갈리게 하는 장치다. */
+.hubarea {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(169, 139, 224, 0.2);
+  border-radius: 26px;
+  background: radial-gradient(120% 90% at 15% 0%, #211a37 0%, #171226 45%, #120f1e 100%);
+  padding: clamp(18px, 2.8vw, 26px);
+  display: flex; flex-direction: column; gap: 18px;
+  margin-bottom: 26px;
+}
+.hubarea__head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.hubarea__icon {
+  width: 34px; height: 34px; border-radius: 12px;
+  background: rgba(169, 139, 224, 0.18);
+  display: grid; place-items: center; font-size: 17px;
+}
+.hubarea__text { display: flex; flex-direction: column; gap: 2px; margin-right: auto; }
+.hubarea__text b { font-size: 17px; letter-spacing: -0.01em; }
+.hubarea__text span { font-size: 12px; color: #a79ac2; }
+
+.hubarea__dots { display: flex; gap: 5px; }
+.hubarea__dot {
+  width: 9px; height: 9px; border-radius: 50%;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+}
+.hubarea__dot.is-on { background: #d6b166; border-color: #d6b166; }
+
+.hubarea__triple {
+  font-family: var(--mono); font-size: 10px; letter-spacing: 0.08em;
+  color: #c3aef0;
+  border: 1px solid rgba(169, 139, 224, 0.3); border-radius: 999px;
+  padding: 5px 10px;
+}
+
+.hubarea__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(276px, 1fr));
+  gap: 13px;
+}
+
+/* 3칸 카드 — 아이콘·이름·상태 / 한 줄 / 모으기 막대 */
+.hubcard {
+  display: flex; flex-direction: column; gap: 11px;
+  padding: 17px; border-radius: 24px;
+  background: rgba(255, 255, 255, 0.028);
+  border: 1px solid rgba(169, 139, 224, 0.16);
+  text-decoration: none; color: inherit;
+  transition: border-color var(--t), background var(--t);
+}
+a.hubcard:hover { border-color: var(--t); background: rgba(255, 255, 255, 0.05); }
+a.hubcard:active { transform: scale(0.995); }
+a.hubcard:focus-visible { outline: 2px solid var(--t); outline-offset: 2px; }
+.hubcard[aria-disabled] { opacity: 0.55; }
+
+.hubcard__head { display: flex; align-items: center; gap: 11px; }
+.hubcard__icon {
+  width: 44px; height: 44px; flex: 0 0 44px; border-radius: 15px;
+  background: color-mix(in srgb, var(--t) 16%, transparent);
+  display: grid; place-items: center; font-size: 21px;
+}
+.hubcard__name { display: flex; flex-direction: column; gap: 2px; margin-right: auto; min-width: 0; }
+.hubcard__name b { font-size: 16px; font-weight: 700; word-break: keep-all; }
+.hubcard__name span { font-size: 11.5px; color: #a79ac2; }
+.hubcard__state { font-size: 11px; font-weight: 700; color: #8f86a6; }
+.hubcard.is-done .hubcard__state { color: var(--t); }
+
+.hubcard__line { font-size: 13px; color: #c3b9d8; line-height: 1.5; word-break: keep-all; }
+
+.hubcard__bar {
+  height: 6px; border-radius: 999px;
+  background: rgba(255, 255, 255, 0.07);
+  overflow: hidden; display: block;
+}
+.hubcard__fill { display: block; height: 100%; background: var(--t); }
+.hubcard__meta { font-family: var(--mono); font-size: 10.5px; color: #8f86a6; }
+
+.hubarea__foot { display: flex; gap: 9px; flex-wrap: wrap; align-items: center; }
+.hubarea__btn {
+  padding: 11px 17px; border-radius: 16px;
+  font-size: 13px; font-weight: 700;
+  text-decoration: none;
+  background: rgba(127, 216, 192, 0.1);
+  border: 1px solid rgba(127, 216, 192, 0.26);
+  color: #a8e6d5;
+}
+.hubarea__btn.is-soon {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(255, 255, 255, 0.08);
+  color: #7d7593; cursor: default;
+}
+.hubarea__note { font-size: 12px; color: #c3aef0; margin-right: auto; }
+.hubarea__legal { font-size: 11px; color: #7d7593; }
