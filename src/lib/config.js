@@ -1324,6 +1324,22 @@ export const TAROT = {
   WELCOME_DRAW: true,
 };
 
+// ── 🔬 마음연구소 (MIND-SPEC-01) ──────────────────────────────────────────
+//
+// 콘텐츠(실험 7 · pairQ 12 · pairPsy 180 …)는 화면이 가진다. 서버가 같은 DB 를
+// 갖게 하면 실험을 추가할 때마다 두 곳을 고쳐야 하고, 기획서 5절은 **주 2~3개
+// 공급**을 전제한다. 서버는 형태(문항 4 × 선택지 5)만 검증한다.
+export const MIND = {
+  QUESTIONS: 4,
+  OPTIONS: 5,
+  TYPES: 4,
+  AXES: 8,
+  AXIS_GOAL: 5, // 축 하나를 「또렷하다」고 보는 기준 (M-03)
+
+  AD_ARCHIVE_PER_DAY: 2, // 「지난 실험 열기」 (M-04) — 적립은 없다
+  ARCHIVE_DAYS: 6, // 직전 6일 안의 미완 실험만 대상
+};
+
 export const AD_TRIGGERS = {
   STOPWATCH_ATTEMPT: { game: "STOPWATCH", type: "REWARDED", perDay: STOPWATCH.AD_VIEWS_PER_DAY },
   STOPWATCH_STATS: { game: "STOPWATCH", type: "INTERSTITIAL", perDay: null },
@@ -1343,6 +1359,9 @@ export const AD_TRIGGERS = {
   // **순위가 없는 서비스라 보상 카드에 「'+' 리그」 줄을 붙이지 않는다**(SUITE 1.4).
   TAROT_ATTEMPT: { service: "tarot", type: "REWARDED", perDay: TAROT.AD_MORE_PER_DAY },
   TAROT_STATS: { service: "tarot", type: "INTERSTITIAL", perDay: 1 },
+
+  MIND_ARCHIVE: { service: "mind", type: "REWARDED", perDay: MIND.AD_ARCHIVE_PER_DAY },
+  MIND_STATS: { service: "mind", type: "INTERSTITIAL", perDay: 1 },
 };
 
 // 게임별 "통계/랭킹 열람 해제"에 필요한 Interstitial 트리거

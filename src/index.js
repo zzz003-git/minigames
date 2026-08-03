@@ -50,6 +50,7 @@ import * as memory from "./games/memory.js";
 import { ARCADE_SPECS } from "./games/arcade/index.js";
 import { rollDailySnapshot } from "./games/arcade/majority.js";
 import * as tarot from "./services/tarot.js";
+import * as mind from "./services/mind.js";
 import * as arcade from "./lib/arcade.js";
 import * as adRoutes from "./routes/ad.js";
 import * as statsRoutes from "./routes/stats.js";
@@ -178,6 +179,9 @@ const ROUTES = {
   "GET /api/tarot/today": tarot.today,
   "POST /api/tarot/draw": tarot.draw,
   "GET /api/tarot/stats": tarot.stats,
+  "GET /api/mind/state": mind.state,
+  "POST /api/mind/submit": mind.submit,
+  "GET /api/mind/stats": mind.stats,
 };
 
 export default {

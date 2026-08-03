@@ -13,6 +13,7 @@ import { arcadeSpec } from "../games/arcade/index.js";
 import { applyBoost } from "../lib/arcade.js";
 import { isTestMode } from "../lib/testmode.js";
 import * as tarot from "../services/tarot.js";
+import * as mind from "../services/mind.js";
 
 /**
  * 스위트 서비스의 광고 보상.
@@ -26,6 +27,10 @@ function grantServiceReward(env, userId, triggerKey) {
       return tarot.grantExtraDraw(env, userId);
     case "TAROT_STATS":
       return tarot.unlockStats(env, userId);
+    case "MIND_ARCHIVE":
+      return mind.grantArchive(env, userId);
+    case "MIND_STATS":
+      return mind.unlockStats(env, userId);
     default:
       throw new ApiError("BAD_PARAM", `보상 처리가 없는 트리거입니다: ${triggerKey}`, 400);
   }

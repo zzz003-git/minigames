@@ -1,0 +1,99 @@
+/**
+ * 🔬 마음연구소 — 전용 스타일
+ *
+ * 골격(.card .btn .screen .stats)은 base.css 를 그대로 쓰고, 실험실 팔레트(민트)만
+ * 얹는다. 크로스 칩은 타로와 같은 규격이므로 여기서도 같은 이름을 쓴다(SUITE 2.4).
+ */
+
+.suite--mind {
+  --m-key: #7fd8c0;
+  --m-key-dim: #4b8b7c;
+  --m-line: rgba(127, 216, 192, 0.18);
+  --m-surface: rgba(127, 216, 192, 0.06);
+}
+
+.suite .center { text-align: center; }
+
+/* ── 봉투 ── */
+.envelope {
+  margin: 8px auto 18px;
+  padding: 30px 20px 26px;
+  max-width: 320px;
+  border-radius: 18px;
+  border: 1px solid var(--m-line);
+  background: var(--m-surface);
+  text-align: center;
+  cursor: pointer;
+  transition: transform 0.18s ease, border-color 0.18s ease;
+}
+.envelope:hover, .envelope:focus-visible { border-color: var(--m-key); transform: translateY(-3px); }
+.envelope:focus-visible { outline: 2px solid var(--m-key); outline-offset: 4px; }
+.envelope.is-done { cursor: default; }
+.envelope__glyph { font-size: 54px; line-height: 1; }
+.envelope__title { margin-top: 12px; font-size: 18px; font-weight: 700; }
+.envelope__sub { margin-top: 6px; font-size: 13px; color: var(--text-sub); }
+
+/* ── 장면 ── */
+.scene__glyph { font-size: 56px; line-height: 1; margin-bottom: 8px; }
+.scene__text { margin-top: 10px; font-size: 14.5px; line-height: 1.75; color: var(--text-sub); }
+
+/* ── 문항 ── */
+.qbar { height: 4px; border-radius: 999px; background: rgba(255, 255, 255, 0.07); overflow: hidden; }
+.qbar span { display: block; height: 100%; width: 0; background: var(--m-key); transition: width 0.3s ease; }
+.qstep { margin: 8px 0 4px; font-size: 12px; color: var(--text-faint); text-align: center; }
+.qtext { font-size: 16.5px; font-weight: 700; line-height: 1.6; }
+
+.opts { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
+.opts--tight { margin-top: 10px; }
+.opt {
+  width: 100%; text-align: left;
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 1px solid var(--border-mid);
+  background: var(--well-soft);
+  color: var(--text);
+  font-size: 14.5px; line-height: 1.5;
+  cursor: pointer;
+  transition: 0.15s;
+}
+.opt:hover { border-color: var(--m-key-dim); }
+.opt:focus-visible { outline: 2px solid var(--m-key); outline-offset: 2px; }
+.opt.is-pick { border-color: var(--m-key); background: var(--m-surface); color: var(--m-key); }
+.opt:disabled { cursor: default; }
+
+/* ── 결과 ── */
+.type__glyph { font-size: 58px; line-height: 1; margin-bottom: 6px; }
+.type__desc { margin-top: 10px; font-size: 14.5px; line-height: 1.75; }
+
+/* ── 축 막대 ── */
+.axisbars { display: flex; flex-direction: column; gap: 9px; margin-top: 12px; }
+.axisrow { display: grid; grid-template-columns: 74px 1fr 30px; align-items: center; gap: 9px; }
+.axisrow__name { font-size: 12px; color: var(--text-sub); }
+.axisrow__track { height: 7px; border-radius: 999px; background: rgba(255, 255, 255, 0.07); overflow: hidden; }
+.axisrow__fill { display: block; height: 100%; background: var(--m-key); border-radius: 999px; transition: width 0.4s ease; }
+.axisrow__n { font-size: 11px; color: var(--text-faint); text-align: right; font-family: var(--mono); }
+.axisrow.is-full .axisrow__name { color: var(--m-key); }
+
+/* ── 크로스 칩 (SUITE 2.4) ── */
+.crosschips { display: flex; gap: 8px; margin: 4px 0 12px; }
+.crosschip {
+  flex: 1; display: block; padding: 11px 12px;
+  border: 1px solid var(--border-mid); border-radius: 12px;
+  background: var(--well-soft); color: var(--text-sub);
+  font-size: 12.5px; line-height: 1.45; text-decoration: none;
+}
+.crosschip b { display: block; color: var(--text); font-size: 13px; margin-bottom: 2px; }
+.crosschip.is-done { border-color: var(--m-key-dim); color: var(--m-key); }
+
+/* ── 도감 ── */
+.collrows { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+.collrow { display: flex; align-items: center; gap: 10px; font-size: 13px; }
+.collrow__title { color: var(--text-sub); min-width: 96px; }
+.collrow__cells { display: flex; gap: 5px; }
+.collcell {
+  width: 30px; height: 30px; border-radius: 8px;
+  border: 1px solid var(--border-mid); background: rgba(255, 255, 255, 0.02);
+  display: flex; align-items: center; justify-content: center; font-size: 15px;
+}
+.collcell.is-have { border-color: var(--m-key-dim); background: var(--m-surface); }
+.collcell.is-miss { color: var(--text-faint); font-size: 12px; }
