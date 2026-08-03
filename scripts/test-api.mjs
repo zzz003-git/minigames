@@ -41,7 +41,7 @@ import { isTestMode } from "../src/lib/testmode.js";
 import { dayGanzhi, ganzhiName, correctClock, dayAndHourPillar, natalChart } from "../src/lib/saju-calendar.js";
 // 🌤️ 명리 규칙 — 십신·지지관계는 표가 아니라 규칙이라 직접 부른다
 import { tenGod, branchRelation } from "../src/services/saju.js";
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 
 const BASE = process.env.TEST_BASE ?? "http://127.0.0.1:8787";
 
@@ -413,6 +413,55 @@ function contractChecks() {
   for (const game of Object.keys(PLAYERS)) {
     check(`${game} 레지스트리 등록`, ARCADE_SPECS[game] != null,
       ARCADE_SPECS[game] ? "" : "→ src/games/arcade/index.js 등록 누락 또는 이름 오타");
+  }
+}
+
+/**
+ * 숨은 요소를 재는 코드를 잡는다.
+ *
+ * ── 왜 이 검사가 생겼나 ──────────────────────────────────────────────────
+ * 타로 부채가 폰에서 22장 전부 왼쪽에 뭉쳤다. `showScreen()` 이 배치 루프 **뒤**에
+ * 있어서, 잴 때 무대가 아직 `display:none` 안이었고 폭이 **0** 이었다.
+ *
+ * 이 결함은 **API 테스트로 절대 못 잡는다** — 서버는 완벽히 정상이고 화면 배치만
+ * 틀리기 때문이다. 그렇다고 30종 화면을 사람이 매번 다 열어 볼 수도 없다.
+ * 그래서 **재는 코드에 0 방어가 있는지**를 소스에서 정적으로 본다.
+ *
+ * 0 이 나왔을 때 그리기를 멈추는 게임들(⑱⑳㉑㉙)은 이미 그렇게 하고 있었고,
+ * 타로만 빠져나가는 대신 **엉뚱한 값으로 계속 그렸다.** 그게 갈림길이었다.
+ */
+function checkHiddenMeasureGuards() {
+  console.log("\n[1-b] 숨은 요소 측정 방어");
+
+  const files = [];
+  const walk = (dir) => {
+    for (const e of readdirSync(dir, { withFileTypes: true })) {
+      const full = `${dir}/${e.name}`;
+      if (e.isDirectory()) walk(full);
+      else if (e.name.endsWith(".js")) files.push(full);
+    }
+  };
+  walk("public");
+
+  for (const file of files) {
+    const src = readFileSync(file, "utf8");
+    if (!src.includes("getBoundingClientRect")) continue;
+
+    // 잰 값을 담는 변수 이름을 찾아, 그 변수로 0 을 확인하는 곳이 있는지 본다.
+    const names = [...src.matchAll(/(?:const|let)\s+(\w+)\s*=\s*[\w$().#"']+\.getBoundingClientRect\(\)/g)]
+      .map((m) => m[1]);
+
+    for (const v of names) {
+      // `r.width <= 0` · `r.width < 1` · `!r.width` · `rect.width ||` 중 하나면 통과
+      const guarded = new RegExp(
+        String.raw`${v}\.(width|height)\s*(<=?\s*[01]|\|\|)|!\s*${v}\.(width|height)`,
+      ).test(src);
+      check(
+        `${file.replace("public/", "")} — ${v} 0폭 방어`,
+        guarded,
+        guarded ? "" : "→ 숨은 화면(display:none)에서 재면 0 이 됩니다. 0 이면 그리지 말거나 대체 폭을 쓰세요",
+      );
+    }
   }
 }
 
@@ -2799,6 +2848,7 @@ try {
 }
 
 contractChecks();
+checkHiddenMeasureGuards();
 await arcadeFlows();
 await commonRules();
 await classicRegression();
