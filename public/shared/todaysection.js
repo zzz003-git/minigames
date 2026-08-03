@@ -64,6 +64,7 @@ export async function renderTodaySection(host, { heading = true } = {}) {
   host.append(grid);
 
   host.append(footRow(data));
+  host.append(el("div", { class: "archive", hidden: true, id: "archiveBox" }));
   return data;
 }
 
@@ -148,6 +149,7 @@ function footRow(data) {
     // 화면(`/p/`)은 있는데 **발급 화면**이 없어서, 링크를 걸면 404 로 간다.
     // 눌러서 없는 데로 가는 것보다 안 눌리는 편이 낫다(상단 「웹툰 준비중」과 같다).
     el("span", { class: "hubarea__btn is-soon", "aria-disabled": "true" }, "우리 · 너를 맞혀볼게 (준비 중)"),
+    archiveToggle(),
     el("span", { class: "hubarea__note" }, note),
     el("span", { class: "hubarea__legal" }, "순위 없음 · 무광고로 완결 · 오락용입니다"),
   );
@@ -165,4 +167,110 @@ function summarize(s) {
     return type ? `오늘의 나는 ${type.g} ${type.n}` : "오늘 마쳤어요";
   }
   return "오늘 몫을 마쳤어요";
+}
+
+// ══════════════════════════════════════════════════════════════
+// 아카이브 달력
+// ══════════════════════════════════════════════════════════════
+
+/**
+ * 원안의 `toggleArchive` · `archiveOpen`.
+ *
+ * 접어 두는 이유는 게임 밴드와 같다 — 한 달치 달력이 늘 펼쳐져 있으면 「오늘」을
+ * 보러 온 사람이 매번 그것을 지나쳐야 한다. 지난날은 찾을 때만 열면 된다.
+ */
+function archiveToggle() {
+  const btn = el("button", { type: "button", class: "hubarea__btn is-ghost" }, "지난 기록");
+  btn.addEventListener("click", async () => {
+    const box = document.getElementById("archiveBox");
+    if (!box) return;
+    if (!box.hidden) {
+      box.hidden = true;
+      btn.textContent = "지난 기록";
+      return;
+    }
+    btn.disabled = true;
+    try {
+      await renderArchive(box, new Date().toISOString().slice(0, 7));
+      box.hidden = false;
+      btn.textContent = "접기";
+    } catch {
+      // 달력이 안 열려도 위의 3칸은 멀쩡해야 한다
+    } finally {
+      btn.disabled = false;
+    }
+  });
+  return btn;
+}
+
+/** 그날 무엇을 했는지 한 줄로 — 콘텐츠 이름은 화면이 붙인다(서버는 key 만 준다) */
+function dayLine(d) {
+  const bits = [];
+  if (d.done.tarot) {
+    const c = HUB_INDEX.tarot[Number(d.key.tarot)];
+    bits.push(c ? `${c.g} ${c.n}` : "타로");
+  }
+  if (d.done.saju) bits.push("🌤️ 기운");
+  if (d.done.mind) {
+    const [expId, ti] = String(d.key.mind ?? "").split(":");
+    const t = HUB_INDEX.mind[expId]?.[Number(ti)];
+    bits.push(t ? `${t.g} ${t.n}` : "선택");
+  }
+  return bits.join(" · ");
+}
+
+async function renderArchive(box, month) {
+  const data = await apiGet(`/api/today/archive?month=${month}`);
+  const byDay = new Map(data.days.map((d) => [d.day, d]));
+
+  clear(box);
+  box.append(
+    el(
+      "div",
+      { class: "archive__head" },
+      el("b", {}, `${month.replace("-", ". ")} 기록`),
+      el("span", {}, `세 조각을 다 모은 날 ${data.triple_days}일`),
+    ),
+  );
+
+  const [y, m] = month.split("-").map(Number);
+  // 그 달 1일이 무슨 요일인지 — 앞을 빈 칸으로 채워 요일을 맞춘다
+  const first = new Date(Date.UTC(y, m - 1, 1)).getUTCDay();
+  const last = new Date(Date.UTC(y, m, 0)).getUTCDate();
+
+  const grid = el("div", { class: "archive__grid" });
+  for (const w of ["일", "월", "화", "수", "목", "금", "토"]) {
+    grid.append(el("span", { class: "archive__dow" }, w));
+  }
+  for (let i = 0; i < first; i += 1) grid.append(el("span", { class: "archive__pad" }));
+
+  const note = el("p", { class: "archive__note" }, "날짜를 누르면 그날 무엇을 했는지 보여 줘요");
+
+  for (let d = 1; d <= last; d += 1) {
+    const key = `${month}-${String(d).padStart(2, "0")}`;
+    const rec = byDay.get(key);
+    const cnt = rec?.count ?? 0;
+
+    const dots = el("span", { class: "archive__dots", "aria-hidden": "true" });
+    for (const k of ["tarot", "saju", "mind"]) {
+      dots.append(el("i", { class: rec?.done[k] ? "is-on" : "", style: `--t:${TINT[k]}` }));
+    }
+
+    const cell = el(
+      "button",
+      {
+        type: "button",
+        class: `archive__day ${cnt >= 3 ? "is-full" : cnt > 0 ? "is-some" : ""}`,
+        "aria-label": `${d}일 ${cnt}칸 완료`,
+      },
+      el("span", {}, String(d)),
+      dots,
+    );
+    cell.addEventListener("click", () => {
+      note.textContent = cnt ? `${d}일 — ${dayLine(rec)}` : `${d}일 — 기록이 없어요`;
+    });
+    grid.append(cell);
+  }
+
+  box.append(grid, note);
 }

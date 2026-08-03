@@ -3335,3 +3335,50 @@ a.hubcard:focus-visible { outline: 2px solid var(--t); outline-offset: 2px; }
 }
 .hubarea__note { font-size: 12px; color: #c3aef0; margin-right: auto; }
 .hubarea__legal { font-size: 11px; color: #7d7593; }
+
+/* ══ 아카이브 달력 (원안 archiveOpen) ══ */
+.archive {
+  display: flex; flex-direction: column; gap: 10px;
+  padding: 16px; border-radius: 22px;
+  background: rgba(255, 255, 255, 0.028);
+  border: 1px solid rgba(169, 139, 224, 0.16);
+}
+.archive[hidden] { display: none; }
+.archive__head { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
+.archive__head b { font-size: 13px; }
+.archive__head span { font-size: 11.5px; color: #8f86a6; }
+
+.archive__grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
+.archive__dow { font-size: 10.5px; color: #7d7593; text-align: center; padding-bottom: 2px; }
+.archive__pad { aspect-ratio: 1; }
+
+.archive__day {
+  aspect-ratio: 1; border-radius: 11px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+  font-size: 10.5px; color: #8f86a6;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  cursor: pointer; padding: 0;
+}
+.archive__day.is-some { color: #c3b9d8; border-color: rgba(169, 139, 224, 0.28); }
+.archive__day.is-full {
+  color: #f4e8cd;
+  background: linear-gradient(150deg, rgba(214, 177, 102, 0.14), rgba(169, 139, 224, 0.14));
+  border-color: rgba(214, 177, 102, 0.34);
+}
+.archive__day:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+.archive__dots { display: flex; gap: 2px; }
+/* 안 한 칸도 자리를 지킨다 — 도트 수가 날마다 달라지면 격자가 흔들린다 */
+.archive__dots i { width: 4px; height: 4px; border-radius: 50%; background: rgba(255, 255, 255, 0.1); }
+.archive__dots i.is-on { background: var(--t); }
+
+.archive__note { margin: 0; font-size: 11.5px; color: #8f86a6; }
+
+/* 아래 줄의 보조 버튼 (아카이브 토글) */
+.hubarea__btn.is-ghost {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #c6d0e0; cursor: pointer;
+}
+.hubarea__btn.is-ghost:hover { background: rgba(255, 255, 255, 0.08); }

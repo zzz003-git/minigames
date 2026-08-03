@@ -18,6 +18,7 @@
  * (설계가 3종이므로) 지금 도달 가능한 최대가 2라는 것을 화면이 정직하게 적는다.
  */
 
+import { ApiError } from "../lib/http.js";
 import { SUITE } from "../lib/config.js";
 import { dayKey } from "../lib/time.js";
 import { collectionState, dailyState, pointState, touchUser } from "../lib/suite.js";
@@ -70,5 +71,47 @@ export async function today({ env, userId }) {
     triple_paid: state.triple_paid,
     triple_points: SUITE.POINTS.TRIPLE_DONE,
     points,
+  };
+}
+
+/**
+ * `GET /api/today/archive?month=YYYY-MM` — 한 달치 하루 기록
+ *
+ * ── 왜 `daily_agg` 가 아니라 `suite_daily` 인가 ─────────────────────────
+ * `daily_agg` 는 **전국 분포**용 집계(day · service · item_key · cnt)라 `user_id`
+ * 자체가 없다. 「내가 그날 무엇을 했는가」를 만들 수 없다. 이용자별 하루 기록은
+ * `suite_daily` 에 있고 달력은 그쪽을 읽어야 한다. (한 번 잘못 적어 뒀던 것이다)
+ *
+ * ── 여기도 쓰기가 없다 ───────────────────────────────────────────────────
+ * 허브의 원칙 그대로 읽기만 한다. `*_key` 를 그대로 내려보내고 **이름은 화면이**
+ * 붙인다 — 콘텐츠(카드 이름·유형 이름)는 화면이 갖는다는 규칙과 같다.
+ */
+export async function archive({ env, userId, body }) {
+  const month = String(body?.month ?? dayKey().slice(0, 7));
+  if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) {
+    throw new ApiError("BAD_PARAM", "월 형식이 올바르지 않습니다.", 400);
+  }
+
+  const rows = await env.DB.prepare(
+    `SELECT day, tarot_done, saju_done, mind_done, tarot_key, saju_key, mind_key
+       FROM suite_daily
+      WHERE user_id = ? AND day >= ? AND day <= ?
+      ORDER BY day`,
+  )
+    .bind(userId, `${month}-01`, `${month}-31`)
+    .all();
+
+  const days = (rows?.results ?? []).map((r) => ({
+    day: r.day,
+    done: { tarot: !!r.tarot_done, saju: !!r.saju_done, mind: !!r.mind_done },
+    key: { tarot: r.tarot_key, saju: r.saju_key, mind: r.mind_key },
+    count: (r.tarot_done ? 1 : 0) + (r.saju_done ? 1 : 0) + (r.mind_done ? 1 : 0),
+  }));
+
+  return {
+    month,
+    days,
+    // 트리플을 채운 날 수 — 달력 위에 한 줄로 적는다
+    triple_days: days.filter((d) => d.count >= SUITE.SERVICES.length).length,
   };
 }
