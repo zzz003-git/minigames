@@ -64,11 +64,18 @@ export async function renderTodaySection(host, { heading = true } = {}) {
   for (const s of data.services) grid.append(serviceCard(s));
   host.append(grid);
 
-  // 「한 장」은 세 조각을 다 모았을 때만. 못 채운 사람에게 빈 틀을 보여 주지 않는다
-  if (data.triple) renderOneCard(host, data).catch(() => {});
+  // 「한 장」은 세 조각을 다 모았을 때만. 못 채운 사람에게 빈 틀을 보여 주지 않는다.
+  //
+  // **자리를 먼저 잡는다.** 이 함수는 DB 를 동적 import 하느라 비동기라, 그냥
+  // `host.append` 하면 아래 줄과 달력이 먼저 붙고 카드가 **맨 끝**에 떨어진다
+  // (실제로 그렇게 나왔다). 빈 자리를 순서대로 꽂아 두고 나중에 채운다.
+  const oneSlot = data.triple ? el("div", { class: "onecard-slot" }) : null;
+  if (oneSlot) host.append(oneSlot);
 
   host.append(footRow(data));
   host.append(el("div", { class: "archive", hidden: true, id: "archiveBox" }));
+
+  if (oneSlot) renderOneCard(oneSlot, data).catch(() => oneSlot.remove());
   return data;
 }
 
@@ -288,16 +295,16 @@ async function renderArchive(box, month) {
  * 축은 **서버가 준 key** 두 개다 — 사주의 십신 idx 와 타로의 카드 id. 화면이
  * 다시 계산하지 않는다(그러면 두 곳이 어긋난다).
  */
-async function renderOneCard(host, data) {
+async function renderOneCard(slot, data) {
   const svc = Object.fromEntries(data.services.map((s) => [s.key, s]));
   const god = Number(svc.saju?.key_value);
   const card = Number(svc.tarot?.key_value);
-  if (!Number.isInteger(god) || !Number.isInteger(card)) return;
+  if (!Number.isInteger(god) || !Number.isInteger(card)) return slot.remove();
 
   // 트리플을 채운 사람에게만 필요한 10KB — 여기서 처음 불러온다
   const { crossLine, GOD_NAMES, CARD_NAMES } = await import("./cross-db.js");
   const line = crossLine(god, card);
-  if (!line) return;
+  if (!line) return slot.remove();
 
   const [expId, ti] = String(svc.mind?.key_value ?? "").split(":");
   const type = HUB_INDEX.mind[expId]?.[Number(ti)];
@@ -351,5 +358,5 @@ ${line}`;
     ),
   );
 
-  host.append(box);
+  slot.replaceWith(box);
 }
