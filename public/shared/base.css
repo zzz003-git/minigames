@@ -3147,3 +3147,39 @@ button.sicon:active { transform: scale(0.94); }
 
 /* 내비가 있는 화면은 본문 폭을 디자인에 맞춘다 */
 .hub--wide { max-width: 1120px; padding-left: clamp(16px, 4vw, 28px); padding-right: clamp(16px, 4vw, 28px); }
+
+/* 「전체」 화면의 오늘의 나 영역 — 게임 카드와 같은 폭·리듬을 쓴다 */
+.todaygrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.todaycard {
+  display: flex; flex-direction: column; gap: 4px;
+  padding: 16px 14px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: color-mix(in srgb, var(--t) 6%, transparent);
+  color: var(--text); text-decoration: none;
+  transition: transform 0.16s ease, border-color 0.16s ease;
+}
+.todaycard:not(.is-locked):hover { transform: translateY(-2px); border-color: var(--t); }
+.todaycard__icon { font-size: 26px; line-height: 1; }
+.todaycard__title { font-size: 14px; font-weight: 700; margin-top: 4px; }
+.todaycard__desc { font-size: 12px; color: var(--text-sub); line-height: 1.4; }
+.todaycard.is-done { border-color: color-mix(in srgb, var(--t) 40%, transparent); }
+.todaycard.is-done .todaycard__desc { color: var(--t); }
+.todaycard.is-locked { opacity: 0.5; }
+.todaycard.is-locked .todaycard__icon { filter: grayscale(1); }
+
+.todaymore {
+  display: flex; align-items: center; gap: 10px;
+  margin-top: 10px; padding: 12px 14px;
+  border-radius: 12px; border: 1px dashed rgba(255, 255, 255, 0.12);
+  color: var(--text-sub); text-decoration: none; font-size: 12.5px;
+}
+.todaymore b { margin-left: auto; color: var(--text); font-size: 13px; }
+.todaymore:hover { border-color: rgba(255, 255, 255, 0.24); }
+
+/* 아직 열리지 않은 영역 — 원안이 onClick 을 막아 뒀다 */
+.sitetab.is-soon { color: #5c6880; border-color: rgba(255, 255, 255, 0.07); cursor: default; }
+
+@media (max-width: 560px) {
+  .todaygrid { grid-template-columns: 1fr; }
+}

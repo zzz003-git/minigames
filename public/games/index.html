@@ -3,39 +3,34 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>인스턴트 미니게임</title>
+  <title>게임 — 인스턴트 콘텐츠</title>
   <meta name="description" content="스탑워치 · 숫자야구 · 타이핑 · 숫자기억력 + 광고 리워드 아케이드 26종">
   <meta name="color-scheme" content="dark">
   <meta name="theme-color" content="#0F1420">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="shared/base.css">
+  <link rel="stylesheet" href="../shared/base.css">
 </head>
 <body>
   <!-- 공용 상단 내비 (디자인 v3) — 두 영역을 한 제품으로 묶는다 -->
   <div id="siteNav"></div>
   <main class="hub hub--wide">
     <header class="hub__header">
-      <h1>오늘 뭐 하고 놀까요</h1>
-      <p class="subtext">기록을 겨루는 게임과, 순위 없이 하루를 보는 「오늘의 나」</p>
+      <h1>게임</h1>
+      <p class="subtext">기록을 겨루는 게임 30종</p>
     </header>
 
     <!-- 테스트 빌드 표시. 한도가 풀린 빌드인지 테스터가 알아야 「왜 무한이지?」를
          버그로 적어 오지 않습니다. 프로덕션에서는 이 자리가 비어 있습니다. -->
     <div id="testBanner" hidden></div>
 
-    <!-- ══ 오늘의 나 영역 ══
-         「전체」 화면에서는 게임과 함께 보인다(원안 showHub: isHome || isHub).
-         내용은 /today/ 와 같은 API 를 쓰므로 여기서는 요약만 그린다. -->
-    <section class="hub__section" id="todaySection"></section>
-
     <!-- 오리지널 4종 — 한 판이 길고 기록 경신형이라 설명을 함께 보여줍니다 -->
     <section class="hub__section">
       <div class="hub__section-title"><b>오리지널</b><span>기록 경신형 4종</span></div>
 
       <nav class="hub__grid">
-        <a class="hub-card" href="games/stopwatch/"
+        <a class="hub-card" href="../games/stopwatch/"
            style="--card-accent:#7FD8C0; --card-soft:rgba(127,216,192,.12)">
           <span class="hub-card__icon" aria-hidden="true">⏱</span>
           <span class="hub-card__text">
@@ -46,7 +41,7 @@
           <span class="hub-card__go" aria-hidden="true">›</span>
         </a>
 
-        <a class="hub-card" href="games/baseball/"
+        <a class="hub-card" href="../games/baseball/"
            style="--card-accent:#E9927F; --card-soft:rgba(233,146,127,.12)">
           <span class="hub-card__icon" aria-hidden="true">⚾</span>
           <span class="hub-card__text">
@@ -57,7 +52,7 @@
           <span class="hub-card__go" aria-hidden="true">›</span>
         </a>
 
-        <a class="hub-card" href="games/typing/"
+        <a class="hub-card" href="../games/typing/"
            style="--card-accent:#D6B166; --card-soft:rgba(214,177,102,.12)">
           <span class="hub-card__icon" aria-hidden="true">⌨</span>
           <span class="hub-card__text">
@@ -68,7 +63,7 @@
           <span class="hub-card__go" aria-hidden="true">›</span>
         </a>
 
-        <a class="hub-card" href="games/memory/"
+        <a class="hub-card" href="../games/memory/"
            style="--card-accent:#7FD8C0; --card-soft:rgba(127,216,192,.12)">
           <span class="hub-card__icon" aria-hidden="true">🧠</span>
           <span class="hub-card__text">
@@ -97,67 +92,67 @@
         <p class="arcade-band__desc">보면 아는 정답을 제때 해내는 게임</p>
 
         <nav class="arcade-grid" aria-label="순발력 게임 11종">
-          <a class="arcade-card" href="games/reaction/"
+          <a class="arcade-card" href="../games/reaction/"
              style="--card-accent:#E9927F; --card-soft:rgba(233,146,127,.12)">
             <span class="arcade-card__icon" aria-hidden="true">⚡</span>
             <span class="arcade-card__title">반응속도 테스트</span>
             <span class="arcade-card__desc">초록으로 바뀌면 바로 탭</span>
           </a>
-          <a class="arcade-card" href="games/oddcolor/"
+          <a class="arcade-card" href="../games/oddcolor/"
              style="--card-accent:#E9927F; --card-soft:rgba(233,146,127,.12)">
             <span class="arcade-card__icon" aria-hidden="true">🎨</span>
             <span class="arcade-card__title">색 다른 타일 찾기</span>
             <span class="arcade-card__desc">하나만 색이 다릅니다</span>
           </a>
-          <a class="arcade-card" href="games/numtap/"
+          <a class="arcade-card" href="../games/numtap/"
              style="--card-accent:#E9927F; --card-soft:rgba(233,146,127,.12)">
             <span class="arcade-card__icon" aria-hidden="true">🔢</span>
             <span class="arcade-card__title">숫자 순서 터치</span>
             <span class="arcade-card__desc">1부터 25까지 순서대로</span>
           </a>
-          <a class="arcade-card" href="games/stroop/"
+          <a class="arcade-card" href="../games/stroop/"
              style="--card-accent:#E9927F; --card-soft:rgba(233,146,127,.12)">
             <span class="arcade-card__icon" aria-hidden="true">🌈</span>
             <span class="arcade-card__title">색깔 말하기</span>
             <span class="arcade-card__desc">뜻 말고 글자 색을 고르세요</span>
           </a>
-          <a class="arcade-card" href="games/ringstop/"
+          <a class="arcade-card" href="../games/ringstop/"
              style="--card-accent:#E9927F; --card-soft:rgba(233,146,127,.12)">
             <span class="arcade-card__icon" aria-hidden="true">🎯</span>
             <span class="arcade-card__title">링 스톱</span>
             <span class="arcade-card__desc">밝은 구간에서 탭</span>
           </a>
-          <a class="arcade-card" href="games/rpsflash/"
+          <a class="arcade-card" href="../games/rpsflash/"
              style="--card-accent:#E9927F; --card-soft:rgba(233,146,127,.12)">
             <span class="arcade-card__icon" aria-hidden="true">✌</span>
             <span class="arcade-card__title">이겨라 / 져라</span>
             <span class="arcade-card__desc">지시대로 1초 안에</span>
           </a>
-          <a class="arcade-card" href="games/dropcatch/"
+          <a class="arcade-card" href="../games/dropcatch/"
              style="--card-accent:#E9927F; --card-soft:rgba(233,146,127,.12)">
             <span class="arcade-card__icon" aria-hidden="true">🛒</span>
             <span class="arcade-card__title">와르르 받기</span>
             <span class="arcade-card__desc">폭탄만 피해서 받으세요</span>
           </a>
-          <a class="arcade-card" href="games/stack/"
+          <a class="arcade-card" href="../games/stack/"
              style="--card-accent:#E9927F; --card-soft:rgba(233,146,127,.12)">
             <span class="arcade-card__icon" aria-hidden="true">🧱</span>
             <span class="arcade-card__title">퍼펙트 스택</span>
             <span class="arcade-card__desc">흐르는 블록을 정확히 쌓기</span>
           </a>
-          <a class="arcade-card" href="games/balance/"
+          <a class="arcade-card" href="../games/balance/"
              style="--card-accent:#E9927F; --card-soft:rgba(233,146,127,.12)">
             <span class="arcade-card__icon" aria-hidden="true">&#9878;</span>
             <span class="arcade-card__title">밸런스 드롭</span>
             <span class="arcade-card__desc">저울을 수평에 맞추세요</span>
           </a>
-          <a class="arcade-card" href="games/toktok/"
+          <a class="arcade-card" href="../games/toktok/"
              style="--card-accent:#E9927F; --card-soft:rgba(233,146,127,.12)">
             <span class="arcade-card__icon" aria-hidden="true">🫧</span>
             <span class="arcade-card__title">톡톡</span>
             <span class="arcade-card__desc">손 떼지 말고 훑어서 터뜨리기</span>
           </a>
-          <a class="arcade-card" href="games/stretch/"
+          <a class="arcade-card" href="../games/stretch/"
              style="--card-accent:#E9927F; --card-soft:rgba(233,146,127,.12)">
             <span class="arcade-card__icon" aria-hidden="true">🫓</span>
             <span class="arcade-card__title">쭉</span>
@@ -176,91 +171,91 @@
         <p class="arcade-band__desc">기억·계산·탐색으로 답을 만들어내는 게임</p>
 
         <nav class="arcade-grid" aria-label="두뇌 게임 15종">
-          <a class="arcade-card" href="games/sequence/"
+          <a class="arcade-card" href="../games/sequence/"
              style="--card-accent:#7FD8C0; --card-soft:rgba(127,216,192,.12)">
             <span class="arcade-card__icon" aria-hidden="true">🔔</span>
             <span class="arcade-card__title">순서 기억</span>
             <span class="arcade-card__desc">반짝인 순서 그대로</span>
           </a>
-          <a class="arcade-card" href="games/mathrush/"
+          <a class="arcade-card" href="../games/mathrush/"
              style="--card-accent:#7FD8C0; --card-soft:rgba(127,216,192,.12)">
             <span class="arcade-card__icon" aria-hidden="true">➗</span>
             <span class="arcade-card__title">60초 암산</span>
             <span class="arcade-card__desc">60초 동안 몇 문제?</span>
           </a>
-          <a class="arcade-card" href="games/countdot/"
+          <a class="arcade-card" href="../games/countdot/"
              style="--card-accent:#7FD8C0; --card-soft:rgba(127,216,192,.12)">
             <span class="arcade-card__icon" aria-hidden="true">👁</span>
             <span class="arcade-card__title">순간 개수 세기</span>
             <span class="arcade-card__desc">점이 몇 개였나요?</span>
           </a>
-          <a class="arcade-card" href="games/cardpair/"
+          <a class="arcade-card" href="../games/cardpair/"
              style="--card-accent:#7FD8C0; --card-soft:rgba(127,216,192,.12)">
             <span class="arcade-card__icon" aria-hidden="true">🃏</span>
             <span class="arcade-card__title">카드 짝 맞추기</span>
             <span class="arcade-card__desc">적게 뒤집을수록 상위</span>
           </a>
-          <a class="arcade-card" href="games/majority/"
+          <a class="arcade-card" href="../games/majority/"
              style="--card-accent:#7FD8C0; --card-soft:rgba(127,216,192,.12)">
             <span class="arcade-card__icon" aria-hidden="true">🗳</span>
             <span class="arcade-card__title">다들 뭐 골랐을까</span>
             <span class="arcade-card__desc">다수가 고른 쪽을 3연속</span>
           </a>
-          <a class="arcade-card" href="games/basket/"
+          <a class="arcade-card" href="../games/basket/"
              style="--card-accent:#7FD8C0; --card-soft:rgba(127,216,192,.12)">
             <span class="arcade-card__icon" aria-hidden="true">🧺</span>
             <span class="arcade-card__title">딱 맞게 담기</span>
             <span class="arcade-card__desc">세 번 안에 금액을 딱</span>
           </a>
-          <a class="arcade-card" href="games/pathline/"
+          <a class="arcade-card" href="../games/pathline/"
              style="--card-accent:#7FD8C0; --card-soft:rgba(127,216,192,.12)">
             <span class="arcade-card__icon" aria-hidden="true">🧵</span>
             <span class="arcade-card__title">한 줄로 이어요</span>
             <span class="arcade-card__desc">번호 순서대로 한 붓</span>
           </a>
-          <a class="arcade-card" href="games/store/"
+          <a class="arcade-card" href="../games/store/"
              style="--card-accent:#7FD8C0; --card-soft:rgba(127,216,192,.12)">
             <span class="arcade-card__icon" aria-hidden="true">🏪</span>
             <span class="arcade-card__title">내 가게 채우기</span>
             <span class="arcade-card__desc">하루 한 판, 선반을 채워요</span>
           </a>
-          <a class="arcade-card" href="games/scratch/"
+          <a class="arcade-card" href="../games/scratch/"
              style="--card-accent:#7FD8C0; --card-soft:rgba(127,216,192,.12)">
             <span class="arcade-card__icon" aria-hidden="true">🎟</span>
             <span class="arcade-card__title">슥슥 긁기</span>
             <span class="arcade-card__desc">은박을 긁어 같은 그림 3개</span>
           </a>
-          <a class="arcade-card" href="games/detective/"
+          <a class="arcade-card" href="../games/detective/"
              style="--card-accent:#7FD8C0; --card-soft:rgba(127,216,192,.12)">
             <span class="arcade-card__icon" aria-hidden="true">&#128269;</span>
             <span class="arcade-card__title">3초 탐정</span>
             <span class="arcade-card__desc">무엇이 바뀌었을까요</span>
           </a>
-          <a class="arcade-card" href="games/rhythm/"
+          <a class="arcade-card" href="../games/rhythm/"
              style="--card-accent:#7FD8C0; --card-soft:rgba(127,216,192,.12)">
             <span class="arcade-card__icon" aria-hidden="true">&#129346;</span>
             <span class="arcade-card__title">리듬 에코</span>
             <span class="arcade-card__desc">빛나는 박자를 그대로</span>
           </a>
-          <a class="arcade-card" href="games/pour/"
+          <a class="arcade-card" href="../games/pour/"
              style="--card-accent:#7FD8C0; --card-soft:rgba(127,216,192,.12)">
             <span class="arcade-card__icon" aria-hidden="true">&#129380;</span>
             <span class="arcade-card__title">오늘의 한 잔</span>
             <span class="arcade-card__desc">목표선에 딱 맞게 세 층</span>
           </a>
-          <a class="arcade-card" href="games/merge3/"
+          <a class="arcade-card" href="../games/merge3/"
              style="--card-accent:#7FD8C0; --card-soft:rgba(127,216,192,.12)">
             <span class="arcade-card__icon" aria-hidden="true">&#129689;</span>
             <span class="arcade-card__title">세 칸 쌓기</span>
             <span class="arcade-card__desc">같은 것끼리 붙여 키우기</span>
           </a>
-          <a class="arcade-card" href="games/lightout/"
+          <a class="arcade-card" href="../games/lightout/"
              style="--card-accent:#7FD8C0; --card-soft:rgba(127,216,192,.12)">
             <span class="arcade-card__icon" aria-hidden="true">&#127769;</span>
             <span class="arcade-card__title">소등</span>
             <span class="arcade-card__desc">불빛을 하나씩 꾹 눌러 끄기</span>
           </a>
-          <a class="arcade-card" href="games/gauge/"
+          <a class="arcade-card" href="../games/gauge/"
              style="--card-accent:#7FD8C0; --card-soft:rgba(127,216,192,.12)">
             <span class="arcade-card__icon" aria-hidden="true">&#127472;&#127479;</span>
             <span class="arcade-card__title">오늘의 전국 게이지</span>
@@ -278,11 +273,9 @@
   <!-- 테스트 빌드일 때만 띠를 답니다. 프로덕션에서는 요청 한 번으로 끝나고
        아무것도 그리지 않습니다(이 응답은 D1 을 건드리지 않습니다). -->
   <script type="module">
-    import { renderSiteNav } from "./shared/sitenav.js";
-    import { $ } from "./shared/ui.js";
-    import { renderTodaySection } from "./shared/todaysection.js";
-    renderSiteNav($("#siteNav"), "home");
-    renderTodaySection($("#todaySection"));
+    import { renderSiteNav } from "../shared/sitenav.js";
+    import { $ } from "../shared/ui.js";
+    renderSiteNav($("#siteNav"), "games");
   </script>
 
   <script>
