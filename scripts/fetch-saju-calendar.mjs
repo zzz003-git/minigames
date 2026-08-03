@@ -26,7 +26,20 @@
 import { writeFileSync, mkdirSync } from "node:fs";
 import { dayGanzhi, ganzhiName } from "../src/lib/saju-calendar.js";
 
-const KEY = process.env.SAJU_API_KEY;
+/**
+ * 인증키는 두 형태로 발급된다 — Encoding(`%2F` 같은 이스케이프 포함)과 Decoding(원문).
+ *
+ * `URLSearchParams` 가 다시 인코딩하므로 Encoding 키를 그대로 넣으면 **이중 인코딩**이
+ * 되어 인증이 실패한다. 어느 쪽을 붙여넣어도 되게 여기서 한 번 되돌린다.
+ * (원문 키에는 `%` 가 없으므로 이 판별로 충분하다)
+ */
+function normalizeKey(raw) {
+  if (!raw) return raw;
+  const k = raw.trim();
+  return /%[0-9A-Fa-f]{2}/.test(k) ? decodeURIComponent(k) : k;
+}
+
+const KEY = normalizeKey(process.env.SAJU_API_KEY);
 const arg = (name, dflt) => {
   const i = process.argv.indexOf(`--${name}`);
   return i >= 0 ? Number(process.argv[i + 1]) : dflt;

@@ -39,6 +39,7 @@ import { gradeRoom, makeRoom } from "../src/games/arcade/lightout.js";
 import { isTestMode } from "../src/lib/testmode.js";
 // 🌤️ 만세력 — 일주 기준일이 틀리면 서비스 전체가 틀리므로 여기가 관문입니다
 import { dayGanzhi, ganzhiName, correctClock, dayAndHourPillar } from "../src/lib/saju-calendar.js";
+import { readFileSync } from "node:fs";
 
 const BASE = process.env.TEST_BASE ?? "http://127.0.0.1:8787";
 
@@ -1489,6 +1490,49 @@ function testModeSwitch() {
 }
 
 /**
+ * 🌤️ 절기 — KASI 정답지(2000~2028 · 696건) 전건 대조
+ *
+ * KASI 24절기 API 는 2000~2028 만 준다. 사주는 출생 연도가 필요해 계산으로 갔고,
+ * **정답지가 있는 구간에서 다 맞는지**가 그 계산을 믿을 유일한 근거다.
+ *
+ * 허용 오차 1분: 절삭 급수의 정밀도가 약 ±13초라 반올림 경계에서 분이 갈린다.
+ * 실제 영향은 절기 시각 ±13초에 태어난 사람뿐이다(약 5만 명에 1명).
+ */
+function solarTermRules() {
+  let kasi, computed;
+  try {
+    kasi = JSON.parse(readFileSync("data/saju-terms-kasi.json", "utf8"));
+    computed = JSON.parse(readFileSync("data/saju-terms.json", "utf8"));
+  } catch {
+    check("절기 표 존재", false, "data/saju-terms*.json 이 없습니다 — scripts/fetch-terms-kasi.mjs 먼저");
+    return;
+  }
+
+  const mine = new Map(computed.terms.map((t) => [`${t.n}|${t.at.slice(0, 4)}`, t.at]));
+  const minutes = (a, b) => Math.round((Date.parse(`${a}:00Z`) - Date.parse(`${b}:00Z`)) / 60000);
+
+  let exact = 0;
+  const off = [];
+  for (const k of kasi.terms) {
+    const m = mine.get(`${k.name}|${k.at.slice(0, 4)}`);
+    if (!m) { off.push(`${k.name} ${k.at} 없음`); continue; }
+    const d = minutes(m, k.at);
+    if (d === 0) exact++;
+    else if (Math.abs(d) > 1) off.push(`${k.name} ${k.at}→${m} (${d}분)`);
+  }
+
+  check("절기 표 범위 1930~2050", computed.from === 1930 && computed.to === 2050 && computed.terms.length === 2904,
+    `${computed.terms.length}건`);
+  check("절기 KASI 대조 — 1분 이내", off.length <= 3,
+    `정확 ${exact}/${kasi.terms.length} · 1분 초과 ${off.length}건`);
+
+  // 알려진 예외 3건. 늘어나면 계산이 틀어진 것이므로 그 자리에서 멈춘다.
+  // (대한 2011 은 시:분이 같고 날짜만 하루 차이라 KASI 쪽 오류로 본다 —
+  //  실제 천문 차이라면 시각이 그렇게 보존될 수 없다)
+  check("절기 예외는 알려진 3건뿐", off.length === 3, off.join(" / ") || "없음");
+}
+
+/**
  * 🌤️ 만세력 — 일주와 시각 보정 (docs/saju-calendar.md)
  *
  * 절기·음력 표는 아직 없지만(KASI 키 대기) **일주는 데이터가 필요 없다.**
@@ -2508,6 +2552,7 @@ async function commonRules() {
     `env=${cfg.data.env_name} test_mode=${cfg.data.test_mode}`);
   testModeSwitch();
   sajuCalendarRules();
+  solarTermRules();
 
   // 시간 조작 — 두 단계로 걸립니다
   const s = await post("/game/session/start", { game_type: "STROOP", fresh: true });
