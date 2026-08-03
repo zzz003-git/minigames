@@ -53,6 +53,7 @@ import * as tarot from "./services/tarot.js";
 import * as mind from "./services/mind.js";
 import * as testreset from "./services/testreset.js";
 import * as todayHub from "./services/today.js";
+import * as popular from "./services/popular.js";
 import * as saju from "./services/saju.js";
 import * as arcade from "./lib/arcade.js";
 import * as adRoutes from "./routes/ad.js";
@@ -196,6 +197,9 @@ const ROUTES = {
   "GET /api/saju/stats": saju.stats,
 
   // 허브는 **쓰기가 없다.** 세 서비스가 남긴 것을 읽어서 모으기만 한다.
+  // 어제 많이 한 게임 — 허브 카드 순서·순위 (읽기만 한다)
+  "GET /api/games/popular": popular.popular,
+
   "GET /api/today": todayHub.today,
   // 아카이브 달력 — suite_daily 를 월 범위로 읽는다(전국 분포 daily_agg 가 아니다)
   "GET /api/today/archive": todayHub.archive,

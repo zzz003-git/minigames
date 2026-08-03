@@ -3382,3 +3382,12 @@ a.hubcard:focus-visible { outline: 2px solid var(--t); outline-offset: 2px; }
   color: #c6d0e0; cursor: pointer;
 }
 .hubarea__btn.is-ghost:hover { background: rgba(255, 255, 255, 0.08); }
+
+/* 어제 많이 한 게임 표시 — 상위 3종에만 단다 */
+.arcade-card { position: relative; }
+.arcade-card__rank {
+  position: absolute; top: 8px; right: 9px;
+  font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.04em;
+  color: var(--card-accent, var(--mint));
+  opacity: 0.85;
+}

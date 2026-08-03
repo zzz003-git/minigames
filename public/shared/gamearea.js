@@ -8,13 +8,15 @@
  * 그 아래 오늘의 나 영역까지 못 내려간다. 원안이 상위 몇 종만 노출하고 나머지를
  * 접어 둔 이유가 그것이다.
  *
- * ── 원안과 다르게 한 곳 ──────────────────────────────────────────────────
- * 원안은 카드마다 순위(`c.rank`)를 달고 「어제 플레이·방문 상위 8종」이라고 적는다.
- * **그 데이터가 없다.** 플레이 집계를 허브로 내려보내는 경로가 아직 없고, 없는 것을
- * 있는 척 «인기» 라고 적으면 그건 만들어 낸 정보다.
+ * ── 순위는 어제 것을 쓴다 ────────────────────────────────────────────────
+ * 원안이 카드마다 다는 순위(`c.rank`)다. 집계 경로가 없어 미뤄 뒀다가
+ * `GET /api/games/popular` 로 붙였다 — **어제** 플레이 수다.
  *
- * 그래서 순위 표시는 넣지 않고 **앞의 8종만 접는 것**까지만 한다. 문구도 「상위」가
- * 아니라 「더 보기」다. 집계가 붙으면 그때 순서를 바꾸고 순위를 단다.
+ * 오늘 것을 쓰면 아침에 표본이 거의 없어 먼저 들어온 몇 사람이 그날 순서를 정해
+ * 버린다. 어제는 닫힌 표본이라 하루 종일 안정적이다.
+ *
+ * **집계가 없으면 원래 순서를 그대로 쓴다.** 어제 아무도 안 했거나 API 가 실패해도
+ * 목록은 멀쩡해야 한다 — 순위는 덤이지 전제가 아니다.
  */
 
 /** 접기 전에 보여 줄 최소 개수. 실제로는 줄이 딱 떨어지도록 올림한다 */
@@ -26,6 +28,10 @@ const columnsOf = (grid) =>
 
 export function initGameArea(root = document) {
   const bands = [];
+
+  // 순위는 **비동기로 나중에** 얹는다. 이것을 기다리느라 목록이 늦게 뜨면
+  // 순위 때문에 화면이 느려지는 셈이라 얻는 것보다 잃는 것이 크다.
+  applyRanks(root).catch(() => {});
 
   for (const grid of root.querySelectorAll(".arcade-grid")) {
     const cards = [...grid.querySelectorAll(".arcade-card")];
@@ -72,4 +78,47 @@ export function initGameArea(root = document) {
   if (bands.length) {
     addEventListener("resize", () => bands.forEach((apply) => apply()));
   }
+}
+
+/**
+ * 어제 플레이 수로 카드를 다시 세우고 상위에 순위를 단다.
+ *
+ * 순서를 바꾸는 것이 핵심이다 — 밴드를 8종에서 접으므로, 정렬해야 「접힌 채로도
+ * 많이 하는 게임이 보인다」가 성립한다. 순위 숫자는 그 근거를 밝히는 표시다.
+ */
+async function applyRanks(root) {
+  const res = await fetch("/api/games/popular");
+  if (!res.ok) return;
+  const data = await res.json();
+
+  const plays = new Map((data.games ?? []).map((g) => [g.game_type, g.plays]));
+  if (!plays.size) return; // 어제 아무도 안 했다 — 원래 순서를 그대로 둔다
+
+  for (const grid of root.querySelectorAll(".arcade-grid")) {
+    const cards = [...grid.querySelectorAll(".arcade-card")];
+
+    // 카드가 어떤 게임인지는 링크 주소로 안다(`/games/<폴더>/`).
+    // 폴더명과 GAME_TYPE 이 같은 규칙이라 대문자로 맞춘다.
+    const keyOf = (c) => (c.getAttribute("href") ?? "").split("/").filter(Boolean).pop()?.toUpperCase();
+
+    const scored = cards.map((c, i) => ({ c, i, n: plays.get(keyOf(c)) ?? -1 }));
+    // 기록이 없는 게임은 뒤로 보내되 **원래 순서를 지킨다**(안정 정렬).
+    scored.sort((a, b) => (b.n - a.n) || (a.i - b.i));
+
+    scored.forEach(({ c, n }, idx) => {
+      grid.append(c); // 정렬 순서대로 다시 붙인다
+      const old = c.querySelector(".arcade-card__rank");
+      if (old) old.remove();
+      // 순위는 **실제로 기록이 있는 상위 3종에만** 단다. 전부에 달면 숫자가 배경이 된다
+      if (n > 0 && idx < 3) {
+        const tag = document.createElement("span");
+        tag.className = "arcade-card__rank";
+        tag.textContent = `#${idx + 1}`;
+        c.prepend(tag);
+      }
+    });
+  }
+
+  // 순서가 바뀌었으니 접는 지점을 다시 잡는다
+  dispatchEvent(new Event("resize"));
 }
