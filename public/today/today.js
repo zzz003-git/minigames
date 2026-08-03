@@ -16,6 +16,7 @@
 import { $, renderHeader, toast } from "../shared/ui.js";
 import { renderSiteNav } from "../shared/sitenav.js";
 import { renderTodaySection } from "../shared/todaysection.js";
+import { renderTestBanner } from "../shared/testbanner.js";
 
 // 서비스 화면(타로·기운·마음·페어)에서도 이 탭이 켜진다 — 원안의
 // `activeView = inSuite ? 'hub' : v` 와 같다
@@ -25,6 +26,8 @@ renderHeader($("#header"), { icon: "✦", title: "오늘의 나", back: "/" });
 boot();
 
 async function boot() {
+  renderTestBanner($("#testBanner"));
+
   // 영역 자체는 「전체」 화면과 **같은 모듈**이 그린다. 허브가 더 보여 주는 것은
   // 포인트 두 칸뿐이다 — 그것 때문에 영역을 두 벌 만들 이유는 없다.
   const data = await renderTodaySection($("#todayArea"));

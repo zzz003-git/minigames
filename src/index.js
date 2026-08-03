@@ -51,6 +51,7 @@ import { ARCADE_SPECS } from "./games/arcade/index.js";
 import { rollDailySnapshot } from "./games/arcade/majority.js";
 import * as tarot from "./services/tarot.js";
 import * as mind from "./services/mind.js";
+import * as testreset from "./services/testreset.js";
 import * as todayHub from "./services/today.js";
 import * as saju from "./services/saju.js";
 import * as arcade from "./lib/arcade.js";
@@ -197,6 +198,10 @@ const ROUTES = {
 
   // 페어 응답 — **로그인도 소유 확인도 하지 않는다.** 토큰을 가진 사람이 곧
   // 응답자다(SUITE 3.2 마찰 0). 서비스별 채점은 mind 가 넘긴다.
+  // 테스트 초기화 — `TEST_MODE` 가 아니면 404 다(있다는 사실조차 알리지 않는다).
+  // 스위트 3종은 하루 1회로 완결되는 구조라 한도를 푸는 방식으로는 재테스트가 안 된다.
+  "POST /api/test/reset": testreset.reset,
+
   "GET /api/pair/open": mind.pairOpen,
   "POST /api/pair/answer": mind.pairAnswer,
 };

@@ -2891,7 +2891,28 @@ button.sicon:active { transform: scale(0.94); }
   color: #F0D9A0;
   background: rgba(214, 177, 102, 0.1);
   border: 1px solid rgba(214, 177, 102, 0.3);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
 }
+.testbar__text { margin-right: auto; }
+.testbar__note { font-size: 11.5px; opacity: 0.8; }
+
+/* 되감기 버튼 — 폰에서 눌러야 하므로 44px 손가락 규격을 지킨다 */
+.testbar__btn {
+  min-height: 34px;
+  padding: 7px 13px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #F0D9A0;
+  background: rgba(214, 177, 102, 0.14);
+  border: 1px solid rgba(214, 177, 102, 0.4);
+  cursor: pointer;
+}
+.testbar__btn:hover { background: rgba(214, 177, 102, 0.24); }
+.testbar__btn:disabled { opacity: 0.45; cursor: default; }
 
 /* ── ㉙ 소등 ── */
 
