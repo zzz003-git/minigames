@@ -37,6 +37,8 @@ import { simulate as simulateStretch } from "../src/games/arcade/stretch.js";
 import { gradeRoom, makeRoom } from "../src/games/arcade/lightout.js";
 // 테스트 모드 잠금 — 환경 변수를 바꿔 재기동해야 재현되므로 판별 함수를 직접 부릅니다
 import { isTestMode } from "../src/lib/testmode.js";
+// 🌤️ 만세력 — 일주 기준일이 틀리면 서비스 전체가 틀리므로 여기가 관문입니다
+import { dayGanzhi, ganzhiName, correctClock, dayAndHourPillar } from "../src/lib/saju-calendar.js";
 
 const BASE = process.env.TEST_BASE ?? "http://127.0.0.1:8787";
 
@@ -1487,6 +1489,51 @@ function testModeSwitch() {
 }
 
 /**
+ * 🌤️ 만세력 — 일주와 시각 보정 (docs/saju-calendar.md)
+ *
+ * 절기·음력 표는 아직 없지만(KASI 키 대기) **일주는 데이터가 필요 없다.**
+ * 60갑자 순환 산술이라 기준일만 맞으면 영원히 정확하고, 그 기준일이 틀리면
+ * 서비스의 모든 리딩이 틀린다. 그래서 여기를 관문으로 둔다.
+ */
+function sajuCalendarRules() {
+  for (const [day, want] of [["2026-01-01", "을해"], ["2026-08-01", "정미"], ["2026-08-03", "기유"]]) {
+    check(`만세력 일진 ${day}`, ganzhiName(dayGanzhi(day)) === want,
+      `${ganzhiName(dayGanzhi(day))} (기대 ${want})`);
+  }
+  // 독립 검증 — 이 기준으로 계산하면 널리 쓰이는 1900-01-01 갑술이 나와야 한다.
+  // 2일 어긋난 값도 그럴듯해 보이므로(구현 중 실제로 걸렸다) 자동으로 잡는다.
+  check("만세력 일진 1900-01-01 = 갑술 (독립 기준값)",
+    ganzhiName(dayGanzhi("1900-01-01")) === "갑술",
+    ganzhiName(dayGanzhi("1900-01-01")));
+
+  check("만세력 60일 주기", dayGanzhi("2026-01-01") === dayGanzhi("2026-03-02"),
+    `${ganzhiName(dayGanzhi("2026-01-01"))} = ${ganzhiName(dayGanzhi("2026-03-02"))}`);
+
+  const plain = correctClock("2026-08-03", 11, 30);
+  check("경도 보정 −30분", plain.shiftMin === -30 && plain.hour === 11 && plain.minute === 0,
+    `11:30 → ${plain.hour}:${String(plain.minute).padStart(2, "0")}`);
+
+  const half = correctClock("1958-06-15", 11, 30);
+  check("UTC+8:30 시기는 경도 보정 없음", half.shiftMin === 0, `${half.notes.join(" · ")}`);
+
+  const dst = correctClock("1988-08-15", 11, 30);
+  check("서머타임 −60분 + 경도 −30분", dst.shiftMin === -90,
+    `11:30 → ${dst.hour}:${String(dst.minute).padStart(2, "0")}`);
+
+  const late = dayAndHourPillar("2026-08-03", 23, 40);
+  check("야자시 — 일진이 다음 날로",
+    late.dayIdx === dayGanzhi("2026-08-04") && late.hour.branch === 0,
+    `${late.dayName} (8/3 은 ${ganzhiName(dayGanzhi("2026-08-03"))})`);
+
+  const early = dayAndHourPillar("2026-08-03", 23, 10);
+  check("보정 후 23시 전이면 당일 일진",
+    early.dayIdx === dayGanzhi("2026-08-03") && early.hour.branch === 11,
+    `${early.dayName} · 시지 ${early.hour.name}`);
+
+  check("시간 모름이면 시주 없음", dayAndHourPillar("2026-08-03", null).hour === null);
+}
+
+/**
  * ㉙ 소등 — 전용 시나리오
  *
  * 확인하는 것
@@ -2460,6 +2507,7 @@ async function commonRules() {
   check("테스트 모드 꺼짐 (한도 검사가 유효한 상태)", cfg.data.test_mode === false,
     `env=${cfg.data.env_name} test_mode=${cfg.data.test_mode}`);
   testModeSwitch();
+  sajuCalendarRules();
 
   // 시간 조작 — 두 단계로 걸립니다
   const s = await post("/game/session/start", { game_type: "STROOP", fresh: true });
