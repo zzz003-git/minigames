@@ -144,8 +144,7 @@ push 하면 push 한 번에 버전이 두 개 생긴다.
   쿼리를 하나 붙여 캐시를 우회하니 바로 200 이었다. 순서를 이렇게 둔다.
 
   ```bash
-  curl -s -o /dev/null -w '%{http_code}
-' "$URL?cb=$$"   # ① 캐시 우회로 먼저 본다
+  curl -s -o /dev/null -w '%{http_code}' "$URL?cb=$$"     # ① 캐시 우회로 먼저 본다
   # 여기서 200 이면 배포는 정상이다 — 재배포하지 않는다
   npx wrangler deploy --env staging                        # ② 그래도 404 면 재배포
   ```
