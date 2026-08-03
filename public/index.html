@@ -274,7 +274,9 @@
     fetch("/game/config")
       .then((r) => r.json())
       .then((r) => {
-        if (!r?.data?.test_mode) return;
+        // 성공 봉투는 `{ ...데이터, ok: true }` 로 **평평합니다**(src/lib/http.js).
+        // `r.data.test_mode` 로 한 겹 더 타면 언제나 undefined 라 띠가 안 뜹니다.
+        if (!r?.test_mode) return;
         const el = document.getElementById("testBanner");
         el.className = "testbar";
         el.textContent = "테스트 빌드 — 도전 기회·광고 횟수 제한이 풀려 있습니다. 기록은 실서비스와 분리됩니다.";
