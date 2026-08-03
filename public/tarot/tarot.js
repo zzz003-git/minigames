@@ -226,19 +226,36 @@ function openFan() {
   // 처음 그렇게 짰더니 **22장이 전부 뷰포트 밖**이었다(기획서 6절이 실기 확인
   // 항목으로 못박은 바로 그 결함이다). 반지름을 무대 폭에서 역산하면 어떤 화면에서도
   // 부채가 무대 안에 들어온다.
+  // **재기 전에 화면을 띄운다.** 감춰진 화면(`display:none`)은 폭이 0 이라 아래의
+  // 반지름 역산이 통째로 무너진다 — R 이 하한 160 으로 고정되고 무대 중심이 0 이
+  // 되면서 22장이 전부 **왼쪽 끝에 뭉친다.** 폰에서 실제로 그렇게 나왔다.
+  // 무대 밖으로 나가는 것을 막으려고 만든 역산이, 재는 순서 때문에 오히려 깨졌다.
+  showScreen("fan");
+
   const rect = stage.getBoundingClientRect();
-  const cardW = rect.width < 380 ? 64 : 74;
-  const cardH = rect.width < 380 ? 98 : 112;
+  // 그래도 0 이면(글꼴 로딩 등으로 배치가 늦는 경우) 부모나 뷰포트로 대신한다.
+  // 폭을 모른 채 그리면 어차피 화면 밖으로 나간다.
+  const stageW =
+    rect.width || stage.parentElement?.getBoundingClientRect().width || window.innerWidth;
+
+  const cardW = stageW < 380 ? 64 : 74;
+  const cardH = stageW < 380 ? 98 : 112;
   const spread = 34; // 부채의 반각(도) — 프로토 사양
   const rad = (spread * Math.PI) / 180;
-  // 가로로 벌어지는 폭이 무대 폭을 넘지 않는 반지름
-  const R = Math.max(160, (rect.width - cardW - 8) / (2 * Math.sin(rad)));
+  // 가로로 벌어지는 폭이 무대 폭을 넘지 않는 반지름.
+  //
+  // 여백으로 `cardW` 를 빼면 **모자란다.** 양 끝 카드는 34° 기울어 있어서 실제로
+  // 차지하는 가로 폭이 카드 폭보다 훨씬 넓다(74×112 카드가 34° 돌면 약 124px).
+  // 그 차이만큼 부채가 무대를 넘고, 무대는 `overflow: hidden` 이라 **끝 카드가
+  // 잘린다.** 회전 후의 외접 폭으로 빼야 맞다.
+  const spanW = cardW * Math.cos(rad) + cardH * Math.sin(rad);
+  const R = Math.max(160, (stageW - spanW - 8) / (2 * Math.sin(rad)));
   const pivotY = R + cardH * 0.5 + 8; // 회전 중심은 무대 위쪽 기준 이만큼 아래
 
   for (let i = 0; i < n; i++) {
     const deg = -spread + ((spread * 2) / (n - 1)) * i;
     const th = (deg * Math.PI) / 180;
-    const x = rect.width / 2 + R * Math.sin(th);
+    const x = stageW / 2 + R * Math.sin(th);
     const y = pivotY - R * Math.cos(th);
 
     const node = el("button", {
@@ -254,8 +271,6 @@ function openFan() {
     node.addEventListener("click", () => choose(node));
     stage.append(node);
   }
-
-  showScreen("fan");
 }
 
 async function choose(node) {
