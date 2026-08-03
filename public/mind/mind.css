@@ -9,7 +9,8 @@
   --m-key: #7fd8c0;
   --m-key-dim: #4b8b7c;
   --m-line: rgba(127, 216, 192, 0.18);
-  --m-surface: rgba(127, 216, 192, 0.06);
+  --m-surface: rgba(255, 255, 255, 0.04);
+  background: radial-gradient(120% 90% at 50% 0%, #16212b 0%, #151a24 50%, #11141c 100%);
 }
 
 .suite .center { text-align: center; }

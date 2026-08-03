@@ -8,9 +8,11 @@
 .suite--tarot {
   --t-gold: #e8c46a;
   --t-gold-dim: #8d7a45;
-  --t-line: #3a3364;
-  --t-surface: #262047;
-  background: radial-gradient(120% 90% at 50% 0%, #1d1836 0%, #141127 70%);
+  /* 원안 값(rgba(169,139,224,.24) / rgba(255,255,255,.045)). 불투명 색이 아니라
+     반투명이라 배경 그라데이션이 면 위로 비친다 — 세 화면이 갈리는 장치다 */
+  --t-line: rgba(169, 139, 224, 0.24);
+  --t-surface: rgba(255, 255, 255, 0.045);
+  background: radial-gradient(120% 90% at 50% 0%, #241c3d 0%, #171226 50%, #120f1e 100%);
 }
 
 .suite .hint { color: var(--text-sub); font-size: 13px; min-height: 18px; }

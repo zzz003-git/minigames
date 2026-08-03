@@ -17,6 +17,7 @@ import { apiGet, apiPost, ApiFail } from "../shared/api.js";
 import { $, el, clear, showScreen, toast, renderHeader, setHeaderBadge } from "../shared/ui.js";
 import { watchAdForReward, renderRewardCard, clearRewardCard } from "../shared/ad.js";
 import { TAROT_DB } from "./tarot-db.js";
+import { renderSiteNav } from "../shared/sitenav.js";
 
 const FOCUS = [
   { k: "day", label: "오늘 하루" },
@@ -39,6 +40,9 @@ const state = {
   busy: false,
 };
 
+// 원안의 `activeView = inSuite ? 'hub' : v` — 서비스 화면에서도 「오늘의 나」 탭이
+// 켜진 채 남는다. 게임 화면과 달리 여기는 판 중이 아니라 결과를 보는 자리다.
+renderSiteNav($("#siteNav"), "hub");
 renderHeader($("#header"), { icon: "🔮", title: "오늘의 타로" });
 
 $("#collBtn").addEventListener("click", showCollection);

@@ -13,6 +13,7 @@ import { apiGet, apiPost, ApiFail } from "../shared/api.js";
 import { $, el, clear, showScreen, toast, renderHeader, setHeaderBadge } from "../shared/ui.js";
 import { watchAdForReward, renderRewardCard, clearRewardCard } from "../shared/ad.js";
 import { SAJU_DB } from "./saju-db.js";
+import { renderSiteNav } from "../shared/sitenav.js";
 
 const STEMS = ["갑", "을", "병", "정", "무", "기", "경", "신", "임", "계"];
 const BRANCHES = ["자", "축", "인", "묘", "진", "사", "오", "미", "신", "유", "술", "해"];
@@ -27,6 +28,9 @@ const HOURS = [
 const ARM_DELAY_MS = 400;
 const state = { st: null, last: null };
 
+// 원안의 `activeView = inSuite ? 'hub' : v` — 서비스 화면에서도 「오늘의 나」 탭이
+// 켜진 채 남는다. 게임 화면과 달리 여기는 판 중이 아니라 결과를 보는 자리다.
+renderSiteNav($("#siteNav"), "hub");
 renderHeader($("#header"), { icon: "🌤️", title: "오늘의 기운" });
 
 // 시간 선택 — 12지시 + 「몰라요」 (기획서 1절)
