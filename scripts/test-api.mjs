@@ -39,6 +39,8 @@ import { gradeRoom, makeRoom } from "../src/games/arcade/lightout.js";
 import { isTestMode } from "../src/lib/testmode.js";
 // 🌤️ 만세력 — 일주 기준일이 틀리면 서비스 전체가 틀리므로 여기가 관문입니다
 import { dayGanzhi, ganzhiName, correctClock, dayAndHourPillar, natalChart } from "../src/lib/saju-calendar.js";
+// 🌤️ 명리 규칙 — 십신·지지관계는 표가 아니라 규칙이라 직접 부른다
+import { tenGod, branchRelation } from "../src/services/saju.js";
 import { readFileSync } from "node:fs";
 
 const BASE = process.env.TEST_BASE ?? "http://127.0.0.1:8787";
@@ -1490,6 +1492,40 @@ function testModeSwitch() {
 }
 
 /**
+ * 🌤️ 명리 규칙 — 십신·지지관계
+ *
+ * 도장판 순 완성 +20P·대완성 +100P 가 여기에 걸려 있어 서버가 계산한다.
+ * 규칙이 틀리면 매일의 리딩이 조용히 틀리므로 대표 케이스를 고정한다.
+ */
+function sajuRules() {
+  // 십신 — 같은 오행·같은 음양이면 비견, 다르면 겁재
+  check("십신 갑↔갑 = 비견", tenGod(0, 0) === 0);
+  check("십신 갑↔을 = 겁재", tenGod(0, 1) === 1);
+  // 목생화 — 갑(목)이 병(화)을 생하면 식신, 정(화)이면 상관
+  check("십신 갑↔병 = 식신", tenGod(0, 2) === 2);
+  check("십신 갑↔정 = 상관", tenGod(0, 3) === 3);
+  // 목극토 — 갑이 무(토)를 극하면 편재, 기(토)면 정재
+  check("십신 갑↔무 = 편재", tenGod(0, 4) === 4);
+  check("십신 갑↔기 = 정재", tenGod(0, 5) === 5);
+  // 금극목 — 경(금)이 갑을 극하면 편관, 신(금)이면 정관
+  check("십신 갑↔경 = 편관", tenGod(0, 6) === 6);
+  check("십신 갑↔신 = 정관", tenGod(0, 7) === 7);
+  // 수생목 — 임(수)이 갑을 생하면 편인, 계(수)면 정인
+  check("십신 갑↔임 = 편인", tenGod(0, 8) === 8);
+  check("십신 갑↔계 = 정인", tenGod(0, 9) === 9);
+
+  // 지지관계 — 우선순위가 있다 (육합 > 삼합 > 충 > 형 > 동기 > 평온)
+  check("지지 자축 = 육합", branchRelation(0, 1) === "yukhap");
+  check("지지 신자진 = 삼합", branchRelation(8, 4) === "samhap");
+  check("지지 자오 = 충", branchRelation(0, 6) === "chung");
+  check("지지 같으면 동기", branchRelation(3, 3) === "donggi");
+  check("지지 무관계 = 평온", branchRelation(0, 2) === "pyeongon");
+
+  // 육합이 충보다 먼저다 — 우선순위가 뒤집히면 리딩이 정반대가 된다
+  check("육합이 충보다 우선", branchRelation(2, 11) === "yukhap");
+}
+
+/**
  * 🌤️ 명식 네 기둥 — 절기 경계가 제대로 갈리는가
  *
  * 프로토는 입춘을 2/4 로 고정했다. 그러면 **입춘 당일 출생자의 연주가 통째로
@@ -1566,9 +1602,30 @@ function solarTermRules() {
     `정확 ${exact}/${kasi.terms.length} · 1분 초과 ${off.length}건`);
 
   // 알려진 예외 3건. 늘어나면 계산이 틀어진 것이므로 그 자리에서 멈춘다.
-  // (대한 2011 은 시:분이 같고 날짜만 하루 차이라 KASI 쪽 오류로 본다 —
-  //  실제 천문 차이라면 시각이 그렇게 보존될 수 없다)
+  //
+  // ── 셋 중 둘은 KASI 쪽 오류다 (교차 검증 완료) ──────────────────
+  // 절기는 황경 15° 간격이라 이웃 절기 사이의 간격이 해마다 매끄럽게 변한다.
+  // KASI 자체 데이터로 그 간격을 재 보면 2011년만 튄다.
+  //
+  //   상강→입동  다른 해 15.00~15.01일 / 2011 15.247일  (약 6시간)
+  //   소한→대한  다른 해 14.72일       / 2011 15.724일  (정확히 하루)
+  //   망종→하지  다른 해 15.69~15.71일 / 2011 15.701일  (정상)
+  //
+  // 하지 2015(20분)는 간격이 정상이라 이쪽 계산의 정밀도 한계(±13초)다.
   check("절기 예외는 알려진 3건뿐", off.length === 3, off.join(" / ") || "없음");
+
+  // KASI 2011 두 건이 자기 데이터 안에서 튀는지 — 위 판정의 근거를 고정한다
+  const gap = (prev, name, y) => {
+    const a = kasi.terms.find((t) => t.name === prev && t.at.startsWith(String(y)));
+    const b = kasi.terms.find((t) => t.name === name && t.at.startsWith(String(y)));
+    return a && b ? (Date.parse(`${b.at}:00Z`) - Date.parse(`${a.at}:00Z`)) / 86400000 : null;
+  };
+  check("KASI 2011 입동이 자기 데이터에서 튄다",
+    Math.abs(gap("상강", "입동", 2011) - gap("상강", "입동", 2012)) > 0.2,
+    `2011 ${gap("상강", "입동", 2011)?.toFixed(3)}일 vs 2012 ${gap("상강", "입동", 2012)?.toFixed(3)}일`);
+  check("KASI 2011 대한이 자기 데이터에서 튄다",
+    Math.abs(gap("소한", "대한", 2011) - gap("소한", "대한", 2012)) > 0.5,
+    `2011 ${gap("소한", "대한", 2011)?.toFixed(3)}일 vs 2012 ${gap("소한", "대한", 2012)?.toFixed(3)}일`);
 }
 
 /**
@@ -2593,6 +2650,7 @@ async function commonRules() {
   sajuCalendarRules();
   solarTermRules();
   natalChartRules();
+  sajuRules();
 
   // 시간 조작 — 두 단계로 걸립니다
   const s = await post("/game/session/start", { game_type: "STROOP", fresh: true });

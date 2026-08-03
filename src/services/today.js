@@ -31,7 +31,7 @@ import { dailyState, pointState, touchUser } from "../lib/suite.js";
  */
 const SERVICE_META = {
   tarot: { key: "tarot", icon: "🔮", name: "오늘의 타로", href: "/tarot/", ready: true },
-  saju: { key: "saju", icon: "🌤️", name: "오늘의 기운", href: "/saju/", ready: false },
+  saju: { key: "saju", icon: "🌤️", name: "오늘의 기운", href: "/saju/", ready: true },
   mind: { key: "mind", icon: "🔬", name: "마음연구소", href: "/mind/", ready: true },
 };
 

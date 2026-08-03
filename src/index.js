@@ -52,6 +52,7 @@ import { rollDailySnapshot } from "./games/arcade/majority.js";
 import * as tarot from "./services/tarot.js";
 import * as mind from "./services/mind.js";
 import * as todayHub from "./services/today.js";
+import * as saju from "./services/saju.js";
 import * as arcade from "./lib/arcade.js";
 import * as adRoutes from "./routes/ad.js";
 import * as statsRoutes from "./routes/stats.js";
@@ -185,6 +186,11 @@ const ROUTES = {
   "GET /api/mind/stats": mind.stats,
   "POST /api/mind/pair": mind.pairCreate,
   "GET /api/mind/pairs": mind.pairList,
+
+  "GET /api/saju/state": saju.state,
+  "POST /api/saju/profile": saju.profile,
+  "POST /api/saju/today": saju.today,
+  "GET /api/saju/stats": saju.stats,
 
   // 허브는 **쓰기가 없다.** 세 서비스가 남긴 것을 읽어서 모으기만 한다.
   "GET /api/today": todayHub.today,

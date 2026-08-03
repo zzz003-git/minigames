@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>오늘의 기운</title>
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#0F1420">
+  <meta name="description" content="내 명식에 오늘의 기운을 꽂아 보세요.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../shared/base.css">
+  <link rel="stylesheet" href="saju.css">
+</head>
+<body class="game suite suite--saju">
+  <div class="app">
+    <header class="topbar" id="header"></header>
+    <main class="app__body">
+
+      <!-- 등록 -->
+      <section class="screen is-active" data-screen="reg">
+        <div class="card card--accent card--center card--hero">
+          <div class="card__label card__label--mono">MY CHART</div>
+          <div class="headline">내 명식을 세워요</div>
+          <p class="footnote">생년월일과 태어난 시간으로 네 기둥을 세웁니다.<br>
+            <b>이름도 성별도 받지 않아요.</b></p>
+        </div>
+
+        <div class="card">
+          <label class="field">
+            <span class="field__label">생년월일 (양력)</span>
+            <input class="field__input" type="date" id="birth" min="1930-01-01">
+          </label>
+          <label class="field">
+            <span class="field__label">태어난 시간</span>
+            <select class="field__input" id="hour"></select>
+          </label>
+          <p class="footnote--dim mt-sm">시간을 모르면 「몰라요」를 고르세요 — 세 기둥으로 봅니다.</p>
+        </div>
+
+        <button class="btn btn--primary" id="regBtn">명식 세우기</button>
+        <p class="footnote--dim center">사주 정보는 한 달에 한 번만 바꿀 수 있어요</p>
+      </section>
+
+      <!-- 명식 + 구슬 -->
+      <section class="screen" data-screen="chart">
+        <div class="pillars" id="pillars"></div>
+
+        <div class="card card--info">
+          <div class="card__label">오늘의 기운</div>
+          <div class="orbwrap">
+            <button class="orb" id="orb" type="button" aria-label="오늘의 기운을 명식에 꽂습니다">
+              <span class="orb__name" id="orbName">—</span>
+            </button>
+          </div>
+          <p class="footnote center mt-sm" id="orbHint">구슬을 눌러 오늘을 꽂아 보세요</p>
+        </div>
+
+        <button class="btn" id="stampBtn">도장판 보기</button>
+        <div class="crosschips" id="crossChips"></div>
+        <p class="footnote--dim center" id="chartNote">—</p>
+      </section>
+
+      <!-- 리딩 -->
+      <section class="screen" data-screen="reading">
+        <div class="card card--accent card--center card--hero">
+          <div class="card__label card__label--mono" id="rdGanzhi">—</div>
+          <div class="headline" id="rdTheme">—</div>
+          <p class="reading" id="rdIljin">—</p>
+          <p class="advice" id="rdAdvice">—</p>
+        </div>
+
+        <div class="card card--info">
+          <div class="card__label">오늘의 관계</div>
+          <p class="footnote" id="rdRelation">—</p>
+          <p class="footnote mt-sm" id="rdElement">—</p>
+        </div>
+
+        <div class="stats stats--inset" id="rdLucky"></div>
+
+        <div class="card card--info">
+          <div class="card__label">오늘의 적립</div>
+          <p class="footnote" id="rdGain">—</p>
+          <p class="footnote--dim mt-sm" id="rdDist">전국 분포는 광고를 보면 열려요</p>
+        </div>
+
+        <div id="adbarTomorrow"></div>
+        <div id="adbarStats"></div>
+        <div class="crosschips" id="crossChips2"></div>
+        <button class="btn" id="stampBtn2">도장판 보기</button>
+        <div class="footnote--dim center" id="rdNote"></div>
+      </section>
+
+      <!-- 도장판 -->
+      <section class="screen" data-screen="stamp">
+        <div class="card">
+          <div class="card__head"><span class="card__title" id="stampTitle">도장판</span></div>
+          <div class="stampgrid" id="stampGrid"></div>
+          <p class="footnote--dim mt-md">놓친 칸은 60일 뒤 같은 간지 날에 다시 채울 수 있어요</p>
+        </div>
+        <button class="btn" id="stampBackBtn">← 돌아가기</button>
+      </section>
+
+    </main>
+  </div>
+  <script type="module" src="saju.js"></script>
+</body>
+</html>

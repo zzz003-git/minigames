@@ -1354,6 +1354,17 @@ export const MIND = {
   ARCHIVE_DAYS: 6, // 직전 6일 안의 미완 실험만 대상
 };
 
+// ── 🌤️ 오늘의 기운 (SAJU-SPEC-01) ────────────────────────────────────────
+//
+// 만세력은 정적 표다(data/saju-jeol.json · docs/saju-calendar.md).
+// 해석 문장(223조각)은 화면이 갖는다 — 보상과 무관한 회전이다.
+export const SAJU = {
+  MIN_AGE: 14,        // 만 14세 미만 차단 (기획서 1절)
+  STAMPS_TOTAL: 60,   // 60갑자 도장판
+  SOON_SIZE: 10,      // 순(旬) 한 묶음
+  BIRTH_MIN: "1930-01-01",
+};
+
 export const AD_TRIGGERS = {
   STOPWATCH_ATTEMPT: { game: "STOPWATCH", type: "REWARDED", perDay: STOPWATCH.AD_VIEWS_PER_DAY },
   STOPWATCH_STATS: { game: "STOPWATCH", type: "INTERSTITIAL", perDay: null },
@@ -1373,6 +1384,10 @@ export const AD_TRIGGERS = {
   // **순위가 없는 서비스라 보상 카드에 「'+' 리그」 줄을 붙이지 않는다**(SUITE 1.4).
   TAROT_ATTEMPT: { service: "tarot", type: "REWARDED", perDay: TAROT.AD_MORE_PER_DAY },
   TAROT_STATS: { service: "tarot", type: "INTERSTITIAL", perDay: 1 },
+
+  SAJU_TOMORROW: { service: "saju", type: "REWARDED", perDay: 1 },
+  SAJU_PERSON: { service: "saju", type: "REWARDED", perDay: 1 },
+  SAJU_STATS: { service: "saju", type: "INTERSTITIAL", perDay: 1 },
 
   MIND_ARCHIVE: { service: "mind", type: "REWARDED", perDay: MIND.AD_ARCHIVE_PER_DAY },
   MIND_CHEMI: { service: "mind", type: "REWARDED", perDay: 1 },

@@ -1,0 +1,95 @@
+/**
+ * 🌤️ 오늘의 기운 — 전용 스타일
+ *
+ * 클래스 이름 앞에 서비스 색을 두고, base.css 에 이미 있는 이름(`.tile` 등)은
+ * 쓰지 않는다 — 허브에서 그 충돌로 행이 겹쳤다(today.css 주석 참조).
+ */
+
+.suite--saju {
+  --s-key: #9ab6f0;
+  --s-dim: #5a7099;
+  --s-line: rgba(154, 182, 240, 0.2);
+  --s-surface: rgba(154, 182, 240, 0.06);
+  /* 오행 색 — 목 화 토 금 수 */
+  --el0: #7fd8a0; --el1: #f08a7a; --el2: #e8c46a; --el3: #d8dde6; --el4: #8fb8f0;
+}
+.suite .center { text-align: center; }
+
+/* ── 입력 ── */
+.field { display: block; margin-bottom: 14px; }
+.field__label { display: block; font-size: 12.5px; color: var(--text-sub); margin-bottom: 6px; }
+.field__input {
+  width: 100%; padding: 12px 14px;
+  border-radius: 11px; border: 1px solid var(--border-mid);
+  background: var(--well-soft); color: var(--text);
+  font-size: 15px; font-family: inherit;
+}
+.field__input:focus-visible { outline: 2px solid var(--s-key); outline-offset: 1px; }
+
+/* ── 명식 네 기둥 ── */
+.pillars { display: flex; gap: 8px; margin: 4px 0 14px; flex: none; }
+.pillar {
+  flex: 1; padding: 12px 6px;
+  border-radius: 13px; border: 1px solid var(--s-line);
+  background: var(--s-surface); text-align: center;
+}
+.pillar__label { font-size: 11px; color: var(--text-faint); }
+.pillar__stem, .pillar__branch {
+  font-size: 24px; font-weight: 700; line-height: 1.25;
+  font-family: var(--mono);
+}
+.pillar__stem { margin-top: 6px; }
+/* 오행 색으로 칠한다 — 색만으로 정보를 주지 않도록 글자도 함께 있다 */
+.el0 { color: var(--el0); } .el1 { color: var(--el1); } .el2 { color: var(--el2); }
+.el3 { color: var(--el3); } .el4 { color: var(--el4); }
+.pillar--empty .pillar__stem, .pillar--empty .pillar__branch { color: var(--text-faint); }
+
+/* ── 오늘의 구슬 ── */
+.orbwrap { display: flex; justify-content: center; padding: 10px 0 4px; }
+.orb {
+  width: 96px; height: 96px; border-radius: 50%;
+  border: 1px solid var(--s-line);
+  background: radial-gradient(circle at 38% 32%, rgba(154,182,240,.42), rgba(154,182,240,.07) 62%);
+  color: var(--text); font-family: var(--mono); font-size: 20px; font-weight: 700;
+  cursor: pointer; transition: transform .18s ease;
+  animation: orbfloat 2.6s ease-in-out infinite;
+}
+.orb:hover { transform: scale(1.05); }
+.orb:focus-visible { outline: 2px solid var(--s-key); outline-offset: 5px; }
+.orb:disabled { animation: none; opacity: .5; cursor: default; }
+@keyframes orbfloat { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-7px); } }
+
+/* ── 리딩 ── */
+.reading { font-size: 15px; line-height: 1.75; margin-top: 8px; }
+.advice {
+  margin-top: 14px; padding-top: 12px;
+  border-top: 1px solid var(--s-line);
+  font-size: 13.5px; color: var(--s-key);
+}
+
+/* ── 도장판 60칸 ── */
+.stampgrid { display: grid; grid-template-columns: repeat(10, 1fr); gap: 4px; margin-top: 10px; }
+.stampcell {
+  aspect-ratio: 1; border-radius: 6px;
+  border: 1px solid var(--border-mid); background: rgba(255,255,255,.02);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; color: var(--text-faint); font-family: var(--mono);
+}
+.stampcell.is-got { border-color: var(--s-dim); background: var(--s-surface); color: var(--s-key); }
+.stampcell.is-today { outline: 2px solid var(--s-key); outline-offset: -2px; }
+
+/* ── 크로스 칩 (SUITE 2.4) ── */
+.crosschips { display: flex; gap: 8px; margin: 4px 0 12px; }
+.crosschip {
+  flex: 1; display: block; padding: 11px 12px;
+  border: 1px solid var(--border-mid); border-radius: 12px;
+  background: var(--well-soft); color: var(--text-sub);
+  font-size: 12.5px; line-height: 1.45; text-decoration: none;
+}
+.crosschip b { display: block; color: var(--text); font-size: 13px; margin-bottom: 2px; }
+.crosschip.is-done { border-color: var(--s-dim); color: var(--s-key); }
+
+@media (max-width: 380px) {
+  .stampgrid { grid-template-columns: repeat(6, 1fr); }
+  .pillar__stem, .pillar__branch { font-size: 20px; }
+}

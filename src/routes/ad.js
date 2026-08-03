@@ -14,6 +14,7 @@ import { applyBoost } from "../lib/arcade.js";
 import { isTestMode } from "../lib/testmode.js";
 import * as tarot from "../services/tarot.js";
 import * as mind from "../services/mind.js";
+import * as saju from "../services/saju.js";
 
 /**
  * 스위트 서비스의 광고 보상.
@@ -27,6 +28,12 @@ function grantServiceReward(env, userId, triggerKey) {
       return tarot.grantExtraDraw(env, userId);
     case "TAROT_STATS":
       return tarot.unlockStats(env, userId);
+    case "SAJU_TOMORROW":
+      return saju.unlockTomorrow(env, userId);
+    case "SAJU_PERSON":
+      return saju.unlockPerson(env, userId);
+    case "SAJU_STATS":
+      return saju.unlockStats(env, userId);
     case "MIND_ARCHIVE":
       return mind.grantArchive(env, userId);
     case "MIND_CHEMI":
