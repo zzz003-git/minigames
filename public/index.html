@@ -25,11 +25,6 @@
          버그로 적어 오지 않습니다. 프로덕션에서는 이 자리가 비어 있습니다. -->
     <div id="testBanner" hidden></div>
 
-    <!-- ══ 오늘의 나 영역 ══
-         「전체」 화면에서는 게임과 함께 보인다(원안 showHub: isHome || isHub).
-         내용은 /today/ 와 같은 API 를 쓰므로 여기서는 요약만 그린다. -->
-    <section class="hub__section" id="todaySection"></section>
-
     <!-- ══ 게임 영역 ══
          원안은 두 묶음(오리지널·아케이드)을 **하나의 영역 카드**로 감싼다.
          오늘의 나 영역과 나란히 놓였을 때 「두 영역」이 눈으로 갈리게 하는 장치다. -->
@@ -284,6 +279,12 @@
     </section>
 
     </section>
+
+    <!-- ══ 오늘의 나 영역 ══
+         「전체」 화면에서는 게임과 함께 보인다(원안 showHub: isHome || isHub).
+         **게임 아래**에 둔다 — 이 제품의 주 콘텐츠는 게임이고, 오늘의 나는
+         하루 한 번 들르는 곳이다. 내용은 /today/ 와 같은 모듈이 그린다. -->
+    <section id="todaySection"></section>
 
     <footer class="hub__footer">
       <a href="https://github.com/zzz003-git/minigames">소스 코드</a>
