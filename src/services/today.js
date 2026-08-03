@@ -1,5 +1,5 @@
 /**
- * ✦ 허브 「오늘의 나」 — 서버
+ * ✦ 허브 「심리테스트」 — 서버
  * ==========================================================================
  *
  * 기획: SUITE-SPEC-01 §2
@@ -32,7 +32,7 @@ import { collectionState, dailyState, pointState, touchUser } from "../lib/suite
 const SERVICE_META = {
   tarot: { key: "tarot", icon: "🔮", name: "오늘의 타로", href: "/tarot/", ready: true },
   saju: { key: "saju", icon: "🌤️", name: "오늘의 기운", href: "/saju/", ready: true },
-  mind: { key: "mind", icon: "🔬", name: "마음연구소", href: "/mind/", ready: true },
+  mind: { key: "mind", icon: "🔬", name: "오늘의선택", href: "/mind/", ready: true },
 };
 
 export async function today({ env, userId }) {
