@@ -30,6 +30,19 @@
          내용은 /today/ 와 같은 API 를 쓰므로 여기서는 요약만 그린다. -->
     <section class="hub__section" id="todaySection"></section>
 
+    <!-- ══ 게임 영역 ══
+         원안은 두 묶음(오리지널·아케이드)을 **하나의 영역 카드**로 감싼다.
+         오늘의 나 영역과 나란히 놓였을 때 「두 영역」이 눈으로 갈리게 하는 장치다. -->
+    <section class="gamearea">
+      <div class="gamearea__head">
+        <span class="gamearea__icon" aria-hidden="true">🎮</span>
+        <span class="gamearea__text">
+          <b>게임</b>
+          <span>기록과 순위가 남는 한 판</span>
+        </span>
+        <span class="gamearea__count">GAMES 30</span>
+      </div>
+
     <!-- 오리지널 4종 — 한 판이 길고 기록 경신형이라 설명을 함께 보여줍니다 -->
     <section class="hub__section">
       <div class="hub__section-title"><b>오리지널</b><span>기록 경신형 4종</span></div>
@@ -270,6 +283,8 @@
       </div>
     </section>
 
+    </section>
+
     <footer class="hub__footer">
       <a href="https://github.com/zzz003-git/minigames">소스 코드</a>
     </footer>
@@ -281,8 +296,10 @@
     import { renderSiteNav } from "./shared/sitenav.js";
     import { $ } from "./shared/ui.js";
     import { renderTodaySection } from "./shared/todaysection.js";
+    import { initGameArea } from "./shared/gamearea.js";
     renderSiteNav($("#siteNav"), "home");
     renderTodaySection($("#todaySection"));
+    initGameArea();
   </script>
 
   <script>

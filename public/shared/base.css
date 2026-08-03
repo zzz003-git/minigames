@@ -1258,7 +1258,13 @@ h1, h2, h3 { margin: 0; font-weight: 700; letter-spacing: -0.01em; }
 
 .hub__header h1 { font-size: 26px; }
 
-.hub__grid { display: flex; flex-direction: column; gap: 14px; }
+/* 오리지널 4종 — 원안은 240px 기준 auto-fit 이라 넓은 화면에서 가로로 눕는다.
+   세로 한 줄이면 4종만으로 첫 화면이 다 찬다. */
+.hub__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 10px;
+}
 
 .hub-card {
   display: flex;
@@ -1290,8 +1296,9 @@ h1, h2, h3 { margin: 0; font-weight: 700; letter-spacing: -0.01em; }
 
 .hub-card__text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
 
-.hub-card__title { font-size: 16px; font-weight: 700; }
-.hub-card__desc { font-size: 13px; color: var(--text-sub); line-height: 1.4; }
+/* 한글은 글자 단위로 끊기므로 keep-all 이 없으면 「스탑워치 챌린 / 지」가 된다 */
+.hub-card__title { font-size: 16px; font-weight: 700; word-break: keep-all; }
+.hub-card__desc { font-size: 13px; color: var(--text-sub); line-height: 1.4; word-break: keep-all; }
 
 .hub-card__meta {
   font-family: var(--mono);
@@ -1925,7 +1932,8 @@ h1, h2, h3 { margin: 0; font-weight: 700; letter-spacing: -0.01em; }
 
 .arcade-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  /* 원안 값. 2칸 고정이면 넓은 화면에서 카드가 한없이 늘어난다 */
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
   gap: 10px;
 }
 
@@ -1972,7 +1980,7 @@ h1, h2, h3 { margin: 0; font-weight: 700; letter-spacing: -0.01em; }
   display: flex;
   flex-direction: column;
   gap: 6px;
-  padding: 16px 14px;
+  padding: 14px 13px;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--r-btn2);
@@ -1988,14 +1996,14 @@ h1, h2, h3 { margin: 0; font-weight: 700; letter-spacing: -0.01em; }
 .arcade-card__icon {
   display: grid;
   place-items: center;
-  width: 38px;
-  height: 38px;
+  width: 34px;
+  height: 34px;
   border-radius: 12px;
   background: var(--card-soft, rgba(255, 255, 255, 0.05));
-  font-size: 19px;
+  font-size: 17px;
 }
 
-.arcade-card__title { font-size: 14px; font-weight: 700; line-height: 1.3; }
+.arcade-card__title { font-size: 13px; font-weight: 700; line-height: 1.3; }
 
 .arcade-card__desc {
   font-size: 11px;
@@ -3183,3 +3191,45 @@ button.sicon:active { transform: scale(0.94); }
 @media (max-width: 560px) {
   .todaygrid { grid-template-columns: 1fr; }
 }
+
+/* ══ 게임 영역 카드 (디자인 v3 D-2) ══
+   두 묶음(오리지널·아케이드)을 하나의 영역으로 감싼다. 오늘의 나 영역과 나란히
+   놓였을 때 「두 영역」이 눈으로 갈리게 하는 장치다. */
+.gamearea {
+  border: 1px solid rgba(127, 216, 192, 0.14);
+  border-radius: 26px;
+  background: linear-gradient(180deg, rgba(127, 216, 192, 0.045), rgba(127, 216, 192, 0.012));
+  padding: clamp(16px, 2.6vw, 24px);
+  display: flex; flex-direction: column; gap: 18px;
+  margin-bottom: 26px;
+}
+.gamearea__head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.gamearea__icon {
+  width: 34px; height: 34px; border-radius: 12px;
+  background: rgba(127, 216, 192, 0.14);
+  display: grid; place-items: center; font-size: 17px;
+}
+.gamearea__text { display: flex; flex-direction: column; gap: 2px; margin-right: auto; }
+.gamearea__text b { font-size: 17px; letter-spacing: -0.01em; }
+.gamearea__text span { font-size: 12px; color: var(--text-sub); }
+.gamearea__count {
+  font-family: var(--mono); font-size: 10px; letter-spacing: 0.08em;
+  color: var(--mint);
+  border: 1px solid rgba(127, 216, 192, 0.28); border-radius: 999px;
+  padding: 5px 10px;
+}
+/* 영역 안에서는 묶음 사이 여백을 영역이 관리한다 */
+.gamearea .hub__section { margin: 0; }
+
+/* 밴드 접기 — 원안의 band.onToggle */
+.bandmore {
+  align-self: center; margin-top: 2px;
+  padding: 8px 18px; border-radius: 999px;
+  font-size: 12px; font-weight: 700;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #c6d0e0; cursor: pointer;
+}
+.bandmore:hover { background: rgba(255, 255, 255, 0.08); }
+.arcade-card[hidden] { display: none; }
+.bandmore[hidden] { display: none; }
