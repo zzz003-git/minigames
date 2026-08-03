@@ -72,8 +72,25 @@ function judge(questions, answers) {
 }
 
 /** 오늘의 실험 — 요일로 정한다. 같은 날이면 모두가 같은 실험을 한다(기획서 M-01) */
-const expOfDow = (dow) =>
-  MIND_DB.experiments.find((e) => e.dow === dow) ?? MIND_DB.experiments[0];
+/**
+ * 그날의 실험.
+ *
+ * 같은 요일에 실험이 **여럿**이면 주 단위로 돌아가며 나온다. `find()` 로 첫 개만
+ * 집으면 두 번째 실험은 **영원히 안 나온다** — 실험을 늘려도 이용자는 모른다.
+ * 실험이 늘어날수록 이 회전이 유일한 노출 경로다.
+ *
+ * 주 번호는 날짜에서 결정적으로 뽑는다. 무작위로 하면 새로고침마다 실험이 바뀌어
+ * 「오늘의 실험」이라는 말이 거짓이 된다.
+ */
+function expOfDow(dow, day) {
+  const pool = MIND_DB.experiments.filter((e) => e.dow === dow);
+  if (!pool.length) return MIND_DB.experiments[0];
+  if (pool.length === 1 || !day) return pool[0];
+
+  // 1970-01-01 기준 주차. 요일이 같으므로 주차만 세면 회전이 고르게 돈다
+  const week = Math.floor(Date.parse(`${day}T00:00:00Z`) / (7 * 24 * 60 * 60 * 1000));
+  return pool[((week % pool.length) + pool.length) % pool.length];
+}
 
 // ══════════════════════════════════════════════════════════════
 // 진입
@@ -87,7 +104,7 @@ async function boot() {
     return;
   }
 
-  state.exp = expOfDow(state.st.dow);
+  state.exp = expOfDow(state.st.dow, state.st.day);
   renderHome();
 
   // 이미 마쳤으면 결과 재열람으로 (봉투 = 결과 다시 보기)

@@ -132,6 +132,8 @@ export async function state({ env, userId }) {
     day,
     month,
     dow: dowOf(day),
+    // 같은 요일 실험이 여럿일 때 화면이 주 단위로 돌리려면 날짜가 필요하다
+    day,
     done: st.done,
     exp_id: st.expId,
     type_idx: st.typeIdx,
