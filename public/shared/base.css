@@ -139,6 +139,23 @@ body {
   line-height: 1.55;
   -webkit-font-smoothing: antialiased;
   -webkit-tap-highlight-color: transparent;
+
+  /* 길게 누르기로 글자가 선택되면 끌기 조작이 끊긴다. iOS 는 손가락을 누르고 있으면
+     길게 누르기로 보아 **선택 영역과 「복사하기」 메뉴**를 띄우는데, 타로 부채처럼
+     짚고 끄는 화면에서는 그 순간 조작이 통째로 죽는다(폰에서 실제로 그랬다).
+
+     드래그 화면마다 따로 걸어 왔고(㉕ 오늘의 한 잔 · ⑳ 슥슥 긁기 …) 그러다 보니
+     타로에서 빠졌다. 화면이 늘 때마다 잊을 규칙이라 **셸에서 한 번에 건다.** */
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+/* 입력란은 예외 — 생년월일처럼 직접 고치는 곳은 글자를 고를 수 있어야 한다 */
+input,
+textarea {
+  -webkit-user-select: text;
+  user-select: text;
 }
 
 button { font-family: inherit; font-size: inherit; color: inherit; }
