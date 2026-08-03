@@ -109,26 +109,36 @@ Cloudflare Workers + D1. 정적 화면과 API 서버를 한 Worker 에서 서비
 올라갔는데 빌드가 **아예 시작되지 않았다** — 오류도, 알림도 없었다. 그냥 조용히
 아무 일도 일어나지 않는다.
 
-판별법은 **GitHub 체크**다. 빌드가 걸리면 커밋에 `Workers Builds: <워커명>` 체크가
-붙는다(앱 이름 `Cloudflare Workers and Pages`). **체크가 0건이면 빌드가 실패한 게
-아니라 시작조차 안 된 것**이고, 그러면 원인은 빌드 내용이 아니라 트리거 경로다.
+판별은 **체크 런(check-run)이 아니라 체크 스위트(check-suite)로** 한다. 둘은 다른
+것을 말해 준다 — 스위트는 **Cloudflare 가 push 를 받았다**는 증거이고, 런은 **빌드가
+실제로 시작됐다**는 증거다.
 
 ```bash
-gh api repos/<소유자>/<저장소>/commits/<커밋>/check-runs --jq '.total_count'
-#  1 이상  → 빌드가 걸렸다. 결과를 기다린다
-#  0       → 트리거가 안 됐다. 아래를 확인한다
+R=zzz003-git/minigames; C=<커밋>
+gh api repos/$R/commits/$C/check-suites --jq '.check_suites[] | {app: .app.slug, status}'
+gh api repos/$R/commits/$C/check-runs   --jq '.total_count'
 ```
 
-체크가 0이면 이 순서로 본다.
+| 스위트 | 런 | 뜻 | 할 일 |
+| --- | --- | --- | --- |
+| 없음 | 0 | Cloudflare 가 push 를 **못 받았다** | 대시보드에서 저장소 연결·권한·감시 브랜치 확인 |
+| `queued` 로 멈춤 | 0 | 받았는데 **빌드를 안 돌린다** | **Cloudflare 상태 페이지 확인** — 대개 우리 문제가 아니다 |
+| `completed` | 1↑ 실패 | 빌드가 **깨졌다** | 빌드 로그를 본다 |
 
-1. **몇 분 더 기다린다.** 빌드 시작까지 지연이 있다(2026-07-31 사례는 커밋 후 7분).
-   다만 **20분이 넘으면 지연이 아니다.**
-2. **Cloudflare 대시보드** → Workers & Pages → 해당 워커 → Settings → **Builds** 에서
-   저장소 연결·감시 브랜치·일시중지 여부를 본다. 이 화면이 유일한 권위 있는 출처다 —
-   `wrangler` 로는 못 보고, API 의 `accounts/*/builds/*` 는 OAuth 토큰 권한으로 막힌다.
-3. 그래도 안 되면 **수동 배포가 유일한 경로**가 된다. 아래 「직접 실행 금지」의 전제
-   (push 가 배포한다)가 깨진 상태이므로 이중 버전 위험이 없다. **다만 되살아난 뒤에는
-   다시 push 배포로 돌아가야 하므로, 수동 배포를 했으면 그 사실을 반드시 남긴다.**
+```bash
+# 상태 페이지 — Workers Builds 장애가 잡히는 유일한 곳
+curl -s https://www.cloudflarestatus.com/api/v2/incidents/unresolved.json   | python -c "import sys,json;[print(i['name'],i['status']) for i in json.load(sys.stdin)['incidents']]"
+```
+
+**2026-08-03 이 두 번째 경우였다.** 스위트는 push 5분 뒤 생겼는데 `queued` 에서
+39분을 멈춰 있었고, 같은 시각 Cloudflare 가 「Cloudflare Workers build failures」
+장애를 공지했다. 처음에 「체크 0건 = 트리거 미발생」으로 적었는데 **틀렸다** —
+트리거는 정상이었고 Cloudflare 큐가 서 있었다. 런만 보면 원인을 우리 쪽에서
+찾게 된다.
+
+**이때 수동 배포로 우회하지 않는다.** 큐가 살아나면 그 빌드가 뒤늦게 배포되므로
+**같은 코드가 두 번 배포된다** — 「직접 실행 금지」의 전제가 깨진 게 아니라 **미뤄진**
+것뿐이다. 급하면 배포해도 되지만, 나중에 버전이 하나 더 생긴다는 것을 알고 한다.
 
 **마이그레이션을 먼저 돌리는 순서는 이 경우에도 옳다.** 표를 만들어 두고 코드가 안
 올라가면 아무도 그 표를 안 쓸 뿐이라 무해하다. 반대 순서였다면 새 코드가 없는 표를
