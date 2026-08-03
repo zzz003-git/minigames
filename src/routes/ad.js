@@ -11,6 +11,7 @@ import { ApiError, requireOneOf } from "../lib/http.js";
 import { verifyRewardedCallback, verifyInterstitialImpression } from "../lib/adverify.js";
 import { arcadeSpec } from "../games/arcade/index.js";
 import { applyBoost } from "../lib/arcade.js";
+import { isTestMode } from "../lib/testmode.js";
 import {
   assertIpAdLimit,
   countAdViews,
@@ -48,7 +49,8 @@ export async function reward({ env, userId, ipHash, body }) {
     } else if (arcade && triggerKey.endsWith("_ATTEMPT")) {
       const cfg = ARCADE[gameType];
       const viewed = await countAdViews(env, userId, gameType, triggerKey);
-      if (viewed >= cfg.adAttemptsPerDay) {
+      // 하루 단위 한도는 테스트 모드에서 풀립니다 (src/lib/testmode.js)
+      if (!isTestMode(env) && viewed >= cfg.adAttemptsPerDay) {
         throw new ApiError(
           "AD_LIMIT",
           `오늘 이 보상은 ${cfg.adAttemptsPerDay}회까지만 받을 수 있습니다. 내일 다시 시도해 주세요.`,
@@ -60,7 +62,7 @@ export async function reward({ env, userId, ipHash, body }) {
         kind: "ATTEMPTS",
         amount: 1,
         attempts: await getAttemptState(env, userId, gameType, cfg.baseAttempts),
-        remaining_today: cfg.adAttemptsPerDay - viewed - 1,
+        remaining_today: Math.max(0, cfg.adAttemptsPerDay - viewed - 1),
       };
     } else if (triggerKey === "BASEBALL_ATTEMPT") {
       // 숫자야구는 "1게임당" 광고 3회 제한이라 세션 기준으로 셉니다.
@@ -83,7 +85,8 @@ export async function reward({ env, userId, ipHash, body }) {
     } else {
       // 그 외 보상형 광고는 "하루 N회" 제한
       const viewed = await countAdViews(env, userId, gameType, triggerKey);
-      if (spec.perDay != null && viewed >= spec.perDay) {
+      // 하루 단위 한도는 테스트 모드에서 풀립니다 (src/lib/testmode.js)
+      if (!isTestMode(env) && spec.perDay != null && viewed >= spec.perDay) {
         throw new ApiError(
           "AD_LIMIT",
           `오늘 이 보상은 ${spec.perDay}회까지만 받을 수 있습니다. 내일 다시 시도해 주세요.`,

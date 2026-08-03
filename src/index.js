@@ -32,6 +32,7 @@ import { resolveUser } from "./lib/user.js";
 import { cleanupSessions, compactResultDetails } from "./lib/db.js";
 import { hashIp } from "./lib/crypto.js";
 import { adMode } from "./lib/adverify.js";
+import { isTestMode } from "./lib/testmode.js";
 import {
   GAME_TYPES,
   ARCADE,
@@ -100,6 +101,10 @@ async function finishRun(ctx) {
 function config({ env }) {
   return {
     ad_mode: adMode(env),
+    // 테스트 빌드인지 화면에서 확인할 수 있게 내려보냅니다. 켜져 있으면 하루 단위
+    // 한도(도전 기회·광고 횟수·IP)가 전부 풀린 상태입니다 (src/lib/testmode.js).
+    test_mode: isTestMode(env),
+    env_name: env.ENV_NAME ?? "local",
     stopwatch: {
       target_min_ms: STOPWATCH.TARGET_MIN_MS,
       target_max_ms: STOPWATCH.TARGET_MAX_MS,

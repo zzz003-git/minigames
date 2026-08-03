@@ -2872,6 +2872,19 @@ button.sicon:active { transform: scale(0.94); }
   cursor: pointer;
 }
 
+/* ── 테스트 빌드 표시 ── */
+
+.testbar {
+  margin: 0 0 14px;
+  padding: 9px 14px;
+  border-radius: 10px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: #F0D9A0;
+  background: rgba(214, 177, 102, 0.1);
+  border: 1px solid rgba(214, 177, 102, 0.3);
+}
+
 /* ── ㉙ 소등 ── */
 
 /* 취침 맥락이 이 게임의 전제입니다(기획서 3장 · 화면 밝기 최저 · 누운 채).

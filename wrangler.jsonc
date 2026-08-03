@@ -24,8 +24,13 @@
 
   // 광고 동작 모드. "mock" = 목업 광고, "live" = 실제 광고 플랫폼 검증 사용.
   // 실연동 전에 "live" 로 바꾸면 src/lib/adverify.js 가 501 로 실패합니다(의도된 안전장치).
+  //
+  // ENV_NAME 은 **테스트 모드 잠금**입니다. "production" 이면 TEST_MODE 를 켜도
+  // 아무 일도 일어나지 않습니다 — 하루 한도들은 어뷰징 방어라 프로덕션에서 풀리면
+  // 안 됩니다(src/lib/testmode.js). 이 줄을 지우지 마세요.
   "vars": {
-    "AD_MODE": "mock"
+    "AD_MODE": "mock",
+    "ENV_NAME": "production"
   },
 
   // SESSION_SECRET 은 시크릿이므로 이 파일에 두지 않습니다.
@@ -40,5 +45,42 @@
 
   "observability": {
     "enabled": true
+  },
+
+  // ── 스테이징 (외부 테스터용) ──────────────────────────────────────────────
+  //
+  // 별개의 Worker 이고 **별개의 D1** 입니다. 테스터의 기록이 실서비스 순위·통계에
+  // 섞이지 않고, 하루 한도가 풀려 있어도 실서비스 어뷰징 방어에는 영향이 없습니다.
+  //
+  //   배포:  npx wrangler deploy --env staging
+  //   주소:  https://minigames-staging.<계정>.workers.dev
+  //
+  // main push 는 Workers Builds 가 **프로덕션만** 빌드합니다. 스테이징은 이 명령이
+  // 유일한 배포 경로라, CLAUDE.md 의 「wrangler deploy 직접 실행 금지」(프로덕션에
+  // 버전이 두 개 생기는 것을 막는 규칙)에 걸리지 않습니다.
+  //
+  // Cron 은 두지 않습니다 — 세션 정리는 테스트 규모에서 필요 없고, ⑮ 의 자정 이월이
+  // 두 환경에서 각자 돌 이유가 없습니다.
+  //
+  // 처음 한 번:
+  //   npx wrangler d1 create minigames-staging-db     → 나온 id 를 아래에 넣습니다
+  //   npx wrangler d1 migrations apply minigames-staging-db --remote --env staging
+  //   npx wrangler versions secret put SESSION_SECRET --env staging
+  "env": {
+    "staging": {
+      "name": "minigames-staging",
+      "vars": {
+        "AD_MODE": "mock",
+        "ENV_NAME": "staging",
+        "TEST_MODE": "on"
+      },
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "minigames-staging-db",
+          "database_id": "TODO-스테이징-D1-생성-후-교체"
+        }
+      ]
+    }
   }
 }

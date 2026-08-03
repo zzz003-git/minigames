@@ -35,6 +35,8 @@ import { gradeStroke } from "../src/games/arcade/toktok.js";
 import { simulate as simulateStretch } from "../src/games/arcade/stretch.js";
 // ㉙ 소등 — 방 채점은 시간이 실제로 흘러야 재현되므로 경계값만 직접 부릅니다
 import { gradeRoom, makeRoom } from "../src/games/arcade/lightout.js";
+// 테스트 모드 잠금 — 환경 변수를 바꿔 재기동해야 재현되므로 판별 함수를 직접 부릅니다
+import { isTestMode } from "../src/lib/testmode.js";
 
 const BASE = process.env.TEST_BASE ?? "http://127.0.0.1:8787";
 
@@ -1467,6 +1469,24 @@ function toktokStrokeRules(game) {
 }
 
 /**
+ * 테스트 모드 잠금 — 스위치 하나만으로는 켜지지 않아야 합니다.
+ *
+ * 이 한도들은 어뷰징 방어라 프로덕션에서 풀리면 광고 수익과 순위표가 그대로 열립니다.
+ * 서버 왕복으로는 「프로덕션에서 TEST_MODE 를 켜면 어떻게 되는가」를 재현할 수 없으므로
+ * (환경 변수를 바꿔 재기동해야 합니다) 판별 함수를 직접 부릅니다.
+ */
+function testModeSwitch() {
+  const on = { TEST_MODE: "on" };
+  check("TEST_MODE 만으로는 프로덕션에서 안 켜진다",
+    isTestMode({ ...on, ENV_NAME: "production" }) === false);
+  check("ENV_NAME 만으로는 안 켜진다", isTestMode({ ENV_NAME: "staging" }) === false);
+  check("스테이징 + TEST_MODE 에서만 켜진다",
+    isTestMode({ ...on, ENV_NAME: "staging" }) === true);
+  check("로컬(ENV_NAME 없음)에서는 TEST_MODE 로 켜진다", isTestMode(on) === true);
+  check("기본값은 꺼짐", isTestMode({}) === false && isTestMode(undefined) === false);
+}
+
+/**
  * ㉙ 소등 — 전용 시나리오
  *
  * 확인하는 것
@@ -2434,6 +2454,12 @@ async function commonRules() {
   check("config 난이도 계수 비노출", JSON.stringify(cfg.data.arcade).includes("DELTA_START") === false);
   check("config 오리지널 4종 유지",
     ["stopwatch", "baseball", "typing", "memory"].every((k) => cfg.data[k] != null));
+
+  // 테스트 모드 — 이 실행은 한도가 살아 있는 상태여야 합니다. 여기가 true 로 나오면
+  // 아래 「일일 기회 소진」·「일일 광고 한도」 검사가 통과해도 아무 의미가 없습니다.
+  check("테스트 모드 꺼짐 (한도 검사가 유효한 상태)", cfg.data.test_mode === false,
+    `env=${cfg.data.env_name} test_mode=${cfg.data.test_mode}`);
+  testModeSwitch();
 
   // 시간 조작 — 두 단계로 걸립니다
   const s = await post("/game/session/start", { game_type: "STROOP", fresh: true });

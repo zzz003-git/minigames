@@ -268,6 +268,41 @@ npx wrangler d1 migrations apply minigames-db --remote
 npx wrangler secret put SESSION_SECRET        # 운영용 랜덤 값
 ```
 
+## 외부 테스터에게 줄 빌드 (스테이징)
+
+프로덕션 주소를 그대로 주면 테스터가 **하루 3~5판에 막혀** 게임을 다 못 봅니다.
+같은 와이파이를 쓰면 **동일 IP 하루 광고 20회**에 다 같이 걸리기도 합니다.
+그래서 별개 Worker + 별개 D1 을 둡니다 — 테스터 기록이 실서비스 순위에 섞이지 않습니다.
+
+```bash
+# 처음 한 번
+npx wrangler d1 create minigames-staging-db   # 나온 id 를 wrangler.jsonc 의 env.staging 에 기입
+npx wrangler d1 migrations apply minigames-staging-db --remote --env staging
+npx wrangler versions secret put SESSION_SECRET --env staging
+
+# 배포할 때마다
+npx wrangler deploy --env staging             # → https://minigames-staging.<계정>.workers.dev
+```
+
+스테이징은 `TEST_MODE: "on"` 이라 **날짜로 리셋되는 한도**가 전부 풀립니다
+(하루 도전 기회 · 게임별 하루 광고 횟수 · IP 하루 20회). 판·세션 단위 한도
+(1런당 이어하기 2회 등)는 그대로 둡니다 — 판을 새로 시작하면 리셋되므로 테스트를
+막지 않고, 그 한도가 걸리는 순간의 화면이 오히려 테스트 대상입니다.
+
+**프로덕션에서는 켤 수 없습니다.** 스위치가 두 개(`TEST_MODE === "on"` **그리고**
+`ENV_NAME !== "production"`)이고 프로덕션 설정에 `ENV_NAME: "production"` 이 박혀
+있습니다. 이 한도들은 어뷰징 방어라 실서비스에서 풀리면 광고 수익과 순위표가 그대로
+열립니다 — 자세한 것은 `src/lib/testmode.js`.
+
+로컬에서 켜 보려면:
+
+```bash
+npx wrangler dev --var ENV_NAME:local --var TEST_MODE:on
+```
+
+지금 켜져 있는지는 `GET /game/config` 의 `test_mode` 로 확인하고, 켜져 있으면 허브
+상단에 「테스트 빌드」 띠가 뜹니다.
+
 ## 문장 DB 수정
 
 문장을 추가·수정할 때는 SQL을 직접 고치지 않고 스크립트를 고칩니다.

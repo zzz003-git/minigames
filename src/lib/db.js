@@ -4,6 +4,7 @@ import { ApiError } from "./http.js";
 import { dayKey, now } from "./time.js";
 import { COMMON, RESULT_DETAIL_KEEP } from "./config.js";
 import { encryptJSON, decryptJSON } from "./crypto.js";
+import { isTestMode } from "./testmode.js";
 
 // ═══════════════════════════════════════════════════════════════
 // 도전 기회 (일일 리셋)
@@ -40,6 +41,13 @@ export async function getAttemptState(env, userId, gameType, baseAttempts) {
 /** 기회 1회를 소모합니다. 남은 기회가 없으면 NO_ATTEMPTS 에러. */
 export async function consumeAttempt(env, userId, gameType, baseAttempts) {
   const state = await getAttemptState(env, userId, gameType, baseAttempts);
+
+  // 테스트 모드에서는 **차감하지 않습니다**(src/lib/testmode.js).
+  // 상한을 크게 주는 대신 차감을 건너뛰는 이유는 시작 화면 때문입니다 — 남은 기회를
+  // 점(pips)으로 그리므로 총량을 99 로 부풀리면 화면이 깨집니다. 차감하지 않으면
+  // 표시는 늘 "3 / 3회" 로 정상이고 판은 무한히 열립니다.
+  if (isTestMode(env)) return state;
+
   if (state.remaining <= 0) {
     throw new ApiError(
       "NO_ATTEMPTS",
@@ -85,8 +93,15 @@ export async function countAdViews(env, userId, gameType, trigger) {
   return row?.n ?? 0;
 }
 
-/** 동일 IP 일일 광고 시청 한도 (기획서 12장: 20회) */
+/**
+ * 동일 IP 일일 광고 시청 한도 (기획서 12장: 20회)
+ *
+ * 테스트 모드에서는 검사하지 않습니다. 외부 테스터가 같은 사무실·집 와이파이를 쓰면
+ * **한 사람의 시청으로 다 같이 막히는** 한도라, 이것 하나 때문에 테스트가 멈춥니다.
+ */
 export async function assertIpAdLimit(env, ipHash) {
+  if (isTestMode(env)) return;
+
   const row = await env.DB.prepare(
     `SELECT COUNT(*) AS n FROM ad_views WHERE ip_hash = ? AND day = ?`,
   )

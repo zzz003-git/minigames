@@ -19,6 +19,10 @@
       <p class="subtext">하고 싶은 게임을 골라보세요</p>
     </header>
 
+    <!-- 테스트 빌드 표시. 한도가 풀린 빌드인지 테스터가 알아야 「왜 무한이지?」를
+         버그로 적어 오지 않습니다. 프로덕션에서는 이 자리가 비어 있습니다. -->
+    <div id="testBanner" hidden></div>
+
     <!-- 오리지널 4종 — 한 판이 길고 기록 경신형이라 설명을 함께 보여줍니다 -->
     <section class="hub__section">
       <div class="hub__section-title"><b>오리지널</b><span>기록 경신형 4종</span></div>
@@ -263,5 +267,20 @@
       <a href="https://github.com/zzz003-git/minigames">소스 코드</a>
     </footer>
   </main>
+
+  <!-- 테스트 빌드일 때만 띠를 답니다. 프로덕션에서는 요청 한 번으로 끝나고
+       아무것도 그리지 않습니다(이 응답은 D1 을 건드리지 않습니다). -->
+  <script>
+    fetch("/game/config")
+      .then((r) => r.json())
+      .then((r) => {
+        if (!r?.data?.test_mode) return;
+        const el = document.getElementById("testBanner");
+        el.className = "testbar";
+        el.textContent = "테스트 빌드 — 도전 기회·광고 횟수 제한이 풀려 있습니다. 기록은 실서비스와 분리됩니다.";
+        el.hidden = false;
+      })
+      .catch(() => {});
+  </script>
 </body>
 </html>
