@@ -10,7 +10,9 @@
   "assets": {
     "directory": "./public",
     "binding": "ASSETS",
-    "run_worker_first": ["/game/*", "/ad/*", "/user/*"]
+    // `/api/*` 는 스위트(타로·사주·심리)용입니다. 넣지 않으면 정적 자산 핸들러가
+    // 먼저 가로채 404 를 돌려줍니다 — API 가 통째로 죽는데 배포는 성공합니다.
+    "run_worker_first": ["/game/*", "/ad/*", "/user/*", "/api/*"]
   },
 
   // D1 데이터베이스 (APAC 리전). 스키마는 migrations/ 에 있습니다.

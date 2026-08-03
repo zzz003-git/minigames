@@ -1,0 +1,482 @@
+/**
+ * 🔮 오늘의 타로 — 화면
+ *
+ * 기획: TAROT-SPEC-01 · 인터랙션 1차 사양은 프로토
+ * (`../reward-minigame-research/tarot/prototype/TAROT-PROTO-01_오늘의타로.html`)
+ *
+ * ── 화면이 정하는 것과 정하지 못하는 것 ──────────────────────────────────
+ * **어떤 카드가 나오는지는 서버가 정한다.** 화면이 정할 수 있으면 도감 마일스톤을
+ * 원하는 카드로 채울 수 있고 그건 원가에 직접 닿는다(기획서 T-01).
+ *
+ * 반대로 **해석 문장의 회전은 화면이 한다.** 같은 카드라도 날짜·포커스에 따라 문장이
+ * 바뀌지만 보상과 무관하므로 서버가 알 필요가 없다(기획서 T-07). 그래서 해석 DB가
+ * 이쪽에만 있다.
+ */
+
+import { apiGet, apiPost, ApiFail } from "../shared/api.js";
+import { $, el, clear, showScreen, toast, renderHeader, setHeaderBadge } from "../shared/ui.js";
+import { watchAdForReward, renderRewardCard, clearRewardCard } from "../shared/ad.js";
+import { TAROT_DB } from "./tarot-db.js";
+
+const FOCUS = [
+  { k: "day", label: "오늘 하루" },
+  { k: "work", label: "일 · 공부" },
+  { k: "love", label: "사랑 · 관계" },
+  { k: "money", label: "돈 · 재물" },
+];
+
+/** 화면이 바뀐 직후 그 화면의 버튼을 못 누르게 두는 시간 (기획서 0-H) */
+const ARM_DELAY_MS = 400;
+/** 3D 플립 (tarot.css 의 transition 과 같은 값) */
+const FLIP_MS = 900;
+
+const state = {
+  today: null,
+  focus: null,
+  shuffles: 0,
+  needShuffles: 3,
+  dragX: null,
+  busy: false,
+};
+
+renderHeader($("#header"), { icon: "🔮", title: "오늘의 타로" });
+
+$("#collBtn").addEventListener("click", showCollection);
+$("#collBackBtn").addEventListener("click", () => {
+  showScreen(state.today?.draws?.length ? "result" : "deck");
+});
+
+boot();
+
+// ══════════════════════════════════════════════════════════════
+// 해석 회전 — 프로토 사양 그대로
+// ══════════════════════════════════════════════════════════════
+
+/** FNV-1a. 같은 입력이면 언제나 같은 값이라 날짜가 바뀔 때만 문장이 바뀐다 */
+function seeded(str) {
+  let h = 2166136261;
+  for (const c of String(str)) {
+    h ^= c.charCodeAt(0);
+    h = Math.imul(h, 16777619);
+  }
+  return Math.abs(h);
+}
+
+/**
+ * 한 장의 읽을거리를 만든다.
+ *
+ *   해석 변형  hash(day + card + focus)   같은 카드라도 고민에 따라 다르게 읽힌다
+ *   조언       hash(day + card)           카드 고유 2개 + 공용 풀 60개
+ *   행운 아이템 hash(day + item + card)
+ */
+function reading(day, cardId, focus) {
+  const card = TAROT_DB.cards[cardId];
+  const variants = card.interp[focus] ?? card.interp.day;
+  const advicePool = [...card.advice, ...TAROT_DB.advicePool];
+
+  return {
+    card,
+    interp: variants[seeded(`${day}|${cardId}|${focus}`) % variants.length],
+    advice: advicePool[seeded(`${day}|${cardId}`) % advicePool.length],
+    item: TAROT_DB.luckyItems[seeded(`${day}|item|${cardId}`) % TAROT_DB.luckyItems.length],
+  };
+}
+
+// ══════════════════════════════════════════════════════════════
+// 진입
+// ══════════════════════════════════════════════════════════════
+
+async function boot() {
+  try {
+    state.today = await apiGet("/api/tarot/today");
+  } catch (err) {
+    toast(err.message ?? "오늘의 카드를 불러오지 못했습니다.", "error");
+    return;
+  }
+
+  // 이미 뽑았으면 덱을 건너뛰고 결과로 간다 — 「오늘의 카드」는 하루 한 장이고
+  // 다시 들어왔을 때 또 뽑게 하면 그 전제가 깨진다(기획서 1절 엣지).
+  if (state.today.draws.length > 0) {
+    const last = state.today.draws[state.today.draws.length - 1];
+    renderResult(last.c, last.f, { gained: 0, replay: true });
+    return;
+  }
+  enterDeck();
+}
+
+// ══════════════════════════════════════════════════════════════
+// 덱 · 포커스
+// ══════════════════════════════════════════════════════════════
+
+function enterDeck() {
+  state.focus = null;
+  state.shuffles = 0;
+  state.needShuffles = state.today.shuffles ?? 3;
+
+  renderFocusRow();
+  renderDots();
+  $("#deck").classList.add("breathe");
+  $("#deckHint").textContent = "무엇이 궁금하세요?";
+  $("#deckSub").textContent = "고민을 고르면 덱이 열려요";
+  setHeaderBadge(`오늘 ${state.today.remaining}장`);
+  showScreen("deck");
+}
+
+function renderFocusRow() {
+  const host = clear($("#focusRow"));
+  const used = state.today.used_focuses ?? [];
+
+  for (const f of FOCUS) {
+    const isUsed = used.includes(f.k);
+    const node = el(
+      "button",
+      {
+        class: `chip-focus ${isUsed ? "is-used" : ""} ${state.focus === f.k ? "is-sel" : ""}`,
+        type: "button",
+        ...(isUsed ? { disabled: "", "aria-label": `${f.label} — 오늘 이미 뽑았어요` } : {}),
+      },
+      f.label,
+    );
+    if (!isUsed) node.addEventListener("click", () => pickFocus(f.k));
+    host.append(node);
+  }
+}
+
+function pickFocus(k) {
+  state.focus = k;
+  renderFocusRow();
+  $("#deckHint").textContent = "덱을 좌우로 쓸어 섞어 주세요";
+  $("#deckSub").textContent = `${state.needShuffles}번 섞으면 카드가 펼쳐져요`;
+}
+
+function renderDots() {
+  const host = clear($("#shDots"));
+  for (let i = 0; i < state.needShuffles; i++) {
+    host.append(el("i", { class: i < state.shuffles ? "is-on" : "" }));
+  }
+}
+
+const deck = $("#deck");
+
+/** 좌우로 쓸면 한 번 섞인다. 탭도 같게 취급한다 — 접근성(기획서 1절) */
+function shuffleOnce() {
+  if (state.busy || !state.focus || state.shuffles >= state.needShuffles) {
+    if (!state.focus) toast("먼저 궁금한 것을 골라 주세요", "error", 1400);
+    return;
+  }
+  state.shuffles += 1;
+  deck.classList.remove("breathe");
+  deck.classList.remove("is-shuffling");
+  void deck.offsetWidth;
+  deck.classList.add("is-shuffling");
+  navigator.vibrate?.(12);
+  renderDots();
+
+  if (state.shuffles >= state.needShuffles) {
+    $("#deckSub").textContent = "펼쳐집니다…";
+    setTimeout(openFan, 420);
+  }
+}
+
+deck.addEventListener("pointerdown", (e) => {
+  state.dragX = e.clientX;
+});
+deck.addEventListener("pointerup", (e) => {
+  if (state.dragX == null) return;
+  const moved = Math.abs(e.clientX - state.dragX);
+  state.dragX = null;
+  shuffleOnce(); // 쓸기든 탭이든 한 번은 한 번 (moved 는 연출 세기에만 쓸 수 있다)
+  void moved;
+});
+deck.addEventListener("pointercancel", () => {
+  state.dragX = null;
+});
+deck.addEventListener("keydown", (e) => {
+  if (e.key === "Enter" || e.key === " ") {
+    e.preventDefault();
+    shuffleOnce();
+  }
+});
+
+// ══════════════════════════════════════════════════════════════
+// 부채꼴
+// ══════════════════════════════════════════════════════════════
+
+/**
+ * 22장을 부채로 펼친다.
+ *
+ * 배치 순서는 `hash(day + 회차)` 로 섞는다. 카드에 정보가 없으므로(전부 뒷면) 이것은
+ * 결과에 영향을 주지 않고, **매번 같은 자리에 펼쳐지지 않게** 하기 위한 것뿐이다.
+ * 실제 카드는 서버가 정한다.
+ */
+function openFan() {
+  const stage = clear($("#fanStage"));
+  stage.classList.remove("is-locked");
+
+  const n = TAROT_DB.cards.length;
+  const seed = seeded(`${state.today.day}|${state.today.draws.length}`);
+
+  // 좌표를 CSS 회전축(transform-origin)에 맡기지 않고 여기서 직접 계산한다.
+  //
+  // 축을 고정 픽셀로 두면 화면 크기에 따라 카드가 무대 밖으로 나간다 —
+  // 처음 그렇게 짰더니 **22장이 전부 뷰포트 밖**이었다(기획서 6절이 실기 확인
+  // 항목으로 못박은 바로 그 결함이다). 반지름을 무대 폭에서 역산하면 어떤 화면에서도
+  // 부채가 무대 안에 들어온다.
+  const rect = stage.getBoundingClientRect();
+  const cardW = rect.width < 380 ? 64 : 74;
+  const cardH = rect.width < 380 ? 98 : 112;
+  const spread = 34; // 부채의 반각(도) — 프로토 사양
+  const rad = (spread * Math.PI) / 180;
+  // 가로로 벌어지는 폭이 무대 폭을 넘지 않는 반지름
+  const R = Math.max(160, (rect.width - cardW - 8) / (2 * Math.sin(rad)));
+  const pivotY = R + cardH * 0.5 + 8; // 회전 중심은 무대 위쪽 기준 이만큼 아래
+
+  for (let i = 0; i < n; i++) {
+    const deg = -spread + ((spread * 2) / (n - 1)) * i;
+    const th = (deg * Math.PI) / 180;
+    const x = rect.width / 2 + R * Math.sin(th);
+    const y = pivotY - R * Math.cos(th);
+
+    const node = el("button", {
+      class: "fcard",
+      type: "button",
+      style:
+        `left:${x.toFixed(1)}px; top:${y.toFixed(1)}px; width:${cardW}px; height:${cardH}px;` +
+        `transform: translate(-50%, -50%) rotate(${deg.toFixed(2)}deg); z-index:${i}`,
+      "aria-label": `${i + 1}번째 카드`,
+    });
+    // 배치만 섞는다 — 어떤 카드인지는 화면이 모른다
+    node.dataset.slot = String((seed + i) % n);
+    node.addEventListener("click", () => choose(node));
+    stage.append(node);
+  }
+
+  showScreen("fan");
+}
+
+async function choose(node) {
+  if (state.busy) return;
+  state.busy = true;
+  $("#fanStage").classList.add("is-locked");
+  node.style.transform += " translateY(-26px)";
+  navigator.vibrate?.(18);
+
+  let res;
+  try {
+    res = await apiPost("/api/tarot/draw", { focus: state.focus });
+  } catch (err) {
+    state.busy = false;
+    $("#fanStage").classList.remove("is-locked");
+    if (err instanceof ApiFail && err.code === "FOCUS_USED") {
+      toast(err.message, "error");
+      enterDeck();
+      return;
+    }
+    if (err instanceof ApiFail && err.code === "NO_DRAWS") {
+      toast(err.message, "error");
+      return;
+    }
+    toast(err.message ?? "카드를 뽑지 못했습니다.", "error");
+    return;
+  }
+
+  await flipTo(res.card_id);
+  state.today = await apiGet("/api/tarot/today");
+  renderResult(res.card_id, state.focus, res);
+  state.busy = false;
+}
+
+/** 3D 플립. 연출이 끝날 때까지 입력을 받지 않는다(기획서 1절) */
+function flipTo(cardId) {
+  const card = TAROT_DB.cards[cardId];
+  $("#flipFront").textContent = card.glyph;
+  const fc = $("#flipCard");
+  fc.classList.remove("is-flipped");
+  showScreen("flip");
+
+  // 전환을 걸기 전에 리플로를 강제한다. rAF 로 미루면 **탭이 백그라운드일 때
+  // 콜백이 아예 오지 않아** 결과 화면으로 넘어가지 못하고 뒷면인 채로 멈춘다
+  // (브라우저 확인에서 그대로 걸렸다). setTimeout 은 배경에서도 발화한다.
+  void fc.offsetWidth;
+  fc.classList.add("is-flipped");
+  navigator.vibrate?.([12, 60, 22]);
+  return new Promise((resolve) => setTimeout(resolve, FLIP_MS + 260));
+}
+
+// ══════════════════════════════════════════════════════════════
+// 결과
+// ══════════════════════════════════════════════════════════════
+
+function renderResult(cardId, focus, res) {
+  const day = state.today.day;
+  const r = reading(day, cardId, focus);
+  const focusLabel = FOCUS.find((f) => f.k === focus)?.label ?? "오늘 하루";
+
+  $("#resFocus").textContent = focusLabel;
+  $("#resGlyph").textContent = r.card.glyph;
+  $("#resName").textContent = r.card.name;
+  $("#resInterp").textContent = r.interp;
+  $("#resAdvice").textContent = r.advice;
+
+  clear($("#resLucky")).append(
+    stat("행운의 색", r.card.lucky.color),
+    stat("행운의 숫자", String(r.card.lucky.number)),
+    stat("행운의 물건", r.item),
+  );
+
+  const coll = state.today.collection?.length ?? 0;
+  $("#resGain").textContent = res.replay
+    ? `오늘 뽑은 카드예요 · 도감 ${coll}/${TAROT_DB.cards.length}장`
+    : `+${res.gained}P 적립 · 도감 ${coll}/${TAROT_DB.cards.length}장${res.is_new ? " (새 카드!)" : " (이미 있는 카드)"}`;
+
+  setHeaderBadge(`도감 ${coll}/${TAROT_DB.cards.length}`);
+  renderCrossChips();
+  renderResultAds();
+
+  const note = $("#resNote");
+  note.textContent =
+    state.today.remaining > 0
+      ? `오늘 ${state.today.remaining}장 더 뽑을 수 있어요`
+      : "내일 자정에 새 카드가 기다립니다";
+
+  showScreen("result");
+  armScreen("result");
+}
+
+const stat = (label, value) =>
+  el(
+    "div",
+    { class: "stat" },
+    el("div", { class: "stat__label" }, label),
+    el("div", { class: "stat__value" }, value),
+  );
+
+/**
+ * 화면을 바꾼 직후 그 화면의 버튼을 잠깐 못 누르게 한다 (기획서 0-H).
+ *
+ * 마지막 탭이 부채꼴 카드였고 결과 화면이 그 자리에 광고 버튼을 올린다 — 연타의
+ * 두 번째 탭이 광고를 열면 「광고는 선택형」이 그 자리에서 깨진다(㉑ 에서 겪은 일).
+ */
+function armScreen(name, ms = ARM_DELAY_MS) {
+  const screen = document.querySelector(`[data-screen="${name}"]`);
+  if (!screen) return;
+  screen.style.pointerEvents = "none";
+  setTimeout(() => {
+    screen.style.pointerEvents = "";
+  }, ms);
+}
+
+/** 크로스 칩 — 광고가 아니라 **무료 이동**이다. 완료한 서비스로는 다시 유도하지 않는다 */
+function renderCrossChips() {
+  const host = clear($("#crossChips"));
+  const s = state.today.suite ?? {};
+  const chips = [
+    { key: "saju", href: "/saju/", icon: "🌤️", name: "오늘의 기운" },
+    { key: "mind", href: "/mind/", icon: "🔬", name: "마음연구소" },
+  ];
+
+  for (const c of chips) {
+    const done = s[c.key]?.done;
+    host.append(
+      el(
+        "a",
+        { class: `crosschip ${done ? "is-done" : ""}`, href: c.href },
+        el("b", {}, `${c.icon} ${c.name}`),
+        done ? "오늘 완료했어요" : "아직 봉인돼 있어요 →",
+      ),
+    );
+  }
+}
+
+function renderResultAds() {
+  clearRewardCard($("#adbarMore"));
+  clearRewardCard($("#adbarStats"));
+
+  // 「한 장 더」 — 상한을 다 쓰면 **버튼을 숨긴다**(비활성화가 아니라 제거)
+  if ((state.today.ad_more_used ?? 0) < (state.today.ad_more_max ?? 2)) {
+    renderRewardCard($("#adbarMore"), {
+      icon: "🔮",
+      title: "광고 보고 한 장 더",
+      // 손해 없음을 문자로 적는다 (기획서 T-03)
+      desc: "한 장 더 뽑아도 오늘의 카드와 적립은 그대로예요",
+      cta: "뽑기",
+      onClick: async () => {
+        const r = await watchAdForReward("TAROT_ATTEMPT");
+        if (!r) return;
+        state.today = await apiGet("/api/tarot/today");
+        toast("다른 고민으로 한 장 더 뽑아 보세요", "good");
+        enterDeck();
+      },
+    });
+  }
+
+  if (!state.today.ad_stats_seen) {
+    renderRewardCard($("#adbarStats"), {
+      icon: "🗺️",
+      title: "광고 보고 전국 분포 보기",
+      desc: "오늘 사람들이 뽑은 카드",
+      cta: "보기",
+      onClick: async () => {
+        const r = await watchAdForReward("TAROT_STATS");
+        if (!r) return;
+        state.today = await apiGet("/api/tarot/today");
+        loadStats();
+      },
+    });
+  } else {
+    loadStats();
+  }
+}
+
+async function loadStats() {
+  try {
+    const s = await apiGet("/api/tarot/stats");
+    const line = $("#resDist");
+    if (!s.open) {
+      // 표본이 적을 때 %를 보여 주면 그 값이 사람 한두 명을 뜻한다 (SUITE 1.5)
+      line.textContent = `오늘 ${s.total}명이 뽑았어요 — 집계 중입니다`;
+      return;
+    }
+    const mine = s.items.find((i) => String(i.key) === String(s.my_card));
+    const top = s.items[0];
+    line.textContent = mine
+      ? `오늘 이 카드를 뽑은 사람 ${mine.pct}% · 가장 많이 나온 카드는 ${TAROT_DB.cards[top.key]?.name ?? "—"}(${top.pct}%)`
+      : `가장 많이 나온 카드는 ${TAROT_DB.cards[top.key]?.name ?? "—"}(${top.pct}%)`;
+  } catch {
+    /* 광고 전이면 잠겨 있는 것이 정상이다 */
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+// 도감
+// ══════════════════════════════════════════════════════════════
+
+function showCollection() {
+  const have = new Set(state.today.collection ?? []);
+  const host = clear($("#collGrid"));
+
+  TAROT_DB.cards.forEach((c, i) => {
+    host.append(
+      el(
+        "div",
+        {
+          class: `collcell ${have.has(i) ? "is-have" : "is-miss"}`,
+          title: have.has(i) ? c.name : "아직 만나지 않은 카드",
+        },
+        have.has(i) ? c.glyph : "?",
+      ),
+    );
+  });
+
+  const n = have.size;
+  const { half, full } = state.today.milestones ?? { half: 11, full: 22 };
+  $("#collTitle").textContent = `도감 ${n} / ${TAROT_DB.cards.length}`;
+  $("#collNote").textContent =
+    n >= full
+      ? "도감을 모두 채웠어요."
+      : n >= half
+        ? `${full}장을 모으면 완성 보너스가 있어요 (${full - n}장 남음)`
+        : `${half}장을 모으면 보너스가 있어요 (${half - n}장 남음)`;
+
+  showScreen("coll");
+}

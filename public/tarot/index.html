@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>오늘의 타로</title>
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#141127">
+  <meta name="description" content="오늘의 카드 한 장. 매일 자정에 새 카드가 기다립니다.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../shared/base.css">
+  <link rel="stylesheet" href="tarot.css">
+</head>
+<body class="game suite suite--tarot">
+  <div class="app">
+    <header class="topbar" id="header"></header>
+
+    <main class="app__body">
+
+      <!-- 덱 · 포커스 선택 -->
+      <section class="screen is-active" data-screen="deck">
+        <p class="hint center" id="deckHint">무엇이 궁금하세요?</p>
+        <div class="focus-row" id="focusRow"></div>
+
+        <div class="deckwrap">
+          <div class="deck breathe" id="deck" role="button" tabindex="0"
+               aria-label="덱을 좌우로 쓸어 섞으세요. 키보드는 Enter.">
+            <span class="dcard"></span><span class="dcard"></span><span class="dcard"></span>
+          </div>
+          <div class="sh-dots" id="shDots" aria-hidden="true"></div>
+        </div>
+
+        <p class="footnote center" id="deckSub">고민을 고르면 덱이 열려요</p>
+      </section>
+
+      <!-- 부채꼴 -->
+      <section class="screen" data-screen="fan">
+        <p class="hint center">마음이 가는 카드를 한 장 고르세요</p>
+        <div class="fanstage" id="fanStage" role="group" aria-label="카드 22장"></div>
+      </section>
+
+      <!-- 뒤집기 -->
+      <section class="screen" data-screen="flip">
+        <div class="flipwrap">
+          <div class="flipcard" id="flipCard">
+            <div class="flipcard__face flipcard__face--back"></div>
+            <div class="flipcard__face flipcard__face--front" id="flipFront"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 결과 -->
+      <section class="screen" data-screen="result">
+        <div class="card card--accent card--center card--hero" id="resultCard">
+          <div class="card__label card__label--mono" id="resFocus">오늘 하루</div>
+          <div class="tcard" id="resGlyph" aria-hidden="true">🎈</div>
+          <div class="headline" id="resName">—</div>
+          <p class="reading" id="resInterp">—</p>
+          <p class="advice" id="resAdvice">—</p>
+        </div>
+
+        <div class="stats stats--inset" id="resLucky"></div>
+
+        <div class="card card--info">
+          <div class="card__label">오늘의 적립</div>
+          <p class="footnote" id="resGain">—</p>
+          <p class="footnote--dim mt-sm" id="resDist">전국 분포는 광고를 보면 열려요</p>
+        </div>
+
+        <div id="adbarMore"></div>
+        <div id="adbarStats"></div>
+
+        <!-- 크로스 칩 (SUITE 2.4) — 광고가 아니라 무료 이동이다 -->
+        <div class="crosschips" id="crossChips"></div>
+
+        <button class="btn" id="collBtn">도감 보기</button>
+        <div class="footnote--dim center" id="resNote"></div>
+      </section>
+
+      <!-- 도감 -->
+      <section class="screen" data-screen="coll">
+        <div class="card">
+          <div class="card__head">
+            <span class="card__title" id="collTitle">도감</span>
+          </div>
+          <div class="collgrid" id="collGrid"></div>
+          <p class="footnote--dim mt-md" id="collNote">—</p>
+        </div>
+        <button class="btn" id="collBackBtn">← 돌아가기</button>
+      </section>
+
+    </main>
+  </div>
+
+  <script type="module" src="tarot.js"></script>
+</body>
+</html>

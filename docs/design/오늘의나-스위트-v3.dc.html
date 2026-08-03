@@ -1,0 +1,1237 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  html, body { margin:0; padding:0; background:#0f1420; -webkit-font-smoothing:antialiased; }
+  * { box-sizing:border-box; }
+  a { color:#7fd8c0; text-decoration:none; }
+  a:hover { color:#a7e6d6; }
+  input, select, button, textarea { font-family:inherit; }
+  @keyframes twinkle { 0%,100% { opacity:.2 } 50% { opacity:.75 } }
+  @keyframes breathe { 0%,100% { transform:translateY(0) } 50% { transform:translateY(-5px) } }
+</style>
+</helmet>
+<div style="min-height:100dvh;background:#0f1420;color:#e8ecf4;font-family:'Noto Sans KR',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:15px;line-height:1.55">
+
+  <header style="position:sticky;top:0;z-index:20;background:rgba(15,20,32,.88);backdrop-filter:blur(12px);border-bottom:1px solid rgba(255,255,255,.06)">
+    <div style="max-width:1120px;margin:0 auto;padding:12px clamp(16px,4vw,28px);display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+      <div style="display:flex;align-items:center;gap:9px;margin-right:auto;cursor:pointer" onClick="{{ goHome }}">
+        <span style="width:26px;height:26px;border-radius:9px;background:linear-gradient(140deg,#7fd8c0,#a98be0);display:grid;place-items:center;color:#0f1420;font-weight:700;font-size:13px">Z</span>
+        <span style="font-weight:700;font-size:15px;letter-spacing:-.01em">인스턴트 콘텐츠</span>
+      </div>
+      <nav style="display:flex;gap:6px;flex-wrap:wrap">
+        <sc-for list="{{ tabs }}" as="tab" hint-placeholder-count="4">
+          <button onClick="{{ tab.onClick }}" style="cursor:pointer;padding:7px 14px;border-radius:999px;font-size:13px;font-weight:700;letter-spacing:-.01em;background:{{ tab.bg }};color:{{ tab.color }};border:1px solid {{ tab.border }}">{{ tab.label }}</button>
+        </sc-for>
+      </nav>
+    </div>
+  </header>
+
+  <main style="max-width:1120px;margin:0 auto;padding:clamp(20px,4vw,34px) clamp(16px,4vw,28px) 60px;display:flex;flex-direction:column;gap:26px">
+
+    <sc-if value="{{ showIntro }}" hint-placeholder-val="{{ true }}">
+      <div style="display:flex;flex-direction:column;gap:6px;padding:2px">
+        <h1 style="margin:0;font-size:clamp(22px,3.4vw,30px);font-weight:700;letter-spacing:-.02em">오늘 뭐 하고 놀까요</h1>
+        <p style="margin:0;font-size:14px;color:#8a97ae">기록을 겨루는 게임과, 순위 없이 하루를 보는 「오늘의 나」</p>
+      </div>
+    </sc-if>
+
+    <!-- ══ 게임 영역 ══ -->
+    <sc-if value="{{ showGames }}" hint-placeholder-val="{{ true }}">
+      <section data-screen-label="게임 영역" style="border:1px solid rgba(127,216,192,.14);border-radius:26px;background:linear-gradient(180deg,rgba(127,216,192,.045),rgba(127,216,192,.012));padding:clamp(16px,2.6vw,24px);display:flex;flex-direction:column;gap:18px">
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+          <span style="width:34px;height:34px;border-radius:12px;background:rgba(127,216,192,.14);display:grid;place-items:center;font-size:17px">🎮</span>
+          <div style="display:flex;flex-direction:column;gap:2px;margin-right:auto">
+            <span style="font-size:17px;font-weight:700;letter-spacing:-.01em">게임</span>
+            <span style="font-size:12px;color:#8a97ae">기록과 순위가 남는 한 판</span>
+          </div>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.08em;color:#7fd8c0;border:1px solid rgba(127,216,192,.28);border-radius:999px;padding:5px 10px">GAMES 28</span>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div style="display:flex;align-items:baseline;gap:8px;font-size:12px;color:#8a97ae"><b style="font-size:13px;color:#e8ecf4">오리지널</b><span>기록 경신형 4종</span></div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px">
+            <sc-for list="{{ originals }}" as="g" hint-placeholder-count="4">
+              <a href="{{ g.href }}" style="display:flex;align-items:center;gap:12px;padding:14px;background:#161d2b;border:1px solid rgba(255,255,255,.06);border-radius:20px;color:inherit" style-hover="background:#1e2739">
+                <span style="width:44px;height:44px;flex:0 0 44px;border-radius:15px;background:{{ g.soft }};display:grid;place-items:center;font-size:21px">{{ g.icon }}</span>
+                <span style="display:flex;flex-direction:column;gap:3px;min-width:0;flex:1">
+                  <span style="font-size:15px;font-weight:700">{{ g.title }}</span>
+                  <span style="font-size:12px;color:#8a97ae;line-height:1.35">{{ g.desc }}</span>
+                  <span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.04em;color:{{ g.accent }}">{{ g.meta }}</span>
+                </span>
+                <span style="width:26px;height:26px;flex:none;border-radius:999px;background:rgba(255,255,255,.05);display:grid;place-items:center;color:#8a97ae;font-size:13px">›</span>
+              </a>
+            </sc-for>
+          </div>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <div style="display:flex;align-items:baseline;gap:8px;font-size:12px;color:#8a97ae;flex-wrap:wrap"><b style="font-size:13px;color:#e8ecf4">아케이드</b><span>10~60초 짧은 판 24종 · 어제 플레이·방문 상위 8종 노출</span></div>
+          <sc-for list="{{ bands }}" as="band" hint-placeholder-count="2">
+            <div style="display:flex;flex-direction:column;gap:11px;padding:13px 12px 14px;border-radius:22px;border:1px solid {{ band.line }};background:{{ band.bg }}">
+              <div style="display:flex;align-items:center;gap:8px;padding:0 2px;flex-wrap:wrap">
+                <span style="width:7px;height:7px;border-radius:50%;background:{{ band.key }}"></span>
+                <span style="font-size:13px;font-weight:700">{{ band.name }}</span>
+                <span style="font-size:11px;color:#8a97ae">{{ band.desc }}</span>
+                <span style="margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.06em;color:{{ band.key }}">{{ band.count }}</span>
+              </div>
+              <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px">
+                <sc-for list="{{ band.items }}" as="c" hint-placeholder-count="8">
+                  <a href="{{ c.href }}" style="display:flex;flex-direction:column;gap:6px;padding:14px 13px;background:#161d2b;border:1px solid rgba(255,255,255,.06);border-radius:20px;color:inherit" style-hover="background:#1b2434">
+                    <span style="display:flex;align-items:center;gap:8px">
+                      <span style="width:34px;height:34px;border-radius:12px;background:{{ band.soft }};display:grid;place-items:center;font-size:17px">{{ c.icon }}</span>
+                      <span style="margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.06em;color:#6f7c93">{{ c.rank }}</span>
+                    </span>
+                    <span style="font-size:13px;font-weight:700;line-height:1.3">{{ c.title }}</span>
+                    <span style="font-size:11px;color:#6f7c93;line-height:1.4;word-break:keep-all">{{ c.desc }}</span>
+                  </a>
+                </sc-for>
+              </div>
+              <button onClick="{{ band.onToggle }}" style="cursor:pointer;align-self:center;padding:8px 18px;border-radius:999px;font-size:12px;font-weight:700;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);color:#c6d0e0">{{ band.toggleLabel }}</button>
+            </div>
+          </sc-for>
+        </div>
+      </section>
+    </sc-if>
+
+    <!-- ══ 허브: 오늘의 나 ══ -->
+    <sc-if value="{{ showHub }}" hint-placeholder-val="{{ true }}">
+      <section data-screen-label="오늘의 나 허브" style="position:relative;overflow:hidden;border:1px solid rgba(169,139,224,.2);border-radius:26px;background:radial-gradient(120% 90% at 15% 0%,#211a37 0%,#171226 45%,#120f1e 100%);padding:clamp(18px,2.8vw,26px);display:flex;flex-direction:column;gap:18px">
+        <span style="position:absolute;top:34px;right:12%;width:3px;height:3px;border-radius:50%;background:#e8dcff;animation:twinkle 3.4s ease-in-out infinite"></span>
+        <span style="position:absolute;top:96px;right:26%;width:2px;height:2px;border-radius:50%;background:#d6b166;animation:twinkle 4.6s ease-in-out infinite"></span>
+        <span style="position:absolute;top:58px;right:38%;width:2px;height:2px;border-radius:50%;background:#e8dcff;animation:twinkle 5.2s ease-in-out infinite"></span>
+
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;position:relative">
+          <span style="width:34px;height:34px;border-radius:12px;background:rgba(169,139,224,.18);display:grid;place-items:center;font-size:17px">🌙</span>
+          <div style="display:flex;flex-direction:column;gap:2px;margin-right:auto">
+            <span style="font-size:17px;font-weight:700;letter-spacing:-.01em">오늘의 나</span>
+            <span style="font-size:12px;color:#a79ac2">{{ hubGreeting }}</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <div style="display:flex;gap:5px">
+              <sc-for list="{{ tripleDots }}" as="d" hint-placeholder-count="3">
+                <span style="width:9px;height:9px;border-radius:50%;background:{{ d.bg }};border:1px solid {{ d.border }};display:block"></span>
+              </sc-for>
+            </div>
+            <span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.08em;color:#c3aef0;border:1px solid rgba(169,139,224,.3);border-radius:999px;padding:5px 10px">{{ tripleLabel }}</span>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(276px,1fr));gap:13px;position:relative">
+          <sc-for list="{{ hubCards }}" as="c" hint-placeholder-count="3">
+            <div onClick="{{ c.onOpen }}" style="cursor:pointer;display:flex;flex-direction:column;gap:11px;padding:17px;border-radius:24px;background:{{ c.bg }};border:1px solid {{ c.border }}" style-hover="border-color:rgba(214,177,102,.5)">
+              <div style="display:flex;align-items:center;gap:11px">
+                <span style="width:44px;height:44px;flex:0 0 44px;border-radius:15px;background:{{ c.iconBg }};display:grid;place-items:center;font-size:21px;opacity:{{ c.iconOpacity }}">{{ c.icon }}</span>
+                <span style="display:flex;flex-direction:column;gap:2px;margin-right:auto">
+                  <span style="font-size:16px;font-weight:700">{{ c.title }}</span>
+                  <span style="font-size:11.5px;color:#a79ac2">{{ c.verbs }}</span>
+                </span>
+                <span style="font-size:11px;color:{{ c.stateColor }};font-weight:700">{{ c.stateLabel }}</span>
+              </div>
+              <span style="font-size:13px;color:#c3b9d8;line-height:1.5;word-break:keep-all">{{ c.line }}</span>
+              <div style="display:flex;align-items:center;gap:10px">
+                <span style="flex:1;height:6px;border-radius:999px;background:rgba(255,255,255,.07);overflow:hidden;display:block">
+                  <span style="display:block;height:100%;width:{{ c.pct }};background:{{ c.barFill }}"></span>
+                </span>
+                <span style="font-family:'JetBrains Mono',monospace;font-size:10.5px;color:#d6b166">{{ c.progress }}</span>
+              </div>
+              <span style="font-size:11px;color:#8f86a6">{{ c.meta }}</span>
+            </div>
+          </sc-for>
+        </div>
+
+        <sc-if value="{{ tripleDone }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;flex-direction:column;gap:12px;padding:18px;border-radius:24px;background:linear-gradient(150deg,rgba(214,177,102,.14),rgba(169,139,224,.14));border:1px solid rgba(214,177,102,.34);position:relative">
+            <div style="display:flex;align-items:center;gap:9px;flex-wrap:wrap">
+              <span style="font-size:15px;font-weight:700;color:#f4e8cd">오늘의 나 한 장</span>
+              <span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.06em;color:#d6b166">TRIPLE +15P</span>
+            </div>
+            <div style="display:flex;gap:9px;flex-wrap:wrap">
+              <sc-for list="{{ tripleKeys }}" as="k" hint-placeholder-count="3">
+                <span style="padding:8px 13px;border-radius:14px;font-size:12.5px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);color:#ece0ff">{{ k.label }}</span>
+              </sc-for>
+            </div>
+            <p style="margin:0;font-size:14.5px;line-height:1.75;color:#f0e8db;word-break:keep-all">{{ crossReading }}</p>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <button onClick="{{ noop }}" style="cursor:pointer;padding:10px 16px;border-radius:999px;font-size:12.5px;font-weight:700;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.16);color:#f4e8cd">카드 공유하기</button>
+              <span style="font-size:11px;color:#a79ac2;align-self:center">응답 내용은 담기지 않고 결과의 모양만 공유됩니다</span>
+            </div>
+          </div>
+        </sc-if>
+
+        <div style="display:flex;gap:9px;flex-wrap:wrap;position:relative">
+          <button onClick="{{ goPair }}" style="cursor:pointer;padding:11px 17px;border-radius:16px;font-size:13px;font-weight:700;background:rgba(127,216,192,.1);border:1px solid rgba(127,216,192,.26);color:#a8e6d5">우리 · 너를 맞혀볼게</button>
+          <button onClick="{{ toggleArchive }}" style="cursor:pointer;padding:11px 17px;border-radius:16px;font-size:13px;font-weight:700;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);color:#c6d0e0">{{ archiveLabel }}</button>
+          <span style="align-self:center;font-size:11px;color:#7d7593">순위 없음 · 무광고로 완결 · 본 콘텐츠는 오락용입니다</span>
+        </div>
+
+        <sc-if value="{{ archiveOpen }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;flex-direction:column;gap:10px;padding:16px;border-radius:22px;background:rgba(255,255,255,.028);border:1px solid rgba(169,139,224,.16);position:relative">
+            <div style="display:flex;align-items:center;gap:9px;flex-wrap:wrap">
+              <span style="font-size:13px;font-weight:700">{{ monthLabel }} 아카이브</span>
+              <span style="font-size:11.5px;color:#8f86a6">3종 완료 도트 · 날짜를 누르면 그날의 요약</span>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:5px">
+              <sc-for list="{{ calendar }}" as="d" hint-placeholder-count="31">
+                <span style="aspect-ratio:1;border-radius:11px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;background:{{ d.bg }};border:1px solid {{ d.border }};font-size:10.5px;color:{{ d.color }}">
+                  <span>{{ d.day }}</span>
+                  <span style="display:flex;gap:2px">
+                    <sc-for list="{{ d.dots }}" as="dot" hint-placeholder-count="3">
+                      <span style="width:4px;height:4px;border-radius:50%;background:{{ dot.bg }};display:block"></span>
+                    </sc-for>
+                  </span>
+                </span>
+              </sc-for>
+            </div>
+            <span style="font-size:11px;color:#7d7593">월말에는 「이달의 나」 — 오행 밸런스 · 최다 카드 · 마음 지도 요약이 열립니다</span>
+          </div>
+        </sc-if>
+      </section>
+    </sc-if>
+
+    <!-- ══ 오늘의 타로 ══ -->
+    <sc-if value="{{ isTarot }}" hint-placeholder-val="{{ false }}">
+      <section data-screen-label="오늘의 타로" style="position:relative;overflow:hidden;border:1px solid rgba(169,139,224,.2);border-radius:26px;background:radial-gradient(120% 90% at 50% 0%,#241c3d 0%,#171226 50%,#120f1e 100%);padding:clamp(20px,3vw,34px);display:flex;flex-direction:column;gap:20px;align-items:center;min-height:76vh">
+        <div style="width:100%;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <button onClick="{{ goHub }}" style="cursor:pointer;padding:7px 14px;border-radius:999px;font-size:12px;font-weight:700;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:#c6d0e0">‹ 오늘의 나</button>
+          <span style="margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.12em;color:#d6b166">{{ todayLabel }} · /tarot/</span>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:6px;align-items:center;text-align:center">
+          <h2 style="margin:0;font-size:clamp(20px,3vw,26px);font-weight:700;letter-spacing:-.02em">오늘의 타로</h2>
+          <p style="margin:0;font-size:13px;color:#b6abcd">{{ tarotHint }}</p>
+        </div>
+
+        <sc-if value="{{ tarotDeckPhase }}" hint-placeholder-val="{{ true }}">
+          <div style="display:flex;flex-direction:column;gap:20px;align-items:center;width:100%;max-width:520px">
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(112px,1fr));gap:9px;width:100%">
+              <sc-for list="{{ focusChips }}" as="f" hint-placeholder-count="4">
+                <button onClick="{{ f.onPick }}" disabled="{{ f.used }}" style="cursor:{{ f.cursor }};padding:13px 10px;border-radius:18px;font-size:13.5px;font-weight:700;background:{{ f.bg }};border:1px solid {{ f.border }};color:{{ f.color }};text-decoration:{{ f.deco }};display:flex;flex-direction:column;gap:4px;align-items:center;opacity:{{ f.opacity }}">
+                  <span style="font-size:19px">{{ f.icon }}</span>
+                  <span>{{ f.label }}</span>
+                </button>
+              </sc-for>
+            </div>
+
+            <sc-if value="{{ focusChosen }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;flex-direction:column;gap:16px;align-items:center">
+                <button onClick="{{ onShuffle }}" style="cursor:pointer;background:none;border:none;padding:0;position:relative;width:clamp(120px,20vw,158px);height:clamp(188px,32vw,248px);animation:breathe 2.6s ease-in-out infinite">
+                  <sc-for list="{{ shuffleStack }}" as="s" hint-placeholder-count="5">
+                    <span style="position:absolute;inset:0;border-radius:18px;border:1px solid rgba(169,139,224,.3);background:repeating-linear-gradient(135deg,rgba(255,255,255,.06) 0 7px,rgba(255,255,255,.018) 7px 14px);transform:{{ s.transform }};transition:transform 320ms cubic-bezier(.34,1.4,.5,1);display:block"></span>
+                  </sc-for>
+                </button>
+                <div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap;justify-content:center">
+                  <sc-for list="{{ shuffleDots }}" as="d" hint-placeholder-count="3">
+                    <span style="width:8px;height:8px;border-radius:50%;background:{{ d.bg }};display:block"></span>
+                  </sc-for>
+                  <span style="font-size:12px;color:#a79ac2;margin-left:6px">{{ shuffleHint }}</span>
+                </div>
+              </div>
+            </sc-if>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ tarotFan }}" hint-placeholder-val="{{ false }}">
+          <div style="position:relative;container-type:inline-size;width:100%;max-width:760px;height:clamp(250px,40vw,330px);display:flex;justify-content:center;align-items:flex-end">
+            <sc-for list="{{ fan }}" as="card" hint-placeholder-count="22">
+              <button onClick="{{ card.onPick }}" style="position:absolute;bottom:0;left:50%;cursor:pointer;padding:0;width:clamp(58px,7.4vw,74px);height:clamp(96px,12.6vw,122px);border-radius:11px;border:1px solid rgba(169,139,224,.26);background:repeating-linear-gradient(135deg,rgba(255,255,255,.06) 0 6px,rgba(255,255,255,.018) 6px 12px);transform:{{ card.transform }};transform-origin:50% 210%;transition:transform 200ms cubic-bezier(.34,1.2,.5,1);display:grid;place-items:center;color:#c3aef0;font-size:15px" style-hover="transform:{{ card.hoverTransform }}">✦</button>
+            </sc-for>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ tarotResult }}" hint-placeholder-val="{{ false }}">
+          <div style="width:100%;max-width:620px;display:flex;flex-direction:column;gap:16px;align-items:center">
+            <div style="width:clamp(124px,20vw,152px);aspect-ratio:2/3.1;border-radius:18px;border:1px solid rgba(214,177,102,.5);background:linear-gradient(170deg,rgba(214,177,102,.2),rgba(169,139,224,.16));display:flex;flex-direction:column;gap:8px;align-items:center;justify-content:center;color:#f0e6ff">
+              <span style="font-size:clamp(30px,5vw,40px)">{{ pickedFace }}</span>
+              <span style="font-size:13px;font-weight:700">{{ pickedName }}</span>
+              <span style="font-family:'JetBrains Mono',monospace;font-size:9.5px;letter-spacing:.08em;color:#d6b166">{{ pickedEn }}</span>
+            </div>
+
+            <div style="width:100%;display:flex;flex-direction:column;gap:14px;padding:20px;border-radius:24px;border:1px solid rgba(169,139,224,.24);background:linear-gradient(180deg,rgba(255,255,255,.055),rgba(255,255,255,.015))">
+              <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap">
+                <span style="font-size:12px;color:#a79ac2">{{ focusLabel }}</span>
+                <span style="margin-left:auto;font-size:11px;color:#8f86a6">{{ tarotShareLine }}</span>
+              </div>
+              <p style="margin:0;font-size:14.5px;line-height:1.75;color:#e0d8ee;word-break:keep-all">{{ pickedReading }}</p>
+              <p style="margin:0;font-size:13.5px;line-height:1.7;color:#c8bfda;word-break:keep-all">{{ pickedAdvice }}</p>
+              <div style="display:flex;gap:8px;flex-wrap:wrap">
+                <sc-for list="{{ tarotLucky }}" as="l" hint-placeholder-count="3">
+                  <span style="padding:7px 13px;border-radius:999px;font-size:11.5px;background:rgba(214,177,102,.13);border:1px solid rgba(214,177,102,.26);color:#f0dcae">{{ l.label }}</span>
+                </sc-for>
+                <span style="padding:7px 13px;border-radius:999px;font-size:11.5px;background:rgba(127,216,192,.12);border:1px solid rgba(127,216,192,.26);color:#a8e6d5">{{ tarotEarn }}</span>
+              </div>
+
+              <div style="display:flex;flex-direction:column;gap:8px;padding:14px;border-radius:18px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06)">
+                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                  <span style="font-size:12.5px;font-weight:700">도감</span>
+                  <span style="margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:10.5px;color:#d6b166">{{ deckLabel }}</span>
+                </div>
+                <div style="display:grid;grid-template-columns:repeat(11,1fr);gap:4px">
+                  <sc-for list="{{ deckSlots }}" as="s" hint-placeholder-count="22">
+                    <span style="aspect-ratio:2/3;border-radius:5px;background:{{ s.bg }};border:1px solid {{ s.border }};display:block"></span>
+                  </sc-for>
+                </div>
+                <span style="font-size:11px;color:#8f86a6">{{ deckMilestone }}</span>
+              </div>
+
+              <sc-if value="{{ canDrawMore }}" hint-placeholder-val="{{ true }}">
+                <div style="display:flex;flex-direction:column;gap:7px">
+                  <button onClick="{{ drawMore }}" style="cursor:pointer;padding:13px 18px;border-radius:18px;font-size:14px;font-weight:700;background:linear-gradient(120deg,rgba(214,177,102,.24),rgba(169,139,224,.24));border:1px solid rgba(214,177,102,.4);color:#f4e8cd;opacity:{{ lockOpacity }}">🎬 한 장 더 · 광고 5초 ({{ adLeft }}회 남음)</button>
+                  <span style="font-size:11px;color:#8f86a6;text-align:center">한 장 더 뽑아도 오늘의 카드와 적립은 그대로예요</span>
+                </div>
+              </sc-if>
+
+              <button onClick="{{ openTarotStats }}" style="cursor:pointer;padding:11px 16px;border-radius:16px;font-size:12.5px;font-weight:700;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);color:#c6d0e0">{{ tarotStatsLabel }}</button>
+              <span style="font-size:11px;color:#7d7593">오늘의 카드는 하루 종일 다시 볼 수 있어요 · 본 콘텐츠는 오락용입니다</span>
+            </div>
+
+            <div style="width:100%;display:flex;flex-direction:column;gap:8px;padding:15px;border-radius:22px;background:rgba(255,255,255,.028);border:1px solid rgba(169,139,224,.16)">
+              <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                <span style="font-size:12px;font-weight:700;color:#c3b9d8">오늘 남은 봉인</span>
+                <span style="margin-left:auto;display:flex;gap:5px">
+                  <sc-for list="{{ tripleDots }}" as="d" hint-placeholder-count="3">
+                    <span style="width:9px;height:9px;border-radius:50%;background:{{ d.bg }};border:1px solid {{ d.border }};display:block"></span>
+                  </sc-for>
+                </span>
+              </div>
+              <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px">
+                <sc-for list="{{ crossChips }}" as="chip" hint-placeholder-count="2">
+                  <button onClick="{{ chip.onGo }}" style="cursor:pointer;text-align:left;padding:12px 14px;border-radius:16px;font-size:12.5px;font-weight:700;background:{{ chip.bg }};border:1px solid {{ chip.border }};color:{{ chip.color }};word-break:keep-all">{{ chip.label }}</button>
+                </sc-for>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+      </section>
+    </sc-if>
+
+    <!-- ══ 오늘의 기운 ══ -->
+    <sc-if value="{{ isSaju }}" hint-placeholder-val="{{ false }}">
+      <section data-screen-label="오늘의 기운" style="position:relative;overflow:hidden;border:1px solid rgba(169,139,224,.18);border-radius:26px;background:radial-gradient(120% 90% at 50% 0%,#1d1b26 0%,#161520 50%,#111119 100%);padding:clamp(20px,3vw,34px);display:flex;flex-direction:column;gap:20px;align-items:center;min-height:76vh">
+        <div style="width:100%;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <button onClick="{{ goHub }}" style="cursor:pointer;padding:7px 14px;border-radius:999px;font-size:12px;font-weight:700;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:#c6d0e0">‹ 오늘의 나</button>
+          <span style="margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.12em;color:#d6b166">{{ todayLabel }} · {{ ganjiLabel }}</span>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:6px;align-items:center;text-align:center">
+          <h2 style="margin:0;font-size:clamp(20px,3vw,26px);font-weight:700;letter-spacing:-.02em">오늘의 기운</h2>
+          <p style="margin:0;font-size:13px;color:#b0abbd">{{ sajuHint }}</p>
+        </div>
+
+        <sc-if value="{{ sajuRegister }}" hint-placeholder-val="{{ true }}">
+          <div style="width:100%;max-width:440px;display:flex;flex-direction:column;gap:14px;padding:20px;border-radius:24px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.03)">
+            <span style="font-size:13px;font-weight:700">사주 등록 · 최초 1회</span>
+            <label style="display:flex;flex-direction:column;gap:6px;font-size:12px;color:#9d98ab">
+              생년월일
+              <input value="{{ birth }}" onChange="{{ onBirth }}" placeholder="1983-04-12" style="padding:12px 14px;border-radius:14px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);color:#e8ecf4;font-size:14px">
+            </label>
+            <div style="display:flex;flex-direction:column;gap:6px;font-size:12px;color:#9d98ab">
+              양력 / 음력
+              <div style="display:flex;gap:8px">
+                <sc-for list="{{ calendarOptions }}" as="c" hint-placeholder-count="2">
+                  <button onClick="{{ c.onPick }}" style="cursor:pointer;flex:1;padding:11px;border-radius:14px;font-size:13px;font-weight:700;background:{{ c.bg }};border:1px solid {{ c.border }};color:{{ c.color }}">{{ c.label }}</button>
+                </sc-for>
+              </div>
+            </div>
+            <label style="display:flex;flex-direction:column;gap:6px;font-size:12px;color:#9d98ab">
+              태어난 시간
+              <select value="{{ birthTime }}" onChange="{{ onBirthTime }}" style="padding:12px 14px;border-radius:14px;background:#1b1a24;border:1px solid rgba(255,255,255,.1);color:#e8ecf4;font-size:14px">
+                <sc-for list="{{ hourOptions }}" as="h" hint-placeholder-count="13">
+                  <option value="{{ h.value }}">{{ h.label }}</option>
+                </sc-for>
+              </select>
+            </label>
+            <span style="font-size:11px;color:#7d7893">생년월일·력·시지만 저장합니다 · 이름·성별·연락처는 받지 않습니다 · 만 14세 미만 이용 불가 · 프로필 변경은 월 1회</span>
+            <button onClick="{{ registerSaju }}" style="cursor:pointer;padding:13px;border-radius:18px;font-size:14px;font-weight:700;background:linear-gradient(120deg,rgba(214,177,102,.26),rgba(127,216,192,.2));border:1px solid rgba(214,177,102,.4);color:#f4e8cd">내 명식 세우기</button>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ sajuDaily }}" hint-placeholder-val="{{ false }}">
+          <div style="width:100%;max-width:640px;display:flex;flex-direction:column;gap:18px;align-items:center">
+            <div style="display:flex;gap:10px;align-items:flex-end;justify-content:center;flex-wrap:wrap">
+              <sc-for list="{{ pillars }}" as="p" hint-placeholder-count="4">
+                <span style="display:flex;flex-direction:column;gap:6px;align-items:center;padding:14px 10px;width:clamp(62px,9vw,78px);border-radius:16px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.08)">
+                  <span style="font-size:10.5px;color:#8b869b">{{ p.label }}</span>
+                  <span style="font-size:clamp(20px,3vw,26px);font-weight:700;color:{{ p.color }}">{{ p.top }}</span>
+                  <span style="font-size:clamp(18px,2.6vw,22px);color:#c8c3d6">{{ p.bottom }}</span>
+                  <span style="font-size:10px;color:#7d7893">{{ p.element }}</span>
+                </span>
+              </sc-for>
+              <span style="display:flex;flex-direction:column;gap:6px;align-items:center;justify-content:center;padding:14px 10px;width:clamp(62px,9vw,78px);min-height:128px;border-radius:16px;border:1px dashed {{ slotBorder }};background:{{ slotBg }};transition:background 260ms,border-color 260ms">
+                <span style="font-size:10.5px;color:#8b869b">오늘</span>
+                <span style="font-size:clamp(20px,3vw,26px);font-weight:700;color:{{ slotColor }}">{{ slotTop }}</span>
+                <span style="font-size:clamp(18px,2.6vw,22px);color:#c8c3d6">{{ slotBottom }}</span>
+              </span>
+            </div>
+
+            <sc-if value="{{ orbWaiting }}" hint-placeholder-val="{{ true }}">
+              <div style="display:flex;flex-direction:column;gap:12px;align-items:center">
+                <button onClick="{{ snapOrb }}" style="cursor:pointer;padding:0;border:none;background:none;animation:breathe 2.4s ease-in-out infinite">
+                  <span style="display:grid;place-items:center;width:clamp(66px,10vw,84px);height:clamp(66px,10vw,84px);border-radius:50%;background:radial-gradient(circle at 32% 28%,#ffffff,#e7e2d4 40%,#b6ae98 100%);box-shadow:0 0 34px rgba(255,255,255,.22);color:#3a3630;font-size:22px;font-weight:700">{{ orbGlyph }}</span>
+                </button>
+                <span style="font-size:12px;color:#a29dae">구슬을 끌어 빈 자리에 꽂으세요 (탭도 같습니다)</span>
+              </div>
+            </sc-if>
+
+            <sc-if value="{{ sajuReading }}" hint-placeholder-val="{{ false }}">
+              <div style="width:100%;display:flex;flex-direction:column;gap:14px;padding:20px;border-radius:24px;border:1px solid rgba(214,177,102,.22);background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.015))">
+                <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap">
+                  <span style="font-size:17px;font-weight:700">{{ sipsinTitle }}</span>
+                  <span style="margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:10.5px;letter-spacing:.06em;color:#d6b166">{{ ganjiLabel }}</span>
+                </div>
+                <p style="margin:0;font-size:14.5px;line-height:1.75;color:#e0dce8;word-break:keep-all">{{ sajuAdvice }}</p>
+                <p style="margin:0;font-size:13.5px;line-height:1.7;color:#c6c1d2;word-break:keep-all">{{ sajuDayLine }}</p>
+                <div style="display:flex;flex-direction:column;gap:7px;padding:13px;border-radius:16px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06)">
+                  <span style="font-size:12px;font-weight:700;color:#d6b166">{{ branchRelation }}</span>
+                  <span style="font-size:12.5px;color:#b8b3c4;line-height:1.6;word-break:keep-all">{{ elementLine }}</span>
+                </div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap">
+                  <sc-for list="{{ sajuLucky }}" as="l" hint-placeholder-count="3">
+                    <span style="padding:7px 13px;border-radius:999px;font-size:11.5px;background:rgba(214,177,102,.13);border:1px solid rgba(214,177,102,.26);color:#f0dcae">{{ l.label }}</span>
+                  </sc-for>
+                  <span style="padding:7px 13px;border-radius:999px;font-size:11.5px;background:rgba(127,216,192,.12);border:1px solid rgba(127,216,192,.26);color:#a8e6d5">{{ sajuEarn }}</span>
+                </div>
+
+                <div style="display:flex;flex-direction:column;gap:8px;padding:14px;border-radius:18px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06)">
+                  <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                    <span style="font-size:12.5px;font-weight:700">60갑자 도장판</span>
+                    <span style="margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:10.5px;color:#d6b166">{{ sunLabel }}</span>
+                  </div>
+                  <div style="display:grid;grid-template-columns:repeat(10,1fr);gap:4px">
+                    <sc-for list="{{ stamps }}" as="st" hint-placeholder-count="60">
+                      <span style="aspect-ratio:1;border-radius:7px;display:grid;place-items:center;font-size:8.5px;background:{{ st.bg }};border:1px solid {{ st.border }};color:{{ st.color }}">{{ st.mark }}</span>
+                    </sc-for>
+                  </div>
+                  <span style="font-size:11px;color:#8b869b">놓친 칸은 60일 뒤 같은 간지 날에 자동으로 채워집니다 · 순 10칸 +20P · 6순 완성 +100P</span>
+                </div>
+
+                <div style="display:flex;flex-direction:column;gap:7px">
+                  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:8px">
+                    <button onClick="{{ noop }}" style="cursor:pointer;padding:12px 14px;border-radius:16px;font-size:13px;font-weight:700;background:linear-gradient(120deg,rgba(214,177,102,.22),rgba(169,139,224,.2));border:1px solid rgba(214,177,102,.36);color:#f4e8cd">🎬 내일의 기운 미리보기</button>
+                    <button onClick="{{ noop }}" style="cursor:pointer;padding:12px 14px;border-radius:16px;font-size:13px;font-weight:700;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);color:#c6d0e0">🎬 소중한 사람의 오늘</button>
+                    <button onClick="{{ openSajuStats }}" style="cursor:pointer;padding:12px 14px;border-radius:16px;font-size:13px;font-weight:700;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);color:#c6d0e0">{{ sajuStatsLabel }}</button>
+                  </div>
+                  <span style="font-size:11px;color:#8b869b;text-align:center">미리 봐도 오늘의 운세와 적립은 그대로예요 · 상대 생년월일은 기기에서만 계산하고 저장하지 않습니다</span>
+                </div>
+                <span style="font-size:11px;color:#7d7893">{{ tomorrowLine }} · 본 콘텐츠는 오락용입니다</span>
+              </div>
+
+              <div style="width:100%;display:flex;flex-direction:column;gap:8px;padding:15px;border-radius:22px;background:rgba(255,255,255,.028);border:1px solid rgba(169,139,224,.16)">
+                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                  <span style="font-size:12px;font-weight:700;color:#c3b9d8">오늘 남은 봉인</span>
+                  <span style="margin-left:auto;display:flex;gap:5px">
+                    <sc-for list="{{ tripleDots }}" as="d" hint-placeholder-count="3">
+                      <span style="width:9px;height:9px;border-radius:50%;background:{{ d.bg }};border:1px solid {{ d.border }};display:block"></span>
+                    </sc-for>
+                  </span>
+                </div>
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px">
+                  <sc-for list="{{ crossChips }}" as="chip" hint-placeholder-count="2">
+                    <button onClick="{{ chip.onGo }}" style="cursor:pointer;text-align:left;padding:12px 14px;border-radius:16px;font-size:12.5px;font-weight:700;background:{{ chip.bg }};border:1px solid {{ chip.border }};color:{{ chip.color }};word-break:keep-all">{{ chip.label }}</button>
+                  </sc-for>
+                </div>
+              </div>
+            </sc-if>
+          </div>
+        </sc-if>
+      </section>
+    </sc-if>
+
+    <!-- ══ 마음연구소 ══ -->
+    <sc-if value="{{ isMind }}" hint-placeholder-val="{{ false }}">
+      <section data-screen-label="마음연구소" style="position:relative;overflow:hidden;border:1px solid rgba(127,216,192,.18);border-radius:26px;background:radial-gradient(120% 90% at 50% 0%,#16212b 0%,#151a24 50%,#11141c 100%);padding:clamp(20px,3vw,34px);display:flex;flex-direction:column;gap:20px;align-items:center;min-height:76vh">
+        <div style="width:100%;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <button onClick="{{ goHub }}" style="cursor:pointer;padding:7px 14px;border-radius:999px;font-size:12px;font-weight:700;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:#c6d0e0">‹ 오늘의 나</button>
+          <span style="margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.12em;color:#7fd8c0">{{ mindProgressLabel }} · /mind/</span>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:6px;align-items:center;text-align:center">
+          <h2 style="margin:0;font-size:clamp(20px,3vw,26px);font-weight:700;letter-spacing:-.02em">마음연구소</h2>
+          <p style="margin:0;font-size:13px;color:#a8b1c4">{{ mindHint }}</p>
+        </div>
+
+        <sc-if value="{{ mindEnvelope }}" hint-placeholder-val="{{ true }}">
+          <div style="width:100%;max-width:460px;display:flex;flex-direction:column;gap:14px;align-items:center">
+            <button onClick="{{ openEnvelope }}" style="cursor:pointer;width:100%;padding:26px 20px;border-radius:24px;background:linear-gradient(160deg,rgba(127,216,192,.14),rgba(169,139,224,.12));border:1px solid rgba(127,216,192,.3);color:#e8f4ef;display:flex;flex-direction:column;gap:9px;align-items:center;animation:breathe 3s ease-in-out infinite">
+              <span style="font-size:34px">✉️</span>
+              <span style="font-size:16px;font-weight:700">{{ experimentTitle }}</span>
+              <span style="font-size:12.5px;color:#9fb5ad">봉투를 열면 4문항 · 90초</span>
+            </button>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:center">
+              <sc-for list="{{ mindSummaryChips }}" as="c" hint-placeholder-count="3">
+                <span style="padding:8px 13px;border-radius:999px;font-size:11.5px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09);color:#c0cad8">{{ c.label }}</span>
+              </sc-for>
+            </div>
+            <span style="font-size:11px;color:#7d8497;text-align:center">오락용 분류이며 심리학적 진단이 아닙니다</span>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ mindAsking }}" hint-placeholder-val="{{ false }}">
+          <div style="width:100%;max-width:540px;display:flex;flex-direction:column;gap:16px">
+            <div style="display:flex;gap:6px">
+              <sc-for list="{{ mindBars }}" as="b" hint-placeholder-count="4">
+                <span style="flex:1;height:5px;border-radius:999px;background:{{ b.bg }};display:block"></span>
+              </sc-for>
+            </div>
+            <p style="margin:0;font-size:clamp(16px,2.4vw,19px);font-weight:700;line-height:1.5;word-break:keep-all">{{ mindQuestion }}</p>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <sc-for list="{{ mindChoices }}" as="c" hint-placeholder-count="5">
+                <button onClick="{{ c.onPick }}" style="cursor:pointer;text-align:left;padding:14px 16px;border-radius:16px;font-size:13.5px;line-height:1.45;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09);color:#e2e8f2;word-break:keep-all" style-hover="border-color:rgba(127,216,192,.45)">{{ c.label }}</button>
+              </sc-for>
+            </div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ mindGuessPhase }}" hint-placeholder-val="{{ false }}">
+          <div style="width:100%;max-width:540px;display:flex;flex-direction:column;gap:14px;padding:20px;border-radius:24px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08)">
+            <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap">
+              <span style="font-size:13px;font-weight:700">전국 추측</span>
+              <span style="margin-left:auto;font-size:11px;color:#7fd8c0">기록되지 않아요</span>
+            </div>
+            <p style="margin:0;font-size:15.5px;font-weight:700;line-height:1.5;word-break:keep-all">{{ guessQuestion }}</p>
+            <div style="display:flex;flex-direction:column;gap:8px">
+              <sc-for list="{{ guessChoices }}" as="c" hint-placeholder-count="5">
+                <button onClick="{{ c.onPick }}" style="cursor:pointer;text-align:left;padding:13px 15px;border-radius:16px;font-size:13.5px;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.08);color:#dde4ef" style-hover="border-color:rgba(127,216,192,.4)">{{ c.label }}</button>
+              </sc-for>
+            </div>
+            <span style="font-size:11px;color:#7d8497">점수도 보상도 저장도 없는 문항입니다</span>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ mindResult }}" hint-placeholder-val="{{ false }}">
+          <div style="width:100%;max-width:620px;display:flex;flex-direction:column;gap:16px;align-items:center">
+            <div style="width:clamp(124px,20vw,152px);aspect-ratio:1;border-radius:26px;border:1px solid rgba(127,216,192,.4);background:linear-gradient(170deg,rgba(127,216,192,.18),rgba(169,139,224,.16));display:flex;flex-direction:column;gap:6px;align-items:center;justify-content:center;color:#eef4ff">
+              <span style="font-size:clamp(30px,5vw,40px)">{{ mindIcon }}</span>
+              <span style="font-size:13.5px;font-weight:700">{{ mindType }}</span>
+            </div>
+
+            <div style="width:100%;display:flex;flex-direction:column;gap:14px;padding:20px;border-radius:24px;border:1px solid rgba(127,216,192,.2);background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.015))">
+              <p style="margin:0;font-size:14.5px;line-height:1.75;color:#dfe5ef;word-break:keep-all">{{ mindDesc }}</p>
+              <p style="margin:0;font-size:13.5px;line-height:1.7;color:#b9c3d2;word-break:keep-all">{{ mindAxisEcho }}</p>
+              <div style="display:flex;gap:8px;flex-wrap:wrap">
+                <span style="padding:7px 13px;border-radius:999px;font-size:11.5px;background:rgba(127,216,192,.12);border:1px solid rgba(127,216,192,.26);color:#a8e6d5">{{ mindEarn }}</span>
+                <span style="padding:7px 13px;border-radius:999px;font-size:11.5px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09);color:#c0cad8">{{ mindStatsLine }}</span>
+              </div>
+
+              <button onClick="{{ toggleOthers }}" style="cursor:pointer;text-align:left;padding:13px 15px;border-radius:16px;font-size:12.5px;font-weight:700;background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.08);color:#c6d0e0">{{ othersLabel }}</button>
+              <sc-if value="{{ othersOpen }}" hint-placeholder-val="{{ false }}">
+                <div style="display:flex;flex-direction:column;gap:8px">
+                  <sc-for list="{{ otherMinds }}" as="o" hint-placeholder-count="3">
+                    <span style="display:flex;flex-direction:column;gap:3px;padding:12px 14px;border-radius:14px;background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.06)">
+                      <span style="font-size:12.5px;font-weight:700;color:#dce3ee">{{ o.type }}</span>
+                      <span style="font-size:11.5px;color:#8b95a8;line-height:1.5;word-break:keep-all">{{ o.line }}</span>
+                    </span>
+                  </sc-for>
+                </div>
+              </sc-if>
+
+              <div style="display:flex;flex-direction:column;gap:8px;padding:15px;border-radius:18px;background:rgba(127,216,192,.07);border:1px solid rgba(127,216,192,.2)">
+                <span style="font-size:12.5px;font-weight:700;color:#a8e6d5">마음 지도 · 이달</span>
+                <div style="display:flex;gap:5px;flex-wrap:wrap">
+                  <sc-for list="{{ mindAxes }}" as="a" hint-placeholder-count="8">
+                    <span style="display:flex;flex-direction:column;gap:3px;align-items:center;padding:8px 10px;border-radius:12px;background:{{ a.bg }};border:1px solid {{ a.border }}">
+                      <span style="font-size:11px;color:#c0cad8">{{ a.name }}</span>
+                      <span style="font-family:'JetBrains Mono',monospace;font-size:10px;color:#7fd8c0">{{ a.value }}</span>
+                    </span>
+                  </sc-for>
+                </div>
+                <span style="font-size:11px;color:#7d8497">축 8개를 5까지 채우면 「마음 초상」이 열립니다 · 매월 1일 리셋</span>
+              </div>
+
+              <div style="display:flex;flex-direction:column;gap:7px">
+                <button onClick="{{ goPair }}" style="cursor:pointer;padding:13px 18px;border-radius:18px;font-size:14px;font-weight:700;background:linear-gradient(120deg,rgba(127,216,192,.22),rgba(169,139,224,.22));border:1px solid rgba(127,216,192,.36);color:#e6f4ee">너를 맞혀볼게 · 링크 보내기</button>
+                <span style="font-size:11px;color:#7d8497;text-align:center">이름도 가입도 없이 링크만으로 응답할 수 있어요</span>
+              </div>
+              <button onClick="{{ noop }}" style="cursor:pointer;padding:11px 16px;border-radius:16px;font-size:12.5px;font-weight:700;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);color:#c6d0e0">🎬 지난 실험 열기 · 광고 5초 (2회 남음)</button>
+              <span style="font-size:11px;color:#7d8497">더 열어도 오늘의 카드와 적립은 그대로예요 · 오락용 분류이며 심리학적 진단이 아닙니다</span>
+            </div>
+
+            <div style="width:100%;display:flex;flex-direction:column;gap:8px;padding:15px;border-radius:22px;background:rgba(255,255,255,.028);border:1px solid rgba(127,216,192,.14)">
+              <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                <span style="font-size:12px;font-weight:700;color:#c0cad8">오늘 남은 봉인</span>
+                <span style="margin-left:auto;display:flex;gap:5px">
+                  <sc-for list="{{ tripleDots }}" as="d" hint-placeholder-count="3">
+                    <span style="width:9px;height:9px;border-radius:50%;background:{{ d.bg }};border:1px solid {{ d.border }};display:block"></span>
+                  </sc-for>
+                </span>
+              </div>
+              <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px">
+                <sc-for list="{{ crossChips }}" as="chip" hint-placeholder-count="2">
+                  <button onClick="{{ chip.onGo }}" style="cursor:pointer;text-align:left;padding:12px 14px;border-radius:16px;font-size:12.5px;font-weight:700;background:{{ chip.bg }};border:1px solid {{ chip.border }};color:{{ chip.color }};word-break:keep-all">{{ chip.label }}</button>
+              </sc-for>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+      </section>
+    </sc-if>
+
+    <!-- ══ 우리 · 페어 ══ -->
+    <sc-if value="{{ isPair }}" hint-placeholder-val="{{ false }}">
+      <section data-screen-label="우리 페어" style="border:1px solid rgba(127,216,192,.18);border-radius:26px;background:radial-gradient(120% 90% at 50% 0%,#16212b 0%,#151a24 50%,#11141c 100%);padding:clamp(20px,3vw,34px);display:flex;flex-direction:column;gap:20px;align-items:center;min-height:70vh">
+        <div style="width:100%;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <button onClick="{{ goHub }}" style="cursor:pointer;padding:7px 14px;border-radius:999px;font-size:12px;font-weight:700;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:#c6d0e0">‹ 오늘의 나</button>
+          <span style="margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.12em;color:#7fd8c0">{{ pairStepLabel }} · /p/</span>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:6px;align-items:center;text-align:center">
+          <h2 style="margin:0;font-size:clamp(20px,3vw,26px);font-weight:700;letter-spacing:-.02em">너를 맞혀볼게</h2>
+          <p style="margin:0;font-size:13px;color:#a8b1c4">{{ pairHint }}</p>
+        </div>
+
+        <sc-if value="{{ pairNeedsMind }}" hint-placeholder-val="{{ false }}">
+          <div style="width:100%;max-width:440px;display:flex;flex-direction:column;gap:12px;padding:20px;border-radius:22px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);align-items:center">
+            <span style="font-size:13.5px;color:#c0cad8;text-align:center;word-break:keep-all">먼저 오늘의 실험을 마치면 상대에게 보낼 문항이 만들어집니다.</span>
+            <button onClick="{{ goMind }}" style="cursor:pointer;padding:12px 18px;border-radius:16px;font-size:13px;font-weight:700;background:rgba(127,216,192,.12);border:1px solid rgba(127,216,192,.3);color:#a8e6d5">오늘의 실험 하러 가기</button>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ pairRelationPhase }}" hint-placeholder-val="{{ false }}">
+          <div style="width:100%;max-width:460px;display:flex;flex-direction:column;gap:11px">
+            <span style="font-size:12px;color:#8b95a8">누구를 맞혀볼까요 · 이름은 받지 않습니다</span>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:9px">
+              <sc-for list="{{ relations }}" as="r" hint-placeholder-count="4">
+                <button onClick="{{ r.onPick }}" style="cursor:pointer;padding:15px 10px;border-radius:18px;font-size:13.5px;font-weight:700;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09);color:#e2e8f2;display:flex;flex-direction:column;gap:5px;align-items:center" style-hover="border-color:rgba(127,216,192,.45)">
+                  <span style="font-size:19px">{{ r.icon }}</span>
+                  <span>{{ r.label }}</span>
+                  <span style="font-size:10.5px;font-weight:400;color:#8b95a8">{{ r.best }}</span>
+                </button>
+              </sc-for>
+            </div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ pairGuessPhase }}" hint-placeholder-val="{{ false }}">
+          <div style="width:100%;max-width:540px;display:flex;flex-direction:column;gap:14px">
+            <div style="display:flex;gap:6px">
+              <sc-for list="{{ pairBars }}" as="b" hint-placeholder-count="3">
+                <span style="flex:1;height:5px;border-radius:999px;background:{{ b.bg }};display:block"></span>
+              </sc-for>
+            </div>
+            <p style="margin:0;font-size:clamp(15px,2.2vw,18px);font-weight:700;line-height:1.5;word-break:keep-all">{{ pairQuestion }}</p>
+            <sc-if value="{{ pairChoosingAnswer }}" hint-placeholder-val="{{ true }}">
+              <div style="display:flex;flex-direction:column;gap:8px">
+                <sc-for list="{{ pairOptions }}" as="o" hint-placeholder-count="5">
+                  <button onClick="{{ o.onPick }}" style="cursor:pointer;text-align:left;padding:13px 15px;border-radius:16px;font-size:13.5px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09);color:#e2e8f2;word-break:keep-all" style-hover="border-color:rgba(127,216,192,.45)">{{ o.label }}</button>
+                </sc-for>
+              </div>
+            </sc-if>
+            <sc-if value="{{ pairChoosingReason }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;flex-direction:column;gap:8px">
+                <span style="font-size:12px;color:#8b95a8">왜 그렇게 생각했나요 · 근거를 하나 고르면 다음으로 갑니다</span>
+                <sc-for list="{{ pairReasons }}" as="r" hint-placeholder-count="5">
+                  <button onClick="{{ r.onPick }}" style="cursor:pointer;text-align:left;padding:13px 15px;border-radius:16px;font-size:13px;background:rgba(127,216,192,.06);border:1px solid rgba(127,216,192,.18);color:#d7e6e0;word-break:keep-all" style-hover="border-color:rgba(127,216,192,.5)">{{ r.label }}</button>
+                </sc-for>
+              </div>
+            </sc-if>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ pairLinkPhase }}" hint-placeholder-val="{{ false }}">
+          <div style="width:100%;max-width:520px;display:flex;flex-direction:column;gap:14px;padding:20px;border-radius:24px;background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.015));border:1px solid rgba(127,216,192,.22)">
+            <span style="font-size:15px;font-weight:700">링크가 준비됐어요</span>
+            <span style="display:flex;align-items:center;gap:9px;padding:13px 15px;border-radius:16px;background:rgba(0,0,0,.25);border:1px solid rgba(255,255,255,.1);font-family:'JetBrains Mono',monospace;font-size:12px;color:#a8e6d5;word-break:break-all">{{ pairUrl }}</span>
+            <button onClick="{{ noop }}" style="cursor:pointer;padding:13px;border-radius:18px;font-size:14px;font-weight:700;background:linear-gradient(120deg,rgba(127,216,192,.24),rgba(169,139,224,.22));border:1px solid rgba(127,216,192,.4);color:#e6f4ee">링크 복사하기</button>
+            <div style="display:flex;flex-direction:column;gap:6px;font-size:11.5px;color:#8b95a8">
+              <span>· 상대는 가입도 설치도 없이 3문항만 답하면 됩니다</span>
+              <span>· 링크는 72시간 후 만료되고, 응답은 한 번만 가능합니다</span>
+              <span>· 응답 원문은 저장하지 않고 서로 알기 %로만 남습니다</span>
+              <span>· 오늘 만들 수 있는 링크 {{ pairQuota }}</span>
+            </div>
+            <button onClick="{{ resetPair }}" style="cursor:pointer;padding:11px 16px;border-radius:16px;font-size:12.5px;font-weight:700;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);color:#c6d0e0">다른 사람에게도 보내기</button>
+          </div>
+        </sc-if>
+      </section>
+    </sc-if>
+
+    <!-- ══ 다음 영역 ══ -->
+    <sc-if value="{{ showSoon }}" hint-placeholder-val="{{ true }}">
+      <section data-screen-label="준비중 영역" style="border:1px dashed rgba(255,255,255,.1);border-radius:26px;background:rgba(255,255,255,.012);padding:clamp(16px,2.6vw,22px);display:flex;flex-direction:column;gap:14px">
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+          <span style="width:34px;height:34px;border-radius:12px;background:rgba(255,255,255,.05);display:grid;place-items:center;font-size:17px;opacity:.7">🗂</span>
+          <div style="display:flex;flex-direction:column;gap:2px;margin-right:auto">
+            <span style="font-size:16px;font-weight:700;color:#9aa6ba">다음 영역</span>
+            <span style="font-size:12px;color:#6f7c93">영역이 늘어나도 같은 규칙으로 붙습니다</span>
+          </div>
+          <span style="font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:.08em;color:#6f7c93;border:1px solid rgba(255,255,255,.1);border-radius:999px;padding:5px 10px">COMING SOON</span>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px">
+          <sc-for list="{{ soonZones }}" as="z" hint-placeholder-count="3">
+            <div style="display:flex;align-items:center;gap:11px;padding:15px;border-radius:20px;border:1px solid rgba(255,255,255,.06);background:rgba(255,255,255,.02)">
+              <span style="width:36px;height:36px;border-radius:13px;background:rgba(255,255,255,.04);display:grid;place-items:center;font-size:17px;opacity:.55">{{ z.icon }}</span>
+              <span style="display:flex;flex-direction:column;gap:2px">
+                <span style="font-size:14px;font-weight:700;color:#8a97ae">{{ z.title }}</span>
+                <span style="font-size:11.5px;color:#5c6880">{{ z.desc }}</span>
+              </span>
+            </div>
+          </sc-for>
+        </div>
+      </section>
+    </sc-if>
+
+    <footer style="text-align:center;font-size:12px;color:#5c6880;padding-top:6px">
+      <a href="https://github.com/zzz003-git/minigames" style="color:#6f7c93">소스 코드</a>
+    </footer>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1120,&quot;height&quot;:900}}">
+const ORIGINALS = [
+  { icon:'⏱', title:'스탑워치 챌린지', desc:'목표 시간에 정확히 맞춰 멈추기', meta:'1.00~9.99초 · 타임별 순위', href:'games/stopwatch/', accent:'#7fd8c0', soft:'rgba(127,216,192,.12)' },
+  { icon:'⚾', title:'숫자야구', desc:'3자리 숫자를 스트라이크·볼 힌트로 추리하기', meta:'기본 6회 · 전략 퍼즐', href:'games/baseball/', accent:'#e9927f', soft:'rgba(233,146,127,.12)' },
+  { icon:'⌨', title:'타이핑 챌린지', desc:'제시 문장을 빠르고 정확하게 입력하기', meta:'한국어 · English · 혼합', href:'games/typing/', accent:'#d6b166', soft:'rgba(214,177,102,.12)' },
+  { icon:'🧠', title:'숫자 기억력', desc:'잠깐 보여준 숫자를 기억해서 입력하기', meta:'LV1~10 · 4~13자리', href:'games/memory/', accent:'#7fd8c0', soft:'rgba(127,216,192,.12)' }
+];
+
+// plays/visits = 전날(D-1) 집계 — 실제 구현 시 stats API 값으로 대체
+const ACTION = [
+  { icon:'⚡', title:'반응속도 테스트', desc:'초록으로 바뀌면 바로 탭', href:'games/reaction/', plays:4820, visits:3110 },
+  { icon:'🎨', title:'색 다른 타일 찾기', desc:'하나만 색이 다릅니다', href:'games/oddcolor/', plays:3960, visits:2540 },
+  { icon:'🔢', title:'숫자 순서 터치', desc:'1부터 25까지 순서대로', href:'games/numtap/', plays:3410, visits:2280 },
+  { icon:'🌈', title:'색깔 말하기', desc:'뜻 말고 글자 색을 고르세요', href:'games/stroop/', plays:2870, visits:1930 },
+  { icon:'🎯', title:'링 스톱', desc:'밝은 구간에서 탭', href:'games/ringstop/', plays:2650, visits:1710 },
+  { icon:'✌', title:'이겨라 / 져라', desc:'지시대로 1초 안에', href:'games/rpsflash/', plays:2280, visits:1490 },
+  { icon:'🛒', title:'와르르 받기', desc:'폭탄만 피해서 받으세요', href:'games/dropcatch/', plays:2140, visits:1380 },
+  { icon:'🧱', title:'퍼펙트 스택', desc:'흐르는 블록을 정확히 쌓기', href:'games/stack/', plays:1990, visits:1260 },
+  { icon:'⚖', title:'밸런스 드롭', desc:'저울을 수평에 맞추세요', href:'games/balance/', plays:1520, visits:980 },
+  { icon:'🫧', title:'톡톡', desc:'손 떼지 말고 훑어서 터뜨리기', href:'games/toktok/', plays:1340, visits:870 }
+];
+
+const PUZZLE = [
+  { icon:'🔔', title:'순서 기억', desc:'반짝인 순서 그대로', href:'games/sequence/', plays:3720, visits:2410 },
+  { icon:'➗', title:'60초 암산', desc:'60초 동안 몇 문제?', href:'games/mathrush/', plays:3480, visits:2260 },
+  { icon:'🃏', title:'카드 짝 맞추기', desc:'적게 뒤집을수록 상위', href:'games/cardpair/', plays:3050, visits:2020 },
+  { icon:'🗳', title:'다들 뭐 골랐을까', desc:'다수가 고른 쪽을 3연속', href:'games/majority/', plays:2910, visits:1980 },
+  { icon:'🎟', title:'슥슥 긁기', desc:'은박을 긁어 같은 그림 3개', href:'games/scratch/', plays:2740, visits:1860 },
+  { icon:'🏪', title:'내 가게 채우기', desc:'하루 한 판, 선반을 채워요', href:'games/store/', plays:2510, visits:1790 },
+  { icon:'🔍', title:'3초 탐정', desc:'무엇이 바뀌었을까요', href:'games/detective/', plays:2380, visits:1620 },
+  { icon:'🇰🇷', title:'오늘의 전국 게이지', desc:'다 같이 채우는 오늘의 목표', href:'games/gauge/', plays:2260, visits:1700 },
+  { icon:'👁', title:'순간 개수 세기', desc:'점이 몇 개였나요?', href:'games/countdot/', plays:1880, visits:1210 },
+  { icon:'🧺', title:'딱 맞게 담기', desc:'세 번 안에 금액을 딱', href:'games/basket/', plays:1660, visits:1080 },
+  { icon:'🧵', title:'한 줄로 이어요', desc:'번호 순서대로 한 붓', href:'games/pathline/', plays:1540, visits:1020 },
+  { icon:'🥂', title:'리듬 에코', desc:'빛나는 박자를 그대로', href:'games/rhythm/', plays:1420, visits:940 },
+  { icon:'🥤', title:'오늘의 한 잔', desc:'목표선에 딱 맞게 세 층', href:'games/pour/', plays:1310, visits:880 },
+  { icon:'🪙', title:'세 칸 쌓기', desc:'같은 것끼리 붙여 키우기', href:'games/merge3/', plays:1180, visits:790 }
+];
+
+const rankByYesterday = (list) => list.slice().sort((a, b) => (b.plays + b.visits) - (a.plays + a.visits) || b.plays - a.plays);
+
+const FOCUS = [
+  { key:'day', icon:'🌤', label:'오늘 하루' },
+  { key:'work', icon:'🗂', label:'일 · 공부' },
+  { key:'love', icon:'💗', label:'사랑 · 관계' },
+  { key:'money', icon:'🪙', label:'돈 · 재물' }
+];
+
+// 22장 메이저 — core(카드 의미) + 행운 3종. 해석은 core + 포커스 조언 회전으로 조합(TAROT-SPEC 2·T-07)
+const CARDS = [
+  { face:'○', name:'바보', en:'THE FOOL', core:'아직 정해지지 않은 것이 많은 날입니다. 계획보다 첫 걸음이 먼저입니다.', color:'연노랑', num:0, item:'새 노트' },
+  { face:'✤', name:'마법사', en:'THE MAGICIAN', core:'가진 것으로 충분히 만들 수 있는 날입니다. 재료를 새로 찾지 않아도 됩니다.', color:'빨강', num:1, item:'펜' },
+  { face:'☾', name:'여사제', en:'THE HIGH PRIESTESS', core:'말보다 관찰이 앞서는 날입니다. 아직 꺼내지 않은 판단이 더 정확합니다.', color:'남색', num:2, item:'책' },
+  { face:'♕', name:'여황제', en:'THE EMPRESS', core:'돌보는 일이 잘 풀립니다. 새로 벌이기보다 가진 것을 다듬는 쪽이 만족스럽습니다.', color:'초록', num:3, item:'화분' },
+  { face:'♔', name:'황제', en:'THE EMPEROR', core:'기준을 세우면 정리되는 날입니다. 흔들리는 일에 선을 하나 그으세요.', color:'짙은 갈색', num:4, item:'명함' },
+  { face:'⛪', name:'교황', en:'THE HIEROPHANT', core:'해오던 방식이 통하는 날입니다. 새로운 시도보다 검증된 순서가 낫습니다.', color:'회색', num:5, item:'손목시계' },
+  { face:'♡', name:'연인', en:'THE LOVERS', core:'선택 앞에 서는 날입니다. 둘 다 갖기보다 하나를 고르면 편해집니다.', color:'분홍', num:6, item:'거울' },
+  { face:'⛟', name:'전차', en:'THE CHARIOT', core:'밀고 나가면 되는 날입니다. 방향은 이미 정해져 있습니다.', color:'검정', num:7, item:'운동화' },
+  { face:'⚖', name:'힘', en:'STRENGTH', core:'세게 나가지 않아도 되는 날입니다. 버티는 쪽이 이깁니다.', color:'주황', num:8, item:'물병' },
+  { face:'✦', name:'은둔자', en:'THE HERMIT', core:'혼자 정리할 시간이 필요한 날입니다. 답은 밖에 없습니다.', color:'남회색', num:9, item:'이어폰' },
+  { face:'✺', name:'운명의 수레바퀴', en:'WHEEL OF FORTUNE', core:'예정에 없던 제안이 들어올 수 있습니다. 오전에 자리를 비워 두세요.', color:'보라', num:10, item:'우산' },
+  { face:'⚚', name:'정의', en:'JUSTICE', core:'셈이 맞아야 넘어가는 날입니다. 애매하게 남긴 것을 정리하세요.', color:'하늘', num:11, item:'계산기' },
+  { face:'⇅', name:'매달린 사람', en:'THE HANGED MAN', core:'멈춰 있는 것이 손해가 아닌 날입니다. 관점을 바꾸면 답이 보입니다.', color:'청록', num:12, item:'담요' },
+  { face:'⛰', name:'죽음', en:'DEATH', core:'끝내야 시작되는 날입니다. 미뤄 둔 마무리를 하나 고르세요.', color:'흑청', num:13, item:'상자' },
+  { face:'♒', name:'절제', en:'TEMPERANCE', core:'속도를 고르게 하면 되는 날입니다. 과하지도 부족하지도 않게.', color:'연파랑', num:14, item:'컵' },
+  { face:'☗', name:'악마', en:'THE DEVIL', core:'습관이 결정을 대신하는 날입니다. 한 가지만 의식해서 끊어 보세요.', color:'자주', num:15, item:'거울' },
+  { face:'⚡', name:'탑', en:'THE TOWER', core:'흔들리는 것이 나쁜 신호는 아닙니다. 붙잡지 말고 놓아주세요.', color:'회백', num:16, item:'열쇠' },
+  { face:'★', name:'별', en:'THE STAR', core:'막혀 있던 일에 숨통이 트입니다. 작은 연락 하나가 하루를 바꿉니다.', color:'민트', num:17, item:'엽서' },
+  { face:'☽', name:'달', en:'THE MOON', core:'정보가 아직 다 모이지 않았습니다. 들은 말은 한 번 더 확인하세요.', color:'은색', num:18, item:'스탠드' },
+  { face:'☀', name:'태양', en:'THE SUN', core:'결과가 눈에 보이는 날입니다. 감춰 둔 계획을 꺼내도 무리 없습니다.', color:'노랑', num:19, item:'선글라스' },
+  { face:'✧', name:'심판', en:'JUDGEMENT', core:'지난 일이 다시 불려오는 날입니다. 이번엔 다르게 답할 수 있습니다.', color:'백금', num:20, item:'편지' },
+  { face:'❂', name:'세계', en:'THE WORLD', core:'한 바퀴가 닫히는 날입니다. 마무리하고 다음을 정하기 좋습니다.', color:'감청', num:21, item:'지도' }
+];
+
+const FOCUS_ADVICE = {
+  day: ['오전에 한 가지만 끝내 두면 남은 하루가 순해집니다.', '오늘은 새 약속보다 어제의 잔업을 닫는 편이 좋습니다.', '점심 이후 흐름이 풀리니 무거운 일은 그때로 미루세요.'],
+  work: ['보여 줄 것을 먼저 정리하면 말이 짧아집니다.', '혼자 붙잡지 말고 한 사람에게 먼저 공유하세요.', '결정은 오후로 미루고 오전에는 자료만 모으세요.'],
+  love: ['먼저 연락하는 쪽이 편해지는 날입니다.', '짐작으로 결론 내지 말고 한 번 물어보세요.', '무거운 이야기보다 짧은 안부가 더 오래 남습니다.'],
+  money: ['새로 사기보다 새는 곳을 하나 막는 편이 낫습니다.', '조건을 끝까지 읽고 결제하세요.', '오늘 들어오는 것은 제자리에 두고 쓰지 마세요.']
+};
+
+const FOCUS_LABEL = { day:'오늘 하루', work:'일 · 공부', love:'사랑 · 관계', money:'돈 · 재물' };
+
+const HOURS = [
+  { value:'unknown', label:'몰라요 (3기둥으로 풀이)' },
+  { value:'ja', label:'자시 23:30~01:30' }, { value:'chuk', label:'축시 01:30~03:30' },
+  { value:'in', label:'인시 03:30~05:30' }, { value:'myo', label:'묘시 05:30~07:30' },
+  { value:'jin', label:'진시 07:30~09:30' }, { value:'sa', label:'사시 09:30~11:30' },
+  { value:'o', label:'오시 11:30~13:30' }, { value:'mi', label:'미시 13:30~15:30' },
+  { value:'sin', label:'신시 15:30~17:30' }, { value:'yu', label:'유시 17:30~19:30' },
+  { value:'sul', label:'술시 19:30~21:30' }, { value:'hae', label:'해시 21:30~23:30' }
+];
+
+const MIND_EXP = {
+  title:'월요일의 실험 — 선택의 방',
+  q:[
+    { t:'문을 열자 네 개의 방이 보입니다. 먼저 들어가고 싶은 곳은?', o:[
+      { t:'할 일이 적힌 화이트보드가 있는 방', ty:0, ax:'정돈' },
+      { t:'커튼이 내려진 어두운 방', ty:1, ax:'회복' },
+      { t:'누군가 이야기하고 있는 방', ty:2, ax:'연결' },
+      { t:'처음 보는 물건이 쌓인 방', ty:3, ax:'호기심' },
+      { t:'창이 크게 난 빈 방', ty:1, ax:'여백' }] },
+    { t:'방 안에서 시계가 멈춰 있습니다. 어떻게 하나요?', o:[
+      { t:'시간을 맞춰 다시 돌린다', ty:0, ax:'정돈' },
+      { t:'그대로 두고 앉는다', ty:1, ax:'여백' },
+      { t:'누구 것인지 궁금해한다', ty:2, ax:'연결' },
+      { t:'왜 멈췄는지 열어 본다', ty:3, ax:'호기심' },
+      { t:'내 시계와 비교해 본다', ty:0, ax:'기준' }] },
+    { t:'벽에 낯선 사람의 메모가 붙어 있습니다.', o:[
+      { t:'내용을 정리해서 옮겨 적는다', ty:0, ax:'정돈' },
+      { t:'읽지 않고 지나간다', ty:1, ax:'회복' },
+      { t:'답장을 남긴다', ty:2, ax:'연결' },
+      { t:'누가 썼는지 추리한다', ty:3, ax:'호기심' },
+      { t:'오래 서서 여러 번 읽는다', ty:3, ax:'여운' }] },
+    { t:'방을 나오며 하나만 가져갈 수 있습니다.', o:[
+      { t:'남은 할 일 목록', ty:0, ax:'기준' },
+      { t:'푹신한 담요', ty:1, ax:'회복' },
+      { t:'누군가의 메모', ty:2, ax:'여운' },
+      { t:'열어 보지 못한 상자', ty:3, ax:'호기심' },
+      { t:'아무것도 가져가지 않는다', ty:1, ax:'여백' }] }
+  ],
+  guess:{ t:'사람들은 어느 방을 가장 많이 골랐을까요?', o:['화이트보드가 있는 방','어두운 방','이야기가 들리는 방','물건이 쌓인 방','창이 큰 빈 방'] },
+  types:[
+    { key:'order', icon:'🧭', n:'정돈하는 마음', share:'27.4%',
+      d:'흐트러진 것을 제자리로 돌려놓고 싶은 상태입니다. 새로 벌이는 일보다 남아 있는 것을 닫는 쪽이 훨씬 만족스럽게 느껴집니다.',
+      echo:'이번 달 「정돈」 축이 가장 빠르게 올라가고 있어요.' },
+    { key:'rest', icon:'🌿', n:'가라앉히는 마음', share:'24.1%',
+      d:'에너지를 쓰는 일보다 덜어내는 일이 필요한 상태입니다. 결정은 미뤄도 손해가 크지 않으니 채우기보다 비우는 편이 좋습니다.',
+      echo:'「여백」 축이 3주째 오르고 있어요. 쉬는 선택을 계속 고르고 있습니다.' },
+    { key:'link', icon:'💧', n:'되짚는 마음', share:'26.8%',
+      d:'끝난 일과 나눈 말이 오래 남는 상태입니다. 혼자 결론 내리기보다 상대에게 한 번 물어보면 생각보다 쉽게 정리됩니다.',
+      echo:'「연결」 축이 이달 최고치입니다. 사람을 향해 답을 고르고 있어요.' },
+    { key:'seek', icon:'🔍', n:'들여다보는 마음', share:'21.7%',
+      d:'왜 그런지 알고 싶은 쪽으로 마음이 기울어 있습니다. 결론을 서두르지 않아도 되는 날이라 오래 보는 편이 낫습니다.',
+      echo:'「호기심」 축이 이달 두 번째로 높아요.' }
+  ]
+};
+
+const AXES = ['정돈','회복','연결','호기심','여백','기준','여운','균형'];
+
+const RELATIONS = [
+  { key:'lover', icon:'💗', label:'연인', best:'최고 67%' },
+  { key:'friend', icon:'🫂', label:'친구', best:'최고 64%' },
+  { key:'family', icon:'🏠', label:'가족', best:'기록 없음' },
+  { key:'coworker', icon:'🗂', label:'동료', best:'최고 33%' }
+];
+
+const PAIR_Q = [
+  { t:'그 사람은 네 개의 방 중 어디에 먼저 들어갈까요?', o:['화이트보드가 있는 방','어두운 방','이야기가 들리는 방','물건이 쌓인 방','창이 큰 빈 방'],
+    r:['평소 할 일을 먼저 정리하는 사람이라서','요즘 지쳐 보였으니까','사람 있는 쪽으로 늘 가니까','새로운 걸 못 지나치는 성격이라서','조용한 곳을 좋아하니까'] },
+  { t:'멈춘 시계를 보면 그 사람은?', o:['다시 맞춘다','그대로 둔다','누구 것인지 궁금해한다','열어 본다','자기 시계와 비교한다'],
+    r:['어긋난 걸 못 참는 사람이라서','굳이 손대지 않는 편이라서','사람 얘기부터 하는 사람이라서','원인을 알아야 넘어가니까','기준이 분명한 사람이라서'] },
+  { t:'방을 나오며 하나만 가져간다면?', o:['할 일 목록','담요','누군가의 메모','열지 못한 상자','아무것도'],
+    r:['일을 놓지 못하는 사람이라서','편안함을 제일 챙기니까','말을 오래 담아 두는 사람이라서','궁금한 걸 남겨 두지 못하니까','비우는 걸 좋아하니까'] }
+];
+
+const GAN = ['갑','을','병','정','무','기','경','신','임','계'];
+const JI = ['자','축','인','묘','진','사','오','미','신','유','술','해'];
+const GAN_H = ['甲','乙','丙','丁','戊','己','庚','辛','壬','癸'];
+const JI_H = ['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥'];
+const GAN_EL = ['목(木)','목(木)','화(火)','화(火)','토(土)','토(土)','금(金)','금(金)','수(水)','수(水)'];
+// 데모용 일진 — 실서비스는 검증 만세력 테이블(SAJU-SPEC 6절)로 대체
+const ganji = (n) => {
+  const i = ((n % 60) + 60) % 60;
+  return { ko: GAN[i % 10] + JI[i % 12], top: GAN_H[i % 10], bottom: JI_H[i % 12], el: GAN_EL[i % 10] };
+};
+
+const hash = (str) => { let h = 0; for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) % 100000; return h; };
+
+class Component extends DCLogic {
+  state = {
+    view:'home', openAction:false, openPuzzle:false,
+    // 타로
+    focus:null, usedFocus:[], shuffles:0, picked:null, adLeft:2, lock:false,
+    collected:[17, 3, 10, 19, 0, 8, 13, 21], tarotStatsSeen:false,
+    // 사주
+    birth:'', birthCal:'solar', birthTime:'unknown', hasProfile:false, orbSnapped:false, sajuStatsSeen:false,
+    // 마음
+    mindOpened:false, mindAnswers:[], mindGuessed:false, othersOpen:false,
+    // 페어
+    pairRelation:null, pairStep:0, pairAnswer:null, pairPicks:[],
+    archiveOpen:false
+  };
+
+  go(view) { return () => { this.setState({ view }); if (typeof window !== 'undefined') window.scrollTo(0, 0); }; }
+
+  band(name, count, desc, key, items, open, toggleKey) {
+    const rgb = key === '#e9927f' ? '233,146,127' : '127,216,192';
+    const ranked = rankByYesterday(items).map((it, i) => ({ ...it, rank:'No.' + (i + 1) }));
+    return {
+      name, count, desc, key,
+      soft:'rgba(' + rgb + ',.12)', bg:'rgba(' + rgb + ',.05)', line:'rgba(' + rgb + ',.16)',
+      items: open ? ranked : ranked.slice(0, 8),
+      toggleLabel: open ? '접기' : '더보기 +' + (items.length - 8),
+      onToggle: () => this.setState(s => ({ [toggleKey]: !s[toggleKey] }))
+    };
+  }
+
+  drawCard() {
+    if (this.state.picked !== null || this.state.lock) return;
+    const idx = Math.floor(Math.random() * CARDS.length);
+    this.setState(s => ({
+      picked: idx, lock: true,
+      collected: s.collected.indexOf(idx) === -1 ? s.collected.concat(idx) : s.collected,
+      usedFocus: s.usedFocus.concat(s.focus)
+    }));
+    setTimeout(() => this.setState({ lock: false }), 400);
+  }
+
+  renderVals() {
+    const s = this.state, v = s.view;
+    const isHome = v === 'home', isGames = v === 'games', isHub = v === 'hub';
+    const isTarot = v === 'tarot', isSaju = v === 'saju', isMind = v === 'mind', isPair = v === 'pair';
+    const inSuite = isHub || isTarot || isSaju || isMind || isPair;
+
+    const tabDefs = [
+      { label:'전체', view:'home' },
+      { label:'게임', view:'games' },
+      { label:'오늘의 나', view:'hub' },
+      { label:'웹툰 준비중', view:null }
+    ];
+    const activeView = inSuite ? 'hub' : v;
+    const tabs = tabDefs.map(t => {
+      const on = t.view === activeView, soon = t.view === null;
+      return {
+        label:t.label,
+        bg: on ? 'rgba(255,255,255,.09)' : 'transparent',
+        color: soon ? '#5c6880' : (on ? '#e8ecf4' : '#8a97ae'),
+        border: on ? 'rgba(255,255,255,.16)' : 'rgba(255,255,255,.07)',
+        onClick: soon ? (() => {}) : this.go(t.view)
+      };
+    });
+
+    const now = new Date();
+    const dayKey = now.getFullYear() + '-' + (now.getMonth() + 1) + '-' + now.getDate();
+    const todayLabel = now.getFullYear() + '.' + String(now.getMonth() + 1).padStart(2, '0') + '.' + String(now.getDate()).padStart(2, '0');
+    const gi = hash(dayKey) % 60;
+    const gz = ganji(gi), gzNext = ganji(gi + 1);
+    const ganjiLabel = gz.ko + '일 · ' + gz.el;
+
+    // ── 타로
+    const card = s.picked === null ? null : CARDS[s.picked];
+    const tarotDone = s.picked !== null;
+    const focusChosen = !!s.focus;
+    const phaseDeck = isTarot && !tarotDone && s.shuffles < 3;
+    const phaseFan = isTarot && !tarotDone && s.shuffles >= 3;
+    const adviceKey = card ? s.focus : 'day';
+    const advPool = FOCUS_ADVICE[adviceKey];
+    const advice = card ? advPool[hash(dayKey + card.name + s.focus) % advPool.length] : '';
+
+    const shuffleStack = [0,1,2,3,4].map(i => {
+      const spread = s.shuffles % 2 === 1, off = i - 2;
+      return { transform:'translate(' + (off * (spread ? 13 : 3)) + 'px,' + (off * (spread ? -6 : 2)) + 'px) rotate(' + (off * (spread ? 5 : 1.4)) + 'deg)' };
+    });
+
+    const fan = CARDS.map((_, i) => {
+      const d = i - (CARDS.length - 1) / 2;   // 34° 스프레드 — 카드당 노출 폭 ≥28px
+      // 오프셋은 컨테이너 폭에 비례(cqw) — 좁은 폭에서도 전 카드가 뷰포트 안에 들어오고 노출 폭 확보
+      const base = 'translateX(-50%) translateX(calc(' + d + ' * min(29px, 3.35cqw))) rotate(' + (d * 1.62) + 'deg) translateY(' + (Math.abs(d) * 2.6) + 'px)';
+      return {
+        transform: base,
+        hoverTransform: base + ' translateY(-16px)',
+        onPick: () => this.drawCard()
+      };
+    });
+
+    const deckSlots = CARDS.map((_, i) => {
+      const has = s.collected.indexOf(i) !== -1;
+      return {
+        bg: has ? 'linear-gradient(160deg,rgba(214,177,102,.4),rgba(169,139,224,.3))' : 'rgba(255,255,255,.03)',
+        border: has ? 'rgba(214,177,102,.45)' : 'rgba(255,255,255,.08)'
+      };
+    });
+    const collCount = s.collected.length;
+
+    // ── 사주
+    const snapped = s.orbSnapped;
+    const stampBase = 34;
+    const stamps = Array.from({ length: 60 }, (_, i) => {
+      const done = i < stampBase || (snapped && i === stampBase);
+      const isToday = snapped && i === stampBase;
+      return {
+        mark: done ? (isToday ? '◉' : '●') : '',
+        bg: isToday ? 'rgba(214,177,102,.3)' : (done ? 'rgba(214,177,102,.14)' : 'rgba(255,255,255,.03)'),
+        border: isToday ? 'rgba(214,177,102,.6)' : (done ? 'rgba(214,177,102,.3)' : 'rgba(255,255,255,.07)'),
+        color: '#d6b166'
+      };
+    });
+    const sunDone = (stampBase % 10) + (snapped ? 1 : 0);
+
+    // ── 마음
+    const ans = s.mindAnswers;
+    const mindAnswered = ans.length >= MIND_EXP.q.length;
+    const mindDone = mindAnswered && s.mindGuessed;
+    let typeIdx = 0;
+    if (mindAnswered) {
+      const tally = [0,0,0,0];
+      ans.forEach(a => { tally[a.ty] += 1; });
+      typeIdx = tally.indexOf(Math.max.apply(null, tally));
+    }
+    const mt = MIND_EXP.types[typeIdx];
+    const qIdx = Math.min(ans.length, MIND_EXP.q.length - 1);
+    const axCount = {};
+    ans.forEach(a => { axCount[a.ax] = (axCount[a.ax] || 0) + 1; });
+
+    // ── 허브 / 트리플
+    const doneFlags = [tarotDone, snapped, mindDone];
+    const doneCount = doneFlags.filter(Boolean).length;
+    const tripleDone = doneCount === 3;
+
+    const hubCards = [
+      { key:'tarot', icon:'🔮', title:'오늘의 타로', verbs:'섞고 · 뽑고 · 뒤집고', done:tarotDone,
+        line: tarotDone ? '오늘의 카드 — ' + card.name + ' · ' + FOCUS_LABEL[s.focus] : '덱을 세 번 쓸어 섞고 22장 중 한 장을 뽑습니다.',
+        progress:'도감 ' + collCount + '/22', pct: Math.round((collCount / 22) * 100) + '%',
+        barFill:'linear-gradient(90deg,#a98be0,#d6b166)', meta:'60~90초 · 무료 1장 · 순위 없음', onOpen:this.go('tarot') },
+      { key:'saju', icon:'🌤️', title:'오늘의 기운', verbs:'당기고 · 꽂고', done:snapped,
+        line: snapped ? '오늘의 기운 — 정관(正官)의 날' : (s.hasProfile ? '명식 옆 빈 자리에 오늘의 기운 구슬을 꽂습니다.' : '생년월일시를 한 번 등록하면 매일 한 칸이 남습니다.'),
+        progress:'이번 순 ' + sunDone + '/10', pct: Math.round((sunDone / 10) * 100) + '%',
+        barFill:'linear-gradient(90deg,#7fd8c0,#d6b166)', meta:'60~90초 · 생년월일시만 · 순위 없음', onOpen:this.go('saju') },
+      { key:'mind', icon:'🔬', title:'마음연구소', verbs:'열고 · 고르고', done:mindDone,
+        line: mindDone ? '오늘의 유형 — ' + mt.n : '요일마다 다른 실험 봉투를 열고 네 문항에 답합니다.',
+        progress: mindDone ? '유형 ' + (typeIdx + 1) + '/4' : ans.length + '/4 문항', pct: mindDone ? '100%' : Math.round((ans.length / 4) * 100) + '%',
+        barFill:'linear-gradient(90deg,#7fd8c0,#a98be0)', meta:'40~90초 · 4문항 · 순위 없음', onOpen:this.go('mind') }
+    ].map(c => ({
+      ...c,
+      bg: c.done ? 'linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.02))' : 'linear-gradient(180deg,rgba(255,255,255,.035),rgba(255,255,255,.012))',
+      border: c.done ? 'rgba(214,177,102,.32)' : 'rgba(169,139,224,.18)',
+      iconBg: c.done ? 'rgba(214,177,102,.16)' : 'rgba(255,255,255,.05)',
+      iconOpacity: c.done ? 1 : 0.5,
+      stateLabel: c.done ? '완료' : '봉인',
+      stateColor: c.done ? '#d6b166' : '#7d7593'
+    }));
+
+    const SERVICE_INFO = {
+      tarot:{ name:'타로', go:this.go('tarot'), done:tarotDone, mini: tarotDone && card ? '오늘의 카드 ' + card.name : '' },
+      saju:{ name:'기운', go:this.go('saju'), done:snapped, mini: snapped ? '오늘의 기운 정관(正官)' : '' },
+      mind:{ name:'마음', go:this.go('mind'), done:mindDone, mini: mindDone ? '오늘의 유형 ' + mt.n : '' }
+    };
+    const currentKey = isTarot ? 'tarot' : (isSaju ? 'saju' : 'mind');
+    const crossChips = Object.keys(SERVICE_INFO).filter(k => k !== currentKey).map(k => {
+      const info = SERVICE_INFO[k];
+      return {
+        label: info.done ? info.mini : '오늘의 ' + info.name + '이 아직 봉인돼 있어요 →',
+        bg: info.done ? 'rgba(255,255,255,.03)' : 'rgba(169,139,224,.1)',
+        border: info.done ? 'rgba(255,255,255,.08)' : 'rgba(169,139,224,.28)',
+        color: info.done ? '#8b95a8' : '#dbcffb',
+        onGo: info.go
+      };
+    });
+
+    const cal = Array.from({ length: 31 }, (_, i) => {
+      const d = i + 1, past = d <= now.getDate();
+      const h = hash(dayKey + 'cal' + d);
+      const n = past ? (d === now.getDate() ? doneCount : h % 4) : 0;
+      return {
+        day: d,
+        bg: d === now.getDate() ? 'rgba(214,177,102,.14)' : (past ? 'rgba(255,255,255,.03)' : 'rgba(255,255,255,.012)'),
+        border: d === now.getDate() ? 'rgba(214,177,102,.4)' : 'rgba(255,255,255,.06)',
+        color: past ? '#c0b8d2' : '#5c5870',
+        dots: [0,1,2].map(j => ({ bg: j < n ? '#d6b166' : 'rgba(255,255,255,.1)' }))
+      };
+    });
+
+    // ── 페어
+    const pq = PAIR_Q[Math.min(s.pairStep, PAIR_Q.length - 1)];
+    const pairLinked = s.pairStep >= PAIR_Q.length;
+
+    return {
+      tabs, todayLabel, ganjiLabel, noop: () => {},
+      isTarot, isSaju, isMind, isPair,
+      showIntro: isHome, showGames: isHome || isGames, showHub: isHome || isHub, showSoon: isHome || isHub,
+      goHome: this.go('home'), goHub: this.go('hub'), goPair: this.go('pair'), goMind: this.go('mind'),
+      originals: ORIGINALS,
+      bands: [
+        this.band('액션', 'ACTION 10', '어제 많이 한 8종', '#e9927f', ACTION, s.openAction, 'openAction'),
+        this.band('퍼즐', 'PUZZLE 14', '어제 많이 한 8종', '#7fd8c0', PUZZLE, s.openPuzzle, 'openPuzzle')
+      ],
+      soonZones: [
+        { icon:'📖', title:'웹툰', desc:'짧게 끊어 보는 연재' },
+        { icon:'🧪', title:'취향 테스트', desc:'문항 몇 개로 보는 취향' },
+        { icon:'🎁', title:'리워드', desc:'모은 포인트 쓰는 곳' }
+      ],
+
+      // 허브
+      hubGreeting: todayLabel + ' · ' + ganjiLabel + ' — 세 봉투 중 ' + doneCount + '개를 열었어요',
+      tripleLabel: 'TRIPLE ' + doneCount + '/3',
+      tripleDots: doneFlags.map(d => ({ bg: d ? '#d6b166' : 'transparent', border: d ? 'rgba(214,177,102,.7)' : 'rgba(255,255,255,.2)' })),
+      hubCards, tripleDone,
+      tripleKeys: tripleDone ? [
+        { label:'타로 · ' + card.name }, { label:'사주 · 정관(正官)' }, { label:'마음 · ' + mt.n }
+      ] : [],
+      crossReading: tripleDone
+        ? '정관의 날의 ' + card.name + ' — 원칙 안에서 ' + card.name + '의 기운을 쓰는 하루입니다. ' + mt.n + '으로 기울어 있으니, 오늘은 한 가지만 정해 끝까지 가져가면 충분합니다.'
+        : '',
+      archiveOpen: s.archiveOpen,
+      archiveLabel: s.archiveOpen ? '아카이브 닫기' : '아카이브 달력',
+      toggleArchive: () => this.setState(st => ({ archiveOpen: !st.archiveOpen })),
+      monthLabel: (now.getMonth() + 1) + '월',
+      calendar: cal,
+      crossChips,
+
+      // 타로
+      tarotHint: !focusChosen ? '무엇이 궁금한지 먼저 고르세요'
+        : (phaseDeck ? '덱을 세 번 쓸어 섞습니다'
+        : (phaseFan ? '22장 중 마음이 가는 한 장을 고르세요' : '오늘의 카드가 정해졌습니다')),
+      tarotDeckPhase: phaseDeck, tarotFan: phaseFan, tarotResult: tarotDone,
+      focusChosen,
+      focusChips: FOCUS.map(f => {
+        const used = s.usedFocus.indexOf(f.key) !== -1;
+        const on = s.focus === f.key;
+        return {
+          icon:f.icon, label:f.label, used,
+          cursor: used ? 'default' : 'pointer',
+          deco: used ? 'line-through' : 'none',
+          opacity: used ? 0.45 : 1,
+          bg: on ? 'rgba(214,177,102,.18)' : 'rgba(255,255,255,.04)',
+          border: on ? 'rgba(214,177,102,.4)' : 'rgba(255,255,255,.09)',
+          color: on ? '#f4e8cd' : '#e0d8ee',
+          onPick: () => { if (!used) this.setState({ focus:f.key }); }
+        };
+      }),
+      shuffleStack,
+      shuffleDots: [0,1,2].map(i => ({ bg: i < s.shuffles ? '#d6b166' : 'rgba(255,255,255,.14)' })),
+      shuffleHint: '덱을 쓸어 섞기 · ' + s.shuffles + '/3',
+      onShuffle: () => this.setState(st => ({ shuffles: Math.min(3, st.shuffles + 1) })),
+      fan,
+      pickedFace: card ? card.face : '', pickedName: card ? card.name : '', pickedEn: card ? card.en : '',
+      pickedReading: card ? card.core : '', pickedAdvice: advice,
+      focusLabel: s.focus ? FOCUS_LABEL[s.focus] + ' 리딩' : '',
+      tarotShareLine: s.tarotStatsSeen && card ? '오늘 이 카드를 뽑은 사람 4.6%' : '전국 분포는 집계 중이에요',
+      tarotLucky: card ? [{ label:'행운 색 ' + card.color }, { label:'행운 숫자 ' + card.num }, { label:'행운 아이템 ' + card.item }] : [],
+      tarotEarn: card && s.collected.indexOf(s.picked) === s.collected.length - 1 ? '적립 +5P · 신규 카드 +3P' : '적립 +5P',
+      deckLabel: '도감 ' + collCount + '/22',
+      deckSlots,
+      deckMilestone: collCount >= 22 ? '도감 완성 +50P' : (collCount >= 11 ? '다음 마일스톤 22장 +50P' : '다음 마일스톤 11장 +20P'),
+      canDrawMore: s.adLeft > 0,
+      adLeft: s.adLeft, lockOpacity: s.lock ? 0.5 : 1,
+      drawMore: () => { if (s.lock) return; this.setState(st => ({ adLeft: Math.max(0, st.adLeft - 1), picked:null, focus:null, shuffles:2 })); },
+      tarotStatsLabel: s.tarotStatsSeen ? '전국 카드 분포 다시 보기' : '🎬 전국 카드 분포 · 광고 3초',
+      openTarotStats: () => this.setState({ tarotStatsSeen:true }),
+
+      // 사주
+      sajuRegister: !s.hasProfile, sajuDaily: s.hasProfile, sajuReading: snapped, orbWaiting: !snapped,
+      sajuHint: !s.hasProfile ? '최초 한 번만 생년월일시를 등록합니다'
+        : (snapped ? '오늘의 기운이 자리에 꽂혔습니다' : '오늘의 기운 구슬을 다섯 번째 자리에 꽂으세요'),
+      birth: s.birth, birthTime: s.birthTime, hourOptions: HOURS,
+      calendarOptions: [
+        { key:'solar', label:'양력' }, { key:'lunar', label:'음력' }
+      ].map(c => ({
+        label:c.label,
+        bg: s.birthCal === c.key ? 'rgba(214,177,102,.18)' : 'rgba(255,255,255,.04)',
+        border: s.birthCal === c.key ? 'rgba(214,177,102,.4)' : 'rgba(255,255,255,.09)',
+        color: s.birthCal === c.key ? '#f4e8cd' : '#c6d0e0',
+        onPick: () => this.setState({ birthCal:c.key })
+      })),
+      onBirth: (e) => this.setState({ birth:e.target.value }),
+      onBirthTime: (e) => this.setState({ birthTime:e.target.value }),
+      registerSaju: () => this.setState({ hasProfile:true }),
+      pillars: [
+        { label:'시주', top:'丙', bottom:'寅', color:'#e9927f', element:'화' },
+        { label:'일주', top:'甲', bottom:'子', color:'#7fd8c0', element:'목' },
+        { label:'월주', top:'戊', bottom:'辰', color:'#d6b166', element:'토' },
+        { label:'연주', top:'癸', bottom:'亥', color:'#a98be0', element:'수' }
+      ],
+      orbGlyph: gz.top,
+      snapOrb: () => this.setState({ orbSnapped:true }),
+      slotTop: snapped ? gz.top : '', slotBottom: snapped ? gz.bottom : '?',
+      slotColor: snapped ? '#f0e6d2' : '#5c5870',
+      slotBg: snapped ? 'rgba(240,230,210,.08)' : 'rgba(255,255,255,.015)',
+      slotBorder: snapped ? 'rgba(240,230,210,.4)' : 'rgba(255,255,255,.14)',
+      sipsinTitle:'정관(正官)의 날',
+      sajuAdvice:'원칙대로 하는 쪽이 이깁니다. 미뤄 둔 서류를 오전에 끝내면 하루가 홀가분해요.',
+      sajuDayLine: gz.ko + '일은 마무리에 힘이 붙는 날입니다. 새로 벌인 일보다 걸어 둔 일을 닫는 데 시간을 쓰세요.',
+      branchRelation:'일지 子와 오늘 ' + gz.bottom + ' — 유파가 갈리는 관계는 다루지 않고 평온으로 봅니다',
+      elementLine:'내 명식은 목이 강하고 ' + gz.el + ' 기운이 옅습니다. 오늘 들어온 ' + gz.el + ' 기운이 그 자리를 메워 판단이 또렷해집니다.',
+      sajuLucky: [{ label:'행운 색 흰색' }, { label:'행운 시간 오전 9~11시' }, { label:'행운 아이템 도장' }],
+      sajuEarn:'적립 +5P · 새 도장 +2P',
+      stamps, sunLabel:'이번 순 ' + sunDone + '/10',
+      sajuStatsLabel: s.sajuStatsSeen ? '같은 일간 분포 다시 보기' : '🎬 같은 일간 분포 · 광고 3초',
+      openSajuStats: () => this.setState({ sajuStatsSeen:true }),
+      tomorrowLine:'내일은 ' + gzNext.ko + '일',
+
+      // 마음
+      mindEnvelope: isMind && !s.mindOpened,
+      mindAsking: isMind && s.mindOpened && !mindAnswered,
+      mindGuessPhase: isMind && mindAnswered && !s.mindGuessed,
+      mindResult: isMind && mindDone,
+      mindHint: !s.mindOpened ? '요일마다 다른 실험이 준비돼 있어요'
+        : (!mindAnswered ? '떠오르는 대로 고르면 됩니다'
+        : (!s.mindGuessed ? '마지막 한 문항은 기록되지 않아요' : '오늘의 마음 유형이 나왔습니다')),
+      mindProgressLabel: mindDone ? 'DONE' : (s.mindOpened ? Math.min(ans.length + 1, 4) + ' / 4' : 'READY'),
+      experimentTitle: MIND_EXP.title,
+      openEnvelope: () => this.setState({ mindOpened:true }),
+      mindSummaryChips: [
+        { label:'마음 지도 ' + (12 + Object.keys(axCount).length) + '/40' },
+        { label:'도감 9/28' },
+        { label:'페어 최고 67%' }
+      ],
+      mindBars: MIND_EXP.q.map((_, i) => ({ bg: i < ans.length ? '#7fd8c0' : 'rgba(255,255,255,.1)' })),
+      mindQuestion: MIND_EXP.q[qIdx].t,
+      mindChoices: MIND_EXP.q[qIdx].o.map(o => ({
+        label:o.t,
+        onPick: () => this.setState(st => ({ mindAnswers: st.mindAnswers.concat({ ty:o.ty, ax:o.ax }) }))
+      })),
+      guessQuestion: MIND_EXP.guess.t,
+      guessChoices: MIND_EXP.guess.o.map(o => ({ label:o, onPick: () => this.setState({ mindGuessed:true }) })),
+      mindIcon: mt.icon, mindType: mt.n, mindDesc: mt.d, mindAxisEcho: mt.echo,
+      mindEarn:'적립 +5P · 새 유형 카드 +3P',
+      mindStatsLine:'전국 분포는 집계 중이에요',
+      othersOpen: s.othersOpen,
+      othersLabel: s.othersOpen ? '다른 마음들 접기' : '다른 마음들 — 같은 실험, 다른 답 (탭해서 열기)',
+      toggleOthers: () => this.setState(st => ({ othersOpen: !st.othersOpen })),
+      otherMinds: MIND_EXP.types.filter((t, i) => i !== typeIdx).map(t => ({ type:t.n, line:t.d })),
+      mindAxes: AXES.map(a => {
+        const val = (axCount[a] || 0) + (hash(a + dayKey) % 3);
+        return {
+          name:a, value: Math.min(5, val) + '/5',
+          bg: val > 0 ? 'rgba(127,216,192,.1)' : 'rgba(255,255,255,.03)',
+          border: val > 0 ? 'rgba(127,216,192,.24)' : 'rgba(255,255,255,.07)'
+        };
+      }),
+
+      // 페어
+      pairNeedsMind: isPair && !mindDone,
+      pairRelationPhase: isPair && mindDone && !s.pairRelation,
+      pairGuessPhase: isPair && mindDone && !!s.pairRelation && !pairLinked,
+      pairLinkPhase: isPair && pairLinked,
+      pairHint: !mindDone ? '오늘의 실험을 마치면 열립니다'
+        : (!s.pairRelation ? '관계만 고르면 문항이 자동으로 만들어집니다'
+        : (pairLinked ? '링크만 보내면 됩니다' : '상대의 답을 추측하고, 근거를 하나 고르세요')),
+      pairStepLabel: pairLinked ? 'LINK' : (s.pairRelation ? Math.min(s.pairStep + 1, 3) + ' / 3' : 'RELATION'),
+      relations: RELATIONS.map(r => ({ ...r, onPick: () => this.setState({ pairRelation:r.key }) })),
+      pairBars: PAIR_Q.map((_, i) => ({ bg: i < s.pairStep ? '#7fd8c0' : 'rgba(255,255,255,.1)' })),
+      pairQuestion: pq.t,
+      pairChoosingAnswer: s.pairAnswer === null,
+      pairChoosingReason: s.pairAnswer !== null,
+      pairOptions: pq.o.map((o, i) => ({ label:o, onPick: () => this.setState({ pairAnswer:i }) })),
+      pairReasons: pq.r.map(r => ({
+        label:r,
+        onPick: () => this.setState(st => ({ pairStep: st.pairStep + 1, pairAnswer:null, pairPicks: st.pairPicks.concat(r) }))
+      })),
+      pairUrl:'https://minigames.zzz00321.workers.dev/p/9f3c7a2e1b',
+      pairQuota:'2건 남음 (하루 3건)',
+      resetPair: () => this.setState({ pairRelation:null, pairStep:0, pairAnswer:null, pairPicks:[] })
+    };
+  }
+}
+</script>
+</body>
+</html>

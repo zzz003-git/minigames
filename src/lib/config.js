@@ -1268,6 +1268,62 @@ export const RESULT_DETAIL_KEEP = {
 //   {GAME}_BOOST    Rewarded      런 진행 중 보상     1런당 N회 (게임별 효과는 spec.applyBoost)
 //   {GAME}_STATS    Interstitial  전체 통계·랭킹 열람
 // 목록을 손으로 적으면 게임을 추가할 때 빠뜨리기 쉬우므로 ARCADE 에서 파생시킵니다.
+/**
+ * 스위트 「오늘의 나」 — 타로·사주·심리가 공유하는 값 (SUITE-SPEC-01 §1)
+ *
+ * ── 포인트는 전부 가안이다 ──────────────────────────────────────────────
+ * 기획서 1.3 이 "광고 실연동 시 Master 확정" 으로 남긴 값이다. 여기 한 곳에 모아 둔
+ * 이유가 그것이다 — 확정되면 이 표만 고친다.
+ *
+ * **원가 레버는 이 표와 상한뿐이다.** 확률·난이도·콘텐츠에 손대지 않는다(안티패턴 4).
+ * 타로는 서버가 22장을 균등 추첨하므로 원가를 조절할 확률 자체가 없다.
+ */
+export const SUITE = {
+  SERVICES: ["tarot", "saju", "mind"],
+
+  POINTS: {
+    CORE_DONE: 5, // 각 서비스 일일 코어 완료 (서비스당 1회/일)
+    COLLECT_NEW: 3, // 수집 신규 (카드/도장/지도축)
+    TRIPLE_DONE: 15, // 3종 모두 완료 (하루 1회)
+    PAIR_OK: 10, // 페어 성사 (하루 1회 · 3종 통합)
+    MILESTONE_HALF: 20, // 도감 절반 · 순 완성
+    MILESTONE_FULL: 50, // 도감 완성
+    MILESTONE_GRAND: 100, // 6순 대완성
+  },
+
+  /**
+   * 분포 공개 유예 (SUITE 1.5).
+   *
+   * 참여자가 몇십 명일 때 "4.5%" 를 보여 주면 그 값은 사람 한두 명을 뜻하고,
+   * 다음 사람의 선택을 그쪽으로 끌어당긴다. 임계 미만이면 「집계 중」으로 표시한다.
+   */
+  DIST_MIN_SAMPLES: 1000,
+};
+
+// ── 🔮 오늘의 타로 (TAROT-SPEC-01) ────────────────────────────────────────
+//
+// 아케이드가 아니다 — 순위가 없고 실패가 없다. 그래서 `ARCADE` 가 아니라 따로 둔다.
+// 콘텐츠(해석 22×4×3 · 조언 60 · 아이템 30)는 화면이 가진다 — 보상과 무관한 회전이라
+// 서버가 알 필요가 없다(기획서 T-07).
+export const TAROT = {
+  CARDS: 22,
+  FOCUSES: ["day", "work", "love", "money"],
+
+  FREE_DRAWS: 1, // 무료 1회/일
+  AD_MORE_PER_DAY: 2, // 「한 장 더」 광고 (T-03)
+  MAX_DRAWS: 3, // 무료 1 + 광고 2
+
+  SHUFFLES_FIRST: 3, // 첫 뽑기는 셔플 3회
+  SHUFFLES_EXTRA: 1, // 「한 장 더」는 1회로 단축 (T-03)
+
+  MILESTONE_HALF: 11, // 도감 11장
+  MILESTONE_FULL: 22, // 도감 완성
+
+  // 온보딩 보너스 1장. 기획서 9절 오픈이슈 2 에서 "가안" 으로 남긴 항목이라
+  // 끄고 켤 수 있게 둔다.
+  WELCOME_DRAW: true,
+};
+
 export const AD_TRIGGERS = {
   STOPWATCH_ATTEMPT: { game: "STOPWATCH", type: "REWARDED", perDay: STOPWATCH.AD_VIEWS_PER_DAY },
   STOPWATCH_STATS: { game: "STOPWATCH", type: "INTERSTITIAL", perDay: null },
@@ -1277,6 +1333,16 @@ export const AD_TRIGGERS = {
   TYPING_RANK: { game: "TYPING", type: "INTERSTITIAL", perDay: null },
   MEMORY_LEVEL: { game: "MEMORY", type: "REWARDED", perDay: MEMORY.AD_VIEWS_PER_DAY },
   MEMORY_RANK: { game: "MEMORY", type: "INTERSTITIAL", perDay: null },
+
+  // ── 스위트 서비스 (게임이 아니다) ──────────────────────────────────────
+  //
+  // `game` 대신 `service` 를 갖는다. 게임 트리거는 보상이 「도전 기회」인데 이쪽은
+  // 「뽑기 1회」·「열람 해제」처럼 서비스마다 다르므로, src/routes/ad.js 가 서비스별
+  // 핸들러로 분기한다. `game` 을 넣어 두면 아케이드 경로로 잘못 들어간다.
+  //
+  // **순위가 없는 서비스라 보상 카드에 「'+' 리그」 줄을 붙이지 않는다**(SUITE 1.4).
+  TAROT_ATTEMPT: { service: "tarot", type: "REWARDED", perDay: TAROT.AD_MORE_PER_DAY },
+  TAROT_STATS: { service: "tarot", type: "INTERSTITIAL", perDay: 1 },
 };
 
 // 게임별 "통계/랭킹 열람 해제"에 필요한 Interstitial 트리거

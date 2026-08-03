@@ -1,0 +1,145 @@
+/**
+ * 🔮 오늘의 타로 — 전용 스타일
+ *
+ * 공용 base.css 위에 얹는다. 미니게임과 색이 다른 이유는 별도 서비스이기 때문이고
+ * (프로토의 보라·금 팔레트), 골격(.card .btn .screen .stats)은 그대로 재사용한다.
+ */
+
+.suite--tarot {
+  --t-gold: #e8c46a;
+  --t-gold-dim: #8d7a45;
+  --t-line: #3a3364;
+  --t-surface: #262047;
+  background: radial-gradient(120% 90% at 50% 0%, #1d1836 0%, #141127 70%);
+}
+
+.suite .hint { color: var(--text-sub); font-size: 13px; min-height: 18px; }
+.suite .center { text-align: center; }
+
+/* ── 포커스 칩 ── */
+.focus-row { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin: 10px 0 22px; }
+.chip-focus {
+  border: 1px solid var(--t-line);
+  background: var(--t-surface);
+  color: var(--text-sub);
+  padding: 8px 14px;
+  border-radius: 999px;
+  font-size: 13px;
+  cursor: pointer;
+  transition: 0.15s;
+}
+.chip-focus.is-sel { border-color: var(--t-gold); color: var(--t-gold); background: rgba(232, 196, 106, 0.08); }
+/* 오늘 이미 뽑은 고민은 다시 못 고른다 — 결과 쇼핑 방지(T-02) */
+.chip-focus.is-used { opacity: 0.28; text-decoration: line-through; pointer-events: none; }
+
+/* ── 덱 ── */
+.deckwrap { display: flex; flex-direction: column; align-items: center; gap: 20px; }
+.deck {
+  position: relative; width: 130px; height: 196px;
+  cursor: grab; touch-action: none;
+}
+.deck:focus-visible { outline: 2px solid var(--t-gold); outline-offset: 6px; }
+.dcard {
+  position: absolute; inset: 0; border-radius: 12px;
+  border: 1.5px solid var(--t-gold-dim);
+  background:
+    radial-gradient(circle at 50% 42%, rgba(232, 196, 106, 0.22) 0 12%, transparent 13%),
+    repeating-linear-gradient(45deg, #2b2452 0 8px, #251f47 8px 16px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
+}
+/* 손대기 전에는 숨쉬듯 — 「만지고 싶은 물건」 (프로토 사양) */
+.deck.breathe .dcard:last-child { animation: t-breathe 2.2s ease-in-out infinite; }
+@keyframes t-breathe { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-7px); } }
+
+.deck.is-shuffling .dcard:nth-child(odd) { animation: t-riffL 0.38s ease; }
+.deck.is-shuffling .dcard:nth-child(even) { animation: t-riffR 0.38s ease; }
+@keyframes t-riffL { 35% { transform: translateX(-46px) rotate(-9deg); } 100% { transform: none; } }
+@keyframes t-riffR { 35% { transform: translateX(46px) rotate(9deg); } 100% { transform: none; } }
+
+.sh-dots { display: flex; gap: 7px; }
+.sh-dots i { width: 8px; height: 8px; border-radius: 50%; background: var(--t-line); }
+.sh-dots i.is-on { background: var(--t-gold); }
+
+/* ── 부채꼴 ──
+   22장을 뷰포트 안에 전부 넣는다. 회전 중심을 카드 아래쪽 먼 곳에 두면 부채가 된다.
+   모바일에서 **전 카드가 탭 가능해야** 한다(기획서 6절 실기 확인 항목). */
+.fanstage {
+  position: relative; width: 100%; flex: 1;
+  min-height: 340px; overflow: hidden;
+}
+/* 좌표·크기·회전은 tarot.js 가 무대 크기에서 역산해 인라인으로 넣는다 —
+   고정 픽셀 축(transform-origin)으로 두면 화면 크기에 따라 카드가 무대 밖으로 나간다. */
+.fcard {
+  position: absolute;
+  border-radius: 9px; border: 1.2px solid var(--t-gold-dim);
+  background:
+    radial-gradient(circle at 50% 40%, rgba(232, 196, 106, 0.18) 0 12%, transparent 13%),
+    repeating-linear-gradient(45deg, #2b2452 0 7px, #251f47 7px 14px);
+  cursor: pointer;
+  transition: filter 0.18s ease;
+  padding: 0;
+}
+.fcard:focus-visible { outline: 2px solid var(--t-gold); outline-offset: 3px; }
+.fcard:hover, .fcard:focus-visible { filter: brightness(1.25); }
+.fanstage.is-locked { pointer-events: none; }
+
+/* ── 뒤집기 ── */
+.flipwrap { display: flex; align-items: center; justify-content: center; flex: 1; perspective: 1000px; }
+.flipcard {
+  position: relative; width: 168px; height: 254px;
+  transform-style: preserve-3d;
+  transition: transform 0.9s cubic-bezier(0.3, 0.9, 0.3, 1);
+}
+.flipcard.is-flipped { transform: rotateY(180deg); }
+.flipcard__face {
+  position: absolute; inset: 0; border-radius: 14px;
+  backface-visibility: hidden; -webkit-backface-visibility: hidden;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 64px;
+  border: 1.5px solid var(--t-gold-dim);
+}
+.flipcard__face--back {
+  background:
+    radial-gradient(circle at 50% 42%, rgba(232, 196, 106, 0.22) 0 12%, transparent 13%),
+    repeating-linear-gradient(45deg, #2b2452 0 8px, #251f47 8px 16px);
+}
+.flipcard__face--front {
+  transform: rotateY(180deg);
+  background: linear-gradient(180deg, #2e2757, #221d43);
+  border-color: var(--t-gold);
+}
+
+/* ── 결과 ── */
+.tcard { font-size: 60px; line-height: 1; margin: 6px 0 10px; }
+.reading { font-size: 15px; line-height: 1.7; color: var(--text); margin-top: 6px; }
+.advice {
+  margin-top: 14px; padding-top: 12px;
+  border-top: 1px solid var(--t-line);
+  font-size: 13.5px; color: var(--t-gold);
+}
+
+/* ── 크로스 칩 (SUITE 2.4) ── */
+.crosschips { display: flex; gap: 8px; margin: 4px 0 12px; }
+.crosschip {
+  flex: 1; display: block; padding: 11px 12px;
+  border: 1px solid var(--t-line); border-radius: 12px;
+  background: var(--t-surface); color: var(--text-sub);
+  font-size: 12.5px; line-height: 1.45; text-decoration: none;
+}
+.crosschip b { display: block; color: var(--text); font-size: 13px; margin-bottom: 2px; }
+.crosschip.is-done { border-color: var(--t-gold-dim); color: var(--t-gold); }
+
+/* ── 도감 ── */
+.collgrid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; margin-top: 10px; }
+.collcell {
+  aspect-ratio: 3 / 4; border-radius: 7px;
+  border: 1px solid var(--t-line); background: rgba(255, 255, 255, 0.02);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px;
+}
+.collcell.is-have { border-color: var(--t-gold-dim); background: rgba(232, 196, 106, 0.08); }
+.collcell.is-miss { color: var(--text-faint); font-size: 14px; }
+
+@media (max-width: 380px) {
+  .collgrid { grid-template-columns: repeat(5, 1fr); }
+}

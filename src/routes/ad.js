@@ -12,6 +12,24 @@ import { verifyRewardedCallback, verifyInterstitialImpression } from "../lib/adv
 import { arcadeSpec } from "../games/arcade/index.js";
 import { applyBoost } from "../lib/arcade.js";
 import { isTestMode } from "../lib/testmode.js";
+import * as tarot from "../services/tarot.js";
+
+/**
+ * 스위트 서비스의 광고 보상.
+ *
+ * 서비스가 늘어나면 여기에 한 줄씩 는다. 게임 분기와 달리 「무엇을 주는가」가
+ * 트리거마다 다르므로 표 하나로 묶지 않고 서비스 모듈에 위임한다.
+ */
+function grantServiceReward(env, userId, triggerKey) {
+  switch (triggerKey) {
+    case "TAROT_ATTEMPT":
+      return tarot.grantExtraDraw(env, userId);
+    case "TAROT_STATS":
+      return tarot.unlockStats(env, userId);
+    default:
+      throw new ApiError("BAD_PARAM", `보상 처리가 없는 트리거입니다: ${triggerKey}`, 400);
+  }
+}
 import {
   assertIpAdLimit,
   countAdViews,
@@ -25,7 +43,9 @@ import {
 export async function reward({ env, userId, ipHash, body }) {
   const triggerKey = requireOneOf(body.trigger, "trigger", Object.keys(AD_TRIGGERS));
   const spec = AD_TRIGGERS[triggerKey];
-  const gameType = spec.game;
+  // 스위트 서비스(타로·사주·심리)는 `game` 이 없다. 광고 기록은 게임과 같은 표를
+  // 쓰므로 서비스 이름을 대문자로 넣어 구분한다(ad_views.game_type 은 형식 제약이 없다).
+  const gameType = spec.game ?? spec.service.toUpperCase();
 
   // 동일 IP 일일 광고 시청 한도 (기획서 12장)
   await assertIpAdLimit(env, ipHash);
@@ -39,7 +59,26 @@ export async function reward({ env, userId, ipHash, body }) {
   // ── 트리거별 한도 검사 및 보상 지급 ─────────────────────────
   let reward = { kind: "UNLOCK", amount: 0 };
 
-  if (spec.type === "REWARDED") {
+  if (spec.service) {
+    // ── 스위트 서비스 (타로·사주·심리) ──────────────────────────
+    //
+    // 게임과 다른 점은 보상의 정체다. 게임은 전부 「도전 기회」인데 이쪽은 서비스마다
+    // 다르다(뽑기 1회 / 열람 해제 / 내일 미리보기…). 그래서 게임 분기와 섞지 않는다.
+    //
+    // 상한은 Rewarded·Interstitial 둘 다 건다. 전면 광고도 하루 1회 보고 나면 당일
+    // 상시 열람이므로, 매번 다시 보게 하면 이용자만 손해다.
+    const viewed = await countAdViews(env, userId, gameType, triggerKey);
+    if (!isTestMode(env) && spec.perDay != null && viewed >= spec.perDay) {
+      throw new ApiError(
+        "AD_LIMIT",
+        `오늘 이 보상은 ${spec.perDay}회까지만 받을 수 있습니다. 내일 다시 시도해 주세요.`,
+        429,
+      );
+    }
+    reward = await grantServiceReward(env, userId, triggerKey);
+    reward.remaining_today =
+      spec.perDay != null ? Math.max(0, spec.perDay - viewed - 1) : null;
+  } else if (spec.type === "REWARDED") {
     const arcade = arcadeSpec(gameType);
 
     if (arcade && triggerKey.endsWith("_BOOST")) {

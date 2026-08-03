@@ -49,6 +49,7 @@ import * as typing from "./games/typing.js";
 import * as memory from "./games/memory.js";
 import { ARCADE_SPECS } from "./games/arcade/index.js";
 import { rollDailySnapshot } from "./games/arcade/majority.js";
+import * as tarot from "./services/tarot.js";
 import * as arcade from "./lib/arcade.js";
 import * as adRoutes from "./routes/ad.js";
 import * as statsRoutes from "./routes/stats.js";
@@ -169,6 +170,14 @@ const ROUTES = {
   "GET /game/preview": typing.previews,
   "GET /game/config": config,
   "GET /user/attempts": statsRoutes.attempts,
+
+  // ── 스위트 「오늘의 나」 ────────────────────────────────────────────────
+  // 게임이 아니라 별도 라우트다(SUITE-SPEC-01). 경로 앞에 /api 가 붙는 것은
+  // 기획서 4절 규격이며, wrangler.jsonc 의 run_worker_first 에 /api/* 를 넣어야
+  // 정적 자산 핸들러가 먼저 가로채지 않는다.
+  "GET /api/tarot/today": tarot.today,
+  "POST /api/tarot/draw": tarot.draw,
+  "GET /api/tarot/stats": tarot.stats,
 };
 
 export default {
