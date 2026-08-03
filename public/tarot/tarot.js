@@ -50,6 +50,9 @@ $("#collBackBtn").addEventListener("click", () => {
   showScreen(state.today?.draws?.length ? "result" : "deck");
 });
 
+// 손가락 선택은 무대 하나에만 건다 — 카드마다 걸면 재배치할 때마다 다시 걸어야 한다
+bindFanPicker();
+
 boot();
 
 // ══════════════════════════════════════════════════════════════
@@ -219,6 +222,7 @@ function openFan() {
 
   const n = TAROT_DB.cards.length;
   const seed = seeded(`${state.today.day}|${state.today.draws.length}`);
+  const fan = [];
 
   // 좌표를 CSS 회전축(transform-origin)에 맡기지 않고 여기서 직접 계산한다.
   //
@@ -263,21 +267,108 @@ function openFan() {
       type: "button",
       style:
         `left:${x.toFixed(1)}px; top:${y.toFixed(1)}px; width:${cardW}px; height:${cardH}px;` +
-        `transform: translate(-50%, -50%) rotate(${deg.toFixed(2)}deg); z-index:${i}`,
+        // 들어올림을 **회전 뒤에** 곱한다 — 카드 자기 축을 따라 바깥으로 나간다.
+        // CSS 변수로 두어야 클래스가 인라인 transform 을 덮어쓰지 않고 끼어들 수 있다.
+        `transform: translate(-50%, -50%) rotate(${deg.toFixed(2)}deg) translateY(var(--lift, 0px));` +
+        `z-index:${i}`,
       "aria-label": `${i + 1}번째 카드`,
     });
     // 배치만 섞는다 — 어떤 카드인지는 화면이 모른다
     node.dataset.slot = String((seed + i) % n);
-    node.addEventListener("click", () => choose(node));
+    // 키보드·보조기기용. 손가락 선택은 무대 전체에서 받는다(아래 bindFanPicker).
+    // `detail === 0` 이 키보드로 활성화한 경우다 — 탭으로 두 번 뽑히는 것을 막는다.
+    node.addEventListener("click", (e) => { if (e.detail === 0) choose(node); });
     stage.append(node);
+
+    fan.push({ node, cx: x });
   }
+
+  state.fan = fan;
+}
+
+/**
+ * 손가락으로 카드를 고른다 — **끌어서 고르고 떼면 뽑힌다.**
+ *
+ * ── 왜 탭이 아니라 끌기인가 ──────────────────────────────────────────────
+ * 22장을 390px 에 펼치면 한 장이 드러내는 폭이 **12px** 다. 손가락은 44px 이라
+ * 조준이 안 된다. 게다가 카드는 74×112 짜리 온전한 상자라, 위에 놓인 카드(z-index 가
+ * 큰 쪽)가 아래 카드의 보이는 조각까지 덮는다 — **눈으로 겨눈 카드와 탭이 닿는 카드가
+ * 다르다.** 폰에서 「원하는 카드를 고를 수 없다」고 느낀 것이 이것이다.
+ *
+ * 그래서 좁은 표적을 맞히게 하지 않는다. 무대 아무 데나 짚고 **좌우로 끌면** 손가락
+ * 아래 카드가 들려 올라오고, 원하는 카드가 들렸을 때 떼면 그 카드가 뽑힌다. 표적
+ * 크기가 문제되지 않고, 떼기 전까지 무엇이 선택될지 눈에 보인다.
+ *
+ * 뽑히는 카드는 어차피 **서버가 정한다**(배치는 섞기용일 뿐이다). 그래서 잘못 고를
+ * 위험은 없고, 필요한 것은 「내가 골랐다」는 감각뿐이다.
+ */
+function bindFanPicker() {
+  const stage = $("#fanStage");
+  let picked = null;
+
+  const lift = (item) => {
+    if (picked === item) return;
+    picked?.node.style.removeProperty("--lift");
+    picked?.node.classList.remove("is-picking");
+    picked = item;
+    if (!item) return;
+    item.node.style.setProperty("--lift", "-20px");
+    item.node.classList.add("is-picking");
+    navigator.vibrate?.(6);
+  };
+
+  /** 손가락 x 에 가장 가까운 카드. 조각 폭이 아니라 **거리**로 고른다 */
+  const nearest = (clientX) => {
+    const list = state.fan;
+    if (!list?.length) return null;
+    const r = stage.getBoundingClientRect();
+    if (r.width < 1) return null; // 숨은 무대는 재지 않는다
+    const x = clientX - r.left;
+    let best = list[0];
+    for (const it of list) {
+      if (Math.abs(it.cx - x) < Math.abs(best.cx - x)) best = it;
+    }
+    return best;
+  };
+
+  stage.addEventListener("pointerdown", (e) => {
+    if (state.busy) return;
+    // 캡처는 **되면 좋은 것**이지 선택의 전제가 아니다. 여기서 예외가 나면(포인터가
+    // 이미 놓였거나 합성 이벤트인 경우) 그 뒤가 통째로 죽어서 카드가 안 들린다.
+    try {
+      stage.setPointerCapture?.(e.pointerId);
+    } catch {
+      // 캡처 없이도 고를 수 있다 — 무대 밖으로 나가면 pointercancel 로 되돌린다
+    }
+    lift(nearest(e.clientX));
+    e.preventDefault();
+  });
+
+  stage.addEventListener("pointermove", (e) => {
+    if (state.busy || !picked) return;
+    lift(nearest(e.clientX));
+    e.preventDefault();
+  });
+
+  const release = () => {
+    if (state.busy || !picked) return;
+    const node = picked.node;
+    picked.node.classList.remove("is-picking");
+    picked = null;
+    choose(node);
+  };
+
+  stage.addEventListener("pointerup", release);
+  // 손가락이 무대 밖으로 나가 취소되면 **뽑지 않고** 되돌린다
+  stage.addEventListener("pointercancel", () => lift(null));
 }
 
 async function choose(node) {
   if (state.busy) return;
   state.busy = true;
   $("#fanStage").classList.add("is-locked");
-  node.style.transform += " translateY(-26px)";
+  node.style.setProperty("--lift", "-26px");
+  node.classList.add("is-chosen");
   navigator.vibrate?.(18);
 
   let res;
