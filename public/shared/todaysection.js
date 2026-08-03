@@ -145,10 +145,9 @@ function footRow(data) {
   return el(
     "div",
     { class: "hubarea__foot" },
-    // 원안의 「우리 페어」 화면은 아직 없다. 서버(`/api/mind/pair/*`)와 수신자
-    // 화면(`/p/`)은 있는데 **발급 화면**이 없어서, 링크를 걸면 404 로 간다.
-    // 눌러서 없는 데로 가는 것보다 안 눌리는 편이 낫다(상단 「웹툰 준비중」과 같다).
-    el("span", { class: "hubarea__btn is-soon", "aria-disabled": "true" }, "우리 · 너를 맞혀볼게 (준비 중)"),
+    // 발급 화면(`/pair/`)이 생겨서 이제 실제로 연결된다.
+    // 다만 **오늘의선택을 마쳐야** 들어갈 수 있다 — 내 결과가 있어야 맞히기가 성립한다.
+    el("a", { class: "hubarea__btn is-key", href: "/pair/" }, "우리 · 너를 맞혀볼게"),
     archiveToggle(),
     el("span", { class: "hubarea__note" }, note),
     el("span", { class: "hubarea__legal" }, "순위 없음 · 무광고로 완결 · 오락용입니다"),

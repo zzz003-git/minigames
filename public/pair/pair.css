@@ -1,0 +1,94 @@
+/**
+ * 🔗 너를 맞혀볼게 — 발급 화면 전용
+ *
+ * 오늘의선택과 같은 청록 팔레트를 쓴다(`suite--mind`). 페어는 그 서비스의 확장이지
+ * 별개 서비스가 아니라서, 색이 갈리면 오히려 새 서비스처럼 보인다.
+ */
+
+/* ── 관계 고르기 ── */
+.relgrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px;
+  margin: 10px 0 16px;
+}
+.relcard {
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  padding: 20px 14px; border-radius: 20px;
+  background: var(--m-surface);
+  border: 1px solid var(--m-line);
+  color: inherit; cursor: pointer;
+  transition: border-color var(--t), background var(--t);
+}
+.relcard:hover { border-color: var(--m-key); background: rgba(127, 216, 192, 0.08); }
+.relcard:active { transform: scale(0.985); }
+.relcard:focus-visible { outline: 2px solid var(--m-key); outline-offset: 2px; }
+.relcard__icon { font-size: 26px; }
+.relcard b { font-size: 15px; }
+
+/* ── 문항 ── */
+.qhead { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.qhead__rel { margin-left: auto; font-size: 12.5px; color: var(--m-key); }
+
+.qtext {
+  margin: 0 0 14px;
+  font-size: 17px; font-weight: 700; line-height: 1.5;
+  word-break: keep-all;
+}
+
+.qgroup { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+
+.qopt, .qreason {
+  text-align: left; padding: 14px 15px; border-radius: 16px;
+  background: var(--surface-2); border: 1px solid var(--border);
+  color: inherit; cursor: pointer; line-height: 1.45;
+  word-break: keep-all;
+  transition: border-color var(--t), background var(--t);
+}
+.qopt { font-size: 14.5px; }
+.qreason { font-size: 13px; color: var(--text-2); padding: 11px 14px; border-radius: 14px; }
+
+.qopt:hover, .qreason:hover { border-color: rgba(127, 216, 192, 0.4); }
+.qopt.is-on, .qreason.is-on {
+  border-color: var(--m-key);
+  background: rgba(127, 216, 192, 0.1);
+  color: var(--text-main);
+}
+.qopt:focus-visible, .qreason:focus-visible { outline: 2px solid var(--m-key); outline-offset: 2px; }
+
+/* ── 링크 ── */
+.linkbox {
+  display: flex; align-items: center; gap: 8px;
+  padding: 12px 14px; border-radius: 16px;
+  background: var(--well); border: 1px solid var(--border-mid);
+  margin: 12px 0;
+}
+.linkbox__url {
+  flex: 1; min-width: 0;
+  font-family: var(--mono); font-size: 12px; color: var(--text-2);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  /* 클립보드가 막힌 브라우저에서는 이 주소를 손으로 골라야 한다 */
+  -webkit-user-select: text; user-select: text;
+}
+.btn--sm { width: auto; padding: 8px 14px; font-size: 13px; flex: 0 0 auto; }
+.btn--ghost { background: transparent; border: 1px solid var(--border-mid); color: var(--text-2); }
+
+/* ── 보낸 링크 ── */
+.minerow {
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px; border-radius: 18px; margin-bottom: 8px;
+  background: var(--surface-2); border: 1px solid var(--border);
+}
+.minerow__icon { font-size: 20px; }
+.minerow__text { display: flex; flex-direction: column; gap: 2px; margin-right: auto; min-width: 0; }
+.minerow__text b { font-size: 14px; }
+.minerow__text span { font-size: 12px; color: var(--text-sub); }
+.minerow__status { font-size: 11.5px; font-weight: 700; color: var(--text-dim); }
+.minerow.is-done { border-color: var(--m-line); }
+.minerow.is-done .minerow__status { color: var(--m-key); }
+.minerow.is-old { opacity: 0.55; }
+
+.linklike {
+  background: none; border: 0; padding: 0;
+  color: var(--m-key); font-size: 12.5px; text-decoration: underline; cursor: pointer;
+}

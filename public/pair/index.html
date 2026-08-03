@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>우리 · 너를 맞혀볼게</title>
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#0F1420">
+  <meta name="description" content="세 문제로 그 사람을 맞혀 보고, 링크를 보내 답을 받아 보세요.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../shared/base.css">
+  <link rel="stylesheet" href="../mind/mind.css">
+  <link rel="stylesheet" href="pair.css">
+</head>
+<body class="game suite suite--mind">
+  <div id="siteNav"></div>
+  <div class="app">
+    <header class="topbar" id="header"></header>
+
+    <main class="app__body">
+      <!-- ① 관계 고르기 -->
+      <section class="screen is-active" data-screen="relation">
+        <div class="card card--info center">
+          <div class="mono-label">PAIR</div>
+          <h2 class="big">너를 맞혀볼게</h2>
+          <p class="hint">세 문제로 그 사람을 맞혀 보고, 링크를 보내 답을 받아 봐요.<br>
+            <span class="hint--sub">응답한 사람은 계정 없이 바로 답할 수 있어요</span></p>
+        </div>
+
+        <p class="hint center">누구를 맞혀 볼까요?</p>
+        <nav class="relgrid" id="relGrid" aria-label="관계 고르기"></nav>
+
+        <p class="footnote--dim center" id="relNote">&nbsp;</p>
+      </section>
+
+      <!-- ② 세 문제 추측 -->
+      <section class="screen" data-screen="quiz">
+        <div class="qhead">
+          <span class="mono-label" id="qStep">1 / 3</span>
+          <span class="qhead__rel" id="qRel"></span>
+        </div>
+        <p class="qtext" id="qText"></p>
+
+        <div class="qgroup" id="qOpts" role="radiogroup" aria-label="그 사람의 선택 추측"></div>
+
+        <p class="hint" id="qReasonHint" hidden>왜 그렇게 생각했나요?</p>
+        <div class="qgroup qgroup--reason" id="qReasons" role="radiogroup" aria-label="추측 근거" hidden></div>
+
+        <button class="btn" id="qNext" disabled>다음</button>
+        <p class="footnote--dim center">근거까지 골라야 다음으로 넘어가요</p>
+      </section>
+
+      <!-- ③ 링크 -->
+      <section class="screen" data-screen="link">
+        <div class="card card--info center">
+          <div class="mono-label">LINK READY</div>
+          <h2 class="big">링크가 만들어졌어요</h2>
+          <p class="hint" id="linkNote"></p>
+        </div>
+
+        <div class="linkbox">
+          <code class="linkbox__url" id="linkUrl"></code>
+          <button class="btn btn--sm" id="copyBtn">복사</button>
+        </div>
+        <button class="btn" id="shareBtn">공유하기</button>
+        <p class="footnote--dim center">내 추측은 상대에게 보이지 않아요 — 답을 받은 뒤에 함께 열려요</p>
+
+        <a class="btn btn--ghost" href="/today/">← 오늘의 나로</a>
+      </section>
+
+      <!-- 내가 보낸 링크 -->
+      <section class="screen" data-screen="mine">
+        <h2 class="big center">보낸 링크</h2>
+        <div id="mineList"></div>
+        <button class="btn" id="mineBack">돌아가기</button>
+      </section>
+    </main>
+  </div>
+
+  <script type="module" src="pair.js"></script>
+</body>
+</html>

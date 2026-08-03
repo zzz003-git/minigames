@@ -366,6 +366,41 @@ export function pairQuestionIds(day, relation, pool, count = SUITE.PAIR.QUESTION
  * **오늘의 실험을 마치기 전에는 만들 수 없다.** 자기 마음을 안 본 채 남을 맞히는
  * 것부터 하면 서비스의 순서가 뒤집힌다(기획서 1절 홈 엣지).
  */
+/**
+ * `GET /api/mind/pair/new?relation=…` — 발급 화면이 물어볼 **문항 번호**를 준다.
+ *
+ * 문항은 `hash(day|relation)` 으로 정해진다. 화면이 같은 해시를 다시 구현하면
+ * **두 곳이 어긋날 수 있고**(한쪽만 고치면 발급 때 보여 준 문항과 서버가 저장한
+ * 문항이 달라진다), 그건 링크를 받은 사람이 엉뚱한 문제를 푸는 결과가 된다.
+ * 그래서 번호는 서버가 정하고 **문장만 화면이 갖는다** — 콘텐츠는 화면, 규칙은
+ * 서버라는 이 저장소의 분업 그대로다.
+ */
+export async function pairNew({ env, userId, body }) {
+  const day = dayKey();
+  const st = await loadDay(env, userId, day);
+  if (!st.done) {
+    throw new ApiError("MIND_NOT_DONE", "오늘의 실험을 먼저 마쳐 주세요.", 409);
+  }
+
+  const relation = String(body?.relation ?? "");
+  if (!SUITE.PAIR.RELATIONS.includes(relation)) {
+    throw new ApiError("BAD_PARAM", "관계를 골라 주세요.", 400);
+  }
+
+  const pool = Number(body?.pool);
+  if (!Number.isInteger(pool) || pool < SUITE.PAIR.QUESTIONS) {
+    throw new ApiError("BAD_PARAM", "문항 묶음이 올바르지 않습니다.", 400);
+  }
+
+  const links = await myLinks(env, userId, day);
+  return {
+    relation,
+    q: pairQuestionIds(day, relation, pool),
+    remaining_today: Math.max(0, SUITE.PAIR.MAX_PER_DAY - links.length),
+    expire_hours: Math.round(SUITE.PAIR.EXPIRE_MS / 3600000),
+  };
+}
+
 export async function pairCreate({ env, userId, body }) {
   const day = dayKey();
   const st = await loadDay(env, userId, day);

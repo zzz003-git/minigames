@@ -185,6 +185,8 @@ const ROUTES = {
   "GET /api/mind/state": mind.state,
   "POST /api/mind/submit": mind.submit,
   "GET /api/mind/stats": mind.stats,
+  // 발급 화면이 물어볼 문항 번호 — 규칙은 서버가, 문장은 화면이 갖는다
+  "GET /api/mind/pair/new": mind.pairNew,
   "POST /api/mind/pair": mind.pairCreate,
   "GET /api/mind/pairs": mind.pairList,
 
