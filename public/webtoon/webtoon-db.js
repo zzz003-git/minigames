@@ -246,24 +246,36 @@ export const partsOf = (workId, ep) =>
     h: p.h,
   }));
 
-/** 그날 올라온 회차들 — 홈의 「오늘 올라온 회차」 (기획서 5-1) */
+/**
+ * 그날 올라온 회차들 — **새것부터** (기획서 5-1)
+ *
+ * ── 순서가 없으면 뒤에 올린 작품이 영원히 안 보인다 ─────────────────────
+ * 홈은 이 목록의 앞 3건만 세운다(기획서 5-1 「가로 카드 1~3개」). 정렬하지
+ * 않으면 작품 배열 순서, 즉 **먼저 등록한 셋**이 고정으로 잡혀서 나중에 올린
+ * 작품은 홈에 한 번도 못 올라온다. 실제로 W0005·W0006 이 그랬다.
+ *
+ * 같은 날에 여러 편이 올라오므로 날짜만으로는 못 가른다. 회차 번호, 그다음
+ * 작품 번호로 가른다 — 작품 번호는 등록 순서라 **뒤 번호가 새 작품**이다.
+ */
 export function episodesOn(day) {
   const out = [];
   for (const w of WEBTOON_DB.works) {
     for (const e of w.episodes) if (e.day === day) out.push({ work: w, ep: e });
   }
-  return out;
+  return out.sort((a, b) => b.ep.ep - a.ep.ep || b.work.id.localeCompare(a.work.id));
 }
 
-/** 가장 최근 회차 — 오늘 올라온 것이 없을 때 「최신 회차」로 대신 보여 준다 */
+/**
+ * 가장 최근 회차 — 오늘 올라온 것이 없을 때 「최신 회차」로 대신 보여 준다.
+ *
+ * 가르는 규칙은 `episodesOn` 과 같아야 한다. 예전에는 날짜·회차만 봐서 **여섯
+ * 편이 같은 날 1화면 전부 동률**이 되고 맨 앞 작품이 뽑혔다 — 「최신」이라는
+ * 말이 거짓이 된다.
+ */
 export function latestEpisode() {
-  let best = null;
-  for (const w of WEBTOON_DB.works) {
-    for (const e of w.episodes) {
-      if (!best || e.day > best.ep.day || (e.day === best.ep.day && e.ep > best.ep.ep)) {
-        best = { work: w, ep: e };
-      }
-    }
-  }
-  return best;
+  const all = [];
+  for (const w of WEBTOON_DB.works) for (const e of w.episodes) all.push({ work: w, ep: e });
+  all.sort((a, b) =>
+    b.ep.day.localeCompare(a.ep.day) || b.ep.ep - a.ep.ep || b.work.id.localeCompare(a.work.id));
+  return all[0] ?? null;
 }

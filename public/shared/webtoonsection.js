@@ -20,6 +20,9 @@ import { WEBTOON_DB, episodesOn, latestEpisode, coverOf, thumbOf } from "../webt
 /** 홈에 세우는 연재작 수. 그 이상은 「전체 보기」로 보낸다(기획서 5-1) */
 const HOME_WORKS = 4;
 
+/** 홈에 세우는 「오늘 올라온 회차」 수 (기획서 5-1 「가로 카드 1~3개」) */
+const HOME_TODAY = 3;
+
 export async function renderWebtoonSection(host) {
   if (!host) return null;
 
@@ -60,11 +63,27 @@ export async function renderWebtoonSection(host) {
   );
 
   // ── 오늘 올라온 회차 ──
+  //
+  // 세 건까지만 세운다(기획서 5-1 「가로 카드 1~3개」). 목록은 **새것부터**
+  // 정렬돼 있으므로 앞의 셋이 곧 최신이다.
+  //
+  // 작품이 늘면 오늘 올라온 회차가 셋을 넘는다. 그때 나머지가 있다는 것을
+  // 말해 주지 않으면 「매일 세 편만 나온다」로 읽힌다 — 라벨에 총 건수를 적고
+  // 전체로 가는 길을 남긴다.
   const today = episodesOn(day);
   const shown = today.length ? today : [latestEpisode()].filter(Boolean);
   if (shown.length) {
-    host.append(el("div", { class: "wtarea__label" }, today.length ? "오늘 올라온 회차" : "가장 최근 회차"));
-    for (const { work, ep } of shown.slice(0, 3)) {
+    host.append(
+      el(
+        "div",
+        { class: "wtarea__label" },
+        today.length ? "오늘 올라온 회차" : "가장 최근 회차",
+        today.length > HOME_TODAY
+          ? el("a", { class: "wtarea__all", href: "/webtoon/" }, `${today.length}편 전체 보기 →`)
+          : null,
+      ),
+    );
+    for (const { work, ep } of shown.slice(0, HOME_TODAY)) {
       host.append(
         el(
           "a",
