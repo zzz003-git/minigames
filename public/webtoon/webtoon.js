@@ -20,8 +20,19 @@ import { apiGet, apiPost } from "../shared/api.js";
 import { renderSiteNav } from "../shared/sitenav.js";
 import { WEBTOON_DB, GENRES, workOf, episodeOf, partsOf, episodesOn, latestEpisode } from "./webtoon-db.js";
 
-/** 장르 칩은 작품이 이만큼 쌓여야 뜻이 생긴다 (기획서 6절 3단계) */
-const CHIPS_MIN_WORKS = 5;
+/**
+ * 장르 칩을 여는 기준 (2026-08-04 인수인계 C-1 로 조정).
+ *
+ * 기획서 6절은 「작품 5개 + 첫 완결작」을 한 덩어리로 묶었는데, 두 기능은 서로
+ * 다른 것을 기다린다 — 칩은 **목록이 좁힐 만큼 길어지는 시점**을, 완결관은
+ * **탭이 비지 않을 시점**을 기다린다. 그래서 갈랐다(완결관은 아래에서 완결작
+ * 유무로만 본다).
+ *
+ * 5로 두면 장르당 1편인 채로 열려서, 칩을 눌렀을 때 카드가 한 장만 남는다.
+ * 그건 「다양하다」가 아니라 「비었다」로 읽힌다. 장르당 2편은 되는 시점으로
+ * 미룬다.
+ */
+const CHIPS_MIN_WORKS = 8;
 
 const state = {
   day: null,
@@ -377,7 +388,38 @@ function renderViewer(work, ep) {
 
   renderViewerEnd(work, ep);
   viewerObserver.observe($("#viewEnd"));
+  syncViewBar(ep, slots[0]?.slot);
 }
+
+/**
+ * 상단 바의 글자를 언제 보일지 정한다.
+ *
+ * ── 제목이 그림에 이미 있다 (인수인계 B-2) ──────────────────────────────
+ * 조판이 part01 맨 위에 **작품명 + 구분선 + EP.N 회차제목**을 560px 높이로 구워
+ * 넣는다. 상단 바가 같은 것을 또 쓰면 화면 첫 장면에 제목이 두 번 나온다.
+ *
+ * 재납품(`--no-title`)을 받는 대신 여기서 푼다 — 제목 카드는 그 자체로 회차의
+ * 표지라 없애기 아깝고, **지나고 나면 상단 바가 오히려 필요해진다**(내가 무엇을
+ * 읽고 있는지 알려 주는 유일한 자리다). 그래서 카드를 지나갈 때까지만 감춘다.
+ */
+function syncViewBar(ep, firstSlot) {
+  const bar = $("#viewBar");
+  if (!ep.header || !firstSlot) {
+    bar.classList.remove("is-quiet");
+    return;
+  }
+
+  // 헤더 높이는 원본 기준 560px. 화면 폭이 좁으면 그림이 줄어드므로 같은 비율로 줄인다
+  const headerAt = () => 560 * (firstSlot.getBoundingClientRect().width / (ep.parts[0]?.w || 800));
+  const apply = () => bar.classList.toggle("is-quiet", scrollY < headerAt());
+
+  apply();
+  removeEventListener("scroll", viewBarOnScroll);
+  viewBarOnScroll = apply;
+  addEventListener("scroll", viewBarOnScroll, { passive: true });
+}
+
+let viewBarOnScroll = () => {};
 
 /** 회차 말미 — 다음 화 카드 또는 다음 갱신 예고 */
 function renderViewerEnd(work, ep) {

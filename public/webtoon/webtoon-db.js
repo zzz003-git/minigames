@@ -54,6 +54,7 @@ export const WEBTOON_DB = {
           title: "첫 출근",
           day: "2026-08-04",
           cuts: 24,
+          header: true, // 그림 상단에 제목 카드가 구워져 있다
           // 조판 완료된 분할본. 크기는 자리 예약용이라 **실측값**이어야 한다
           parts: [
             { w: 800, h: 11210 },
@@ -78,6 +79,7 @@ export const WEBTOON_DB = {
           title: "국수 한 그릇",
           day: "2026-08-04",
           cuts: 24,
+          header: true, // 그림 상단에 제목 카드가 구워져 있다
           parts: [
             { w: 800, h: 11436 },
             { w: 800, h: 8586 },
@@ -101,6 +103,7 @@ export const WEBTOON_DB = {
           title: "골목에 괴도가 산다",
           day: "2026-08-04",
           cuts: 24,
+          header: true, // 그림 상단에 제목 카드가 구워져 있다
           parts: [
             { w: 800, h: 11256 },
             { w: 800, h: 8588 },
@@ -124,6 +127,7 @@ export const WEBTOON_DB = {
           title: "마지막 손님",
           day: "2026-08-04",
           cuts: 24,
+          header: true, // 그림 상단에 제목 카드가 구워져 있다
           parts: [
             { w: 800, h: 11606 },
             { w: 800, h: 8879 },
