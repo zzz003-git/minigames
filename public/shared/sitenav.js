@@ -17,7 +17,45 @@
  * 도착하는 것보다 안 눌리는 편이 낫다(허브의 준비 중 칸과 같은 처리).
  */
 
-import { el, clear } from "./ui.js";
+import { el, svgEl, clear } from "./ui.js";
+
+/**
+ * 브랜드 마크 — 겹친 두 카드 위에 재생 삼각형.
+ *
+ * 배경·테두리를 **그림 안에서** 그린다(맨 앞 `rect`). 그래서 `.sitebar__mark` 의
+ * CSS 배경을 지웠다 — 두면 둥근 모서리 뒤로 사각형 그라데이션이 비친다.
+ */
+const brandMark = () =>
+  svgEl(
+    "svg",
+    {
+      class: "sitebar__mark",
+      width: 30,
+      height: 30,
+      viewBox: "0 0 32 32",
+      fill: "none",
+      role: "img",
+      "aria-label": "인스턴트 콘텐츠 로고",
+    },
+    svgEl("rect", {
+      x: 0.6, y: 0.6, width: 30.8, height: 30.8, rx: 9.5,
+      fill: "#191428", stroke: "rgba(255,255,255,.14)", "stroke-width": 1.2,
+    }),
+    svgEl("rect", {
+      x: 7.4, y: 8.2, width: 11.4, height: 17, rx: 2.9,
+      fill: "none", stroke: "#a98be0", "stroke-opacity": 0.6, "stroke-width": 1.7,
+      transform: "rotate(-13 13.1 16.7)",
+    }),
+    svgEl("rect", {
+      x: 12.4, y: 6.8, width: 12.2, height: 18.4, rx: 3.1,
+      fill: "#151827", stroke: "#7fd8c0", "stroke-width": 2,
+      transform: "rotate(7 18.5 16)",
+    }),
+    svgEl("path", {
+      d: "M16.6 12.4 L22.4 15.7 L16.2 19.4 Z",
+      fill: "#d6b166", transform: "rotate(7 18.5 16)",
+    }),
+  );
 
 /** 원안 `tabDefs` 그대로. `href: null` = 아직 열리지 않은 영역 */
 const TABS = [
@@ -41,7 +79,7 @@ export function renderSiteNav(host, active) {
   const brand = el(
     "a",
     { class: "sitebar__brand", href: "/", "aria-label": "인스턴트 콘텐츠 홈" },
-    el("span", { class: "sitebar__mark", "aria-hidden": "true" }, "Z"),
+    brandMark(),
     el("span", { class: "sitebar__name" }, "인스턴트 콘텐츠"),
   );
 

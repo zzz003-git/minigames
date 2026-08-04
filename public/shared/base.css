@@ -3167,12 +3167,12 @@ button.sicon:active { transform: scale(0.94); }
   display: flex; align-items: center; gap: 9px;
   margin-right: auto; text-decoration: none; color: var(--text);
 }
-/* 두 영역의 색을 한 마크에 겹쳐 둔다 — 게임(민트)과 오늘의 나(보라) */
+/* 두 영역의 색을 한 마크에 겹쳐 둔다 — 게임(민트)과 오늘의 나(보라).
+   배경·테두리·모서리는 SVG 가 직접 그리므로 여기서는 크기만 잡는다.
+   `flex: none` — 브랜드가 flex 라 이게 없으면 좁은 폭에서 로고가 찌그러진다. */
 .sitebar__mark {
-  width: 26px; height: 26px; border-radius: 9px;
-  background: linear-gradient(140deg, #7fd8c0, #a98be0);
-  display: grid; place-items: center;
-  color: #0f1420; font-weight: 700; font-size: 13px;
+  width: 30px; height: 30px;
+  display: block; flex: none;
 }
 .sitebar__name { font-weight: 700; font-size: 15px; letter-spacing: -0.01em; }
 .sitebar__tabs { display: flex; gap: 6px; flex-wrap: wrap; }

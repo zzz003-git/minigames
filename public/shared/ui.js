@@ -20,6 +20,27 @@ export function el(tag, attrs = {}, ...children) {
   return node;
 }
 
+/**
+ * `el` 의 SVG 판 — svgEl('rect', { x: 1, width: 30 })
+ *
+ * SVG 는 `createElement` 로 만들면 **화면에 나오지 않는다.** 네임스페이스가 달라
+ * 브라우저가 `HTMLUnknownElement` 로 만들어 버리기 때문이다. 오류도 안 난다 —
+ * 그냥 빈 자리가 된다. 그래서 `el` 을 그대로 못 쓰고 이 짝이 따로 있다.
+ * 속성만 다루면 되므로 `class`·`text`·`on*` 특례는 두지 않는다.
+ */
+export function svgEl(tag, attrs = {}, ...children) {
+  const node = document.createElementNS("http://www.w3.org/2000/svg", tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (v == null || v === false) continue;
+    node.setAttribute(k, v === true ? "" : String(v));
+  }
+  for (const c of children.flat()) {
+    if (c == null || c === false) continue;
+    node.append(c);
+  }
+  return node;
+}
+
 export const clear = (node) => {
   while (node.firstChild) node.removeChild(node.firstChild);
   return node;
