@@ -430,6 +430,16 @@ h1, h2, h3 { margin: 0; font-weight: 700; letter-spacing: -0.01em; }
     border-color var(--t), color var(--t);
 }
 
+/* 페어 전용 코랄 버튼. 스위트 3종의 색(민트·파랑·금)과 겹치지 않게 두어
+   「같은 층이 아니다」를 색으로 먼저 말한다 — `.pairstrip` 과 같은 값이다. */
+.btn--pair {
+  text-decoration: none;
+  background: rgba(255, 143, 128, 0.16);
+  border-color: rgba(255, 143, 128, 0.42);
+  color: #ffc2b8;
+}
+.btn--pair:hover:not(:disabled) { background: rgba(255, 143, 128, 0.24); color: #ffd6cf; }
+
 .btn:hover:not(:disabled) { background: rgba(255, 255, 255, 0.04); color: var(--text-main); }
 .btn:active:not(:disabled) { transform: scale(0.975); }
 .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
@@ -3174,7 +3184,14 @@ button.sicon:active { transform: scale(0.94); }
   width: 30px; height: 30px;
   display: block; flex: none;
 }
-.sitebar__name { font-weight: 700; font-size: 15px; letter-spacing: -0.01em; }
+.sitebar__name { display: grid; gap: 1px; }
+.sitebar__name b { font-weight: 700; font-size: 15px; letter-spacing: -0.01em; }
+/* 태그라인은 이름을 밀어내지 않을 만큼만. 자간을 벌려 마크와 폭을 맞춘다 */
+.sitebar__tag {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 8px; font-weight: 700; letter-spacing: 0.22em;
+  color: #6d6683; line-height: 1;
+}
 .sitebar__tabs { display: flex; gap: 6px; flex-wrap: wrap; }
 
 .sitetab {
@@ -3335,6 +3352,103 @@ a.hubcard:focus-visible { outline: 2px solid var(--t); outline-offset: 2px; }
 }
 .hubarea__note { font-size: 12px; color: #c3aef0; margin-right: auto; }
 .hubarea__legal { font-size: 11px; color: #7d7593; }
+
+/* ══ 너를 맞혀볼게 — 한 줄 스트립 (원안 PAIR_VIEW) ══
+   세 서비스는 각자 색이 있고(민트·파랑·금) 이것만 코랄이다. 셋 중 하나가
+   아니라 셋을 마친 뒤에 열리는 다른 층이라 서비스 팔레트 밖의 색을 쓴다.
+   높이를 3종 카드보다 낮게 유지하는 것이 이 컴포넌트의 제약이다 — 커지면
+   주객이 뒤집힌다. */
+.pairstrip {
+  --coral: #ff8f80;
+  display: flex; align-items: center; gap: 13px;
+  padding: 12px 16px; border-radius: 20px;
+  text-decoration: none; color: var(--text);
+  background: rgba(255, 143, 128, 0.06);
+  border: 1px solid rgba(255, 143, 128, 0.2);
+  transition: 0.18s;
+}
+.pairstrip__mark { display: grid; place-items: center; color: var(--coral); flex: none; }
+.pairstrip__text { display: grid; gap: 3px; min-width: 0; margin-right: auto; }
+.pairstrip__title { display: flex; align-items: center; gap: 8px; }
+.pairstrip__title b { font-size: 15px; font-weight: 700; letter-spacing: -0.01em; }
+.pairstrip__badge {
+  padding: 2px 8px; border-radius: 999px;
+  font-family: "JetBrains Mono", monospace; font-size: 10px; font-weight: 700;
+  letter-spacing: 0.04em;
+  background: rgba(255, 255, 255, 0.06); color: #9d94b4;
+}
+.pairstrip__line { font-size: 12px; color: var(--text-sub); }
+
+/* 지수는 잠겨 있어도 자리를 비우지 않는다 — 빈 자리는 「없는 기능」으로 읽히고
+   가려진 숫자는 「아직 못 본 것」으로 읽힌다. */
+.pairstrip__gauge {
+  display: grid; place-items: center; gap: 1px; flex: none;
+  padding: 6px 12px; border-radius: 14px;
+  background: rgba(255, 255, 255, 0.04);
+}
+.pairstrip__pct {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 17px; font-weight: 700; color: var(--coral);
+}
+.pairstrip__gaugelabel { font-size: 10px; color: #7d7593; white-space: nowrap; }
+.pairstrip__cta {
+  padding: 9px 14px; border-radius: 14px; flex: none;
+  font-size: 12px; font-weight: 700; white-space: nowrap;
+  background: rgba(255, 143, 128, 0.14);
+  border: 1px solid rgba(255, 143, 128, 0.3);
+  color: #ffc2b8;
+}
+
+/* ── 잠금 ── 코랄을 걷어내 「아직 내 것이 아니다」를 색으로 먼저 말한다 */
+.pairstrip.is-locked {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: var(--border-mid);
+}
+.pairstrip.is-locked .pairstrip__mark { color: #6d6683; }
+.pairstrip.is-locked .pairstrip__pct { color: #6d6683; filter: blur(4px); user-select: none; }
+.pairstrip.is-locked .pairstrip__cta {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.1);
+  color: #9d94b4;
+}
+
+/* ── 해제 ── 지금 누를 수 있다는 것만 알리면 된다 */
+.pairstrip.is-ready { border-color: rgba(255, 143, 128, 0.38); }
+.pairstrip.is-ready .pairstrip__badge { background: rgba(255, 143, 128, 0.16); color: var(--coral); }
+.pairstrip.is-ready .pairstrip__cta { background: rgba(255, 143, 128, 0.2); }
+
+/* ── 대기 ── 내가 할 일이 없는 상태다. 차분하게 둔다 */
+.pairstrip.is-waiting { background: rgba(255, 255, 255, 0.03); }
+.pairstrip.is-waiting .pairstrip__mark { opacity: 0.7; }
+
+/* ── 도착 ── 유일하게 스스로 주의를 끌어도 되는 상태 */
+.pairstrip.is-arrived {
+  border-color: var(--coral);
+  background: rgba(255, 143, 128, 0.1);
+  box-shadow: 0 0 0 3px rgba(255, 143, 128, 0.12);
+}
+.pairstrip.is-arrived .pairstrip__badge {
+  background: var(--coral); color: #2a1410;
+  animation: pairPulse 1.8s ease-in-out infinite;
+}
+.pairstrip.is-arrived .pairstrip__cta { background: var(--coral); border-color: var(--coral); color: #2a1410; }
+
+@keyframes pairPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pairstrip.is-arrived .pairstrip__badge { animation: none; }
+}
+
+/* 좁은 폭에서는 지수와 버튼이 아랫줄로 내려간다 — 한 줄을 억지로 지키면
+   제목이 잘린다. 「3종보다 작다」는 제약은 그래도 유지된다. */
+@media (max-width: 560px) {
+  .pairstrip { flex-wrap: wrap; }
+  .pairstrip__text { width: calc(100% - 47px); }
+  .pairstrip__gauge { margin-left: 47px; }
+  .pairstrip__cta { margin-left: auto; }
+}
 
 /* ══ 아카이브 달력 (원안 archiveOpen) ══ */
 .archive {

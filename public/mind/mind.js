@@ -101,7 +101,7 @@ async function boot() {
   try {
     state.st = await apiGet("/api/mind/state");
   } catch (err) {
-    toast(err.message ?? "오늘의 실험을 불러오지 못했습니다.", "error");
+    toast(err.message ?? "오늘의 선택을 불러오지 못했습니다.", "error");
     return;
   }
 
@@ -120,13 +120,13 @@ function renderHome() {
   const filled = st.axes.filter((n) => n >= st.axes_goal).length;
 
   $("#envGlyph").textContent = st.done ? state.exp.glyph : "✉️";
-  $("#envTitle").textContent = st.done ? "오늘의 실험 완료" : state.exp.title;
+  $("#envTitle").textContent = st.done ? "오늘의 선택 완료" : state.exp.title;
   $("#envSub").textContent = st.done ? "결과를 다시 볼 수 있어요" : "봉투를 열어 보세요";
   $("#envelope").classList.toggle("is-done", st.done);
 
   $("#mapValue").textContent = `${filled} / ${MIND_DB.axes.length}축`;
   $("#collValue").textContent = `${st.collection.length}칸`;
-  setHeaderBadge(st.done ? "오늘 완료" : "오늘의 실험");
+  setHeaderBadge(st.done ? "오늘 완료" : "오늘의 선택");
 
   renderArchiveAd();
   showScreen("home");
@@ -246,7 +246,7 @@ function renderResult({ exp, typeIdx, res, replay }) {
   renderAxisBars($("#axisBars"), state.st.axes, state.st.axes_goal);
 
   $("#resGain").textContent = replay
-    ? `오늘의 실험을 마쳤어요 · 도감 ${state.st.collection.length}칸`
+    ? `오늘의 선택을 마쳤어요 · 도감 ${state.st.collection.length}칸`
     : `+${res.gained}P 적립 · 도감 ${state.st.collection.length}칸${res.is_new ? " (새 칸!)" : ""}` +
       (res.portrait_new ? " · 마음 초상 완성!" : "");
 
@@ -256,7 +256,7 @@ function renderResult({ exp, typeIdx, res, replay }) {
 
   $("#resNote").textContent = state.st.map_complete
     ? "이달의 마음 지도를 완성했어요"
-    : "내일 새 실험이 도착합니다";
+    : "내일 새 선택이 도착합니다";
 
   showScreen("result");
   armScreen("result");
@@ -344,7 +344,7 @@ function renderArchiveAd() {
 
   renderRewardCard(host, {
     icon: "🗄️",
-    title: "광고 보고 지난 실험 열기",
+    title: "광고 보고 지난 선택 열기",
     desc: "더 열어도 오늘의 카드와 적립은 그대로예요",
     cta: "열기",
     onClick: async () => {

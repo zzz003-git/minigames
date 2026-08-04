@@ -6,7 +6,7 @@
   <title>오늘의 선택</title>
   <meta name="color-scheme" content="dark">
   <meta name="theme-color" content="#0F1420">
-  <meta name="description" content="오늘의 실험 한 봉투. 90초면 오늘의 마음이 나옵니다.">
+  <meta name="description" content="오늘의 선택 한 봉투. 90초면 오늘의 마음이 나옵니다.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
@@ -23,9 +23,9 @@
       <!-- 홈 — 오늘의 봉투 -->
       <section class="screen is-active" data-screen="home">
         <div class="envelope" id="envelope" role="button" tabindex="0"
-             aria-label="오늘의 실험 봉투를 엽니다">
+             aria-label="오늘의 선택 봉투를 엽니다">
           <div class="envelope__glyph" id="envGlyph">✉️</div>
-          <div class="envelope__title" id="envTitle">오늘의 실험</div>
+          <div class="envelope__title" id="envTitle">오늘의 선택</div>
           <div class="envelope__sub" id="envSub">봉투를 열어 보세요</div>
         </div>
 
@@ -95,6 +95,9 @@
 
         <div id="adbarStats"></div>
         <div class="crosschips" id="crossChips"></div>
+        <!-- 페어로 가는 유일한 유도 지점. 오늘의 선택을 마쳐야 열리는 기능이라
+             그 결과를 본 이 자리가 가장 자연스럽다. 코랄은 페어 전용 색이다. -->
+        <a class="btn btn--pair" id="pairCta" href="/pair/">너를 맞혀볼게 — 링크 보내기</a>
         <button class="btn" id="collBtn">도감 보기</button>
         <div class="footnote--dim center" id="resNote"></div>
       </section>

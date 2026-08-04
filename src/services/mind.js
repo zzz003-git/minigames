@@ -177,7 +177,7 @@ export async function submit({ env, userId, body }) {
   const questions = body?.questions;
   const answers = body?.answers;
 
-  if (!expId) throw new ApiError("BAD_PARAM", "실험이 지정되지 않았습니다.", 400);
+  if (!expId) throw new ApiError("BAD_PARAM", "선택이 지정되지 않았습니다.", 400);
   if (!Array.isArray(questions) || questions.length !== MIND.QUESTIONS) {
     throw new ApiError("BAD_PARAM", `문항은 ${MIND.QUESTIONS}개여야 합니다.`, 400);
   }
@@ -195,7 +195,7 @@ export async function submit({ env, userId, body }) {
 
   const st = await loadDay(env, userId, day);
   if (st.done) {
-    throw new ApiError("ALREADY_DONE", "오늘의 실험은 이미 마쳤어요. 결과를 다시 볼 수 있습니다.", 409);
+    throw new ApiError("ALREADY_DONE", "오늘의 선택은 이미 마쳤어요. 결과를 다시 볼 수 있습니다.", 409);
   }
 
   // ── 서버가 다시 센다 ────────────────────────────────────────
@@ -382,7 +382,7 @@ export async function pairNew({ env, userId, body }) {
   const day = dayKey();
   const st = await loadDay(env, userId, day);
   if (!st.done) {
-    throw new ApiError("MIND_NOT_DONE", "오늘의 실험을 먼저 마쳐 주세요.", 409);
+    throw new ApiError("MIND_NOT_DONE", "오늘의 선택을 먼저 마쳐 주세요.", 409);
   }
 
   const relation = String(body?.relation ?? "");
@@ -408,7 +408,7 @@ export async function pairCreate({ env, userId, body }) {
   const day = dayKey();
   const st = await loadDay(env, userId, day);
   if (!st.done) {
-    throw new ApiError("MIND_NOT_DONE", "오늘의 실험을 먼저 마쳐 주세요.", 409);
+    throw new ApiError("MIND_NOT_DONE", "오늘의 선택을 먼저 마쳐 주세요.", 409);
   }
 
   const relation = String(body?.relation ?? "");

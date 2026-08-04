@@ -94,7 +94,14 @@ export function renderSiteNav(host, active) {
     "a",
     { class: "sitebar__brand", href: "/", "aria-label": "인스턴트 콘텐츠 홈" },
     brandMark(),
-    el("span", { class: "sitebar__name" }, "인스턴트 콘텐츠"),
+    // 락업은 두 줄이다 — 이름 아래 태그라인(원안 logo-4c 브랜드 락업).
+    // 「무엇을 하는 곳인가」를 이름만으로는 말하지 못해서 붙였다.
+    el(
+      "span",
+      { class: "sitebar__name" },
+      el("b", {}, "인스턴트 콘텐츠"),
+      el("span", { class: "sitebar__tag" }, "PLAY & READ"),
+    ),
   );
 
   const nav = el("nav", { class: "sitebar__tabs", "aria-label": "영역" });

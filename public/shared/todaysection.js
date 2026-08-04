@@ -21,7 +21,7 @@
  * 없는 10KB 라, 「전체」 화면 첫 로딩에 얹을 이유가 없다.
  */
 
-import { el, clear } from "./ui.js";
+import { el, svgEl, clear } from "./ui.js";
 import { apiGet } from "./api.js";
 import { HUB_INDEX } from "./hub-index.js";
 
@@ -39,8 +39,11 @@ const VERBS = {
 const INVITE = {
   tarot: "오늘의 카드가 아직 뒤집혀 있어요",
   saju: "오늘의 기운이 아직 잠겨 있어요",
-  mind: "오늘의 실험이 기다리고 있어요",
+  mind: "오늘의 선택이 기다리고 있어요",
 };
+
+/** 페어 링크의 상대 관계 — 대기 문구에 그대로 들어간다 */
+const RELATION = { lover: "연인", friend: "친구", family: "가족", coworker: "동료" };
 
 export async function renderTodaySection(host, { heading = true } = {}) {
   if (!host) return null;
@@ -63,6 +66,14 @@ export async function renderTodaySection(host, { heading = true } = {}) {
   const grid = el("nav", { class: "hubarea__grid", "aria-label": "오늘의 나 3종" });
   for (const s of data.services) grid.append(serviceCard(s));
   host.append(grid);
+
+  // 페어 스트립은 **3종 카드 바로 아래**다(원안). 잠겨 있을 때는 링크가 있을 수
+  // 없으므로 목록을 부르지 않는다 — 대부분의 방문에서 요청 하나가 준다.
+  const mindDone = data.services.some((s) => s.key === "mind" && s.done);
+  const strip = el("div", { class: "pairstrip-slot" });
+  host.append(strip);
+  (mindDone ? apiGet("/api/mind/pairs").catch(() => null) : Promise.resolve(null))
+    .then((pairs) => strip.replaceWith(pairStrip(pairs, mindDone)));
 
   // 「한 장」은 세 조각을 다 모았을 때만. 못 채운 사람에게 빈 틀을 보여 주지 않는다.
   //
@@ -145,7 +156,7 @@ function serviceCard(s) {
   return s.ready ? el("a", { ...attrs, href: s.href }, ...kids) : el("span", { ...attrs, "aria-disabled": "true" }, ...kids);
 }
 
-/** 아래 줄 — 페어 · 트리플 안내 · 고지 */
+/** 아래 줄 — 아카이브 · 트리플 안내 · 고지 */
 function footRow(data) {
   const note = data.triple
     ? `세 조각을 다 모았어요 · +${data.triple_points}P`
@@ -156,14 +167,102 @@ function footRow(data) {
   return el(
     "div",
     { class: "hubarea__foot" },
-    // 발급 화면(`/pair/`)이 생겨서 이제 실제로 연결된다.
-    // 다만 **오늘의 선택을 마쳐야** 들어갈 수 있다 — 내 결과가 있어야 맞히기가 성립한다.
-    el("a", { class: "hubarea__btn is-key", href: "/pair/" }, "우리 · 너를 맞혀볼게"),
     archiveToggle(),
     el("span", { class: "hubarea__note" }, note),
-    el("span", { class: "hubarea__legal" }, "순위 없음 · 무광고로 완결 · 오락용입니다"),
+    el(
+      "span",
+      { class: "hubarea__legal" },
+      "순위 없음 · 광고 없이도 완결 · 본 콘텐츠는 오락용이며 심리학적 진단이 아닙니다",
+    ),
   );
 }
+
+// ══════════════════════════════════════════════════════════════
+// 너를 맞혀볼게 — 한 줄 스트립
+// ══════════════════════════════════════════════════════════════
+
+/**
+ * 「너를 맞혀볼게」 스트립.
+ *
+ * ── 왜 한 줄인가 ─────────────────────────────────────────────────────────
+ * 처음에는 세로로 큰 카드였는데 **3종 카드보다 커져서 주객이 뒤집혔다.**
+ * 이 영역의 주인공은 위의 세 칸이고 이것은 그 다음에 여는 것이다. 그래서
+ * 본문 문단과 단계 칩을 걷어내고 아이콘·제목·상태·지수·버튼을 한 줄에 넣었다.
+ *
+ * ── 이 카드만 코랄이다 ───────────────────────────────────────────────────
+ * 세 서비스는 각자 색이 있다(민트·파랑·금). 페어는 그 셋 중 하나가 아니라
+ * **셋을 마친 뒤에 열리는 다른 층**이라, 서비스 팔레트 밖의 색을 쓴다.
+ *
+ * ── 지수는 항상 보인다 ───────────────────────────────────────────────────
+ * 잠겨 있을 때도 숫자 자리를 비우지 않고 `??%` 를 블러로 깐다. 빈 자리는
+ * 「없는 기능」으로 읽히지만 가려진 숫자는 「아직 못 본 것」으로 읽힌다.
+ */
+function pairStrip(pairs, mindDone) {
+  const links = pairs?.links ?? [];
+  const arrived = links.find((l) => l.status === "answered");
+  const waiting = links.find((l) => l.status === "open");
+
+  const state = !mindDone ? "locked" : arrived ? "arrived" : waiting ? "waiting" : "ready";
+
+  const bestPct = Math.max(0, ...Object.values(pairs?.best ?? {}).map(Number).filter(Number.isFinite));
+  const pct = arrived ? (arrived.summary?.pct ?? bestPct) : null;
+
+  const left = Math.max(0, Number(pairs?.remaining_today ?? 0));
+  const relation = RELATION[waiting?.relation] ?? "상대";
+
+  const COPY = {
+    locked: { badge: "LOCKED", line: "오늘의 선택을 마치면 열려요", cta: "오늘의 선택 먼저 하기", href: "/mind/" },
+    ready: { badge: "READY", line: `오늘 보낼 수 있는 링크 ${left}개`, cta: "링크 보내기", href: "/pair/" },
+    waiting: { badge: "WAITING", line: `${relation}에게 보낸 링크가 기다리고 있어요`, cta: "링크 다시 보기", href: "/pair/" },
+    arrived: { badge: "도착", line: "결과가 도착했어요 — 서로 알기 지수 확인", cta: "결과 보기", href: "/pair/" },
+  }[state];
+
+  // 잠금은 `??`, 아직 결과가 없으면 `?`, 도착이면 실제 값.
+  const face = state === "locked" ? "??" : pct == null ? "?" : String(pct);
+
+  const gauge = el(
+    "span",
+    { class: "pairstrip__gauge" },
+    el("span", { class: "pairstrip__pct" }, `${face}%`),
+    el("span", { class: "pairstrip__gaugelabel" }, "서로 알기 지수"),
+  );
+
+  return el(
+    "a",
+    { class: `pairstrip is-${state}`, href: COPY.href },
+    el("span", { class: "pairstrip__mark", "aria-hidden": "true" }, pairMark()),
+    el(
+      "span",
+      { class: "pairstrip__text" },
+      el(
+        "span",
+        { class: "pairstrip__title" },
+        el("b", {}, "너를 맞혀볼게"),
+        el("span", { class: "pairstrip__badge" }, COPY.badge),
+      ),
+      el("span", { class: "pairstrip__line" }, COPY.line),
+    ),
+    gauge,
+    el("span", { class: "pairstrip__cta" }, state === "locked" ? `🔒 ${COPY.cta}` : COPY.cta),
+  );
+}
+
+/** 마주 본 두 장이 겹친 형상 — 「서로를 맞혀 본다」를 손이 아니라 카드로 말한다 */
+const pairMark = () =>
+  svgEl(
+    "svg",
+    { width: 34, height: 34, viewBox: "0 0 32 32", fill: "none" },
+    svgEl("rect", {
+      x: 5.6, y: 7.4, width: 12, height: 17.2, rx: 3,
+      fill: "none", stroke: "currentColor", "stroke-opacity": 0.45, "stroke-width": 2,
+      transform: "rotate(-15 11.6 16)",
+    }),
+    svgEl("rect", {
+      x: 13.4, y: 7.4, width: 12, height: 17.2, rx: 3,
+      fill: "none", stroke: "currentColor", "stroke-width": 2,
+      transform: "rotate(15 19.4 16)",
+    }),
+  );
 
 /** 완료한 칸의 미니 결과 — 이름 하나면 충분하다. 해석은 각 서비스가 보여 준다 */
 function summarize(s) {
