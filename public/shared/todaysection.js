@@ -157,7 +157,7 @@ function footRow(data) {
     "div",
     { class: "hubarea__foot" },
     // 발급 화면(`/pair/`)이 생겨서 이제 실제로 연결된다.
-    // 다만 **오늘의선택을 마쳐야** 들어갈 수 있다 — 내 결과가 있어야 맞히기가 성립한다.
+    // 다만 **오늘의 선택을 마쳐야** 들어갈 수 있다 — 내 결과가 있어야 맞히기가 성립한다.
     el("a", { class: "hubarea__btn is-key", href: "/pair/" }, "우리 · 너를 맞혀볼게"),
     archiveToggle(),
     el("span", { class: "hubarea__note" }, note),
@@ -313,7 +313,7 @@ async function renderOneCard(slot, data) {
   for (const t of [
     `🔮 ${CARD_NAMES[card] ?? "카드"}`,
     `🌤️ ${GOD_NAMES[god] ?? "기운"}`,
-    type ? `${type.g} ${type.n}` : "🔬 오늘의선택",
+    type ? `${type.g} ${type.n}` : "🔬 오늘의 선택",
   ]) {
     chips.append(el("span", { class: "onecard__chip" }, t));
   }

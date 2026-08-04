@@ -1,8 +1,9 @@
 /**
- * 🔬 오늘의선택 — 화면
+ * 🔬 오늘의 선택 — 화면
  *
  * 기획: MIND-SPEC-01 · 인터랙션 1차 사양은 프로토
- * (`../reward-minigame-research/mind/prototype/MIND-PROTO-01_오늘의선택.html`)
+ * (`../reward-minigame-research/mind/prototype/MIND-PROTO-01_마음연구소.html`
+ *  — 파일명은 개명 전 이름 그대로다)
  *
  * ── 유형은 서버가 다시 센다 ──────────────────────────────────────────────
  * 여기서도 계산하지만 그것은 **연출을 미리 준비하기 위한 것**이고, 도감에 들어가는
@@ -33,7 +34,7 @@ const state = {
 // 원안의 `activeView = inSuite ? 'hub' : v` — 서비스 화면에서도 「오늘의 나」 탭이
 // 켜진 채 남는다. 게임 화면과 달리 여기는 판 중이 아니라 결과를 보는 자리다.
 renderSiteNav($("#siteNav"), "hub");
-renderHeader($("#header"), { icon: "🔬", title: "오늘의선택", back: "/today/" });
+renderHeader($("#header"), { icon: "🔬", title: "오늘의 선택", back: "/today/" });
 
 $("#envelope").addEventListener("click", openEnvelope);
 $("#envelope").addEventListener("keydown", (e) => {

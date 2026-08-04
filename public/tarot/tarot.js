@@ -495,7 +495,7 @@ function renderCrossChips() {
   const s = state.today.suite ?? {};
   const chips = [
     { key: "saju", href: "/saju/", icon: "🌤️", name: "오늘의 기운" },
-    { key: "mind", href: "/mind/", icon: "🔬", name: "오늘의선택" },
+    { key: "mind", href: "/mind/", icon: "🔬", name: "오늘의 선택" },
   ];
 
   for (const c of chips) {

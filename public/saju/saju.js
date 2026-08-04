@@ -234,7 +234,7 @@ function renderCross(host) {
   const s = state.st.suite ?? {};
   for (const c of [
     { key: "tarot", href: "/tarot/", icon: "🔮", name: "오늘의 타로" },
-    { key: "mind", href: "/mind/", icon: "🔬", name: "오늘의선택" },
+    { key: "mind", href: "/mind/", icon: "🔬", name: "오늘의 선택" },
   ]) {
     const done = s[c.key]?.done;
     host.append(
