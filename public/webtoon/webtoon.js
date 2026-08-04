@@ -319,6 +319,12 @@ let viewerObserver = null;
 function renderViewer(work, ep) {
   viewerObserver?.disconnect();
 
+  // **화면을 먼저 보이게 한다.** 숨긴 채로 관측을 걸면 모든 요소의 크기가 0 이고
+  // 위치가 (0,0) 이라 표식이 전부 「화면 안」으로 잡힌다 — 그러면 분할본이
+  // 한꺼번에 켜져서 나눠 놓은 뜻이 사라진다. 실제로 그렇게 나왔다.
+  showScreen("viewer");
+  scrollTo(0, 0);
+
   $("#viewTitle").textContent = work.title;
   $("#viewEp").textContent = `EP.${ep.ep}`;
   $("#viewBack").onclick = () => go(`#/w/${work.id}`);
@@ -371,9 +377,6 @@ function renderViewer(work, ep) {
 
   renderViewerEnd(work, ep);
   viewerObserver.observe($("#viewEnd"));
-
-  showScreen("viewer");
-  scrollTo(0, 0);
 }
 
 /** 회차 말미 — 다음 화 카드 또는 다음 갱신 예고 */
