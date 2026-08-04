@@ -55,6 +55,7 @@ import * as testreset from "./services/testreset.js";
 import * as todayHub from "./services/today.js";
 import * as popular from "./services/popular.js";
 import * as saju from "./services/saju.js";
+import * as webtoon from "./services/webtoon.js";
 import * as arcade from "./lib/arcade.js";
 import * as adRoutes from "./routes/ad.js";
 import * as statsRoutes from "./routes/stats.js";
@@ -190,6 +191,9 @@ const ROUTES = {
   "GET /api/mind/pair/new": mind.pairNew,
   "POST /api/mind/pair": mind.pairCreate,
   "GET /api/mind/pairs": mind.pairList,
+
+  "GET /api/webtoon/home": webtoon.home,
+  "POST /api/webtoon/read": webtoon.read,
 
   "GET /api/saju/state": saju.state,
   "POST /api/saju/profile": saju.profile,

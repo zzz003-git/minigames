@@ -286,6 +286,12 @@
          하루 한 번 들르는 곳이다. 내용은 /today/ 와 같은 모듈이 그린다. -->
     <section id="todaySection"></section>
 
+    <!-- ══ 웹툰 영역 ══
+         원안의 「다음 영역」 준비중 슬롯이 있던 자리다. 세 기둥의 셋째이고
+         순서는 게임 → 오늘의 나 → 웹툰이다 — 읽는 데 가장 오래 걸리는 것이
+         맨 아래다(webtoon_section_plan 5-1). -->
+    <section id="webtoonSection" hidden></section>
+
     <footer class="hub__footer">
       <a href="https://github.com/zzz003-git/minigames">소스 코드</a>
     </footer>
@@ -297,10 +303,12 @@
     import { renderSiteNav } from "./shared/sitenav.js";
     import { $ } from "./shared/ui.js";
     import { renderTodaySection } from "./shared/todaysection.js";
+    import { renderWebtoonSection } from "./shared/webtoonsection.js";
     import { initGameArea } from "./shared/gamearea.js";
     import { renderTestBanner } from "./shared/testbanner.js";
     renderSiteNav($("#siteNav"), "home");
     renderTodaySection($("#todaySection"));
+    renderWebtoonSection($("#webtoonSection"));
     initGameArea();
     renderTestBanner($("#testBanner"));
   </script>

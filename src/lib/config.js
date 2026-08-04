@@ -1365,6 +1365,21 @@ export const SAJU = {
   BIRTH_MIN: "1930-01-01",
 };
 
+// ── 📖 웹툰 (webtoon_section_plan) ────────────────────────────────────────
+//
+// 작품·회차 콘텐츠는 화면이 가진다(`public/webtoon/webtoon-db.js`). 서버가 아는
+// 것은 「어디까지 읽었나」뿐이라 여기 상수도 그만큼만 있다.
+//
+// **광고 트리거가 없다.** 「순위도 결제도 없이」가 이 영역의 성격 정의라
+// (기획서 3절) 회차를 여는 데 광고가 끼면 그 문장이 깨진다. 나중에 붙이더라도
+// 읽기 경로가 아닌 곳이어야 한다.
+export const WEBTOON = {
+  // 진행률의 분모는 작품이 가진 예정 편수다. 이 값은 그 상한만 지킨다 —
+  // 콘텐츠 쪽 오타로 total 이 터무니없이 커져도 화면이 깨지지 않게.
+  MAX_EPISODES: 999,
+  UPDATE_HOUR_KST: 9, // 매일 아침 9시 갱신 (제작 파이프라인과 같은 시각)
+};
+
 export const AD_TRIGGERS = {
   STOPWATCH_ATTEMPT: { game: "STOPWATCH", type: "REWARDED", perDay: STOPWATCH.AD_VIEWS_PER_DAY },
   STOPWATCH_STATS: { game: "STOPWATCH", type: "INTERSTITIAL", perDay: null },

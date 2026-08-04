@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>웹툰</title>
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#0F1420">
+  <meta name="description" content="순위도 결제도 없이, 하루 한 화씩 읽는 연재.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../shared/base.css">
+  <link rel="stylesheet" href="webtoon.css">
+</head>
+<body class="webtoon-body">
+  <div id="siteNav"></div>
+
+  <main class="wt">
+    <!-- ① 웹툰 홈 -->
+    <section class="screen is-active" data-screen="home">
+      <header class="wt__head">
+        <span class="wt__icon" aria-hidden="true">📖</span>
+        <span class="wt__headtext">
+          <b>오늘의 연재</b>
+          <span id="homeDate">—</span>
+        </span>
+        <span class="wt__count mono" id="workCount">WEBTOON 0</span>
+      </header>
+
+      <!-- 오늘 올라온 회차 -->
+      <h2 class="wt__label">오늘 올라온 회차 <small id="todayNote"></small></h2>
+      <div id="todayList"></div>
+
+      <!-- 이어보기 — 읽던 것이 있을 때만 -->
+      <div id="resumeSlot" hidden>
+        <h2 class="wt__label">이어보기</h2>
+        <div id="resumeRow"></div>
+      </div>
+
+      <!-- 연재 중 -->
+      <h2 class="wt__label">연재 중 <small>전 작품 매일 연재</small></h2>
+      <!-- 장르 칩은 작품이 늘어야 뜻이 생긴다 — 3단계 조건까지 숨긴다 -->
+      <nav class="wt__chips" id="genreChips" aria-label="장르 고르기" hidden></nav>
+      <div class="wt__grid" id="workGrid"></div>
+
+      <!-- 완결관 — 완결작이 생기면 -->
+      <div id="doneSlot" hidden>
+        <h2 class="wt__label">완결관 <small>정주행</small></h2>
+        <div class="wt__grid" id="doneGrid"></div>
+      </div>
+
+      <p class="wt__legal">순위 없음 · 결제 없음 · 매일 아침 <span id="updHour">9</span>시 갱신</p>
+    </section>
+
+    <!-- ② 작품 홈 -->
+    <section class="screen" data-screen="work">
+      <div class="wtwork">
+        <div class="wtwork__bg" id="workBg" aria-hidden="true"></div>
+        <div class="wtwork__inner">
+          <button class="wt__back" type="button" id="workBack">‹ 웹툰</button>
+          <p class="wtwork__logline" id="workLogline">—</p>
+          <h1 class="wtwork__title" id="workTitle">—</h1>
+          <p class="wtwork__meta" id="workMeta">—</p>
+          <div class="wt__chips wt__chips--tag" id="workTags"></div>
+
+          <div class="wtwork__prog">
+            <span class="wt__bar"><i id="workBar"></i></span>
+            <span class="mono" id="workProg">0/0화</span>
+          </div>
+
+          <div class="wtwork__btns">
+            <button class="btn btn--wt" type="button" id="btnResume">이어보기</button>
+            <button class="btn" type="button" id="btnFirst">첫 화부터</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="wt__eprow">
+        <h2 class="wt__label">회차</h2>
+        <button class="wt__sort" type="button" id="epSort">최신순</button>
+      </div>
+      <div id="epList"></div>
+    </section>
+
+    <!-- ③ 뷰어 -->
+    <section class="screen" data-screen="viewer">
+      <div class="wtview__bar" id="viewBar">
+        <button class="wt__back" type="button" id="viewBack">‹</button>
+        <span class="wtview__title" id="viewTitle">—</span>
+        <span class="mono" id="viewEp">EP.1</span>
+      </div>
+
+      <!-- 분할본이 순서대로 들어간다. 각 자리는 로딩 전에 높이가 잡혀 있다 -->
+      <div class="wtview__strip" id="viewStrip"></div>
+
+      <div class="wtview__end" id="viewEnd"></div>
+    </section>
+  </main>
+
+  <script type="module" src="webtoon.js"></script>
+</body>
+</html>

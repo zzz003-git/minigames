@@ -3538,3 +3538,79 @@ a.hubcard:focus-visible { outline: 2px solid var(--t); outline-offset: 2px; }
   color: #f4e8cd; cursor: pointer;
 }
 .onecard__share:hover { background: rgba(255, 255, 255, 0.14); }
+
+/* ══ 📖 웹툰 영역 (홈) ══
+   게임(무채)·오늘의 나(보라)와 구분되는 딥그린/청록 틴트.
+   읽는 영역이라 차분한 쪽으로 간다(webtoon_section_plan 5-5). */
+.wtarea {
+  --wt: #4cc2b4;
+  display: flex; flex-direction: column; gap: 0;
+  padding: 20px 22px 24px; border-radius: 26px; margin-top: 18px;
+  background: linear-gradient(180deg, rgba(76, 194, 180, 0.05), rgba(22, 28, 39, 0.55));
+  border: 1px solid rgba(76, 194, 180, 0.18);
+}
+.wtarea__head { display: flex; align-items: center; gap: 12px; }
+.wtarea__icon {
+  width: 38px; height: 38px; border-radius: 12px; flex: none;
+  display: grid; place-items: center; font-size: 18px;
+  background: rgba(76, 194, 180, 0.12);
+}
+.wtarea__text { display: grid; gap: 2px; margin-right: auto; }
+.wtarea__text b { font-size: 16px; }
+.wtarea__text span { font-size: 12.5px; color: var(--text-sub); }
+.wtarea__count {
+  font-family: "JetBrains Mono", monospace; font-size: 11px; letter-spacing: 0.08em;
+  color: var(--wt); border: 1px solid rgba(76, 194, 180, 0.22);
+  border-radius: 999px; padding: 5px 11px;
+}
+.wtarea__label { font-size: 13px; font-weight: 700; margin: 20px 0 10px; }
+
+.wtarea__today {
+  display: flex; align-items: center; gap: 13px;
+  padding: 13px; border-radius: 15px; text-decoration: none; color: var(--text);
+  background: var(--surface-2); border: 1px solid var(--border); transition: 0.16s;
+}
+.wtarea__today:hover { border-color: rgba(76, 194, 180, 0.35); }
+.wtarea__thumb { width: 66px; height: 66px; border-radius: 11px; object-fit: cover; flex: none; }
+.wtarea__todaytext { display: grid; gap: 5px; margin-right: auto; min-width: 0; justify-items: start; }
+.wtarea__badge {
+  font-family: "JetBrains Mono", monospace; font-size: 10px; font-weight: 700; letter-spacing: 0.08em;
+  color: #e8935a; border: 1px solid rgba(232, 147, 90, 0.35); border-radius: 6px; padding: 2px 7px;
+}
+.wtarea__title { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; }
+.wtarea__title b { font-size: 14.5px; }
+.wtarea__ep { font-family: "JetBrains Mono", monospace; font-size: 11.5px; color: var(--wt); }
+.wtarea__meta { font-size: 11.5px; color: var(--text-dim); }
+.wtarea__go { font-size: 18px; color: var(--text-dim); }
+
+.wtarea__resume {
+  display: flex; align-items: center; gap: 12px;
+  padding: 11px 13px; border-radius: 13px; text-decoration: none; color: var(--text);
+  background: var(--surface-2); border: 1px solid var(--border);
+}
+.wtarea__rthumb { width: 42px; height: 42px; border-radius: 10px; object-fit: cover; flex: none; }
+.wtarea__rtext { display: grid; gap: 6px; flex: 1; min-width: 0; }
+.wtarea__rtext b { font-size: 13px; }
+.wtarea__bar { display: block; height: 4px; border-radius: 2px; background: rgba(255,255,255,.07); overflow: hidden; }
+.wtarea__bar i { display: block; height: 100%; background: var(--wt); }
+.wtarea__rst { font-family: "JetBrains Mono", monospace; font-size: 11.5px; color: var(--text-dim); white-space: nowrap; }
+.wtarea__rgo {
+  font-size: 12px; font-weight: 700; white-space: nowrap; padding: 7px 13px; border-radius: 999px;
+  background: rgba(76, 194, 180, 0.14); border: 1px solid rgba(76, 194, 180, 0.3); color: #a8e6dd;
+}
+
+.wtarea__grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+@media (max-width: 720px) { .wtarea__grid { grid-template-columns: repeat(2, 1fr); } }
+.wtarea__card { display: grid; gap: 6px; text-decoration: none; color: var(--text); }
+.wtarea__cover {
+  display: block; aspect-ratio: 2/3; border-radius: 13px; overflow: hidden;
+  background: var(--surface-2); border: 1px solid var(--border);
+}
+.wtarea__cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.wtarea__card b { font-size: 13px; line-height: 1.35; }
+.wtarea__cmeta { font-size: 11px; color: var(--text-dim); }
+.wtarea__more {
+  margin: 18px auto 0; padding: 9px 20px; border-radius: 999px;
+  font-size: 12.5px; text-decoration: none;
+  color: var(--text-sub); border: 1px solid var(--border-mid);
+}

@@ -515,6 +515,49 @@ async function pairResendContract() {
   useIp(testIp(1));
 }
 
+/**
+ * 📖 웹툰 — 읽음 도장과 이어보기
+ *
+ * 서버가 아는 것은 「어디까지 읽었나」뿐이라 검사도 그만큼이다. 핵심은 두 가지다 —
+ * **재열람이 진행률을 부풀리지 않는 것**(기본키가 그것을 보장한다)과, 이어보기가
+ * 마지막으로 읽은 한 줄을 정확히 집는 것.
+ */
+async function webtoonReadContract() {
+  console.log("\n[1-e] 📖 웹툰 — 읽음 도장");
+
+  const cookieBefore = cookie;
+  cookie = "";
+  useIp(testIp(238));
+
+  const empty = await get("/api/webtoon/home");
+  check("웹툰 처음에는 읽은 것이 없다",
+    empty.status === 200 && Object.keys(empty.data?.read ?? {}).length === 0 && empty.data?.resume === null,
+    `read=${JSON.stringify(empty.data?.read)} resume=${JSON.stringify(empty.data?.resume)}`);
+
+  const first = await post("/api/webtoon/read", { work_id: "W0001", ep: 1 });
+  check("웹툰 도장 하나", first.status === 200 && first.data?.count === 1, `count=${first.data?.count}`);
+
+  const again = await post("/api/webtoon/read", { work_id: "W0001", ep: 1 });
+  check("웹툰 같은 회차를 다시 읽어도 한 칸", again.data?.count === 1, `count=${again.data?.count}`);
+
+  const second = await post("/api/webtoon/read", { work_id: "W0001", ep: 2 });
+  check("웹툰 다른 회차는 새 칸", second.data?.count === 2, `count=${second.data?.count}`);
+
+  const filled = await get("/api/webtoon/home");
+  check("웹툰 진행률 집계", filled.data?.read?.W0001?.count === 2, JSON.stringify(filled.data?.read));
+  check("웹툰 이어보기는 마지막으로 읽은 회차",
+    filled.data?.resume?.work_id === "W0001" && filled.data?.resume?.ep === 2,
+    JSON.stringify(filled.data?.resume));
+
+  const bad = await post("/api/webtoon/read", { work_id: "nope", ep: 1 });
+  check("웹툰 작품 형식 검증", bad.status === 400 && bad.data?.code === "BAD_PARAM", `(${bad.status})`);
+  const bad2 = await post("/api/webtoon/read", { work_id: "W0001", ep: 0 });
+  check("웹툰 회차 번호 검증", bad2.status === 400, `(${bad2.status})`);
+
+  cookie = cookieBefore;
+  useIp(testIp(1));
+}
+
 function checkBalanceSolvable() {
   console.log("\n[1-c] ㉔ 밸런스 드롭 — 답이 있는 판만 내는가");
 
@@ -2970,6 +3013,7 @@ contractChecks();
 checkHiddenMeasureGuards();
 checkBalanceSolvable();
 await pairResendContract();
+await webtoonReadContract();
 await arcadeFlows();
 await commonRules();
 await classicRegression();

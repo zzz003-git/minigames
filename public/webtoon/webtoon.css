@@ -1,0 +1,227 @@
+/**
+ * 📖 웹툰 — 전용 스타일
+ *
+ * 기획서 5-5. 색·간격·모서리는 `base.css` 토큰을 그대로 쓰고, **틴트만** 다르다 —
+ * 게임은 무채, 오늘의 나는 보라, 웹툰은 딥그린/청록이다. 읽는 영역이라 차분한
+ * 쪽으로 간다.
+ */
+
+.webtoon-body {
+  --wt: #4cc2b4;        /* 정보·카운트 (틸) */
+  --wt-up: #e8935a;     /* 갱신·강조 (오렌지) */
+  --wt-tint: rgba(76, 194, 180, 0.06);
+  --wt-line: rgba(76, 194, 180, 0.22);
+}
+
+.mono { font-family: "JetBrains Mono", monospace; }
+
+.wt {
+  max-width: 1120px; margin: 0 auto;
+  padding: 22px 16px 60px;
+}
+
+/* ══ 홈 머리 ══ */
+.wt__head {
+  display: flex; align-items: center; gap: 12px;
+  padding: 16px 18px; margin-bottom: 8px;
+  border-radius: 20px;
+  background: linear-gradient(180deg, var(--wt-tint), transparent);
+  border: 1px solid var(--wt-line);
+}
+.wt__icon {
+  width: 38px; height: 38px; border-radius: 12px; flex: none;
+  display: grid; place-items: center; font-size: 18px;
+  background: rgba(76, 194, 180, 0.12);
+}
+.wt__headtext { display: grid; gap: 2px; margin-right: auto; }
+.wt__headtext b { font-size: 17px; }
+.wt__headtext span { font-size: 12.5px; color: var(--text-sub); font-family: "JetBrains Mono", monospace; }
+.wt__count {
+  font-size: 11px; letter-spacing: 0.08em; color: var(--wt);
+  border: 1px solid var(--wt-line); border-radius: 999px; padding: 5px 11px;
+}
+
+.wt__label {
+  font-size: 13.5px; font-weight: 700;
+  margin: 26px 0 11px;
+}
+.wt__label small { font-weight: 400; color: var(--text-dim); margin-left: 8px; font-size: 11.5px; }
+
+.wt__empty {
+  padding: 22px; text-align: center;
+  font-size: 12.5px; color: var(--text-dim);
+  border: 1px dashed var(--border-mid); border-radius: 16px;
+}
+.wt__legal { margin-top: 34px; text-align: center; font-size: 11px; color: var(--text-dim); }
+
+/* ══ 배지 ══ */
+.wt__badge {
+  font-size: 10px; letter-spacing: 0.08em; font-weight: 700;
+  padding: 2px 7px; border-radius: 6px; white-space: nowrap;
+}
+.wt__badge.is-up { color: var(--wt-up); border: 1px solid rgba(232, 147, 90, 0.35); }
+.wt__badge.is-new { color: var(--wt); border: 1px solid var(--wt-line); }
+.wt__badge.is-done { color: var(--text-dim); border: 1px solid var(--border-mid); }
+
+/* ══ 진행바 — 오늘의 나 도장 문법 ══ */
+.wt__bar {
+  display: block; height: 4px; border-radius: 2px; overflow: hidden;
+  background: rgba(255, 255, 255, 0.07);
+}
+.wt__bar i { display: block; height: 100%; background: var(--wt); }
+
+/* ══ 칩 ══ */
+.wt__chips { display: flex; gap: 8px; flex-wrap: wrap; margin: 4px 0 14px; }
+.wt__chip {
+  font-size: 12px; color: var(--text-sub); cursor: pointer;
+  border: 1px solid var(--border-mid); border-radius: 999px; padding: 6px 14px;
+  background: none;
+}
+.wt__chip.is-on { color: var(--text); border-color: var(--text-sub); }
+.wt__chip--tag { cursor: default; font-size: 11.5px; color: var(--wt); border-color: var(--wt-line); }
+.wt__chips--tag { margin: 10px 0 0; }
+
+/* ══ 오늘 올라온 회차 ══ */
+.wttoday {
+  display: flex; align-items: center; gap: 14px;
+  padding: 14px; border-radius: 16px; text-decoration: none; color: var(--text);
+  background: var(--surface-2); border: 1px solid var(--border);
+  transition: 0.16s;
+}
+.wttoday:hover { border-color: var(--wt-line); }
+.wttoday__thumb { width: 74px; height: 74px; border-radius: 12px; object-fit: cover; flex: none; }
+.wttoday__text { display: grid; gap: 5px; margin-right: auto; min-width: 0; justify-items: start; }
+.wttoday__title { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; }
+.wttoday__title b { font-size: 15px; }
+.wttoday__ep { font-size: 12px; color: var(--wt); }
+.wttoday__meta { font-size: 11.5px; color: var(--text-dim); }
+.wttoday__go { font-size: 18px; color: var(--text-dim); }
+
+/* ══ 이어보기 ══ */
+.wtresume {
+  display: flex; align-items: center; gap: 13px;
+  padding: 12px 14px; border-radius: 14px;
+  background: var(--surface-2); border: 1px solid var(--border);
+}
+.wtresume__thumb { width: 44px; height: 44px; border-radius: 10px; object-fit: cover; flex: none; }
+.wtresume__text { display: grid; gap: 6px; flex: 1; min-width: 0; }
+.wtresume__text b { font-size: 13px; }
+.wtresume__st { font-size: 12px; color: var(--text-dim); white-space: nowrap; }
+
+/* ══ 작품 카드 그리드 ══ */
+.wt__grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+@media (max-width: 860px) { .wt__grid { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 560px) { .wt__grid { grid-template-columns: repeat(2, 1fr); } }
+
+.wtcard {
+  display: block; border-radius: 16px; overflow: hidden; text-decoration: none; color: var(--text);
+  background: var(--surface-2); border: 1px solid var(--border);
+  transition: 0.16s;
+}
+.wtcard:hover { border-color: var(--wt-line); }
+.wtcard__cover { display: block; position: relative; aspect-ratio: 2/3; background: var(--surface-3, #161c27); }
+.wtcard__cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.wtcard__badge { position: absolute; top: 8px; left: 8px; background: rgba(10, 13, 18, 0.72); }
+.wtcard__body { display: grid; gap: 4px; padding: 11px 12px 13px; }
+.wtcard__name { font-size: 13.5px; line-height: 1.3; }
+.wtcard__genre {
+  font-size: 11px; color: var(--text-dim);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.wtcard__prog { display: grid; gap: 4px; margin-top: 5px; }
+.wtcard__num { font-size: 10.5px; color: var(--text-dim); text-align: right; }
+
+.wtcard--empty {
+  display: grid; place-items: center; min-height: 120px;
+  border-style: dashed; background: none;
+  font-size: 12px; color: var(--text-dim); text-align: center; line-height: 1.7;
+}
+
+/* ══ 작품 홈 ══ */
+.wtwork { position: relative; border-radius: 22px; overflow: hidden; margin-bottom: 10px; }
+/* 커버를 크게 흐려 깔면 표지 색이 화면 전체의 분위기가 된다(기획서 5-3) */
+.wtwork__bg {
+  position: absolute; inset: 0;
+  background-size: cover; background-position: center;
+  filter: blur(34px) saturate(0.85); opacity: 0.4; transform: scale(1.25);
+}
+.wtwork__inner {
+  position: relative; padding: 20px 22px 24px;
+  background: linear-gradient(180deg, rgba(15, 20, 32, 0.55), rgba(15, 20, 32, 0.94));
+}
+.wt__back {
+  background: none; border: 0; padding: 0; cursor: pointer;
+  color: var(--text-sub); font-size: 13px; font: inherit;
+}
+.wtwork__logline { margin: 16px 0 6px; font-size: 18px; font-weight: 700; line-height: 1.45; }
+.wtwork__title { font-size: 14px; font-weight: 500; color: var(--text-sub); }
+.wtwork__meta { margin-top: 4px; font-size: 12px; color: var(--text-dim); }
+.wtwork__prog { display: grid; gap: 5px; margin: 18px 0 16px; }
+.wtwork__prog .mono { font-size: 11.5px; color: var(--text-dim); text-align: right; }
+.wtwork__btns { display: flex; gap: 9px; flex-wrap: wrap; }
+.wtwork__btns .btn { width: auto; flex: 1; min-width: 140px; min-height: 46px; }
+
+.btn--wt {
+  text-decoration: none;
+  background: rgba(76, 194, 180, 0.16);
+  border-color: var(--wt-line);
+  color: #a8e6dd;
+}
+.btn--wt:hover:not(:disabled) { background: rgba(76, 194, 180, 0.24); color: #c7f2ec; }
+.btn--sm { width: auto; min-height: 0; padding: 8px 15px; font-size: 12.5px; }
+
+/* ══ 회차 목록 ══ */
+.wt__eprow { display: flex; align-items: center; justify-content: space-between; }
+.wt__sort {
+  background: none; border: 1px solid var(--border-mid); border-radius: 999px;
+  color: var(--text-sub); font-size: 12px; padding: 6px 13px; cursor: pointer;
+}
+.wtep {
+  display: flex; align-items: center; gap: 12px;
+  padding: 13px 14px; border-radius: 14px; margin-bottom: 8px;
+  text-decoration: none; color: var(--text);
+  background: var(--surface-2); border: 1px solid var(--border);
+  transition: 0.16s;
+}
+.wtep:hover { border-color: var(--wt-line); }
+.wtep__no { font-size: 12px; color: var(--wt); flex: none; }
+.wtep__text { display: grid; gap: 3px; margin-right: auto; min-width: 0; }
+.wtep__text b { font-size: 13.5px; }
+.wtep__text span { font-size: 11.5px; color: var(--text-dim); }
+.wtep__read { font-size: 11px; color: var(--text-dim); }
+.wtep__go { font-size: 17px; color: var(--text-dim); }
+.wtep.is-read { opacity: 0.66; }
+
+/* ══ 뷰어 ══ */
+.wtview__bar {
+  position: sticky; top: 0; z-index: 5;
+  display: flex; align-items: center; gap: 12px;
+  padding: 11px 14px; margin: -22px -16px 14px;
+  background: rgba(15, 20, 32, 0.86); backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--border);
+}
+.wtview__title { font-size: 13.5px; font-weight: 700; margin-right: auto; }
+.wtview__bar .mono { font-size: 12px; color: var(--wt); }
+
+/* 본문 폭은 제작 규격 그대로 800px. 그보다 좁은 화면에서는 화면에 맞춘다 */
+.wtview__strip { max-width: 800px; margin: 0 auto; }
+.wtview__part {
+  width: 100%; display: block; position: relative;
+  /* 로딩 전 자리. 카드 표면색이라 다크 테마에서 깜빡이지 않는다(기획서 5-3) */
+  background: var(--surface-2);
+}
+.wtview__part img { width: 100%; height: 100%; display: block; object-fit: cover; }
+/* 다음 장을 켜는 지점 — 이 장의 아래쪽 1/3 자리. 보이지 않는 1px 표식이다 */
+.wtview__cue { position: absolute; left: 0; top: 67%; width: 1px; height: 1px; }
+
+.wtview__end { max-width: 800px; margin: 18px auto 0; display: grid; gap: 10px; }
+.wtnext {
+  display: grid; gap: 4px; padding: 18px; border-radius: 16px; text-align: center;
+  text-decoration: none; color: var(--text);
+  background: var(--surface-2); border: 1px solid var(--wt-line);
+}
+.wtnext b { font-size: 14px; color: var(--wt); }
+.wtnext span { font-size: 11.5px; color: var(--text-dim); }
+.wtnext--wait { border-style: dashed; border-color: var(--border-mid); }
+.wtnext--wait b { color: var(--text-sub); }
+.wtstamp { text-align: center; font-size: 12px; color: var(--wt); }
