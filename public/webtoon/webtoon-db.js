@@ -22,6 +22,47 @@
  * 이미지다(기획서 5-3). 커버·썸네일만 컷에서 만든다 — 글자가 없어야 하는 자리다.
  */
 
+/**
+ * 그림 주소의 **유일한 출처** (2026-08-04 인수인계 C-2).
+ *
+ * ── 왜 한 곳에 모으나 ───────────────────────────────────────────────────
+ * 이사 비용의 대부분은 파일 복사가 아니라 **주소 변경**이다. 지금은 파일이
+ * 12개뿐이라 스킴을 잡아 두는 것이 거의 공짜지만, 회차가 쌓인 뒤에는 화면·캐시·
+ * 본문에 박힌 주소를 전부 찾아 고쳐야 한다. 실제로 이 상수를 만들기 전에는
+ * 같은 문자열이 **여덟 군데**에 흩어져 있었다.
+ *
+ * ── 나중에 R2 로 옮길 때 ────────────────────────────────────────────────
+ * 밖에서 보이는 주소는 그대로 두고 **서빙하는 쪽만** 바꾼다. 이 접두사를 그대로
+ * 둔 채 Worker 가 그 경로를 가로채 R2 바인딩에서 내보내면, 화면은 한 줄도 고칠
+ * 필요가 없다.
+ *
+ * 옮기는 시점은 용량이 아니다 — R2 무료 한도로 약 2,500화, 정적 자산 파일 수
+ * 한도로도 약 3,000화까지 간다. 진짜 이유는 **회차 하나를 올리려고 코드를
+ * 배포해야 한다**는 결합이다(매일 연재에서 배포 못 하는 날 = 연재 못 하는 날).
+ */
+const ASSETS = "/webtoon/w";
+
+/**
+ * 캐시를 비켜 가는 손잡이.
+ *
+ * 회차 그림은 1년 `immutable` 로 캐시된다(`public/_headers`). 재조판은 결정적
+ * 이라 평소에는 그것으로 충분하지만, **조판 규칙이 바뀌면** 같은 주소에 다른
+ * 그림이 온다. 그때 작품이나 회차에 `rev` 를 올리면 주소가 달라져 새로 받는다.
+ */
+const rev = (n) => (n ? `?r=${n}` : "");
+
+/** 작품 커버 (목록 2:3). 컷이 재생성되면 그림이 바뀌므로 작품 `rev` 를 따른다 */
+export const coverOf = (work) =>
+  typeof work === "string"
+    ? `${ASSETS}/${work}/cover.jpg`
+    : `${ASSETS}/${work.id}/cover.jpg${rev(work.rev)}`;
+
+/** 작품 썸네일 (오늘 회차·이어보기 1:1) */
+export const thumbOf = (work) =>
+  typeof work === "string"
+    ? `${ASSETS}/${work}/thumb.jpg`
+    : `${ASSETS}/${work.id}/thumb.jpg${rev(work.rev)}`;
+
 /** 노출 대분류 6개 (기획서 4절 — 제작 15장르를 여기로 묶는다) */
 export const GENRES = [
   { key: "romance", label: "로맨스" },
@@ -152,7 +193,7 @@ export const episodeOf = (work, ep) => work?.episodes.find((e) => e.ep === Numbe
  */
 export const partsOf = (workId, ep) =>
   ep.parts.map((p, i) => ({
-    src: `/webtoon/w/${workId}/ep${String(ep.ep).padStart(3, "0")}/part${String(i + 1).padStart(2, "0")}.jpg`,
+    src: `${ASSETS}/${workId}/ep${String(ep.ep).padStart(3, "0")}/part${String(i + 1).padStart(2, "0")}.jpg${rev(ep.rev)}`,
     w: p.w,
     h: p.h,
   }));

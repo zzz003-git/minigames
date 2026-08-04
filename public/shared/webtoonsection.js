@@ -15,7 +15,7 @@
 
 import { el, clear } from "./ui.js";
 import { apiGet } from "./api.js";
-import { WEBTOON_DB, episodesOn, latestEpisode } from "../webtoon/webtoon-db.js";
+import { WEBTOON_DB, episodesOn, latestEpisode, coverOf, thumbOf } from "../webtoon/webtoon-db.js";
 
 /** 홈에 세우는 연재작 수. 그 이상은 「전체 보기」로 보낸다(기획서 5-1) */
 const HOME_WORKS = 4;
@@ -69,7 +69,7 @@ export async function renderWebtoonSection(host) {
         el(
           "a",
           { class: "wtarea__today", href: `/webtoon/#/w/${work.id}/${ep.ep}` },
-          el("img", { class: "wtarea__thumb", src: `/webtoon/w/${work.id}/thumb.jpg`, alt: "", loading: "lazy" }),
+          el("img", { class: "wtarea__thumb", src: thumbOf(work), alt: "", loading: "lazy" }),
           el(
             "span",
             { class: "wtarea__todaytext" },
@@ -99,7 +99,7 @@ export async function renderWebtoonSection(host) {
       el(
         "a",
         { class: "wtarea__resume", href: `/webtoon/#/w/${rw.id}/${next?.ep ?? resume.ep}` },
-        el("img", { class: "wtarea__rthumb", src: `/webtoon/w/${rw.id}/thumb.jpg`, alt: "" }),
+        el("img", { class: "wtarea__rthumb", src: thumbOf(rw), alt: "" }),
         el(
           "span",
           { class: "wtarea__rtext" },
@@ -125,7 +125,7 @@ export async function renderWebtoonSection(host) {
         el(
           "span",
           { class: "wtarea__cover" },
-          el("img", { src: `/webtoon/w/${w.id}/cover.jpg`, alt: "", loading: "lazy" }),
+          el("img", { src: coverOf(w), alt: "", loading: "lazy" }),
         ),
         el("b", {}, w.title),
         el("span", { class: "wtarea__cmeta" }, got ? `${got}/${total}화 읽음` : w.desc),

@@ -18,7 +18,7 @@
 import { $, el, clear, showScreen } from "../shared/ui.js";
 import { apiGet, apiPost } from "../shared/api.js";
 import { renderSiteNav } from "../shared/sitenav.js";
-import { WEBTOON_DB, GENRES, workOf, episodeOf, partsOf, episodesOn, latestEpisode } from "./webtoon-db.js";
+import { WEBTOON_DB, GENRES, workOf, episodeOf, partsOf, episodesOn, latestEpisode, coverOf, thumbOf } from "./webtoon-db.js";
 
 /**
  * 장르 칩을 여는 기준 (2026-08-04 인수인계 C-1 로 조정).
@@ -185,7 +185,7 @@ function todayCard(work, ep, isToday) {
   return el(
     "a",
     { class: "wttoday", href: epHref(work.id, ep.ep) },
-    el("img", { class: "wttoday__thumb", src: `/webtoon/w/${work.id}/thumb.jpg`, alt: "", loading: "lazy" }),
+    el("img", { class: "wttoday__thumb", src: thumbOf(work), alt: "", loading: "lazy" }),
     el(
       "span",
       { class: "wttoday__text" },
@@ -209,7 +209,7 @@ function resumeRow(work) {
   return el(
     "div",
     { class: "wtresume" },
-    el("img", { class: "wtresume__thumb", src: `/webtoon/w/${work.id}/thumb.jpg`, alt: "" }),
+    el("img", { class: "wtresume__thumb", src: thumbOf(work), alt: "" }),
     el(
       "span",
       { class: "wtresume__text" },
@@ -242,7 +242,7 @@ function workCard(work) {
     el(
       "span",
       { class: "wtcard__cover" },
-      el("img", { src: `/webtoon/w/${work.id}/cover.jpg`, alt: "", loading: "lazy" }),
+      el("img", { src: coverOf(work), alt: "", loading: "lazy" }),
       b ? el("span", { class: `wt__badge ${b.cls} mono wtcard__badge` }, b.label) : null,
     ),
     el(
@@ -267,7 +267,7 @@ function workCard(work) {
 function renderWork(work) {
   const { got, total, pct } = progressOf(work);
 
-  $("#workBg").style.backgroundImage = `url(/webtoon/w/${work.id}/cover.jpg)`;
+  $("#workBg").style.backgroundImage = `url(${coverOf(work)})`;
   $("#workLogline").textContent = work.logline;
   $("#workTitle").textContent = work.title;
   $("#workMeta").textContent =
