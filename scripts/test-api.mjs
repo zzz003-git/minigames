@@ -24,7 +24,7 @@
 
 import { ARCADE_SPECS } from "../src/games/arcade/index.js";
 import { validateSpec } from "../src/lib/arcade.js";
-import { ARCADE } from "../src/lib/config.js";
+import { ARCADE, MIND } from "../src/lib/config.js";
 // ⑳ 슥슥 긁기 — 카드 생성·연속 일수 규칙은 서버 왕복으로 재현되지 않아 직접 호출합니다
 import { makeCard, streakFor, shiftDay } from "../src/games/arcade/scratch.js";
 // ㉑ 퍼펙트 스택 — 블록 위치는 서버와 **같은 식**으로 계산해야 탭 시각을 잡을 수 있습니다
@@ -445,6 +445,76 @@ function contractChecks() {
  * 서버가 필요 없는 순수 계산이라 흐름 밖에서 돕니다. 난수는 고정 씨앗이라
  * 실패하면 그대로 재현됩니다.
  */
+/**
+ * 「너를 맞혀볼게」 페어 — 보낸 링크를 다시 꺼낼 수 있는가
+ *
+ * 2026-08-04 검수 1번. LINK READY 화면에서 복사하지 않고 나가면 그 링크를 다시
+ * 얻을 방법이 없었다. 하루 3건 상한이라 **슬롯 하나가 통째로 소실**됐다.
+ *
+ * 「페이지 이탈」은 서버가 알 수 없는 사건이므로, 테스트는 그 뒤에 남는 것만
+ * 본다 — **목록만으로 링크를 복원할 수 있는가**. 화면이 무엇을 하든 이 응답에
+ * 주소가 없으면 재복사는 원리적으로 불가능하다.
+ */
+async function pairResendContract() {
+  console.log("\n[1-d] 너를 맞혀볼게 — 보낸 링크 재발송");
+
+  const cookieBefore = cookie;
+  cookie = ""; // 새 이용자로 시작한다 — 오늘의 선택을 아직 안 한 상태
+  useIp(testIp(240));
+
+  // ── 게이트 ── 오늘의 선택 전에는 링크를 만들 수 없다
+  const blocked = await post("/api/mind/pair", {
+    relation: "lover", pool: 12, guesses: [0, 1, 2], reasons: [0, 1, 2],
+  });
+  check("페어 오늘의 선택 전에는 생성 차단", blocked.data?.code === "MIND_NOT_DONE",
+    `(${blocked.status} ${blocked.data?.code})`);
+
+  // ── 오늘의 선택 완료 ──
+  const st = await get("/api/mind/state");
+  const opts = Array.from({ length: MIND.OPTIONS }, (_, i) => ({ ty: i % MIND.TYPES, ax: [0, 1] }));
+  const done = await post("/api/mind/submit", {
+    exp_id: "regress",
+    questions: Array.from({ length: MIND.QUESTIONS }, () => ({ opts })),
+    answers: new Array(MIND.QUESTIONS).fill(0),
+  });
+  if (done.status !== 200) {
+    check("페어 회귀 준비 — 오늘의 선택 완료", false, `(${done.status} ${done.data?.code})`);
+    cookie = cookieBefore;
+    return;
+  }
+
+  // ── 링크 생성 ──
+  const made = await post("/api/mind/pair", {
+    relation: "lover", pool: 12, guesses: [0, 1, 2], reasons: [0, 1, 2],
+  });
+  check("페어 링크 생성", made.status === 200 && Boolean(made.data?.token),
+    `remaining=${made.data?.remaining_today}`);
+
+  // ── 이탈 후 — 목록만으로 복원되는가 ──
+  const list = await get("/api/mind/pairs");
+  const row = (list.data?.links ?? []).find((l) => l.token === made.data?.token);
+
+  check("페어 보낸 링크 목록에 남는다", Boolean(row), `links=${list.data?.links?.length}`);
+  check("페어 기다리는 링크는 주소를 준다", row?.url === `/p/${made.data?.token}`, `url=${row?.url}`);
+  check("페어 만료까지 남은 시간을 준다", Number(row?.expires_in_ms) > 0,
+    `${Math.round((row?.expires_in_ms ?? 0) / 3600000)}시간`);
+  check("페어 보낸 시각을 준다", Number(row?.created_at) > 0);
+
+  // ── 답이 온 링크는 주소를 주지 않는다 ──
+  const answerCookie = cookie;
+  cookie = ""; // 상대는 계정이 없다
+  await post("/api/pair/answer", { token: made.data.token, answers: [0, 1, 0] });
+  cookie = answerCookie;
+
+  const after = await get("/api/mind/pairs");
+  const answered = (after.data?.links ?? []).find((l) => l.token === made.data?.token);
+  check("페어 답이 온 링크는 상태가 바뀐다", answered?.status === "answered", `status=${answered?.status}`);
+  check("페어 답이 온 링크에는 주소가 없다", answered?.url === undefined, `url=${answered?.url}`);
+
+  cookie = cookieBefore;
+  useIp(testIp(1));
+}
+
 function checkBalanceSolvable() {
   console.log("\n[1-c] ㉔ 밸런스 드롭 — 답이 있는 판만 내는가");
 
@@ -2899,6 +2969,7 @@ try {
 contractChecks();
 checkHiddenMeasureGuards();
 checkBalanceSolvable();
+await pairResendContract();
 await arcadeFlows();
 await commonRules();
 await classicRegression();

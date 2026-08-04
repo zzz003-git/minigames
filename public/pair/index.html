@@ -20,8 +20,22 @@
     <header class="topbar" id="header"></header>
 
     <main class="app__body">
+      <!-- ⓪ 잠금 — 오늘의 선택을 마쳐야 열린다 (MIND-SPEC 1절)
+           서버는 이미 막고 있었지만(409) 화면이 3문항을 다 풀게 한 뒤에야
+           막혀서, 들인 시간이 통째로 버려졌다. 들어오는 자리에서 막는다. -->
+      <section class="screen" data-screen="locked">
+        <div class="card card--info center">
+          <div class="mono-label">LOCKED</div>
+          <h2 class="big">아직 잠겨 있어요</h2>
+          <p class="hint">오늘의 선택을 마치면 열려요.<br>
+            <span class="hint--sub">내 답이 있어야 「맞혀보기」가 성립해요</span></p>
+        </div>
+        <a class="btn btn--pair" href="/mind/">오늘의 선택 먼저 하기</a>
+        <a class="btn btn--ghost" href="/today/">← 오늘의 나로</a>
+      </section>
+
       <!-- ① 관계 고르기 -->
-      <section class="screen is-active" data-screen="relation">
+      <section class="screen" data-screen="relation">
         <div class="card card--info center">
           <div class="mono-label">PAIR</div>
           <h2 class="big">너를 맞혀볼게</h2>
@@ -66,6 +80,9 @@
         </div>
         <button class="btn" id="shareBtn">공유하기</button>
         <p class="footnote--dim center">내 추측은 상대에게 보이지 않아요 — 답을 받은 뒤에 함께 열려요</p>
+        <!-- 지금 복사하지 않아도 된다는 것을 여기서 말한다. 이 한 줄이 없어서
+             「지금 안 하면 잃는다」로 읽혔다(검수 1번). -->
+        <p class="footnote--dim center">이 링크는 「보낸 링크」에서 언제든 다시 복사할 수 있어요</p>
 
         <a class="btn btn--ghost" href="/today/">← 오늘의 나로</a>
       </section>
@@ -76,7 +93,26 @@
         <div id="mineList"></div>
         <button class="btn" id="mineBack">돌아가기</button>
       </section>
+
+      <!-- 보낸 링크 다시 보내기 — 목록에서 「기다리는 중」을 눌렀을 때 -->
+      <section class="screen" data-screen="resend">
+        <div class="card card--info center">
+          <div class="mono-label">LINK</div>
+          <h2 class="big" id="resendTitle">보낸 링크</h2>
+          <p class="hint" id="resendNote"></p>
+        </div>
+
+        <div class="linkbox">
+          <code class="linkbox__url" id="resendUrl"></code>
+          <button class="btn btn--sm" id="resendCopy">복사</button>
+        </div>
+        <button class="btn" id="resendShare">공유하기</button>
+        <button class="btn btn--ghost" id="resendBack">← 보낸 링크로</button>
+      </section>
     </main>
+
+    <!-- 심리 콘텐츠 접점 공통 표기 — 허브와 같은 문장을 쓴다 (검수 3번) -->
+    <p class="pairlegal">순위 없음 · 광고 없이도 완결 · 본 콘텐츠는 오락용이며 심리학적 진단이 아닙니다</p>
   </div>
 
   <script type="module" src="pair.js"></script>

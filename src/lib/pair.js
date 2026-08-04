@@ -200,7 +200,17 @@ export async function ownerView(env, ownerId, token) {
   };
 }
 
-/** 내가 오늘 만든 링크들 (결과 확인용 — 푸시가 없으므로 재방문 시 여기서 본다) */
+/**
+ * 내가 오늘 만든 링크들 (결과 확인용 — 푸시가 없으므로 재방문 시 여기서 본다)
+ *
+ * ── 아직 답을 기다리는 링크는 주소를 함께 준다 ──────────────────────────
+ * 만든 직후 복사하지 않고 화면을 떠나면 그 링크를 **다시 얻을 방법이 없었다.**
+ * 하루 3건 상한이라 슬롯 하나가 통째로 날아갔다(2026-08-04 검수 1번).
+ *
+ * 주소를 내려보내도 보안이 낮아지지 않는다 — **링크는 원래 상대에게 건네는
+ * 값**이고, 이 조회는 `owner_id = ?` 로 본인 것만 본다. 다만 이미 답이 왔거나
+ * 만료된 링크는 다시 보낼 이유가 없으므로 주소를 빼서 오해를 만들지 않는다.
+ */
 export async function myLinks(env, ownerId, day = dayKey()) {
   const rows = await env.DB.prepare(
     `SELECT token, service, relation, status, answer, created_at FROM pair_link
@@ -209,13 +219,23 @@ export async function myLinks(env, ownerId, day = dayKey()) {
     .bind(ownerId, day)
     .all();
 
-  return (rows?.results ?? []).map((r) => ({
-    token: r.token,
-    service: r.service,
-    relation: r.relation,
-    status: isExpired(r) && r.status === "open" ? "expired" : r.status,
-    summary: parse(r.answer, null),
-  }));
+  return (rows?.results ?? []).map((r) => {
+    const status = isExpired(r) && r.status === "open" ? "expired" : r.status;
+    const expiresAt = (r.created_at ?? 0) + SUITE.PAIR.EXPIRE_MS;
+
+    return {
+      token: r.token,
+      service: r.service,
+      relation: r.relation,
+      status,
+      created_at: r.created_at ?? null,
+      expires_at: expiresAt,
+      // 남은 시간은 서버 시계로 센다 — 기기 시계가 틀어져도 만료 표시가 어긋나지 않는다
+      expires_in_ms: status === "open" ? Math.max(0, expiresAt - now()) : 0,
+      ...(status === "open" ? { url: `/p/${r.token}` } : {}),
+      summary: parse(r.answer, null),
+    };
+  });
 }
 
 /** 30일 지난 행 삭제 (Cron) — 요약만 남아 있어도 영구 보관할 이유가 없다 */
