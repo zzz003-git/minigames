@@ -30,29 +30,69 @@ const tolOf = (level) =>
 const torqueOf = (items) => items.reduce((s, it) => s + it.w * it.pos, 0);
 
 /**
+ * 추 하나를 판 끝(`ARM`)에 놓아 상쇄할 수 있는 토크의 상한.
+ * 얹힌 기울기가 이보다 크면 **어디에 놓아도 답이 없습니다.**
+ */
+const MAX_CANCELABLE = C.WEIGHT_MAX * C.ARM;
+
+/** 왼쪽(음수 위치)에 물건 n 개를 뽑습니다 */
+const drawItems = (n, pickInt) =>
+  Array.from({ length: n }, () => ({
+    w: pickInt(C.WEIGHT_MIN, C.WEIGHT_MAX),
+    pos: round2(-(0.3 + pickInt(0, 60) / 100)), // -0.30 ~ -0.90
+  }));
+
+/**
  * 레벨 하나를 배정합니다.
  *
  * 처음 얹혀 있는 물건은 **왼쪽(음수 위치)** 에 둡니다 — 기울어진 저울이 첫 화면에서
  * 목표를 설명하기 때문입니다(기획서 0-1). 놓을 물건의 무게는 그 기울기를 되돌릴 수
  * 있는 범위에서 뽑습니다. 되돌릴 수 없는 판을 내면 실력이 아니라 운이 됩니다.
+ *
+ * ── 답이 없는 판을 내던 버그 (2026-08-04 수정) ──────────────────────────
+ * 위 약속을 **코드가 지키지 않았습니다.** 필요한 무게를 `min(WEIGHT_MAX, …)` 로
+ * 잘랐기 때문입니다 — 기울기가 `WEIGHT_MAX × ARM` 을 넘으면 잘린 추로는 판 끝에
+ * 놓아도 상쇄가 안 됩니다. 얹힌 물건이 늘어나는 상위 레벨일수록 자주 터져
+ * **레벨 12 에서 약 59%, 전체 26%** 가 답이 없었습니다(docs/balance-game.md §6).
+ *
+ * `test:api` 의 산발적 실패가 이것이었습니다. 테스트가 불안정한 것이 아니라
+ * 게임이 답 없는 문제를 내고 있었습니다.
+ *
+ * 고친 방법은 **거부 샘플링**입니다 — 상쇄 가능한 조합이 나올 때까지 다시 뽑습니다.
+ * 무게를 잘라 맞추지 않는 이유는, 자르면 「무게는 되돌릴 수 있는 범위에서 뽑는다」는
+ * 위 약속이 다시 깨지기 때문입니다. 잘라야 할 판은 애초에 내지 않는 것이 맞습니다.
  */
 export function makeLevel(level, pickInt = randomInt) {
   const n = pickInt(C.PRELOAD_MIN, Math.min(C.PRELOAD_MAX, 1 + Math.floor(level / 2)));
-  const items = [];
-  for (let i = 0; i < n; i++) {
-    items.push({
-      w: pickInt(C.WEIGHT_MIN, C.WEIGHT_MAX),
-      pos: round2(-(0.3 + pickInt(0, 60) / 100)), // -0.30 ~ -0.90
-    });
+
+  let items = drawItems(n, pickInt);
+  // 가장 어려운 레벨에서도 한 번에 통과할 확률이 약 절반이라 40번이면 충분합니다.
+  for (let tries = 0; tries < 40 && Math.abs(torqueOf(items)) > MAX_CANCELABLE; tries++) {
+    items = drawItems(n, pickInt);
   }
 
-  const load = Math.abs(torqueOf(items));
-  // |w × pos| 로 load 를 상쇄할 수 있어야 합니다. pos 는 최대 ARM 이므로 w >= load/ARM.
-  const need = Math.ceil(load / C.ARM);
-  const w = Math.min(C.WEIGHT_MAX, Math.max(C.WEIGHT_MIN, need));
+  // 40번으로도 못 뽑은 경우(약 1조분의 1)의 안전망. 기여가 큰 것부터 뺍니다 —
+  // 하나만 남으면 최대 토크가 `WEIGHT_MAX × 0.9` 라 반드시 상한 안에 듭니다.
+  while (items.length > 1 && Math.abs(torqueOf(items)) > MAX_CANCELABLE) {
+    const heaviest = items.reduce(
+      (max, it, i) => (Math.abs(it.w * it.pos) > Math.abs(items[max].w * items[max].pos) ? i : max),
+      0,
+    );
+    items.splice(heaviest, 1);
+  }
 
-  return { items, drop: { w }, tol: round2(tolOf(level)) };
+  return { items, drop: { w: dropWeightFor(items) }, tol: round2(tolOf(level)) };
 }
+
+/**
+ * 얹힌 기울기를 되돌릴 수 있는 추의 무게.
+ *
+ * **올림이어야 합니다.** 반올림하면 최대 0.5 모자랄 수 있는데, 상위 레벨의 허용
+ * 오차는 `TOL_MIN`(0.45)까지 좁아져 그 차이가 오차를 넘습니다 — 답이 없는 판이
+ * 됩니다. 올림이면 정답 위치가 `load / w ≤ ARM` 으로 항상 판 안에 있습니다.
+ */
+const dropWeightFor = (items) =>
+  Math.max(C.WEIGHT_MIN, Math.ceil(Math.abs(torqueOf(items)) / C.ARM));
 
 const viewOf = (ext) => ({
   level: ext.level ?? 1,
@@ -79,7 +119,8 @@ export const spec = {
       ext.drop = made.drop;
       ext.tol = made.tol;
     } else {
-      ext.drop = { w: Math.max(C.WEIGHT_MIN, Math.round(Math.abs(torqueOf(ext.items)) / C.ARM)) };
+      // 새로 뽑지 않고 남은 기울기만 상쇄하면 되므로 무게 계산만 같은 규칙으로 씁니다.
+      ext.drop = { w: dropWeightFor(ext.items) };
     }
     ext.keep = false;
     ext.level = level;

@@ -29,6 +29,8 @@ import { ARCADE } from "../src/lib/config.js";
 import { makeCard, streakFor, shiftDay } from "../src/games/arcade/scratch.js";
 // ㉑ 퍼펙트 스택 — 블록 위치는 서버와 **같은 식**으로 계산해야 탭 시각을 잡을 수 있습니다
 import { blockX } from "../src/games/arcade/stack.js";
+
+import { makeLevel as makeBalanceLevel } from "../src/games/arcade/balance.js";
 // ㉘ 톡톡 — 궤적 판정은 속도·균일함의 경계값이 핵심이라 서버 왕복 없이 직접 부릅니다
 import { gradeStroke } from "../src/games/arcade/toktok.js";
 // ㉚ 쭉 — 「어떤 속도가 유리한가」는 요청을 실제 속도로 보내야 재현되므로 직접 부릅니다
@@ -430,6 +432,53 @@ function contractChecks() {
  * 0 이 나왔을 때 그리기를 멈추는 게임들(⑱⑳㉑㉙)은 이미 그렇게 하고 있었고,
  * 타로만 빠져나가는 대신 **엉뚱한 값으로 계속 그렸다.** 그게 갈림길이었다.
  */
+/**
+ * ㉔ 밸런스 드롭 — 낼 수 있는 판이 전부 풀리는가
+ *
+ * 2026-08-03 에 라운드의 **약 26% 가 물리적으로 답이 없었습니다.** 얹을 추의 무게를
+ * 상한으로 자르면서, 판 끝에 놓아도 기울기를 상쇄하지 못하는 조합이 나왔습니다.
+ *
+ * 그때 이 테스트에 보인 증상은 「BALANCE 라운드 n 통과」의 **산발적 실패**뿐이라
+ * 불안정한 테스트로 오해하기 쉬웠습니다(실제로 한동안 그렇게 넘어갔습니다).
+ * 그래서 증상이 아니라 **원인을 그 자리에서 말하는** 검사를 따로 둡니다.
+ *
+ * 서버가 필요 없는 순수 계산이라 흐름 밖에서 돕니다. 난수는 고정 씨앗이라
+ * 실패하면 그대로 재현됩니다.
+ */
+function checkBalanceSolvable() {
+  console.log("\n[1-c] ㉔ 밸런스 드롭 — 답이 있는 판만 내는가");
+
+  const C = ARCADE.BALANCE;
+  let seed = 20260804;
+  const pick = (lo, hi) => {
+    seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+    return lo + (seed % (hi - lo + 1));
+  };
+
+  const SAMPLES = 4000;
+  let unsolvable = 0;
+  const worst = { level: 0, pos: 0 };
+
+  for (let i = 0; i < SAMPLES; i++) {
+    const level = 1 + (i % 12);
+    const { items, drop, tol } = makeBalanceLevel(level, pick);
+    const load = Math.abs(items.reduce((s, it) => s + it.w * it.pos, 0));
+
+    const exact = load / drop.w; // 정확히 상쇄하는 위치
+    if (exact > worst.pos) Object.assign(worst, { level, pos: exact });
+
+    // 판 안에서 가장 잘 맞춘 결과가 허용 오차 안에 드는가
+    const best = Math.abs(load - drop.w * Math.min(exact, C.ARM));
+    if (best > tol) unsolvable++;
+  }
+
+  // 성공·실패 어느 쪽으로도 그대로 읽히게 적습니다 — 통과했을 때도 같이 출력됩니다.
+  check(`㉔ ${SAMPLES}판 전부 답이 있다`, unsolvable === 0,
+    `답 없는 판 ${unsolvable}개`);
+  check(`㉔ 정답 위치가 판 안에 있다`, worst.pos <= C.ARM + 1e-9,
+    `최대 ${worst.pos.toFixed(3)} / 팔 길이 ${C.ARM} (레벨 ${worst.level})`);
+}
+
 function checkHiddenMeasureGuards() {
   console.log("\n[1-b] 숨은 요소 측정 방어");
 
@@ -2849,6 +2898,7 @@ try {
 
 contractChecks();
 checkHiddenMeasureGuards();
+checkBalanceSolvable();
 await arcadeFlows();
 await commonRules();
 await classicRegression();
