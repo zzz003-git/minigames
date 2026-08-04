@@ -80,6 +80,19 @@ function jpegSize(file) {
   return null;
 }
 
+/**
+ * 작품 폴더를 찾는다.
+ *
+ * 폴더 이름이 `W0001` 에서 `W0001_먼저퇴근하겠습니다` 로 바뀐 적이 있다(2026-08-04).
+ * 제목이 바뀌면 폴더 이름도 바뀌므로 **앞의 작품 번호로만** 찾는다 — 전체 이름을
+ * 맞추면 제목을 고칠 때마다 여기가 깨진다.
+ */
+const workDirs = new Map();
+for (const name of readdirSync(join(REPO, "works"))) {
+  const m = name.match(/^(W\d{4})/);
+  if (m) workDirs.set(m[1], join(REPO, "works", name));
+}
+
 const ledger = parseCsv(readFileSync(LEDGER, "utf8"));
 // 회차 0 은 「작품 등록」 행이라 그림이 없다. 완성된 것만 옮긴다.
 const done = ledger.filter((r) => r.status === "done" && Number(r.episode) > 0);
@@ -95,9 +108,10 @@ let copied = 0, skipped = 0;
 for (const row of done) {
   const workId = row.work_id;
   const ep = Number(row.episode);
-  const epDir = join(REPO, "works", workId, "episodes", `ep${String(ep).padStart(3, "0")}`, "final");
+  const workDir = workDirs.get(workId);
+  const epDir = workDir && join(workDir, "episodes", `ep${String(ep).padStart(3, "0")}`, "final");
 
-  if (!existsSync(epDir)) {
+  if (!epDir || !existsSync(epDir)) {
     console.log(`  건너뜀  ${workId} EP.${ep} — final/ 이 없습니다`);
     skipped++;
     continue;
@@ -136,7 +150,7 @@ for (const row of done) {
   // 회차 제목은 콘티에만 있으므로 그쪽을 먼저 본다 — 이걸 놓치면 목록의 모든
   // 회차가 작품 이름으로 찍힌다.
   let epTitle = row.title;
-  const conti = join(REPO, "works", workId, "episodes", `ep${String(ep).padStart(3, "0")}`, "conti.json");
+  const conti = join(workDir, "episodes", `ep${String(ep).padStart(3, "0")}`, "conti.json");
   if (existsSync(conti)) {
     try {
       const t = JSON.parse(readFileSync(conti, "utf8"))?.title;

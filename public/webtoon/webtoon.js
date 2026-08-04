@@ -141,8 +141,12 @@ function renderHome() {
     if (state.genre !== "all" && w.genre !== state.genre) continue;
     grid.append(workCard(w));
   }
-  // 시안의 「다음 작품이 준비되고 있어요」 — 한 편뿐일 때 허전함을 메운다
-  grid.append(el("div", { class: "wtcard wtcard--empty" }, "다음 작품이", el("br"), "준비되고 있어요"));
+  // 시안의 「다음 작품이 준비되고 있어요」 — 목록이 허전할 때만 메운다.
+  // 한 줄(4칸)이 차면 빼는 이유는, 그 뒤로는 이 카드가 **홀로 다음 줄에** 떨어져
+  // 채우려던 빈자리를 오히려 만들기 때문이다.
+  if (grid.children.length < 4) {
+    grid.append(el("div", { class: "wtcard wtcard--empty" }, "다음 작품이", el("br"), "준비되고 있어요"));
+  }
 
   // ── 완결관 ──
   const finished = works.filter((w) => w.status === "done");
