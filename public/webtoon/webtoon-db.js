@@ -176,6 +176,54 @@ export const WEBTOON_DB = {
         },
       ],
     },
+    {
+      id: "W0005",
+      title: "빈 얼굴",
+      genre: "thriller", // 제작 장르 「공포/괴담」 → 노출 대분류 스릴러/공포
+      tags: ["실종", "미스터리", "안면인식장애", "연속극"],
+      logline: "열한 번째 실종 현장, 벽 안에는 사람 하나 크기의 여백뿐이었다",
+      desc: "지워지는 사람들",
+      total: 20,
+      status: "ongoing",
+      started: "2026-08-04",
+      episodes: [
+        {
+          ep: 1,
+          title: "없는 방",
+          day: "2026-08-04",
+          cuts: 24,
+          header: true, // 그림 상단에 제목 카드가 구워져 있다
+          parts: [
+            { w: 800, h: 11650 },
+            { w: 800, h: 9250 },
+          ],
+        },
+      ],
+    },
+    {
+      id: "W0006",
+      title: "내가 지는 자리",
+      genre: "sports", // 제작 장르 「스포츠」 → 노출 대분류 그대로
+      tags: ["검도", "학원", "1인칭", "대회"],
+      logline: "나는 오늘도 진다. 이건 예정된 결과다",
+      desc: "고교 검도부 1인칭",
+      total: 20,
+      status: "ongoing",
+      started: "2026-08-04",
+      episodes: [
+        {
+          ep: 1,
+          title: "지는 자리",
+          day: "2026-08-04",
+          cuts: 24,
+          header: true, // 그림 상단에 제목 카드가 구워져 있다
+          parts: [
+            { w: 800, h: 11260 },
+            { w: 800, h: 9200 },
+          ],
+        },
+      ],
+    },
   ],
 };
 
