@@ -56,6 +56,7 @@ import * as todayHub from "./services/today.js";
 import * as popular from "./services/popular.js";
 import * as saju from "./services/saju.js";
 import * as webtoon from "./services/webtoon.js";
+import { webtoonAsset } from "./routes/webtoon-assets.js";
 import * as arcade from "./lib/arcade.js";
 import * as adRoutes from "./routes/ad.js";
 import * as statsRoutes from "./routes/stats.js";
@@ -285,6 +286,12 @@ export default {
 
   async fetch(request, env) {
     const url = new URL(request.url);
+
+    // 회차 그림은 파일 경로라 정확 일치 표에 담을 수 없다. R2 에서 내보내고,
+    // 없으면 정적 자산으로 넘긴다 — 옮기는 중에도 끊기지 않는다.
+    if (request.method === "GET" && url.pathname.startsWith("/webtoon/w/")) {
+      return webtoonAsset(request, env);
+    }
 
     // 페어 랜딩은 경로에 토큰이 들어 있어 정확 일치 표로 잡히지 않는다
     if (request.method === "GET" && /^\/p\/[A-Za-z0-9_-]+\/?$/.test(url.pathname)) {

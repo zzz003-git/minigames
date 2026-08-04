@@ -29,6 +29,7 @@
  */
 
 import { readFileSync, existsSync, mkdirSync, copyFileSync, readdirSync, statSync } from "node:fs";
+import { execSync } from "node:child_process";
 import { join } from "node:path";
 
 const args = process.argv.slice(2);
@@ -38,6 +39,26 @@ const flag = (name, fallback) => {
 };
 const REPO = flag("--repo", "../webtoons");
 const DRY = args.includes("--dry-run");
+
+/**
+ * 어디로 올릴 것인가.
+ *
+ *   (없음)            `public/webtoon/w/` 에 복사 — 배포해야 반영된다
+ *   --r2 staging      스테이징 버킷으로 바로 올린다
+ *   --r2 production   실서비스 버킷으로 바로 올린다
+ *
+ * ── R2 로 올리면 배포 없이 바로 라이브가 된다 ───────────────────────────
+ * 그게 이 전환의 목적이지만(회차 발행과 코드 배포를 뗀다), **배포가 하던 검토
+ * 게이트도 함께 사라진다.** 그래서 R2 모드에서는 검산을 통과하지 못한 회차가
+ * 하나라도 있으면 **아무것도 올리지 않고 멈춘다** — 파일로 복사할 때처럼
+ * 「나머지는 올라갔다」가 되면 반쪽만 라이브인 회차가 생긴다.
+ */
+const R2 = flag("--r2", null);
+const BUCKET = { staging: "webtoon-assets-staging", production: "webtoon-assets" }[R2 ?? ""];
+if (R2 && !BUCKET) {
+  console.error(`--r2 는 staging 또는 production 이어야 합니다 (받은 값: ${R2})`);
+  process.exit(1);
+}
 
 const WORKS = join(REPO, "works");
 if (!existsSync(WORKS)) {
@@ -73,6 +94,7 @@ if (!manifests.length) {
 }
 
 const byWork = new Map();
+const plan = [];
 let copied = 0, skipped = 0;
 
 for (const { finalDir, file } of manifests) {
@@ -117,9 +139,7 @@ for (const { finalDir, file } of manifests) {
     continue;
   }
 
-  const outDir = join("public", "webtoon", "w", workId, `ep${String(ep).padStart(3, "0")}`);
-  if (!DRY) mkdirSync(outDir, { recursive: true });
-
+  const epDir = `ep${String(ep).padStart(3, "0")}`;
   const meta = [];
   let ok = true;
   parts.forEach((p, i) => {
@@ -129,11 +149,8 @@ for (const { finalDir, file } of manifests) {
       ok = false;
       return;
     }
-    const dst = join(outDir, `part${String(i + 1).padStart(2, "0")}.jpg`);
     meta.push({ w: Number(p.width), h: Number(p.height) });
-    if (!DRY) copyFileSync(src, dst);
-    copied++;
-    console.log(`  복사    ${dst}  ${p.width}×${p.height}  ${(statSync(src).size / 1024 / 1024).toFixed(1)}MB`);
+    plan.push({ src, workId, epDir, name: `part${String(i + 1).padStart(2, "0")}.jpg`, size: statSync(src).size, w: p.width, h: p.height });
   });
 
   if (!ok) { skipped++; continue; }
@@ -150,7 +167,37 @@ for (const { finalDir, file } of manifests) {
   });
 }
 
-console.log(`\n분할본 ${copied}장 복사 · ${skipped}건 건너뜀${DRY ? "  (모의 실행)" : ""}`);
+// ── 검산을 통과한 뒤에야 옮긴다 ────────────────────────────────────────
+// R2 로 올리면 배포 없이 즉시 라이브다. 반쪽만 올라간 회차를 만들지 않도록,
+// 한 건이라도 걸리면 **아무것도** 올리지 않는다.
+if (skipped && R2) {
+  console.error(`\n중단: ${skipped}건이 검산을 통과하지 못했습니다. R2 에는 아무것도 올리지 않았습니다.`);
+  process.exit(1);
+}
+
+for (const item of plan) {
+  const key = `${item.workId}/${item.epDir}/${item.name}`;
+  const where = R2 ? `r2://${BUCKET}/${key}` : join("public", "webtoon", "w", key);
+
+  if (!DRY) {
+    if (R2) {
+      // 셸을 거쳐 부른다. Windows 의 `npx` 는 실행 파일이 아니라 `npx.cmd` 라
+      // 직접 spawn 하면 ENOENT/EINVAL 이 난다. 경로에 한글·공백이 있으므로 따옴표는
+      // 반드시 붙인다 — 작품 폴더 이름이 `W0002_고수를찾아서` 다.
+      execSync(
+        `npx wrangler r2 object put "${BUCKET}/${key}" --file "${item.src}" --content-type image/jpeg --remote`,
+        { stdio: "pipe" },
+      );
+    } else {
+      mkdirSync(join("public", "webtoon", "w", item.workId, item.epDir), { recursive: true });
+      copyFileSync(item.src, join("public", "webtoon", "w", key));
+    }
+  }
+  copied++;
+  console.log(`  ${R2 ? "올림" : "복사"}    ${where}  ${item.w}×${item.h}  ${(item.size / 1024 / 1024).toFixed(1)}MB`);
+}
+
+console.log(`\n분할본 ${copied}장 ${R2 ? `R2(${BUCKET}) 업로드` : "복사"} · ${skipped}건 건너뜀${DRY ? "  (모의 실행)" : ""}`);
 
 const headered = [...byWork.values()].flat().filter((e) => e.header).length;
 if (headered) {

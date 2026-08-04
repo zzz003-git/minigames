@@ -12,7 +12,11 @@
     "binding": "ASSETS",
     // `/api/*` 는 스위트(타로·사주·심리)용입니다. 넣지 않으면 정적 자산 핸들러가
     // 먼저 가로채 404 를 돌려줍니다 — API 가 통째로 죽는데 배포는 성공합니다.
-    "run_worker_first": ["/game/*", "/ad/*", "/user/*", "/api/*"]
+    //
+    // `/webtoon/w/*` 는 회차 그림입니다. Worker 가 먼저 받아 **R2 에서** 내보냅니다 —
+    // 회차를 올리는 일과 코드를 배포하는 일을 떼어 놓기 위해서입니다(인수인계 C-2).
+    // R2 에 없으면 정적 자산으로 넘겨주므로, 옮기는 중에도 끊기지 않습니다.
+    "run_worker_first": ["/game/*", "/ad/*", "/user/*", "/api/*", "/webtoon/w/*"]
   },
 
   // D1 데이터베이스 (APAC 리전). 스키마는 migrations/ 에 있습니다.
@@ -21,6 +25,15 @@
       "binding": "DB",
       "database_name": "minigames-db",
       "database_id": "c2d77540-5648-4c74-ad4f-00de5bc01e9f"
+    }
+  ],
+
+  // 회차 그림 저장소. 콘텐츠와 코드를 떼어 놓는 것이 목적이라 **환경별로 다른
+  // 버킷**입니다 — 스테이징에 시험 삼아 올린 회차가 실서비스에 보이면 안 됩니다.
+  "r2_buckets": [
+    {
+      "binding": "WEBTOON",
+      "bucket_name": "webtoon-assets"
     }
   ],
 
@@ -84,6 +97,12 @@
           "binding": "DB",
           "database_name": "minigames-staging-db",
           "database_id": "bdbb8a17-0db0-4674-b8d3-9b0beaff954f"
+        }
+      ],
+      "r2_buckets": [
+        {
+          "binding": "WEBTOON",
+          "bucket_name": "webtoon-assets-staging"
         }
       ]
     }
