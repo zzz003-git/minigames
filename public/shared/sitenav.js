@@ -24,6 +24,20 @@ import { el, svgEl, clear } from "./ui.js";
  *
  * 배경·테두리를 **그림 안에서** 그린다(맨 앞 `rect`). 그래서 `.sitebar__mark` 의
  * CSS 배경을 지웠다 — 두면 둥근 모서리 뒤로 사각형 그라데이션이 비친다.
+ *
+ * ── 30px 에서 읽히도록 조정한 값들 ──────────────────────────────────────
+ * 원안 그대로는 두 카드가 겹친 덩어리로 뭉개졌다. 32 단위로 그려도 실제로는
+ * **30px 에 들어가므로** 1 단위가 채 1px 이 안 된다. 세 가지가 원인이었다.
+ *
+ * 1. 뒤 카드가 앞 카드에 거의 다 가려 삐져나온 폭이 5.7 단위뿐이었다 →
+ *    왼쪽으로 밀어 7.5 단위로 넓혔다. 「두 장」이 보이려면 이 틈이 전부다.
+ * 2. 뒤 카드 획이 `stroke-opacity .6` 이라 그 좁은 틈마저 흐렸다 → .95.
+ * 3. 앞 카드 안쪽(#151827)이 배경(#191428)과 밝기가 거의 같아 카드가 아니라
+ *    빈 구멍처럼 보였다 → 더 어둡게(#0e1120) 낮춰 경계를 만들었다.
+ *
+ * 획 두께와 삼각형도 조금씩 키웠다. 좌표를 바꿀 때는 회전 뒤 꼭짓점이
+ * 바깥 라운드 사각(반지름 9.5) 안에 남는지 봐야 한다 — 모서리 쪽으로 나가면
+ * 테두리를 뚫고 나온 것처럼 보인다.
  */
 const brandMark = () =>
   svgEl(
@@ -39,21 +53,21 @@ const brandMark = () =>
     },
     svgEl("rect", {
       x: 0.6, y: 0.6, width: 30.8, height: 30.8, rx: 9.5,
-      fill: "#191428", stroke: "rgba(255,255,255,.14)", "stroke-width": 1.2,
+      fill: "#191428", stroke: "rgba(255,255,255,.2)", "stroke-width": 1.2,
     }),
     svgEl("rect", {
-      x: 7.4, y: 8.2, width: 11.4, height: 17, rx: 2.9,
-      fill: "none", stroke: "#a98be0", "stroke-opacity": 0.6, "stroke-width": 1.7,
-      transform: "rotate(-13 13.1 16.7)",
+      x: 6, y: 8, width: 11.2, height: 17, rx: 2.8,
+      fill: "none", stroke: "#a98be0", "stroke-opacity": 0.95, "stroke-width": 2,
+      transform: "rotate(-14 11.6 16.5)",
     }),
     svgEl("rect", {
-      x: 12.4, y: 6.8, width: 12.2, height: 18.4, rx: 3.1,
-      fill: "#151827", stroke: "#7fd8c0", "stroke-width": 2,
-      transform: "rotate(7 18.5 16)",
+      x: 12.8, y: 6.6, width: 12.6, height: 18.8, rx: 3.2,
+      fill: "#0e1120", stroke: "#7fd8c0", "stroke-width": 2.2,
+      transform: "rotate(7 19.1 16)",
     }),
     svgEl("path", {
-      d: "M16.6 12.4 L22.4 15.7 L16.2 19.4 Z",
-      fill: "#d6b166", transform: "rotate(7 18.5 16)",
+      d: "M16.6 11.9 L23.3 16 L16.6 20.1 Z",
+      fill: "#d6b166", transform: "rotate(7 19.1 16)",
     }),
   );
 
