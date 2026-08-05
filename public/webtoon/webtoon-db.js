@@ -102,6 +102,17 @@ export const WEBTOON_DB = {
             { w: 800, h: 9912 },
           ],
         },
+        {
+          ep: 2,
+          title: "믹스커피",
+          day: "2026-08-06",
+          cuts: 24,
+          header: true,
+          parts: [
+            { w: 800, h: 10990 },
+            { w: 800, h: 10330 },
+          ],
+        },
       ],
     },
     {
@@ -124,6 +135,17 @@ export const WEBTOON_DB = {
           parts: [
             { w: 800, h: 11436 },
             { w: 800, h: 8586 },
+          ],
+        },
+        {
+          ep: 2,
+          title: "공책",
+          day: "2026-08-06",
+          cuts: 24,
+          header: true,
+          parts: [
+            { w: 800, h: 11410 },
+            { w: 800, h: 8955 },
           ],
         },
       ],
@@ -150,6 +172,17 @@ export const WEBTOON_DB = {
             { w: 800, h: 8588 },
           ],
         },
+        {
+          ep: 2,
+          title: "떡볶이 평생 무료",
+          day: "2026-08-06",
+          cuts: 24,
+          header: true,
+          parts: [
+            { w: 800, h: 11500 },
+            { w: 800, h: 9160 },
+          ],
+        },
       ],
     },
     {
@@ -172,6 +205,17 @@ export const WEBTOON_DB = {
           parts: [
             { w: 800, h: 11606 },
             { w: 800, h: 8879 },
+          ],
+        },
+        {
+          ep: 2,
+          title: "오류 보고서",
+          day: "2026-08-06",
+          cuts: 24,
+          header: true,
+          parts: [
+            { w: 800, h: 11990 },
+            { w: 800, h: 9190 },
           ],
         },
       ],
@@ -198,6 +242,17 @@ export const WEBTOON_DB = {
             { w: 800, h: 9250 },
           ],
         },
+        {
+          ep: 2,
+          title: "옷으로 기억하는 사람",
+          day: "2026-08-06",
+          cuts: 24,
+          header: true,
+          parts: [
+            { w: 800, h: 11620 },
+            { w: 800, h: 9210 },
+          ],
+        },
       ],
     },
     {
@@ -220,6 +275,17 @@ export const WEBTOON_DB = {
           parts: [
             { w: 800, h: 11260 },
             { w: 800, h: 9200 },
+          ],
+        },
+        {
+          ep: 2,
+          title: "세 줄",
+          day: "2026-08-06",
+          cuts: 24,
+          header: true,
+          parts: [
+            { w: 800, h: 11450 },
+            { w: 800, h: 9090 },
           ],
         },
       ],
