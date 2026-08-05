@@ -132,6 +132,9 @@ export const WEBTOON_DB = {
           day: "2026-08-04",
           cuts: 24,
           header: true, // 그림 상단에 제목 카드가 구워져 있다
+          // 2판 — 시대 어휘 정리로 대사를 다시 식자했다(2026-08-06). 그림은 1년
+          // `immutable` 이라 주소를 바꾸지 않으면 이미 읽은 사람은 옛 식자를 계속 본다
+          rev: 2,
           parts: [
             { w: 800, h: 11436 },
             { w: 800, h: 8586 },
@@ -143,6 +146,7 @@ export const WEBTOON_DB = {
           day: "2026-08-06",
           cuts: 24,
           header: true,
+          rev: 2, // 2판 — 위와 같은 재식자
           parts: [
             { w: 800, h: 11410 },
             { w: 800, h: 8955 },
