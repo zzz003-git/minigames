@@ -518,9 +518,15 @@ function renderNotice(o) {
   // 반려(rejected)만 티켓을 쓰지 않은 것이 아니라, 멈춘 주문은 전부 티켓이 살아 있다.
   // 과금은 그림을 그리기 시작할 때 한 번 들고, 그 뒤 실패는 되돌려준다
   const back = REDO_OK.includes(o.status) || o.status === "rejected";
-  $("#noticeTicket").hidden = !back;
-
   const saved = takeText();
+  $("#noticeTicket").hidden = !back;
+  // **없는 것을 있다고 말하지 않는다.** 남겨 둔 글이 실제로 있을 때만 그렇게 적는다 —
+  // 이 화면을 처음 배포했을 때 저장 전에 보낸 주문에도 「글도 남겨 두었어요」가
+  // 떴다. 티켓은 사실이지만 글은 아니었고, 그건 그냥 거짓말이다
+  $("#noticeTicket").textContent = saved
+    ? "티켓은 그대로 있어요. 쓰신 글도 남겨 두었으니 다시 보내실 수 있어요."
+    : "티켓은 그대로 있어요. 다시 보내실 수 있어요.";
+
   const redo = $("#noticeRedo");
   redo.hidden = !(REDO_OK.includes(o.status) && saved);
   redo.onclick = () => {
