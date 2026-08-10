@@ -36,7 +36,7 @@ import { YOURSTORY } from "../lib/config.js";
 import { dayKey } from "../lib/time.js";
 import { sha256Hex, encryptJSON, decryptJSON } from "../lib/crypto.js";
 import { touchUser } from "../lib/suite.js";
-import { workerAlive } from "../routes/ys-worker.js";
+import { workerAlive, servicePause } from "../routes/ys-worker.js";
 
 const ST = YOURSTORY.ST;
 const OPEN = YOURSTORY.OPEN_STATES.map((s) => `'${s}'`).join(",");
@@ -348,6 +348,12 @@ export async function createOrder({ env, userId, body }) {
   }
   if ((await spentToday(env, day)) + YOURSTORY.COST_KRW[cuts] > YOURSTORY.DAILY_BUDGET_KRW) {
     throw new ApiError("BUDGET_FULL", "오늘 만들 수 있는 양이 다 찼어요. 내일 다시 만나요.", 429);
+  }
+  // 워커가 API 한도를 다 썼다고 알려 왔으면 받지 않는다. **워커는 살아 있으므로**
+  // 생존 확인만으로는 이 상태를 알 수 없다 — 받으면 받은 만큼 그대로 실패한다
+  const paused = await servicePause(env);
+  if (paused) {
+    throw new ApiError("PAUSED", "오늘 만들 수 있는 양을 다 채웠어요. 내일 다시 받을게요.", 429);
   }
 
   const { masked, maskedKinds, sensitive } = screen(text);

@@ -216,6 +216,7 @@ const ROUTES = {
   "POST /ys/w/asset": ysWorker.asset,
   "POST /ys/w/done": ysWorker.done,
   "POST /ys/w/fail": ysWorker.fail,
+  "POST /ys/w/defer": ysWorker.defer,
   "POST /ys/w/ping": ysWorker.ping,
 
   "GET /api/saju/state": saju.state,

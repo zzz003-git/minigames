@@ -54,6 +54,21 @@ export async function workerAlive(env) {
   return row ? Date.now() - row.beat_at < YOURSTORY.WORKER_STALE_MS : false;
 }
 
+/**
+ * 오늘은 그만 받는가.
+ *
+ * 워커가 API 일일 한도를 다 쓰면 `defer` 로 알려 온다. 그때부터 재개 시각까지
+ * 접수를 막는다 — **막지 않으면 받은 주문이 전부 실패한다.** 워커는 살아 있으므로
+ * `workerAlive` 로는 이 상태를 알 수 없어 따로 본다.
+ */
+export async function servicePause(env) {
+  const row = await env.DB.prepare(
+    `SELECT paused_until, pause_reason FROM ys_worker WHERE id = 1`,
+  ).first();
+  if (!row?.paused_until || row.paused_until <= Date.now()) return null;
+  return { until: row.paused_until, reason: row.pause_reason ?? "" };
+}
+
 const beat = (env) =>
   env.DB.prepare(
     `INSERT INTO ys_worker (id, beat_at) VALUES (1, ?)
@@ -513,6 +528,54 @@ export async function fail({ request, env, body }) {
  * 생존 신고를 하지 않는다. 브리지만 살아 있는 채로 「정상」을 표시하면 접수를 받아
  * 놓고 아무도 그리지 않는다.
  */
+/**
+ * 오늘은 못 만든다 — **실패가 아니라 대기로 되돌린다.**
+ *
+ * API 일일 한도를 다 썼을 때 쓴다. 이것을 `fail` 로 처리하면 세 가지가 잘못된다.
+ *   ① 고객에게는 "문제가 있었어요"로 보여 멀쩡한 원고를 고치려 든다
+ *   ② 이미 과금됐으면 환불했다가 내일 다시 받아야 한다 — 원장이 지저분해진다
+ *   ③ 서버가 계속 접수를 받아 받은 주문이 줄줄이 같은 실패를 겪는다
+ *
+ * 그래서 상태를 앞 단계 대기로 되돌리고(티켓은 건드리지 않는다), 재개 시각까지
+ * 신규 접수를 막는다. 이미 과금된 주문은 `queued_image` 로 돌아가므로 내일
+ * 이어서 그리면 되고 **다시 과금되지 않는다**(charge 는 원장을 보고 한 번만 든다).
+ */
+export async function defer({ request, env, body }) {
+  authorize(request, env);
+  await beat(env);
+
+  const row = await held(env, String(body?.id ?? ""));
+  const charged = await env.DB.prepare(
+    `SELECT COUNT(*) AS n FROM ys_ledger WHERE order_id = ? AND reason = 'consume'`,
+  )
+    .bind(row.id)
+    .first();
+  const back = (charged?.n ?? 0) > 0 ? ST.QUEUED_IMAGE : ST.QUEUED_BRAIN;
+
+  // 기본 재개 시각은 6시간 뒤 — API 한도는 대개 하루 단위로 풀린다.
+  // 워커가 아는 값이 있으면 그것을 쓴다
+  const until = Number(body?.until) || Date.now() + 6 * 60 * 60 * 1000;
+
+  await env.DB.batch([
+    env.DB.prepare(
+      `UPDATE ys_order SET status = ?, step = 'intake', claimed_at = NULL WHERE id = ?`,
+    ).bind(back, row.id),
+    env.DB.prepare(
+      `INSERT INTO ys_worker (id, beat_at, paused_until, pause_reason) VALUES (1, ?, ?, ?)
+         ON CONFLICT(id) DO UPDATE SET beat_at = excluded.beat_at,
+           paused_until = excluded.paused_until, pause_reason = excluded.pause_reason`,
+    ).bind(Date.now(), until, String(body?.reason ?? "").slice(0, 200) || null),
+    auditStmt(env, row.id, {
+      gate: "G0",
+      check: "quota",
+      verdict: "defer",
+      detail: String(body?.detail ?? "").slice(0, 400),
+    }),
+  ]);
+
+  return { id: row.id, status: back, paused_until: until };
+}
+
 export async function ping({ request, env, body }) {
   authorize(request, env);
   if (body?.worker_ok !== false) await beat(env);
