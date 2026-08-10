@@ -1,0 +1,304 @@
+/**
+ * ✍ 너의스토리 — 전용 스타일
+ *
+ * 기획: `yourstory_plan.md` §2 · 시안: `yourstory_mockup.html`
+ *
+ * ── 색은 한 가지만 는다 ─────────────────────────────────────────────────
+ * 웹툰 영역의 딥그린/청록 위에 **앰버 골드 한 색**을 얹는다. 게임(무채)·오늘의
+ * 나(보라)·웹툰 읽기(딥그린)에 이어 네 번째가 아니라, 웹툰 표면 위의 악센트다.
+ *
+ * 오렌지(`--wt-up`)와 색상값이 가깝지만 **역할로 가른다** — 오렌지는 배지에만,
+ * 앰버는 면·테두리·게이지에만. 둘을 같은 자리에 쓰면 「갱신됐다」와 「내가 만든
+ * 것」이 구별되지 않는다.
+ *
+ * `#D9A15B` on `#161d2b` 는 대비 6.3:1 로 AA 를 통과한다(plan §8). 이 값을 어둡게
+ * 조정할 때는 대비를 다시 재야 한다.
+ */
+
+.ys-body {
+  --ys: #d9a15b;
+  --ys-tint: rgba(217, 161, 91, 0.07);
+  --ys-line: rgba(217, 161, 91, 0.26);
+  --ys-ink: #1a140a;
+}
+
+.ys {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 22px 16px 60px;
+}
+
+/* ══ 홈 머리 ══ */
+.ys__head {
+  display: flex; align-items: center; gap: 12px;
+  padding: 16px 18px; margin-bottom: 16px;
+  border-radius: 20px;
+  background: linear-gradient(180deg, var(--ys-tint), transparent);
+  border: 1px solid var(--ys-line);
+}
+.ys__icon {
+  width: 38px; height: 38px; border-radius: 12px; flex: none;
+  display: grid; place-items: center; font-size: 18px;
+  background: rgba(217, 161, 91, 0.12);
+}
+.ys__headtext { display: grid; gap: 2px; margin-right: auto; }
+.ys__headtext b { font-size: 17px; }
+.ys__headtext span { font-size: 12.5px; color: var(--text-sub); font-family: var(--mono); }
+.ys__wallet { font-size: 11px; letter-spacing: 0.08em; color: var(--ys); }
+
+/* ══ 초대코드 ══ */
+.ys__invite {
+  background: var(--surface-2); border: 1px solid var(--ys-line);
+  border-radius: 18px; padding: 18px; margin-bottom: 16px;
+}
+.ys__invitelead { font-size: 13.5px; color: var(--text-2); margin-bottom: 12px; }
+.ys__inviterow { display: flex; gap: 8px; }
+.ys__inviterow .ys__input { margin: 0; flex: 1; }
+
+/* ══ 오늘의 문장 ══ */
+.ys__seed {
+  background: var(--surface-2); border: 1px solid var(--ys-line);
+  border-radius: 20px; padding: 22px 20px; text-align: center;
+}
+.ys__seedkey {
+  font-size: 10.5px; letter-spacing: 0.18em; color: var(--ys); margin-bottom: 10px;
+}
+.ys__seedtext {
+  font-size: 16px; line-height: 1.65; color: var(--text-main);
+  margin-bottom: 18px; word-break: keep-all;
+}
+.ys__seednote { font-size: 12px; color: var(--text-sub); margin-top: 12px; font-family: var(--mono); }
+
+/* ══ 버튼 ══ */
+.ys__btn {
+  display: inline-block; background: none; cursor: pointer;
+  border: 1px solid var(--border-strong); color: var(--text-2);
+  border-radius: var(--r-pill); padding: 11px 20px;
+  font-size: 13.5px; font-family: var(--sans); text-decoration: none;
+  transition: var(--t);
+}
+.ys__btn:hover { border-color: var(--ys-line); color: var(--ys); }
+.ys__btn--pri { border-color: var(--ys); color: var(--ys); }
+.ys__btn--pri:hover { background: var(--ys); color: var(--ys-ink); }
+.ys__btn--big { padding: 14px 28px; font-size: 15px; font-weight: 700; }
+.ys__btn:disabled { opacity: 0.4; cursor: default; }
+.ys__btn:disabled:hover { border-color: var(--border-strong); color: var(--text-2); background: none; }
+
+.ys__link {
+  background: none; border: 0; cursor: pointer; padding: 0;
+  color: var(--ys); font-size: 12.5px; font-family: var(--sans);
+  text-decoration: underline; text-underline-offset: 3px;
+}
+
+/* ══ 서랍 ══ */
+.ys__label {
+  font-size: 13px; color: var(--text-2); font-weight: 700;
+  margin: 26px 0 10px; display: flex; gap: 8px; align-items: baseline;
+}
+.ys__label small { font-size: 11.5px; color: var(--text-dim); font-weight: 400; }
+
+.ys__grid { display: grid; gap: 10px; }
+.ys__card {
+  display: flex; gap: 13px; align-items: center; text-align: left; width: 100%;
+  background: var(--surface-2); border: 1px solid var(--border-mid);
+  border-radius: 16px; padding: 14px 16px; cursor: pointer;
+  font-family: var(--sans); transition: var(--t);
+}
+.ys__card:hover { border-color: var(--ys-line); }
+.ys__cardbody { display: grid; gap: 4px; margin-right: auto; min-width: 0; }
+.ys__cardtitle {
+  font-size: 14.5px; color: var(--text-main); font-weight: 500;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.ys__cardsub { font-size: 12px; color: var(--text-sub); font-family: var(--mono); }
+.ys__my { font-size: 11px; color: var(--ys); font-family: var(--mono); flex: none; }
+
+/* 상태 배지 — 색만으로 구분하지 않는다. 글자가 상태를 말한다 */
+.ys__badge {
+  font-size: 11px; padding: 3px 9px; border-radius: var(--r-pill);
+  border: 1px solid var(--border-strong); color: var(--text-sub); flex: none;
+}
+.ys__badge--making { color: var(--ys); border-color: var(--ys-line); }
+.ys__badge--done { color: var(--text-2); }
+.ys__badge--stop { color: var(--coral); border-color: rgba(233, 146, 127, 0.3); }
+
+/* ══ 에디터 ══ */
+.ys__bar {
+  display: flex; align-items: center; gap: 10px; margin-bottom: 16px;
+  padding-bottom: 12px; border-bottom: 1px solid var(--border);
+}
+.ys__bar b { font-size: 15px; margin-right: auto; }
+.ys__bar .mono { font-size: 11px; color: var(--ys); }
+.ys__back {
+  background: none; border: 0; color: var(--text-sub); cursor: pointer;
+  font-size: 24px; line-height: 1; padding: 0 6px 3px;
+}
+
+.ys__text {
+  width: 100%; min-height: 42vh; resize: vertical;
+  background: var(--surface-2); border: 1px solid var(--border-mid);
+  border-radius: 16px; padding: 16px;
+  color: var(--text-main); font-size: 15px; line-height: 1.75; font-family: var(--sans);
+}
+.ys__text:focus { outline: 0; border-color: var(--ys-line); }
+.ys__text::placeholder { color: var(--text-faint); }
+
+.ys__counter {
+  display: flex; justify-content: space-between; align-items: center;
+  margin: 8px 2px 0; font-size: 12.5px; color: var(--text-sub); font-family: var(--mono);
+}
+.ys__counter b { color: var(--ys); }
+
+.ys__field { font-size: 13px; color: var(--text-2); font-weight: 700; margin: 22px 0 9px; }
+
+.ys__opts { display: flex; gap: 8px; flex-wrap: wrap; }
+.ys__opt {
+  background: none; cursor: pointer; font-family: var(--sans);
+  border: 1px solid var(--border-strong); color: var(--text-2);
+  border-radius: 12px; padding: 10px 18px; font-size: 13.5px; transition: var(--t);
+}
+.ys__opt.is-on {
+  border-color: var(--ys); color: var(--ys);
+  background: var(--ys-tint); font-weight: 700;
+}
+
+.ys__chips { display: grid; grid-template-columns: repeat(auto-fill, minmax(108px, 1fr)); gap: 8px; }
+.ys__chip {
+  background: none; cursor: pointer; font-family: var(--sans); text-align: left;
+  border: 1px solid var(--border-strong); border-radius: 14px;
+  padding: 10px 12px; transition: var(--t);
+  display: grid; gap: 2px;
+}
+.ys__chip.is-on { border-color: var(--ys); background: var(--ys-tint); }
+.ys__chipname { font-size: 13px; color: var(--text-main); }
+.ys__chip.is-on .ys__chipname { color: var(--ys); font-weight: 700; }
+.ys__chiphint { font-size: 11px; color: var(--text-dim); }
+
+.ys__hint { font-size: 12px; color: var(--text-dim); line-height: 1.6; margin-top: 8px; }
+.ys__hint b { color: var(--text-sub); }
+.ys__hint--center { text-align: center; }
+
+.ys__input {
+  width: 100%; margin-top: 12px;
+  background: var(--surface-2); border: 1px solid var(--border-mid);
+  border-radius: 12px; padding: 12px 14px;
+  color: var(--text-main); font-size: 14px; font-family: var(--sans);
+}
+.ys__input:focus { outline: 0; border-color: var(--ys-line); }
+.ys__input.mono { font-family: var(--mono); letter-spacing: 0.06em; }
+
+.ys__check {
+  display: flex; gap: 10px; align-items: center; cursor: pointer;
+  margin: 20px 0 0; font-size: 13.5px; color: var(--text-2);
+}
+.ys__check input { width: 17px; height: 17px; accent-color: var(--ys); }
+
+.ys__submit { display: block; width: 100%; margin-top: 26px; }
+
+/* ══ 제작 중 ══ */
+.ys__making-title { font-size: 18px; text-align: center; margin: 30px 0 26px; }
+
+.ys__steps { display: flex; justify-content: center; gap: 0; margin-bottom: 28px; }
+.ys__step { display: grid; justify-items: center; gap: 7px; position: relative; flex: 1; max-width: 92px; }
+.ys__dot {
+  width: 15px; height: 15px; border-radius: 50%;
+  border: 2px solid var(--border-strong); background: var(--bg); z-index: 1;
+}
+.ys__step.is-done .ys__dot { background: var(--ys); border-color: var(--ys); }
+.ys__step.is-now .ys__dot { border-color: var(--ys); box-shadow: 0 0 0 4px rgba(217, 161, 91, 0.16); }
+.ys__step::before {
+  content: ""; position: absolute; top: 7px; left: -50%; width: 100%; height: 2px;
+  background: var(--border-strong);
+}
+.ys__step:first-child::before { display: none; }
+.ys__step.is-done::before, .ys__step.is-now::before { background: var(--ys); }
+.ys__steplabel { font-size: 11.5px; color: var(--text-sub); }
+.ys__step.is-now .ys__steplabel { color: var(--ys); font-weight: 700; }
+
+.ys__prog { display: grid; gap: 8px; justify-items: center; margin-bottom: 22px; }
+.ys__bar-track {
+  width: min(340px, 80vw); height: 8px; border-radius: var(--r-pill);
+  background: var(--well); overflow: hidden;
+}
+.ys__bar-track i { display: block; height: 100%; width: 0; background: var(--ys); transition: width 600ms ease; }
+.ys__prog .mono { font-size: 12px; color: var(--text-sub); }
+
+.ys__tone {
+  max-width: 460px; margin: 0 auto 20px;
+  background: var(--surface-2); border: 1px solid var(--ys-line);
+  border-radius: 16px; padding: 16px 18px; text-align: center;
+}
+.ys__tonekey { font-size: 10.5px; letter-spacing: 0.16em; color: var(--ys); margin-bottom: 9px; }
+.ys__tonelabel { font-size: 15px; color: var(--text-main); }
+.ys__tonewhy { font-size: 12.5px; color: var(--text-sub); margin-top: 7px; line-height: 1.6; }
+
+.ys__eta { text-align: center; font-size: 13.5px; color: var(--text-2); margin-bottom: 30px; }
+
+.ys__wait {
+  text-align: center; display: grid; gap: 12px; justify-items: center;
+  padding-top: 24px; border-top: 1px solid var(--border);
+}
+.ys__wait p { font-size: 12.5px; color: var(--text-dim); }
+
+/* ══ 뷰어 ══ */
+.ys__diag {
+  background: var(--ys-tint); border: 1px solid var(--ys-line);
+  border-radius: 12px; padding: 13px 15px; margin-bottom: 16px;
+}
+.ys__diag b { font-size: 13.5px; color: var(--ys); display: block; margin-bottom: 4px; }
+.ys__diag span { font-size: 12.5px; color: var(--text-sub); line-height: 1.6; }
+
+/* 분할본은 자리를 먼저 잡고 그림을 나중에 넣는다 — 읽는 중에 아래가 밀리지
+   않게 하는 것이 목적이라, 높이를 모르면 이 화면은 성립하지 않는다 */
+.ys__cuts { display: grid; gap: 0; max-width: 800px; margin: 0 auto; }
+.ys__part { width: 100%; display: block; background: var(--surface-2); }
+
+.ys__notes {
+  margin-top: 16px; padding: 13px 15px;
+  background: var(--surface-2); border: 1px solid var(--border-mid);
+  border-radius: 12px; font-size: 12.5px; color: var(--text-sub); line-height: 1.7;
+}
+
+.ys__srctoggle { display: block; width: 100%; margin-top: 16px; }
+.ys__src {
+  margin-top: 12px; padding: 16px;
+  background: var(--surface-2); border: 1px solid var(--ys-line);
+  border-radius: 14px; font-size: 14px; line-height: 1.85;
+  color: var(--text-2); white-space: pre-wrap; word-break: break-word;
+}
+
+.ys__disclosure {
+  text-align: center; margin-top: 20px;
+  font-size: 12px; color: var(--text-dim); font-family: var(--mono);
+}
+.ys__acts { display: flex; justify-content: center; gap: 10px; margin-top: 20px; }
+
+/* ══ 안내 ══ */
+.ys__notice {
+  max-width: 460px; margin: 60px auto; text-align: center;
+  background: var(--surface-2); border: 1px solid var(--border-mid);
+  border-radius: 20px; padding: 32px 24px;
+}
+.ys__noticetext { font-size: 15px; line-height: 1.8; color: var(--text-2); margin-bottom: 22px; }
+
+.ys__legal {
+  text-align: center; margin-top: 34px;
+  font-size: 11.5px; color: var(--text-faint); line-height: 1.7;
+}
+
+/* ══ 메인·웹툰 홈에 얹는 진입 행 (plan §4) ══ */
+.wt__ysrow {
+  margin-top: 14px; padding: 16px 18px;
+  background: linear-gradient(180deg, rgba(217, 161, 91, 0.07), transparent);
+  border: 1px solid rgba(217, 161, 91, 0.26);
+  border-radius: 18px;
+  display: grid; gap: 10px;
+}
+.wt__ysrow h3 { font-size: 14.5px; color: #d9a15b; }
+.wt__ysrow p { font-size: 12.5px; color: var(--text-sub); line-height: 1.6; }
+
+@media (max-width: 480px) {
+  .ys { padding: 16px 13px 48px; }
+  .ys__steplabel { font-size: 10.5px; }
+  .ys__making-title { font-size: 16px; }
+}

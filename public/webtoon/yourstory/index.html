@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>너의스토리</title>
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#0F1420">
+  <meta name="description" content="당신이 쓴 이야기가, 오늘 웹툰이 됩니다.">
+  <!-- 개인 서사를 다루는 화면이라 검색엔진에 남기지 않는다 (dev_spec §9) -->
+  <meta name="robots" content="noindex">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../../shared/base.css">
+  <link rel="stylesheet" href="../webtoon.css">
+  <link rel="stylesheet" href="yourstory.css">
+</head>
+<body class="webtoon-body ys-body">
+  <div id="siteNav"></div>
+
+  <main class="ys">
+    <!-- ① 홈 -->
+    <section class="screen is-active" data-screen="home">
+      <header class="ys__head">
+        <span class="ys__icon" aria-hidden="true">✍</span>
+        <span class="ys__headtext">
+          <b>너의스토리</b>
+          <span id="homeDate">—</span>
+        </span>
+        <span class="ys__wallet mono" id="walletBadge"></span>
+      </header>
+
+      <!-- 초대코드 — 아직 등록 전일 때만 -->
+      <div class="ys__invite" id="inviteBox" hidden>
+        <p class="ys__invitelead">지금은 초대받은 분만 이용할 수 있어요.</p>
+        <div class="ys__inviterow">
+          <label class="sr-only" for="inviteInput">초대코드</label>
+          <input id="inviteInput" class="ys__input mono" placeholder="YS-XXXX-XXXX"
+                 autocomplete="off" spellcheck="false" maxlength="24">
+          <button type="button" class="ys__btn ys__btn--pri" id="inviteBtn">확인</button>
+        </div>
+      </div>
+
+      <!-- 오늘의 문장 + 대형 CTA -->
+      <div class="ys__seed" id="seedCard">
+        <div class="ys__seedkey mono">오늘의 문장</div>
+        <p class="ys__seedtext" id="seedText">—</p>
+        <button type="button" class="ys__btn ys__btn--pri ys__btn--big" id="writeBtn">
+          이야기 쓰기 →
+        </button>
+        <p class="ys__seednote" id="seedNote">3분 입력 · 8~16컷 · 무료 1편/월</p>
+      </div>
+
+      <!-- 내 서랍 -->
+      <div id="drawerSlot" hidden>
+        <h2 class="ys__label">내 서랍 <small id="drawerNote"></small></h2>
+        <div class="ys__grid" id="drawerGrid"></div>
+      </div>
+
+      <p class="ys__legal">
+        AI로 그립니다 · 순위도 조회수도 없어요 · 쓰신 글은 다른 곳에 쓰이지 않아요
+      </p>
+    </section>
+
+    <!-- ② 작성 (에디터) -->
+    <section class="screen" data-screen="write">
+      <header class="ys__bar">
+        <button type="button" class="ys__back" id="writeBack" aria-label="너의스토리로 돌아가기">‹</button>
+        <b>어떤 이야기를 웹툰으로 만들까요?</b>
+        <span class="mono" id="writeWallet"></span>
+      </header>
+
+      <label class="sr-only" for="storyText">이야기 원문</label>
+      <textarea id="storyText" class="ys__text"
+        placeholder="있었던 일을 순서대로 편하게 써 주세요.&#10;잘 쓰려고 하지 않아도 괜찮아요."
+        maxlength="6000"></textarea>
+
+      <div class="ys__counter">
+        <span id="charCount">0자</span>
+        <button type="button" class="ys__link" id="sampleBtn">예시 보기</button>
+      </div>
+
+      <h3 class="ys__field">컷 수</h3>
+      <div class="ys__opts" id="cutOpts" role="group" aria-label="컷 수 고르기"></div>
+      <p class="ys__hint" id="cutHint">
+        고른 값은 <b>최대치</b>예요. 실제 컷 수는 이야기에 담긴 사건이 정하고,
+        줄어든 만큼은 컷 크레딧으로 돌려드려요.
+      </p>
+
+      <h3 class="ys__field">화풍</h3>
+      <div class="ys__chips" id="styleChips" role="group" aria-label="화풍 고르기"></div>
+      <p class="ys__hint">화풍은 그림체만 정해요. 연출과 대사는 이야기의 분위기가 정합니다.</p>
+
+      <h3 class="ys__field">이름 표기</h3>
+      <div class="ys__opts" id="bylineOpts" role="group" aria-label="이름 표기 고르기">
+        <button type="button" class="ys__opt is-on" data-byline="anon">익명</button>
+        <button type="button" class="ys__opt" data-byline="nick">닉네임</button>
+      </div>
+      <input id="nickInput" class="ys__input" placeholder="닉네임" maxlength="20" hidden>
+
+      <label class="ys__check">
+        <input type="checkbox" id="relayAllow">
+        <span>다른 사람이 이 이야기를 이어가도 좋아요</span>
+      </label>
+
+      <label class="sr-only" for="titleInput">제목</label>
+      <input id="titleInput" class="ys__input" placeholder="제목 (선택)" maxlength="60">
+
+      <button type="button" class="ys__btn ys__btn--pri ys__btn--big ys__submit" id="submitBtn">
+        웹툰으로 만들기
+      </button>
+      <p class="ys__hint ys__hint--center" id="submitNote">티켓 1장이 사용돼요 · AI로 그립니다</p>
+    </section>
+
+    <!-- ③ 제작 중 -->
+    <section class="screen" data-screen="making">
+      <h2 class="ys__making-title" id="makingTitle">이야기를 읽고 있어요</h2>
+
+      <ol class="ys__steps" id="stepList"></ol>
+
+      <div class="ys__prog" id="progWrap" hidden>
+        <div class="ys__bar-track"><i id="progFill"></i></div>
+        <span class="mono" id="progText">그림 0/0</span>
+      </div>
+
+      <!-- 톤 진단 — 나오는 즉시 보여준다 (plan §5-3) -->
+      <div class="ys__tone" id="toneCard" hidden>
+        <div class="ys__tonekey mono">지금 이런 분위기로 그리고 있어요</div>
+        <p class="ys__tonelabel" id="toneLabel">—</p>
+        <p class="ys__tonewhy" id="toneWhy"></p>
+      </div>
+
+      <p class="ys__eta" id="etaText">순서를 기다리고 있어요</p>
+
+      <div class="ys__wait">
+        <p>기다리는 동안 —</p>
+        <a class="ys__btn" href="../">오늘 올라온 웹툰 보기 →</a>
+        <button type="button" class="ys__link" id="makingBack">서랍으로</button>
+      </div>
+    </section>
+
+    <!-- ④ 결과 뷰어 -->
+    <section class="screen" data-screen="viewer">
+      <header class="ys__bar">
+        <button type="button" class="ys__back" id="viewerBack" aria-label="너의스토리로 돌아가기">‹</button>
+        <b id="viewerTitle">—</b>
+        <span class="mono" id="viewerMy"></span>
+      </header>
+
+      <div class="ys__diag" id="viewerDiag" hidden>
+        <b id="diagLabel">—</b>
+        <span id="diagWhy"></span>
+      </div>
+
+      <div class="ys__cuts" id="cutHost"></div>
+
+      <div class="ys__notes" id="viewerNotes" hidden></div>
+
+      <button type="button" class="ys__btn ys__srctoggle" id="srcToggle">내가 쓴 글 보기</button>
+      <div class="ys__src" id="srcBox" hidden></div>
+
+      <p class="ys__disclosure">AI로 그린 웹툰입니다 · 이야기: <span id="viewerBy">익명</span></p>
+
+      <div class="ys__acts">
+        <button type="button" class="ys__btn" id="deleteBtn">이야기 지우기</button>
+      </div>
+    </section>
+
+    <!-- ⑤ 안내 (반려·실패) -->
+    <section class="screen" data-screen="notice">
+      <div class="ys__notice">
+        <p class="ys__noticetext" id="noticeText">—</p>
+        <button type="button" class="ys__btn ys__btn--pri" id="noticeBack">돌아가기</button>
+      </div>
+    </section>
+  </main>
+
+  <script type="module" src="yourstory.js"></script>
+</body>
+</html>

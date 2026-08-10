@@ -33,8 +33,14 @@ export async function renderWebtoonSection(host) {
   }
 
   let data = null;
+  let ys = null;
   try {
-    data = await apiGet("/api/webtoon/home");
+    // 너의스토리 행은 **초대받은 사람에게만** 선다(0단계는 초대 베타 — plan §7).
+    // 아무나 못 쓰는 기능을 홈 한복판에 세우면 눌러 보고 막히는 사람이 대부분이 된다.
+    [data, ys] = await Promise.all([
+      apiGet("/api/webtoon/home"),
+      apiGet("/api/ys/state").catch(() => null),
+    ]);
   } catch {
     // 진행률을 못 읽어도 섹션은 선다 — 도장만 비운다
   }
@@ -152,7 +158,55 @@ export async function renderWebtoonSection(host) {
     );
   }
   host.append(grid);
+
+  const ysRow = yourstoryRow(ys);
+  if (ysRow) host.append(ysRow);
+
   host.append(el("a", { class: "wtarea__more", href: "/webtoon/" }, "웹툰 전체 보기 →"));
 
   return data;
+}
+
+/**
+ * ✍ 너의스토리 행 (plan §4 · dev_spec F1)
+ *
+ * 웹툰 섹션을 2행으로 넓힌다 — 읽기 행 아래에 「당신이 만드는 한 편」.
+ * 헤더 탭을 늘리지 않는 것이 요점이다. 웹툰 기둥 **안의** 두 번째 축이라
+ * 탭이 하나 더 생기면 사이트의 「세 기둥」 문법이 흐트러진다.
+ *
+ * **만드는 중인 주문이 있으면 그것을 먼저 보여 준다.** 10~40분을 기다리는 사람의
+ * 재방문 목적지가 여기이기 때문이다 — 오늘의 문장보다 앞선다.
+ */
+function yourstoryRow(ys) {
+  if (!ys?.wallet) return null;
+
+  const making = (ys.orders ?? []).find((o) =>
+    ["queued_brain", "brain_running", "queued_image", "image_running", "composing"].includes(o.status),
+  );
+  const latest = (ys.orders ?? []).find((o) => o.status === "done");
+
+  const line = making
+    ? making.cuts_done
+      ? `⟳ 만드는 중 · 그림 ${making.cuts_done}/${making.cuts}`
+      : "⟳ 만드는 중 · 곧 시작해요"
+    : latest
+      ? `${latest.title || "제목 없는 이야기"} · 완성`
+      : "당신이 쓴 이야기가, 오늘 웹툰이 됩니다";
+
+  return el(
+    "a",
+    {
+      class: "wt__ysrow",
+      href: making ? `/webtoon/yourstory/#/o/${making.id}` : "/webtoon/yourstory/",
+    },
+    el("h3", {}, "✍ 너의스토리"),
+    el("p", {}, line),
+    el(
+      "p",
+      { class: "mono", style: "font-size:11.5px" },
+      ys.service === "down"
+        ? "잠시 점검 중이에요"
+        : `TICKET ${ys.wallet.tickets} · CREDIT ${ys.wallet.credits}`,
+    ),
+  );
 }

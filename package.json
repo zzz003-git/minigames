@@ -12,7 +12,8 @@
     "db:create": "wrangler d1 create minigames-db",
     "db:migrate": "wrangler d1 migrations apply minigames-db --remote",
     "db:migrate:local": "wrangler d1 migrations apply minigames-db --local",
-    "db:console": "wrangler d1 execute minigames-db --remote --command"
+    "db:console": "wrangler d1 execute minigames-db --remote --command",
+    "ys:invite": "node scripts/ys-invite.mjs"
   },
   "devDependencies": {
     "wrangler": "^4.0.0"

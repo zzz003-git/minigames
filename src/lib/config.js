@@ -1380,6 +1380,138 @@ export const WEBTOON = {
   UPDATE_HOUR_KST: 9, // 매일 아침 9시 갱신 (제작 파이프라인과 같은 시각)
 };
 
+/**
+ * ✍ 너의스토리 — 웹툰 기둥의 두 번째 축 (yourstory_plan.md)
+ *
+ * ── 여기 있는 수치는 전부 원가와 직결된다 ────────────────────────────────
+ * 컷 하나가 실제로 57원이고, 8컷 한 편이 630원이다(Y9 §1). 게임 쪽 상수와 달리
+ * **틀리면 돈이 나간다.** 값을 바꿀 때는 `agents/yourstory/Y9_ops_rights.md` 의
+ * 원가표를 먼저 고치고 여기를 맞춘다. 순서가 반대면 문서가 뒤따라오지 못한다.
+ *
+ * ── 컷 수는 상한이지 약속이 아니다 ──────────────────────────────────────
+ * 고객이 고르는 것은 **상한**이고, 실제 컷 수는 사실의 양이 정한다(원칙 Y-5).
+ * 사실이 부족한데 16컷을 채우면 반드시 없던 사실이 발명된다. 하향된 차액은
+ * 컷 크레딧으로 돌려준다(검토 A-4) — 그래야 「8컷으로 줄었다」가 손해가 아니다.
+ */
+export const YOURSTORY = {
+  // 티켓 등급 = 컷 수 상한. 원가는 이미지 생성비만이다(LLM 비용은 파일럿 실측 — 검토 A-3)
+  CUT_TIERS: [8, 12, 16],
+  COST_KRW: { 8: 630, 12: 970, 16: 1255 },
+
+  // 무료 쿼터는 반드시 8컷이다. 16컷을 무료로 열면 계정당 원가가 두 배가 되고,
+  // 짧은 글로 16컷을 요청하는 사례가 몰려 품질까지 떨어진다 (Y9 §1)
+  FREE_TIER_CUTS: 8,
+
+  // 100자 미만은 컷을 못 만든다 — 화면이 확인 질문(인터뷰 모드)으로 받는다 (§5-2)
+  MIN_CHARS: 100,
+  // 6,000자 초과의 '분할 제안'은 파일럿 사례를 보고 정한다(검토 C-2). 지금은 받지 않는다
+  MAX_CHARS: 6000,
+
+  // 글자 수 → 컷 수 안내 ("312자 · 12컷 분량"). 어림값이라 화면 안내에만 쓴다
+  CHARS_PER_CUT: 26,
+
+  // 분위기 확신도가 이 아래면 화면이 확인 1문항을 띄운다 (§5-2-b)
+  TONE_CONFIRM_BELOW: 0.65,
+
+  /**
+   * 화풍 8종 (Y5 §0). `auto` 가 기본값이고 이때만 톤 프리셋의 기본 그림체를 쓴다.
+   *
+   * **실존 작가·스튜디오명을 넣지 않는다.** 「○○풍」은 `check_ip.py` 가 차단하는
+   * 대상이라, 여기 라벨도 속성 서술에서 온 컨셉명이다.
+   */
+  STYLES: [
+    { id: "auto", icon: "🤖", label: "AI 추천", hint: "이야기에 맞게 골라 드려요" },
+    { id: "S1", icon: "🧸", label: "포근동화", hint: "가족·반려·위로" },
+    { id: "S2", icon: "😊", label: "말랑코믹", hint: "일상 유머·소동" },
+    { id: "S3", icon: "✨", label: "설렘순정", hint: "설렘·연애·추억" },
+    { id: "S4", icon: "🎬", label: "또렷애니", hint: "활기찬 사건·성장" },
+    { id: "S5", icon: "🎨", label: "투명수채", hint: "잔잔한 감성" },
+    { id: "S6", icon: "📼", label: "필름레트로", hint: "추억·회상" },
+    { id: "S7", icon: "⚪", label: "잔잔미니멀", hint: "담담한 기록·상실" },
+  ],
+
+  /**
+   * 제작 스텝 5칸 (§5-3). '오늘의 나'의 도장 문법을 잇는다.
+   *
+   * 진행이 눈에 보이면 대기가 짧게 느껴진다 — 10~40분을 버티게 하는 것이 이 다섯 칸이다.
+   * 워커가 단계마다 이 키를 올려 보낸다(`POST /ys/w/progress`).
+   */
+  STEPS: [
+    { key: "intake", label: "이야기" },
+    { key: "tone", label: "분위기" },
+    { key: "beats", label: "컷나눔" },
+    { key: "draw", label: "그림" },
+    { key: "finish", label: "마무리" },
+  ],
+
+  // 대기열 상태 표시 (Y9 §2). 워커 1대 순차라 이 수치가 곧 체감 대기시간이다
+  QUEUE_BUSY_FROM: 6,
+  QUEUE_FULL_FROM: 16,
+  DAILY_INTAKE_LIMIT: 40, // 안전 운영선 40건/일
+
+  // heartbeat 가 이만큼 끊기면 「잠시 점검 중」으로 바꾸고 접수를 먼저 막는다.
+  // 24시간 실시간 표방(검토 A-2)의 유일한 안전장치가 이것이다 — 워커가 죽으면
+  // 주문은 쌓이기만 하고 고객은 언제 되는지 모른 채 기다린다
+  WORKER_STALE_MS: 5 * 60 * 1000,
+
+  // 워커가 한 건을 집어간 뒤 이 시간이 지나도록 소식이 없으면 대기열로 되돌린다.
+  // 16컷 최대 40분 + 여유. PC 가 재부팅되면 claimed 인 채로 영영 멈추기 때문이다
+  CLAIM_STALE_MS: 60 * 60 * 1000,
+
+  // 한 사람이 동시에 걸어 둘 수 있는 주문 수. 파일럿 대기열 5건 상한(§7 1단계)과 같은 취지
+  MAX_OPEN_ORDERS: 2,
+
+  /**
+   * G3 예산 가드 — 일·월 상한 (dev_spec §4.3).
+   *
+   * 주문 단위 상한(COST_KRW)만으로는 **폭주를 못 막는다.** 한 건이 630원을 지켜도
+   * 하루 500건이 들어오면 31만 원이다. 그래서 상한이 3중이다 — 주문·일·월.
+   * 여기 걸리면 신규 접수를 막는다. 이미 받은 주문은 끝까지 만든다(중간에 버리면
+   * 돈만 쓰고 결과가 없다).
+   */
+  DAILY_BUDGET_KRW: 30000,
+  MONTHLY_BUDGET_KRW: 300000,
+
+  /**
+   * 주문 상태 (dev_spec §1.2).
+   *
+   * **전이는 서버만 한다.** 워커는 보고하고 서버가 옮긴다 — 워커가 직접 상태를
+   * 쓰면 PC 가 죽는 순간의 상태가 무엇인지 아무도 모르게 된다.
+   */
+  ST: {
+    QUEUED_BRAIN: "queued_brain",
+    BRAIN_RUNNING: "brain_running",
+    NEEDS_INPUT: "needs_input",
+    REJECTED: "rejected",
+    CONTI_FAILED: "conti_failed",
+    QUEUED_IMAGE: "queued_image", // ★ 과금 확정 지점
+    IMAGE_RUNNING: "image_running",
+    BUDGET_STOP: "budget_stop",
+    COMPOSING: "composing",
+    DONE: "done",
+    FAILED: "failed",
+    DELETED: "deleted",
+  },
+};
+
+/** 아직 끝나지 않은 주문 — 대기열·「만드는 중」의 정의 */
+YOURSTORY.OPEN_STATES = [
+  YOURSTORY.ST.QUEUED_BRAIN,
+  YOURSTORY.ST.BRAIN_RUNNING,
+  YOURSTORY.ST.NEEDS_INPUT,
+  YOURSTORY.ST.QUEUED_IMAGE,
+  YOURSTORY.ST.IMAGE_RUNNING,
+  YOURSTORY.ST.COMPOSING,
+];
+
+/** 워커가 손에 쥐고 있는 상태 — 여기서 소식이 끊기면 대기열로 되돌린다 */
+YOURSTORY.WORKING_STATES = [
+  YOURSTORY.ST.BRAIN_RUNNING,
+  YOURSTORY.ST.QUEUED_IMAGE,
+  YOURSTORY.ST.IMAGE_RUNNING,
+  YOURSTORY.ST.COMPOSING,
+];
+
 export const AD_TRIGGERS = {
   STOPWATCH_ATTEMPT: { game: "STOPWATCH", type: "REWARDED", perDay: STOPWATCH.AD_VIEWS_PER_DAY },
   STOPWATCH_STATS: { game: "STOPWATCH", type: "INTERSTITIAL", perDay: null },

@@ -116,6 +116,21 @@ export async function verify(env, message, signature) {
 
 // ── 해시 ──────────────────────────────────────────────────────
 
+/**
+ * SHA-256 16진 문자열.
+ *
+ * 너의스토리 원문의 지문입니다. 창작기록서는 원문을 인용하지 않고 **이 해시만**
+ * 적습니다 — 삭제 요청 시 원문을 파기해야 하는데 기록서에 전문이 남아 있으면
+ * 파기가 성립하지 않기 때문입니다 (검토 B-3).
+ *
+ * `hashIp` 와 달리 비밀값을 섞지 않습니다. 같은 원문이면 PC 파이프라인이 계산한
+ * 값과 같아야 대조가 되기 때문입니다.
+ */
+export async function sha256Hex(text) {
+  const raw = new Uint8Array(await crypto.subtle.digest("SHA-256", enc.encode(text)));
+  return [...raw].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
 /** IP는 원문 대신 해시로 저장합니다 (레이트리밋 목적이라 원문이 필요 없음). */
 export async function hashIp(env, ip) {
   const raw = await crypto.subtle.digest("SHA-256", enc.encode(secretOf(env) + ":ip:" + (ip ?? "")));

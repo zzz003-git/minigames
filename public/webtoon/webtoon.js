@@ -50,11 +50,17 @@ addEventListener("hashchange", route);
 
 async function boot() {
   try {
-    const d = await apiGet("/api/webtoon/home");
+    const [d, ys] = await Promise.all([
+      apiGet("/api/webtoon/home"),
+      // 너의스토리는 웹툰 기둥 **안의** 두 번째 축이라 이 홈에서 넘어간다.
+      // 못 읽어도 읽기 축은 그대로 선다 — 실패를 삼키는 것이 맞다
+      apiGet("/api/ys/state").catch(() => null),
+    ]);
     state.day = d.day;
     state.updateHour = d.update_hour ?? 9;
     state.read = d.read ?? {};
     state.resume = d.resume ?? null;
+    state.ys = ys;
   } catch {
     // 진행률을 못 읽어도 **읽는 것 자체는 되어야 한다.** 도장만 비워 둔다
     state.day = new Date().toISOString().slice(0, 10);
@@ -87,6 +93,46 @@ const go = (hash) => { location.hash = hash; };
 
 const readCount = (workId) => state.read[workId]?.count ?? 0;
 
+/**
+ * ✍ 너의스토리 진입 행 (plan §4).
+ *
+ * **초대받은 사람에게만 뜬다.** 0단계는 초대 베타라(plan §7), 못 쓰는 기능을
+ * 읽기 홈에 세우면 눌러 보고 막히는 사람이 대부분이 된다.
+ * 만드는 중인 이야기가 있으면 그것이 먼저다 — 재방문의 목적지가 그것이기 때문이다.
+ */
+function renderYsRow() {
+  const row = $("#ysRow");
+  const ys = state.ys;
+  if (!ys?.wallet) {
+    row.hidden = true;
+    return;
+  }
+
+  const making = (ys.orders ?? []).find((o) =>
+    ["queued_brain", "brain_running", "queued_image", "image_running", "composing"].includes(o.status),
+  );
+
+  row.hidden = false;
+  row.href = making ? `yourstory/#/o/${making.id}` : "yourstory/";
+  clear(row).append(
+    el("h3", {}, "✍ 너의스토리"),
+    el(
+      "p",
+      {},
+      making
+        ? making.cuts_done
+          ? `⟳ 만드는 중 · 그림 ${making.cuts_done}/${making.cuts}`
+          : "⟳ 만드는 중 · 곧 시작해요"
+        : "당신이 쓴 이야기가, 오늘 웹툰이 됩니다",
+    ),
+    el(
+      "p",
+      { class: "mono" },
+      ys.service === "down" ? "잠시 점검 중이에요" : `TICKET ${ys.wallet.tickets}`,
+    ),
+  );
+}
+
 /** 진행률 — 분모는 작품의 예정 편수다(완결 전에는 총 화수를 모른다) */
 function progressOf(work) {
   const got = readCount(work.id);
@@ -118,6 +164,7 @@ function renderHome() {
   $("#homeDate").textContent = (state.day ?? "").replace(/-/g, ".");
   $("#workCount").textContent = `WEBTOON ${works.length}`;
   $("#updHour").textContent = String(state.updateHour);
+  renderYsRow();
 
   // ── 오늘 올라온 회차 ──
   // 오늘 것이 없으면 최신 회차를 대신 보여 준다. 빈 자리를 두면 「매일 연재」가

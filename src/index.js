@@ -56,7 +56,10 @@ import * as todayHub from "./services/today.js";
 import * as popular from "./services/popular.js";
 import * as saju from "./services/saju.js";
 import * as webtoon from "./services/webtoon.js";
+import * as yourstory from "./services/yourstory.js";
 import { webtoonAsset } from "./routes/webtoon-assets.js";
+import { ysAsset } from "./routes/ys-assets.js";
+import * as ysWorker from "./routes/ys-worker.js";
 import * as arcade from "./lib/arcade.js";
 import * as adRoutes from "./routes/ad.js";
 import * as statsRoutes from "./routes/stats.js";
@@ -196,6 +199,25 @@ const ROUTES = {
   "GET /api/webtoon/home": webtoon.home,
   "POST /api/webtoon/read": webtoon.read,
 
+  // ── ✍ 너의스토리 (웹툰 기둥의 두 번째 축) ───────────────────────────────
+  // 라우터가 정확 일치 표라 `dev_spec §8` 의 `/orders/:id/…` 를 그대로 쓸 수 없다.
+  // 주문 ID 는 쿼리·본문으로 넘긴다 — 경로에 넣으려고 라우터를 바꾸는 것보다
+  // 경로 하나를 양보하는 편이 싸다.
+  "GET /api/ys/state": yourstory.state,
+  "POST /api/ys/invite": yourstory.invite,
+  "POST /api/ys/orders": yourstory.createOrder,
+  "GET /api/ys/order": yourstory.order,
+  "POST /api/ys/order/delete": yourstory.deleteOrder,
+
+  // PC 워커 브리지 — 사람이 아니라 워커가 부른다(`x-ys-worker` 시크릿)
+  "POST /ys/w/claim": ysWorker.claim,
+  "POST /ys/w/progress": ysWorker.progress,
+  "POST /ys/w/charge": ysWorker.charge,
+  "POST /ys/w/asset": ysWorker.asset,
+  "POST /ys/w/done": ysWorker.done,
+  "POST /ys/w/fail": ysWorker.fail,
+  "POST /ys/w/ping": ysWorker.ping,
+
   "GET /api/saju/state": saju.state,
   "POST /api/saju/profile": saju.profile,
   "POST /api/saju/today": saju.today,
@@ -293,9 +315,28 @@ export default {
       return webtoonAsset(request, env);
     }
 
+    // 너의스토리 결과 그림. 회차 그림과 달리 **소유자만** 볼 수 있어서 R2 로
+    // 곧장 열지 않고 여기서 확인한다 (routes/ys-assets.js)
+    if (request.method === "GET" && url.pathname.startsWith("/ys/a/")) {
+      return ysAsset(request, env);
+    }
+
     // 페어 랜딩은 경로에 토큰이 들어 있어 정확 일치 표로 잡히지 않는다
     if (request.method === "GET" && /^\/p\/[A-Za-z0-9_-]+\/?$/.test(url.pathname)) {
       return pairLanding(request, env);
+    }
+
+    // 분할본 업로드만 본문이 **이미지 바이트**다. 아래 공통 경로는 POST 본문을
+    // JSON 으로 읽으므로(readJson), 여기서 먼저 빼내지 않으면 조판본이 통째로
+    // 문자열로 파싱되며 깨진다
+    if (request.method === "POST" && url.pathname === "/ys/w/asset") {
+      try {
+        return ok(await ysWorker.asset({ request, env, url }));
+      } catch (err) {
+        if (err instanceof ApiError) return fail(err.code, err.message, err.status);
+        console.error("UNHANDLED /ys/w/asset", err?.stack ?? err);
+        return fail("INTERNAL", "서버에서 오류가 발생했습니다.", 500);
+      }
     }
 
     const key = `${request.method} ${url.pathname}`;
