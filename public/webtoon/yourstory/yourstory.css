@@ -45,6 +45,16 @@
 .ys__headtext b { font-size: 17px; }
 .ys__headtext span { font-size: 12.5px; color: var(--text-sub); font-family: var(--mono); }
 .ys__wallet { font-size: 11px; letter-spacing: 0.08em; color: var(--ys); }
+/* 멈춘 주문에서 「티켓은 그대로예요」를 알리는 줄 — 본문보다 한 단 낮게 */
+.ys__noticesub { font-size: 13px; color: var(--text-sub); margin: -6px 0 4px; line-height: 1.6; }
+
+/* 「코드 변경」 — 늘 닿을 수 있되 눈에 띄지는 않게. 주 동선은 이야기 쓰기다 */
+.ys__codebtn {
+  font-size: 11px; color: var(--text-sub); background: none; border: 0;
+  padding: 4px 6px; cursor: pointer; text-decoration: underline;
+  text-underline-offset: 3px; flex: none;
+}
+.ys__codebtn:hover { color: var(--ys); }
 
 /* ══ 초대코드 ══ */
 .ys__invite {

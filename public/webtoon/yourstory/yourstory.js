@@ -40,6 +40,9 @@ const state = {
 };
 
 let timer = null;
+// 「코드 변경」을 눌러 입력란을 연 상태인가. **renderHome 이 읽으므로 여기서 선언한다** —
+// 쓰는 자리(아래 초대코드 절) 옆에 두면 첫 렌더가 TDZ 에 걸린다
+let codeSwapOpen = false;
 
 renderSiteNav($("#siteNav"), "webtoon");
 boot();
@@ -101,7 +104,20 @@ function renderHome() {
   $("#homeDate").textContent = state.day ?? "";
 
   const w = state.wallet;
-  $("#inviteBox").hidden = Boolean(w);
+  // 전에는 **지갑이 있기만 하면** 입력란을 숨겼다. 그러면 코드를 넣을 길이 통째로
+  // 사라진다 — 티켓을 다 쓴 사람은 「티켓이 없어요」만 보고 빠져나갈 수 없고,
+  // 기기를 바꾼 사람은 서랍을 되찾을 수 없다. 코드가 곧 계정인데(로그인이 없다)
+  // 그 계정을 넣는 자리가 첫 등록 때 한 번만 열리는 구조였다.
+  //   ① 티켓이 0 이면 스스로 열린다 (막다른 길 방지)
+  //   ② 그 외에는 「코드 변경」으로 언제든 열 수 있다
+  const empty = w && w.tickets < 1;
+  $("#inviteBox").hidden = Boolean(w) && !empty && !codeSwapOpen;
+  $("#inviteLead").textContent = empty
+    ? "티켓을 다 쓰셨어요. 새 초대코드가 있으면 넣어 주세요."
+    : w
+      ? "다른 초대코드를 넣으면 그 코드의 티켓과 서랍으로 바뀝니다."
+      : "지금은 초대받은 분만 이용할 수 있어요.";
+  $("#codeSwapBtn").hidden = !w || empty || codeSwapOpen;
   $("#walletBadge").textContent = w ? `TICKET ${w.tickets} · CREDIT ${w.credits}` : "";
 
   // 오늘의 문장은 **날짜로 정해진다.** 무작위로 뽑으면 새로고침마다 바뀌어
@@ -168,12 +184,20 @@ function orderCard(o, no) {
   );
 }
 
-// 초대코드
+// 초대코드 (`codeSwapOpen` 은 위 상태 선언부에 있다)
+$("#codeSwapBtn").addEventListener("click", () => {
+  codeSwapOpen = true;
+  renderHome();
+  $("#inviteInput").focus();
+});
+
 $("#inviteBtn").addEventListener("click", async () => {
   const code = $("#inviteInput").value.trim();
   if (!code) return;
   try {
     await apiPost("/api/ys/invite", { code });
+    $("#inviteInput").value = "";
+    codeSwapOpen = false;
     await refresh();
     renderHome();
     toast("초대코드를 확인했어요", "good");
@@ -276,9 +300,23 @@ function updateCounter() {
   $("#submitBtn").disabled = n < min_chars || state.service === "down";
 }
 
+/**
+ * 보낸 글을 이 브라우저에 남겨 둔다.
+ *
+ * 원문은 서버에서 **암호화되어** 보관되고 되돌려 받는 경로가 없다(policy). 그래서
+ * 만들기가 중간에 멈추면 **고객이 쓴 글이 통째로 사라진다** — 실제로 겪었다.
+ * 티켓은 돌아오지만 글은 안 돌아오고, 그쪽이 더 아깝다.
+ * 완성되면 지운다. 남겨 둘 이유가 사라지고, 남의 기기에 남기지 않는 편이 낫다.
+ */
+const LAST_TEXT = "ys_last_text";
+const keepText = (t) => { try { localStorage.setItem(LAST_TEXT, t); } catch {} };
+const takeText = () => { try { return localStorage.getItem(LAST_TEXT) || ""; } catch { return ""; } };
+const dropText = () => { try { localStorage.removeItem(LAST_TEXT); } catch {} };
+
 async function submit() {
   const btn = $("#submitBtn");
   btn.disabled = true;
+  keepText($("#storyText").value.trim());
   try {
     const d = await apiPost("/api/ys/orders", {
       text: $("#storyText").value.trim(),
@@ -372,6 +410,7 @@ function renderMaking(o) {
 
 function renderViewer(o) {
   showScreen("viewer");
+  dropText();   // 완성됐으니 남겨 둔 글을 지운다 (남의 기기에 남기지 않는다)
   $("#viewerTitle").textContent = o.title || "제목 없는 이야기";
   $("#viewerMy").textContent = `${o.cuts}컷`;
   $("#viewerBy").textContent = o.byline === "nick" && o.nickname ? o.nickname : "익명";
@@ -455,12 +494,37 @@ function altOf(cuts, index, total) {
 const NOTICE = {
   rejected: "이 이야기는 웹툰으로 만들지 않았어요.",
   failed: "만드는 중에 문제가 있었어요. 티켓은 돌려드렸어요.",
-  conti_failed: "이야기를 컷으로 나누는 데 어려움이 있어 잠시 멈췄어요. 확인하고 다시 알려드릴게요.",
+  // 「확인하고 알려드릴게요」라고 적어 두었으나 **알려 줄 경로가 없다**(무로그인이라
+  // 연락처가 없다). 지키지 못할 약속 대신 지금 할 수 있는 일을 말한다
+  conti_failed: "이야기를 컷으로 나누다가 멈췄어요. 다시 보내면 대개 잘 만들어져요.",
   budget_stop: "만드는 데 예상보다 많은 그림이 필요해 멈췄어요. 티켓은 돌려드렸어요.",
   needs_input: "확인하고 싶은 것이 있어요.",
 };
 
+/**
+ * 멈춘 주문 화면.
+ *
+ * 전에는 문구 한 줄과 「돌아가기」뿐이었다. 그러면 고객은 **무엇을 해야 하는지 알 수
+ * 없다** — 티켓이 나갔는지, 다시 보내도 되는지, 쓴 글은 어떻게 되는지 아무것도
+ * 알려 주지 않았다. 실제로 그 화면 앞에서 막혔다는 이야기를 들었다.
+ * 세 가지를 분명히 말한다: **돈 · 글 · 다음 할 일.**
+ */
+const REDO_OK = ["conti_failed", "failed", "budget_stop"];
+
 function renderNotice(o) {
   showScreen("notice");
   $("#noticeText").textContent = o.fail_reason || NOTICE[o.status] || "확인이 필요해요.";
+
+  // 반려(rejected)만 티켓을 쓰지 않은 것이 아니라, 멈춘 주문은 전부 티켓이 살아 있다.
+  // 과금은 그림을 그리기 시작할 때 한 번 들고, 그 뒤 실패는 되돌려준다
+  const back = REDO_OK.includes(o.status) || o.status === "rejected";
+  $("#noticeTicket").hidden = !back;
+
+  const saved = takeText();
+  const redo = $("#noticeRedo");
+  redo.hidden = !(REDO_OK.includes(o.status) && saved);
+  redo.onclick = () => {
+    $("#storyText").value = saved;
+    go("#/write");
+  };
 }

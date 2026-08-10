@@ -29,11 +29,14 @@
           <span id="homeDate">—</span>
         </span>
         <span class="ys__wallet mono" id="walletBadge"></span>
+        <!-- 코드가 곧 계정이라(로그인 없음) 코드를 다시 넣는 것이 기기 이동·보충의
+             유일한 수단이다. 그래서 **지갑이 있어도 닿을 수 있어야** 한다 -->
+        <button type="button" class="ys__codebtn" id="codeSwapBtn" hidden>코드 변경</button>
       </header>
 
-      <!-- 초대코드 — 아직 등록 전일 때만 -->
+      <!-- 초대코드 — 등록 전이거나, 티켓을 다 쓴 뒤 다른 코드를 넣을 때 -->
       <div class="ys__invite" id="inviteBox" hidden>
-        <p class="ys__invitelead">지금은 초대받은 분만 이용할 수 있어요.</p>
+        <p class="ys__invitelead" id="inviteLead">지금은 초대받은 분만 이용할 수 있어요.</p>
         <div class="ys__inviterow">
           <label class="sr-only" for="inviteInput">초대코드</label>
           <input id="inviteInput" class="ys__input mono" placeholder="YS-XXXX-XXXX"
@@ -171,7 +174,13 @@
     <section class="screen" data-screen="notice">
       <div class="ys__notice">
         <p class="ys__noticetext" id="noticeText">—</p>
-        <button type="button" class="ys__btn ys__btn--pri" id="noticeBack">돌아가기</button>
+        <p class="ys__noticesub" id="noticeTicket" hidden>
+          티켓은 그대로 있어요. 쓰신 글도 남겨 두었으니 다시 보내실 수 있어요.
+        </p>
+        <button type="button" class="ys__btn ys__btn--pri" id="noticeRedo" hidden>
+          쓴 글 그대로 다시 보내기
+        </button>
+        <button type="button" class="ys__btn" id="noticeBack">돌아가기</button>
       </div>
     </section>
   </main>
