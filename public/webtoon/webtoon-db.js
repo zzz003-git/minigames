@@ -113,6 +113,17 @@ export const WEBTOON_DB = {
             { w: 800, h: 10330 },
           ],
         },
+        {
+          ep: 3,
+          title: "조용한 퇴사자",
+          day: "2026-08-12",
+          cuts: 24,
+          header: true,
+          parts: [
+            { w: 800, h: 11920 },
+            { w: 800, h: 9360 },
+          ],
+        },
       ],
     },
     {
@@ -155,6 +166,17 @@ export const WEBTOON_DB = {
             { w: 800, h: 8955 },
           ],
         },
+        {
+          ep: 3,
+          title: "반죽",
+          day: "2026-08-12",
+          cuts: 24,
+          header: true,
+          parts: [
+            { w: 800, h: 11550 },
+            { w: 800, h: 9220 },
+          ],
+        },
       ],
     },
     {
@@ -192,6 +214,17 @@ export const WEBTOON_DB = {
             { w: 800, h: 9160 },
           ],
         },
+        {
+          ep: 3,
+          title: "옥탑방 탐정사무소",
+          day: "2026-08-12",
+          cuts: 24,
+          header: true,
+          parts: [
+            { w: 800, h: 11230 },
+            { w: 800, h: 9010 },
+          ],
+        },
       ],
     },
     {
@@ -225,6 +258,17 @@ export const WEBTOON_DB = {
           parts: [
             { w: 800, h: 11990 },
             { w: 800, h: 9190 },
+          ],
+        },
+        {
+          ep: 3,
+          title: "1시 12분",
+          day: "2026-08-12",
+          cuts: 24,
+          header: true,
+          parts: [
+            { w: 800, h: 11290 },
+            { w: 800, h: 10080 },
           ],
         },
       ],
@@ -262,6 +306,17 @@ export const WEBTOON_DB = {
             { w: 800, h: 9210 },
           ],
         },
+        {
+          ep: 3,
+          title: "백지 초상",
+          day: "2026-08-12",
+          cuts: 24,
+          header: true,
+          parts: [
+            { w: 800, h: 11620 },
+            { w: 800, h: 9170 },
+          ],
+        },
       ],
     },
     {
@@ -295,6 +350,17 @@ export const WEBTOON_DB = {
           parts: [
             { w: 800, h: 11450 },
             { w: 800, h: 9090 },
+          ],
+        },
+        {
+          ep: 3,
+          title: "다섯 명",
+          day: "2026-08-12",
+          cuts: 24,
+          header: true,
+          parts: [
+            { w: 800, h: 11530 },
+            { w: 800, h: 8900 },
           ],
         },
       ],
