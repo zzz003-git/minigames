@@ -20,7 +20,7 @@
  */
 
 import { $, el, clear, showScreen, toast } from "../../shared/ui.js";
-import { apiGet, apiPost } from "../../shared/api.js";
+import { apiGet, apiPost, fallbackDay } from "../../shared/api.js";
 import { renderSiteNav } from "../../shared/sitenav.js";
 import { SEEDS, SAMPLES } from "./seeds.js";
 
@@ -72,7 +72,7 @@ async function refresh() {
     });
   } catch {
     // 상태를 못 읽어도 화면은 떠야 한다. 초대코드 입력까지는 가능하다
-    state.day ??= new Date().toISOString().slice(0, 10);
+    state.day ??= fallbackDay();
   }
 }
 

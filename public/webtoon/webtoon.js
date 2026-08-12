@@ -16,7 +16,7 @@
  */
 
 import { $, el, clear, showScreen } from "../shared/ui.js";
-import { apiGet, apiPost } from "../shared/api.js";
+import { apiGet, apiPost, fallbackDay } from "../shared/api.js";
 import { renderSiteNav } from "../shared/sitenav.js";
 import { WEBTOON_DB, GENRES, workOf, episodeOf, partsOf, episodesOn, latestEpisode, coverOf, thumbOf } from "./webtoon-db.js";
 
@@ -63,7 +63,7 @@ async function boot() {
     state.ys = ys;
   } catch {
     // 진행률을 못 읽어도 **읽는 것 자체는 되어야 한다.** 도장만 비워 둔다
-    state.day = new Date().toISOString().slice(0, 10);
+    state.day = fallbackDay();
   }
   route();
 }

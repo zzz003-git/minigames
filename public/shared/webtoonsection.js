@@ -14,7 +14,7 @@
  */
 
 import { el, clear } from "./ui.js";
-import { apiGet } from "./api.js";
+import { apiGet, fallbackDay } from "./api.js";
 import { WEBTOON_DB, episodesOn, latestEpisode, coverOf, thumbOf } from "../webtoon/webtoon-db.js";
 
 /** 홈에 세우는 연재작 수. 그 이상은 「전체 보기」로 보낸다(기획서 5-1) */
@@ -45,7 +45,7 @@ export async function renderWebtoonSection(host) {
     // 진행률을 못 읽어도 섹션은 선다 — 도장만 비운다
   }
 
-  const day = data?.day ?? new Date().toISOString().slice(0, 10);
+  const day = data?.day ?? fallbackDay();
   const read = data?.read ?? {};
   const resume = data?.resume ?? null;
 

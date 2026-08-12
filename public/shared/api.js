@@ -44,3 +44,17 @@ async function request(method, path, { body, params } = {}) {
 
 export const apiGet = (path, params) => request("GET", path, { params });
 export const apiPost = (path, body) => request("POST", path, { body });
+
+/**
+ * 서버가 `day` 를 주지 못했을 때 쓰는 오늘 날짜 — **KST 기준** 'YYYY-MM-DD'.
+ *
+ * 서버(`src/lib/time.js` 의 `dayKey`)와 같은 기준이어야 한다. `toISOString()` 을
+ * 그냥 쓰면 UTC 라, 한국 시간 00~09시에는 **전날**이 나온다. 그 시간대에 발행한
+ * 회차는 「오늘 올라온 회차」에 뜨지 않고, 어제 것이 대신 오늘로 남는다.
+ *
+ * 브라우저의 시간대를 쓰지 않는 이유는 **읽는 사람이 어디에 있든 같은 날짜여야**
+ * 하기 때문이다. 발행 시각도 순위 리셋도 KST 이므로 해외 독자에게만 하루가
+ * 밀리면 안 된다.
+ */
+export const fallbackDay = () =>
+  new Date(Date.now() + 9 * 60 * 60 * 1000).toISOString().slice(0, 10);
