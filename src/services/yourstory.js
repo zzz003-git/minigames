@@ -149,10 +149,14 @@ export async function state({ env, userId }) {
     wallet: wallet
       ? { code: wallet.code, tickets: wallet.tickets, credits: wallet.credits }
       : null,
-    // 워커가 죽으면 **접수를 먼저 막는다**(Y9 §2 · dev_spec §9). 쌓아 두고 나중에
-    // 사과하는 것보다 지금 못 받는다고 말하는 편이 낫다 — 24시간 실시간을 표방한
-    // 이상 여기가 유일한 안전판이다
-    service: alive ? queueState(waiting) : "down",
+    // 워커가 죽으면 **닫는 대신 예약으로 받는다**(2026-08-12 결정 · Y9 §2 개정).
+    //
+    // 제작은 PC 워커가 하므로 PC 가 꺼진 동안 그리지 못하는 것은 그대로다. 바뀐 것은
+    // **못 그리는 것과 못 받는 것을 같이 취급하지 않는다**는 점이다 — 문을 닫으면
+    // 고객은 다시 오지 않지만, 예약으로 받아 두면 돌아왔을 때 순서대로 만들어진다.
+    // 안전한 이유는 회계에 있다: 티켓은 워커가 생성을 시작할 때 단 한 번 빠지므로
+    // (§6.1) 예약분은 **아직 아무것도 잃지 않은 상태**다. 못 만들면 그대로 돌려준다.
+    service: alive ? queueState(waiting) : "reserve",
     waiting,
     styles: YOURSTORY.STYLES,
     steps: YOURSTORY.STEPS,
@@ -251,19 +255,25 @@ function screen(text) {
 const orderId = (day, seq) => `YS-${day.replaceAll("-", "")}-${String(seq).padStart(4, "0")}`;
 
 /**
- * 오늘 쓴 돈 (G3 일일 상한 — dev_spec §4.3).
+ * 오늘 걸린 돈 (G3 일일 상한 — dev_spec §4.3).
  *
  * 만드는 중인 주문은 **아직 안 쓴 돈까지 상한으로 잡는다.** 다 쓰고 나서 세면
  * 이미 늦다 — 대기열에 20건이 걸린 상태에서 상한을 확인하면 그 20건이 전부
  * 나간 뒤에야 막힌다.
+ *
+ * **날짜로만 세면 예약 접수가 이 상한을 무력화한다.** 예약은 지출을 하루 뒤로
+ * 미루는 장치라, 어제 받아 둔 40건이 오늘 그려지면 돈은 오늘 나가는데 계산은
+ * 어제 칸에 적힌다. 그러면 오늘 칸은 비어 있는 것처럼 보여 상한이 그대로 한 번 더
+ * 열린다 — 하루에 두 배가 나가는 길이 이것이다. 그래서 **아직 그리지 않은 것은
+ * 접수일과 무관하게 전부 오늘의 부담으로 본다.**
  */
-async function spentToday(env, day) {
+async function committed(env, day) {
   const row = await env.DB.prepare(
     `SELECT COALESCE(SUM(
               CASE WHEN status IN (${OPEN})
                    THEN CASE requested_cuts WHEN 16 THEN 1255 WHEN 12 THEN 970 ELSE 630 END
                    ELSE image_cost_krw END), 0) AS krw
-       FROM ys_order WHERE id LIKE ?`,
+       FROM ys_order WHERE id LIKE ? OR status IN (${OPEN})`,
   )
     .bind(`YS-${day.replaceAll("-", "")}-%`)
     .first();
@@ -281,14 +291,12 @@ export async function createOrder({ env, userId, body }) {
   const day = dayKey();
   const wallet = requireWallet(await walletOf(env, userId));
 
-  if (!(await workerAlive(env))) {
-    throw new ApiError(
-      "SERVICE_DOWN",
-      "지금은 잠시 점검 중이에요. 곧 다시 열립니다 — 쓰신 글은 사라지지 않아요.",
-      503,
-    );
-  }
-
+  // **여기에 워커 생존 검사가 없는 것은 실수가 아니다**(2026-08-12 결정 · Y9 §2 개정).
+  // 예전에는 heartbeat 가 끊기면 여기서 503 으로 돌려보냈다. 지금은 예약으로 받는다 —
+  // 워커가 돌아오는 순간 대기열에서 순서대로 나가므로 워커 쪽은 고칠 것이 없다.
+  // `queued_brain` 은 원래 「집어가기를 기다리는 상태」이고 예약은 그 기다림이 길어진
+  // 것일 뿐이다. 지금 만들어지지 않는다는 사실은 **막는 대신 화면이 말한다**
+  // (`state()` 의 `service: "reserve"` · `order()` 의 `worker_ok`).
   const text = String(body?.text ?? "").trim();
   if (text.length < YOURSTORY.MIN_CHARS) {
     throw new ApiError(
@@ -346,7 +354,7 @@ export async function createOrder({ env, userId, body }) {
   if (madeToday >= YOURSTORY.DAILY_INTAKE_LIMIT) {
     throw new ApiError("DAILY_FULL", "오늘 받을 수 있는 이야기가 다 찼어요. 내일 다시 만나요.", 429);
   }
-  if ((await spentToday(env, day)) + YOURSTORY.COST_KRW[cuts] > YOURSTORY.DAILY_BUDGET_KRW) {
+  if ((await committed(env, day)) + YOURSTORY.COST_KRW[cuts] > YOURSTORY.DAILY_BUDGET_KRW) {
     throw new ApiError("BUDGET_FULL", "오늘 만들 수 있는 양이 다 찼어요. 내일 다시 만나요.", 429);
   }
   // 워커가 API 한도를 다 썼다고 알려 왔으면 받지 않는다. **워커는 살아 있으므로**
@@ -465,12 +473,19 @@ export async function order({ env, userId, body }) {
 
   if (row.status === ST.QUEUED_BRAIN) {
     // 「내 앞에 몇 개」는 대기 화면의 유일한 정직한 숫자다
-    const ahead = await env.DB.prepare(
-      `SELECT COUNT(*) AS n FROM ys_order WHERE status IN (${OPEN}) AND created_at < ?`,
-    )
-      .bind(row.created_at)
-      .first();
+    const [ahead, alive] = await Promise.all([
+      env.DB.prepare(
+        `SELECT COUNT(*) AS n FROM ys_order WHERE status IN (${OPEN}) AND created_at < ?`,
+      )
+        .bind(row.created_at)
+        .first(),
+      workerAlive(env),
+    ]);
     out.ahead = ahead?.n ?? 0;
+    // 예약분은 「곧 시작해요」가 아니다. 줄은 서 있는데 앞이 안 줄어드는 화면을
+    // 5초마다 다시 보여 주는 것이 예약 접수의 유일한 실패 방식이라, 멈춰 있다는
+    // 사실 자체를 화면이 말할 수 있어야 한다
+    out.worker_ok = alive;
   }
 
   if (row.status === ST.DONE) {

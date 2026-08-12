@@ -188,7 +188,10 @@ function yourstoryRow(ys) {
   const line = making
     ? making.cuts_done
       ? `⟳ 만드는 중 · 그림 ${making.cuts_done}/${making.cuts}`
-      : "⟳ 만드는 중 · 곧 시작해요"
+      : // 멈춰 있는 동안에는 「곧 시작해요」라고 하지 않는다 (Y9 §2 예약 접수)
+        ys.service === "reserve"
+        ? "⟳ 예약됨 · 열리면 시작해요"
+        : "⟳ 만드는 중 · 곧 시작해요"
     : latest
       ? `${latest.title || "제목 없는 이야기"} · 완성`
       : "당신이 쓴 이야기가, 오늘 웹툰이 됩니다";
@@ -204,8 +207,10 @@ function yourstoryRow(ys) {
     el(
       "p",
       { class: "mono", style: "font-size:11.5px" },
-      ys.service === "down"
-        ? "잠시 점검 중이에요"
+      // 멈춰 있어도 접수는 열려 있다 — 「점검 중」이라고 쓰면 들어오지 못하는 줄
+      // 안다 (Y9 §2 예약 접수, 2026-08-12 개정)
+      ys.service === "reserve"
+        ? "지금은 예약으로 받아요"
         : `TICKET ${ys.wallet.tickets} · CREDIT ${ys.wallet.credits}`,
     ),
   );

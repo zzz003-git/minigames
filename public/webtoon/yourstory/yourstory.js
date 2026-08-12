@@ -125,11 +125,15 @@ function renderHome() {
   // 문장 자체는 콘텐츠라 서버가 아니라 seeds.js 가 가진다)
   $("#seedText").textContent = SEEDS[dayIndex(state.day) % SEEDS.length];
 
-  const down = state.service === "down";
+  // 제작이 멈춰 있어도 **쓰기는 열어 둔다 — 예약으로 받는다**(Y9 §2, 2026-08-12 개정).
+  // 문구가 약속할 수 있는 것은 "순서대로 만든다"까지다. 이 서비스에는 로그인도
+  // 알림 경로도 없으므로 **「완성되면 알려 드릴게요」는 지킬 수 없는 약속**이다 —
+  // 완성은 고객이 서랍에 다시 들러 확인한다
+  const reserve = state.service === "reserve";
   const full = state.service === "full";
-  $("#writeBtn").disabled = !w || down || full;
-  $("#seedNote").textContent = down
-    ? "지금은 잠시 점검 중이에요. 곧 다시 열립니다."
+  $("#writeBtn").disabled = !w || full;
+  $("#seedNote").textContent = reserve
+    ? "지금은 만들기가 멈춰 있어요. 예약해 두면 다시 열릴 때 순서대로 만들어 드려요."
     : full
       ? "지금은 만드는 이야기가 많아요. 잠시 후에 다시 와 주세요."
       : `3분 입력 · ${state.limits.tiers[0]}~${state.limits.tiers.at(-1)}컷 · 티켓 1장`;
@@ -168,7 +172,9 @@ function orderCard(o, no) {
       ? [o.tone_label, `${o.cuts}컷`].filter(Boolean).join(" · ")
       : o.status === "image_running" && o.cuts_done
         ? `그림 ${o.cuts_done}/${o.cuts}`
-        : o.tone_label ?? "순서를 기다리는 중";
+        : o.status === "queued_brain" && state.service === "reserve"
+          ? "예약됨 · 열리면 시작해요"
+          : o.tone_label ?? "순서를 기다리는 중";
 
   return el(
     "button",
@@ -297,7 +303,8 @@ function updateCounter() {
     el("b", {}, `${n}자`),
     n >= min_chars ? ` · ${est}컷 분량` : ` · ${min_chars}자부터 만들 수 있어요`,
   );
-  $("#submitBtn").disabled = n < min_chars || state.service === "down";
+  // 예약 접수라 `service` 로는 막지 않는다 — 글자 수만 본다 (Y9 §2, 2026-08-12 개정)
+  $("#submitBtn").disabled = n < min_chars;
 }
 
 /**
@@ -367,7 +374,8 @@ async function openOrder(id) {
 
 function renderMaking(o) {
   showScreen("making");
-  $("#makingTitle").textContent = o.title || "이야기를 웹툰으로 만들고 있어요";
+  $("#makingTitle").textContent =
+    o.title || (o.worker_ok === false ? "예약해 두었어요" : "이야기를 웹툰으로 만들고 있어요");
 
   const list = clear($("#stepList"));
   const now = state.steps.findIndex((s) => s.key === o.step);
@@ -398,14 +406,19 @@ function renderMaking(o) {
     $("#toneWhy").textContent = o.tone_reason ?? "";
   }
 
+  // 예약분에는 **시간을 적지 않는다.** 앞이 줄지 않는 화면에 「곧 시작해요」를
+  // 5초마다 다시 그리는 것이 예약 접수가 실패하는 유일한 방식이다 (`worker_ok` 는
+  // 대기 중일 때만 실린다 — `undefined` 를 멈춤으로 읽지 않도록 `=== false` 로 본다)
   $("#etaText").textContent =
-    o.status === "queued_brain"
-      ? o.ahead > 0
-        ? `앞에 ${o.ahead}편이 있어요`
-        : "곧 시작해요"
-      : o.eta_sec
-        ? `약 ${Math.max(1, Math.round(o.eta_sec / 60))}분 남았어요`
-        : "만드는 중이에요";
+    o.worker_ok === false
+      ? "지금은 만들기가 멈춰 있어요 · 다시 열리면 순서대로 만들어 드려요"
+      : o.status === "queued_brain"
+        ? o.ahead > 0
+          ? `앞에 ${o.ahead}편이 있어요`
+          : "곧 시작해요"
+        : o.eta_sec
+          ? `약 ${Math.max(1, Math.round(o.eta_sec / 60))}분 남았어요`
+          : "만드는 중이에요";
 }
 
 function renderViewer(o) {

@@ -122,13 +122,17 @@ function renderYsRow() {
       making
         ? making.cuts_done
           ? `⟳ 만드는 중 · 그림 ${making.cuts_done}/${making.cuts}`
-          : "⟳ 만드는 중 · 곧 시작해요"
+          : // 멈춰 있는 동안에는 「곧 시작해요」라고 하지 않는다 (Y9 §2 예약 접수)
+            ys.service === "reserve"
+            ? "⟳ 예약됨 · 열리면 시작해요"
+            : "⟳ 만드는 중 · 곧 시작해요"
         : "당신이 쓴 이야기가, 오늘 웹툰이 됩니다",
     ),
     el(
       "p",
       { class: "mono" },
-      ys.service === "down" ? "잠시 점검 중이에요" : `TICKET ${ys.wallet.tickets}`,
+      // 「점검 중」이 아니다 — 만들기만 멈춰 있고 접수는 열려 있다 (Y9 §2 예약 접수)
+      ys.service === "reserve" ? "지금은 예약으로 받아요" : `TICKET ${ys.wallet.tickets}`,
     ),
   );
 }
