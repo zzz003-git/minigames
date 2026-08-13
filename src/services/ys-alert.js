@@ -2,10 +2,11 @@
  * 너의스토리 워커 감시 — 멈추면 운영자에게 알린다 (2026-08-13)
  *
  * **알리는 쪽은 반드시 클라우드여야 한다.** 죽는 것이 PC 이므로 PC 는 자기 죽음을
- * 알릴 수 없다. 그래서 이미 10분마다 도는 cron(`index.js` 의 `scheduled`)이
- * heartbeat 나이를 보고 판정한다. 탐지는 최대 **판정선 5분 + cron 간격 10분** 만큼
- * 늦는다 — 끊긴 지 5~15분 뒤에 알림이 간다. 더 빨리 알려면 cron 을 조여야 하는데,
- * 그만큼 D1 읽기가 늘고 실익은 없다(예약 접수라 그 사이에도 주문은 받아 둔다).
+ * 알릴 수 없다. 그래서 cron(`index.js` 의 `scheduled`)이 heartbeat 나이를 보고 판정한다.
+ *
+ * 탐지 지연은 **판정선 + cron 간격**이다. 처음에는 화면과 같은 5분 판정선에 10분
+ * cron 이라 5~15분이었는데, 매분 cron + 알림 전용 4분 판정선으로 바꿔 **4~5분**이
+ * 됐다(2026-08-13). 판정선을 따로 둔 이유는 `config.ALERT_STALE_MS` 에 적어 두었다.
  *
  * 알림은 장애 하나당 **두 번뿐**이다 — 끊겼을 때 한 번, 돌아왔을 때 한 번.
  * 반복해서 울리면 사람이 알림을 꺼 버리고, 꺼진 알림은 없는 것과 같다.
@@ -38,7 +39,9 @@ export async function checkWorkerAlert(env) {
   if (!row) return { skipped: "never-started" };
 
   const now = Date.now();
-  const alive = now - row.beat_at < YOURSTORY.WORKER_STALE_MS;
+  // 화면의 판정선(WORKER_STALE_MS)이 아니라 **알림 전용 판정선**을 쓴다.
+  // 그래서 「예약으로 받아요」가 뜨기 전에 알림이 먼저 갈 수 있다 — 의도한 것이다.
+  const alive = now - row.beat_at < YOURSTORY.ALERT_STALE_MS;
   const alerted = row.alert_down_at != null;
 
   if (alive && !alerted) return { state: "ok" };

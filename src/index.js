@@ -281,6 +281,19 @@ export default {
    * 넘어갑니다. 하루 한 번만 수행되도록 rollDailySnapshot 이 스스로 판별합니다.
    */
   async scheduled(event, env, ctx) {
+    // 매분 트리거는 감시만 하고 빠집니다. 10분 트리거와 겹치는 분(:00·:10…)에는
+    // 두 이벤트가 각각 오므로, 이렇게 갈라 두어야 같은 검사가 두 번 돌지 않습니다.
+    if (event.cron === "* * * * *") {
+      ctx.waitUntil(
+        checkWorkerAlert(env)
+          .then((r) => {
+            if (r.state === "down" || r.state === "recovered") console.log(`YS_ALERT ${r.state}`);
+          })
+          .catch((err) => console.error("YS_ALERT failed", err?.stack ?? err)),
+      );
+      return;
+    }
+
     ctx.waitUntil(
       cleanupSessions(env, {
         keepMs: COMMON.SESSION_KEEP_MS,
@@ -305,16 +318,6 @@ export default {
           if (!r.skipped) console.log(`MAJORITY_ROLL day=${r.day} moved=${r.moved}`);
         })
         .catch((err) => console.error("MAJORITY_ROLL failed", err?.stack ?? err)),
-    );
-
-    // 너의스토리 워커 감시. 정리 작업과 성격이 다르지만 여기 붙는 이유는,
-    // **PC 가 죽었을 때 확실히 깨어 있는 것이 클라우드의 이 cron 뿐**이기 때문이다.
-    ctx.waitUntil(
-      checkWorkerAlert(env)
-        .then((r) => {
-          if (r.state === "down" || r.state === "recovered") console.log(`YS_ALERT ${r.state}`);
-        })
-        .catch((err) => console.error("YS_ALERT failed", err?.stack ?? err)),
     );
   },
 
