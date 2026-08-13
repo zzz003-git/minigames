@@ -190,7 +190,12 @@ export async function claim({ request, env }) {
       relay_allow: Boolean(row.relay_allow),
       // G3 주문 상한 — PC 가 이 값을 넘지 않는지 본다 (Y6 §2 · dev_spec §4.3)
       budget_krw: YOURSTORY.COST_KRW[row.requested_cuts],
-      regen_pool: { 8: 2, 12: 3, 16: 4 }[row.requested_cuts] ?? 2,
+      // 재생성 한도는 **상한이 사 주는 재생성 횟수와 같아야 한다.** 어긋나면
+      // 둘 중 작은 쪽만 일하고 다른 쪽은 장식이 된다. 8컷을 741원으로 올린 뒤
+      // 이 값이 2 로 남아 있어서, 파일럿 0813-0002 를 되돌려 보니 예산은 3회를
+      // 살 수 있는데 한도가 2 에서 끊어 글자 남은 컷 하나를 못 고쳤다.
+      //   (상한 − (앵커 2 + 컷 n) × 57) ÷ 57 → 8컷 3 · 12컷 3 · 16컷 4
+      regen_pool: { 8: 3, 12: 3, 16: 4 }[row.requested_cuts] ?? 2,
     },
   };
 }
