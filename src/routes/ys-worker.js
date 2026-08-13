@@ -194,8 +194,12 @@ export async function claim({ request, env }) {
       // 둘 중 작은 쪽만 일하고 다른 쪽은 장식이 된다. 8컷을 741원으로 올린 뒤
       // 이 값이 2 로 남아 있어서, 파일럿 0813-0002 를 되돌려 보니 예산은 3회를
       // 살 수 있는데 한도가 2 에서 끊어 글자 남은 컷 하나를 못 고쳤다.
-      //   (상한 − (앵커 2 + 컷 n) × 57) ÷ 57 → 8컷 3 · 12컷 3 · 16컷 4
-      regen_pool: { 8: 3, 12: 3, 16: 4 }[row.requested_cuts] ?? 2,
+      //   (상한 − (앵커 2 + 컷 n) × 57) ÷ 57 → 8컷 4 · 12컷 3 · 16컷 4
+      //
+      // 8컷이 12컷보다 여유가 많아진 것은 **재 봤기 때문**이다. 8컷은 초벌 위반이
+      // 2·3·4건으로 실측됐고 12컷은 아직 표본이 없다. 12컷도 같은 자리에서 막히면
+      // 그때 재고 올린다 — 안 재고 올리지 않는다.
+      regen_pool: { 8: 4, 12: 3, 16: 4 }[row.requested_cuts] ?? 2,
     },
   };
 }
@@ -379,7 +383,7 @@ export async function asset({ request, env, url }) {
  * { id, final_cuts, parts:[{name,w,h}], cover, cuts:[…], omitted_note, softened,
  *   image_cost_krw, llm_cost_krw, elapsed_sec, regen_used, audits:[…] }
  *
- * `llm_cost_krw` 가 이 응답의 숨은 주인공이다. 원가표(741/970/1,255원)는 **이미지
+ * `llm_cost_krw` 가 이 응답의 숨은 주인공이다. 원가표(798/970/1,255원)는 **이미지
  * 생성비만** 계상했고, P1~P6 의 LLM 비용은 아직 아무도 모른다(검토 A-3 ·
  * dev_spec §4.3). 파일럿 20건이 그것을 재는 일이므로 워커가 실제로 쓴 값을 싣는다.
  *
