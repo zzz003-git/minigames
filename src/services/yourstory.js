@@ -18,7 +18,7 @@
  *
  * ── 신원은 초대코드다 (0단계 파일럿) ────────────────────────────────────
  * 사이트 전체가 무로그인이라 `user_id` 는 서명된 쿠키다. 쿠키를 지우면 새 사람이
- * 되므로 그대로 두면 **무료 티켓이 무한**해진다 — 한 건이 630원씩 실제로 나가는
+ * 되므로 그대로 두면 **무료 티켓이 무한**해진다 — 한 건이 741원씩 실제로 나가는
  * 구조에서 그것은 그냥 구멍이다. 그래서 티켓을 쿠키가 아니라 **초대코드**에 붙였다.
  * 코드가 곧 계정이고, 정식 오픈 때 로그인이 이 자리를 이어받는다.
  *
@@ -40,6 +40,16 @@ import { workerAlive, servicePause } from "../routes/ys-worker.js";
 
 const ST = YOURSTORY.ST;
 const OPEN = YOURSTORY.OPEN_STATES.map((s) => `'${s}'`).join(",");
+
+// 원가표를 SQL 에 **옮겨 적지 않는다.** 같은 숫자가 세 곳(여기 · COST_KRW ·
+// PC 파이프라인)에 있으면 반드시 어긋나고, 어긋나면 일일 상한이 실제 지출보다
+// 적게 센다. 2026-08-13 에 8컷 상한을 630→741 로 올리며 실제로 겪었다.
+const COST_CASE =
+  "CASE requested_cuts " +
+  Object.entries(YOURSTORY.COST_KRW)
+    .map(([cuts, krw]) => `WHEN ${cuts} THEN ${krw}`)
+    .join(" ") +
+  ` ELSE ${YOURSTORY.COST_KRW[YOURSTORY.FREE_TIER_CUTS]} END`;
 
 // ══════════════════════════════════════════════════════════════
 // 초대코드 = 지갑
@@ -271,7 +281,7 @@ async function committed(env, day) {
   const row = await env.DB.prepare(
     `SELECT COALESCE(SUM(
               CASE WHEN status IN (${OPEN})
-                   THEN CASE requested_cuts WHEN 16 THEN 1255 WHEN 12 THEN 970 ELSE 630 END
+                   THEN ${COST_CASE}
                    ELSE image_cost_krw END), 0) AS krw
        FROM ys_order WHERE id LIKE ? OR status IN (${OPEN})`,
   )

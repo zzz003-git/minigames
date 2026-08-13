@@ -374,7 +374,7 @@ export async function asset({ request, env, url }) {
  * { id, final_cuts, parts:[{name,w,h}], cover, cuts:[…], omitted_note, softened,
  *   image_cost_krw, llm_cost_krw, elapsed_sec, regen_used, audits:[…] }
  *
- * `llm_cost_krw` 가 이 응답의 숨은 주인공이다. 원가표(630/970/1,255원)는 **이미지
+ * `llm_cost_krw` 가 이 응답의 숨은 주인공이다. 원가표(741/970/1,255원)는 **이미지
  * 생성비만** 계상했고, P1~P6 의 LLM 비용은 아직 아무도 모른다(검토 A-3 ·
  * dev_spec §4.3). 파일럿 20건이 그것을 재는 일이므로 워커가 실제로 쓴 값을 싣는다.
  *
