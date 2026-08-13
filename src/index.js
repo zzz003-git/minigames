@@ -49,6 +49,7 @@ import * as typing from "./games/typing.js";
 import * as memory from "./games/memory.js";
 import { ARCADE_SPECS } from "./games/arcade/index.js";
 import { rollDailySnapshot } from "./games/arcade/majority.js";
+import { checkWorkerAlert } from "./services/ys-alert.js";
 import * as tarot from "./services/tarot.js";
 import * as mind from "./services/mind.js";
 import * as testreset from "./services/testreset.js";
@@ -304,6 +305,16 @@ export default {
           if (!r.skipped) console.log(`MAJORITY_ROLL day=${r.day} moved=${r.moved}`);
         })
         .catch((err) => console.error("MAJORITY_ROLL failed", err?.stack ?? err)),
+    );
+
+    // 너의스토리 워커 감시. 정리 작업과 성격이 다르지만 여기 붙는 이유는,
+    // **PC 가 죽었을 때 확실히 깨어 있는 것이 클라우드의 이 cron 뿐**이기 때문이다.
+    ctx.waitUntil(
+      checkWorkerAlert(env)
+        .then((r) => {
+          if (r.state === "down" || r.state === "recovered") console.log(`YS_ALERT ${r.state}`);
+        })
+        .catch((err) => console.error("YS_ALERT failed", err?.stack ?? err)),
     );
   },
 
