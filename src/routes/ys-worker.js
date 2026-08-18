@@ -234,7 +234,8 @@ export async function progress({ request, env, body }) {
               tone_label = COALESCE(?, tone_label),
               tone_reason = COALESCE(?, tone_reason),
               tone_confidence = COALESCE(?, tone_confidence),
-              final_cuts = COALESCE(?, final_cuts)
+              final_cuts = COALESCE(?, final_cuts),
+              image_cost_krw = COALESCE(?, image_cost_krw)
         WHERE id = ?`,
     ).bind(
       step,
@@ -246,6 +247,17 @@ export async function progress({ request, env, body }) {
       tone?.reason ?? null,
       tone?.confidence != null ? Number(tone.confidence) : null,
       body?.final_cuts != null ? Number(body.final_cuts) : null,
+      // 컷마다 누적된 이미지 지출. **완주 시점 일괄 기록을 폐지한다**(dev_spec 3-3).
+      // 08-13 실패 5건이 전부 `image_cost_krw = 0` 인데 8컷씩 그렸다 — 쓴 돈이
+      // `done` 에서만 기록되어, 완주하지 못하면 영원히 0으로 남았다.
+      //
+      // **행이 늘지 않는다.** 워커는 이미 컷마다 `progress("draw")` 를 부르고 있고
+      // (`ys_pipeline.py` 그리기 루프), 여기는 그 UPDATE 에 칸 하나가 붙을 뿐이다.
+      // D1 무료 한도(일 10만 행)에 대한 영향은 0이다 (개발 회신 4 §5-2).
+      //
+      // `COALESCE` 인 이유: 값을 안 보내는 단계(intake·tone·beats)의 progress 가
+      // 이미 쌓인 값을 0으로 덮어쓰면 안 된다.
+      body?.image_cost_krw != null ? Number(body.image_cost_krw) : null,
       row.id,
     ),
   ];
@@ -487,10 +499,29 @@ export async function fail({ request, env, body }) {
     : ST.FAILED;
   const now = Date.now();
 
+  // **실패해도 쓴 돈은 남긴다.** 여기 있던 UPDATE 는 `image_cost_krw` 를 아예 건드리지
+  // 않았고, 그 칸을 쓰는 곳이 `done` 하나뿐이었다. 그래서 완주하지 못한 주문은 8컷을
+  // 그리고도 지출이 0으로 남았다 (08-13 실패 5건 전부 · dev_spec 3-3).
+  //
+  // `progress` 가 컷마다 누적을 쓰므로 대개는 이미 값이 들어 있다. 아래 칸은
+  // **마지막 progress 이후에 더 쓴 몫**을 마감 시각에 확정하기 위한 것이고,
+  // `COALESCE` 라 값을 안 보내면 앞서 쌓인 값을 지우지 않는다.
+  //
+  // **「컷 0장으로 실패한 0」과 「그리고도 기록되지 않은 0」이 이제 구별된다** —
+  // 전자는 `cuts_done = 0` 이고, 후자는 더 이상 생기지 않는다.
   const stmts = [
     env.DB.prepare(
-      `UPDATE ys_order SET status = ?, step = 'finish', fail_reason = ?, done_at = ? WHERE id = ?`,
-    ).bind(kind, String(body?.reason ?? "").slice(0, 300) || null, now, row.id),
+      `UPDATE ys_order
+          SET status = ?, step = 'finish', fail_reason = ?, done_at = ?,
+              image_cost_krw = COALESCE(?, image_cost_krw)
+        WHERE id = ?`,
+    ).bind(
+      kind,
+      String(body?.reason ?? "").slice(0, 300) || null,
+      now,
+      body?.image_cost_krw != null ? Number(body.image_cost_krw) : null,
+      row.id,
+    ),
     auditStmt(env, row.id, {
       gate: body?.gate ?? "G1",
       check: body?.check ?? kind,
