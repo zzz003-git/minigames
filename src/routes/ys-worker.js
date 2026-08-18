@@ -154,7 +154,8 @@ export async function claim({ request, env }) {
 
   const row = await env.DB.prepare(
     `SELECT o.id, o.requested_cuts, o.style_choice, o.tone_hint, o.title, o.byline,
-            o.nickname, o.relay_allow, s.masked, s.masked_map, s.sensitive, s.sha256, s.char_count
+            o.nickname, o.relay_allow, o.created_at,
+            s.masked, s.masked_map, s.sensitive, s.sha256, s.char_count
        FROM ys_order o JOIN ys_order_source s ON s.order_id = o.id
       WHERE o.status = ? ORDER BY o.created_at LIMIT 1`,
   )
@@ -188,6 +189,13 @@ export async function claim({ request, env }) {
       byline: row.byline,
       nickname: row.nickname,
       relay_allow: Boolean(row.relay_allow),
+      // **접수 시각.** 브리지가 이 객체를 그대로 `00_input.meta.json` 으로 쓰고,
+      // 창작기록서의 「제출 시각」이 그 값을 읽는다. 지금까지 이 칸이 비어 있어
+      // 기록서가 **`00_input.txt` 의 파일 mtime** 으로 떨어졌다 — 파일을 옮기거나
+      // 복사하면 권리 문서의 제출 시각이 틀려진다 (개발 회신 8 §4-1).
+      // 채우는 자리는 접수 핸들러가 아니라 **여기다** — 워커가 받는 객체가 여기서 만들어진다.
+      // epoch(ms) 그대로 준다. 사람이 읽는 꼴로 바꾸는 것은 기록서가 한다(표시의 몫).
+      created_at: row.created_at,
       // G3 주문 상한 — PC 가 이 값을 넘지 않는지 본다 (Y6 §2 · dev_spec §4.3)
       budget_krw: YOURSTORY.COST_KRW[row.requested_cuts],
       // 재생성 한도는 **상한이 사 주는 재생성 횟수와 같아야 한다.** 어긋나면
@@ -235,7 +243,8 @@ export async function progress({ request, env, body }) {
               tone_reason = COALESCE(?, tone_reason),
               tone_confidence = COALESCE(?, tone_confidence),
               final_cuts = COALESCE(?, final_cuts),
-              image_cost_krw = COALESCE(?, image_cost_krw)
+              image_cost_krw = COALESCE(?, image_cost_krw),
+              llm_cost_krw = COALESCE(?, llm_cost_krw)
         WHERE id = ?`,
     ).bind(
       step,
@@ -258,6 +267,11 @@ export async function progress({ request, env, body }) {
       // `COALESCE` 인 이유: 값을 안 보내는 단계(intake·tone·beats)의 progress 가
       // 이미 쌓인 값을 0으로 덮어쓰면 안 된다.
       body?.image_cost_krw != null ? Number(body.image_cost_krw) : null,
+      // **LLM 원가도 같은 이유로 여기서 쌓는다.** 이미지 쪽만 고쳤더니 절반이 남았다 —
+      // `YS-20260818-0001` 은 실패했고, 이미지 741원은 남았는데 **LLM 은 0 이었다.**
+      // `cost.dump()` 가 완주 경로에만 있어서 1,600원짜리 시험이 원가 측정을
+      // 통째로 잃었다 (개발 회신 11 · 지시서 `yourstory_task_20260818_04.md` #1).
+      body?.llm_cost_krw != null ? Number(body.llm_cost_krw) : null,
       row.id,
     ),
   ];
@@ -513,13 +527,15 @@ export async function fail({ request, env, body }) {
     env.DB.prepare(
       `UPDATE ys_order
           SET status = ?, step = 'finish', fail_reason = ?, done_at = ?,
-              image_cost_krw = COALESCE(?, image_cost_krw)
+              image_cost_krw = COALESCE(?, image_cost_krw),
+              llm_cost_krw = COALESCE(?, llm_cost_krw)
         WHERE id = ?`,
     ).bind(
       kind,
       String(body?.reason ?? "").slice(0, 300) || null,
       now,
       body?.image_cost_krw != null ? Number(body.image_cost_krw) : null,
+      body?.llm_cost_krw != null ? Number(body.llm_cost_krw) : null,
       row.id,
     ),
     auditStmt(env, row.id, {
