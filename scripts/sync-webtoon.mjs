@@ -13,6 +13,10 @@
  * 매니페스트를 진입점으로 두면 그런 파일은 애초에 목록에 없다. 파일명 규칙이
  * 또 바뀌어도 이 스크립트를 고칠 일이 없다.
  *
+ * 예외가 하나 있다 — **작품 커버·썸네일**(`works/<ID>_<제목>/final/{cover,thumb}.jpg`).
+ * 조판이 만드는 물건이 아니라 매니페스트에 없고, 그래서 오래 손으로 올라갔다.
+ * `findWorkAssets()` 주석을 볼 것.
+ *
  * ── 크기를 재지 않는다 ──────────────────────────────────────────────────
  * 분할본의 폭·높이가 매니페스트에 있다. 이미지를 열어 헤더를 읽던 코드를 지웠다
  * (인수인계 A-1). 대신 **분할합과 전체 높이가 맞는지 검산**한다 — 제작 쪽이
@@ -84,6 +88,40 @@ function findManifests() {
       for (const f of readdirSync(finalDir)) {
         if (f.endsWith("_manifest.json")) out.push({ finalDir, file: join(finalDir, f) });
       }
+    }
+  }
+  return out;
+}
+
+/**
+ * 작품 단위 배포본 — `works/<ID>_<제목>/final/{cover,thumb}.jpg`
+ *
+ * 회차와 달리 매니페스트가 없다. 조판이 만드는 물건이 아니라 컷에서 따로 뽑는
+ * 그림이라 그렇다(글자가 없어야 하는 자리다).
+ *
+ * ── 왜 뒤늦게 넣었나 ────────────────────────────────────────────────────
+ * 이 스크립트가 분할본만 올리는 동안 커버·썸네일은 **손으로** 올라갔고, 그 결과
+ * 2026-08-20 까지 **R2 가 유일본**이었다 — 제작 저장소에도 없고 만드는 스크립트도
+ * 없어서, 버킷을 지우면 복구할 방법이 없었다. 원본을 저장소에 두고 여기서 함께
+ * 올리면 그 상태가 다시 생기지 않는다.
+ *
+ * 크기는 재지 않는다. 뷰어가 자리를 예약해야 하는 것은 세로로 긴 분할본이고
+ * 커버(2:3)·썸네일(1:1)은 비율이 CSS 에 박혀 있다.
+ */
+function findWorkAssets() {
+  const out = [];
+  for (const workName of readdirSync(WORKS)) {
+    if (!/^W\d{4}/.test(workName)) continue;
+    const workId = workName.slice(0, 5);
+    for (const name of ["cover.jpg", "thumb.jpg"]) {
+      const src = join(WORKS, workName, "final", name);
+      // 없으면 건너뛴다. 옛 작품은 R2 에만 있을 수 있고, 그것까지 검산 실패로
+      // 보면 회차 업로드가 통째로 막힌다 — 다만 조용히 넘기지는 않는다.
+      if (!existsSync(src)) {
+        console.log(`  없음    ${workId}/${name} — 저장소에 없습니다 (R2 에 있는 것을 그대로 씁니다)`);
+        continue;
+      }
+      out.push({ src, workId, name, size: statSync(src).size });
     }
   }
   return out;
@@ -169,6 +207,10 @@ for (const { finalDir, file } of manifests) {
   });
 }
 
+// 커버·썸네일도 같은 게이트를 태운다. 회차가 검산에 걸린 판에 커버만 올라가면
+// 목록에는 새 작품이 뜨는데 눌러도 회차가 없다.
+plan.push(...findWorkAssets());
+
 // ── 검산을 통과한 뒤에야 옮긴다 ────────────────────────────────────────
 // R2 로 올리면 배포 없이 즉시 라이브다. 반쪽만 올라간 회차를 만들지 않도록,
 // 한 건이라도 걸리면 **아무것도** 올리지 않는다.
@@ -178,7 +220,8 @@ if (skipped && R2) {
 }
 
 for (const item of plan) {
-  const key = `${item.workId}/${item.epDir}/${item.name}`;
+  // 회차는 `<작품>/ep0NN/partNN.jpg`, 커버·썸네일은 `<작품>/cover.jpg` — epDir 이 없다
+  const key = [item.workId, item.epDir, item.name].filter(Boolean).join("/");
   const where = R2 ? `r2://${BUCKET}/${key}` : join("public", "webtoon", "w", key);
 
   if (!DRY) {
@@ -191,15 +234,16 @@ for (const item of plan) {
         { stdio: "pipe" },
       );
     } else {
-      mkdirSync(join("public", "webtoon", "w", item.workId, item.epDir), { recursive: true });
+      mkdirSync(join("public", "webtoon", "w", item.workId, item.epDir ?? ""), { recursive: true });
       copyFileSync(item.src, join("public", "webtoon", "w", key));
     }
   }
   copied++;
-  console.log(`  ${R2 ? "올림" : "복사"}    ${where}  ${item.w}×${item.h}  ${(item.size / 1024 / 1024).toFixed(1)}MB`);
+  const dim = item.w ? `${item.w}×${item.h}  ` : "";
+  console.log(`  ${R2 ? "올림" : "복사"}    ${where}  ${dim}${(item.size / 1024 / 1024).toFixed(1)}MB`);
 }
 
-console.log(`\n분할본 ${copied}장 ${R2 ? `R2(${BUCKET}) 업로드` : "복사"} · ${skipped}건 건너뜀${DRY ? "  (모의 실행)" : ""}`);
+console.log(`\n그림 ${copied}장 ${R2 ? `R2(${BUCKET}) 업로드` : "복사"} · ${skipped}건 건너뜀${DRY ? "  (모의 실행)" : ""}`);
 
 const headered = [...byWork.values()].flat().filter((e) => e.header).length;
 if (headered) {
