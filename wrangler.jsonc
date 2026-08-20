@@ -36,10 +36,17 @@
   // 너의스토리 결과물은 **다른 버킷**입니다(`YS`). 연재 회차는 전원 공개에 1년
   // immutable 캐시인데 이쪽은 한 사람의 이야기라 기본 비공개입니다 — 같은 버킷에
   // 두면 캐시 규칙 한 줄 잘못 건드렸을 때 남의 이야기가 공개됩니다.
+  //
+  // 이름 뒤의 `-apac` 은 **리전**입니다. 처음 만든 `webtoon-assets` 는 ENAM(북미)
+  // 이었는데, 이용자는 한국이고 D1·`YS` 는 APAC(ICN) 입니다. workers.dev 는 엣지
+  // 캐시를 쓰지 않으므로(응답에 `cf-cache-status` 가 없습니다) 1년 immutable 캐시는
+  // 브라우저에만 걸리고 **각 이용자의 첫 요청은 매번 태평양을 건넜습니다.**
+  // R2 는 만든 뒤 리전을 못 바꿔 새 버킷으로 옮겼습니다(2026-08-20). 옛 버킷은
+  // 이름이 그대로 남아 있으니, 되돌리려면 이 두 줄에서 `-apac` 만 지웁니다.
   "r2_buckets": [
     {
       "binding": "WEBTOON",
-      "bucket_name": "webtoon-assets"
+      "bucket_name": "webtoon-assets-apac"
     },
     {
       "binding": "YS",
@@ -120,7 +127,7 @@
       "r2_buckets": [
         {
           "binding": "WEBTOON",
-          "bucket_name": "webtoon-assets-staging"
+          "bucket_name": "webtoon-assets-staging-apac"
         },
         {
           "binding": "YS",

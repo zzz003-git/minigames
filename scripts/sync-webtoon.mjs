@@ -54,7 +54,9 @@ const DRY = args.includes("--dry-run");
  * 「나머지는 올라갔다」가 되면 반쪽만 라이브인 회차가 생긴다.
  */
 const R2 = flag("--r2", null);
-const BUCKET = { staging: "webtoon-assets-staging", production: "webtoon-assets" }[R2 ?? ""];
+// 이름의 `-apac` 은 리전이다. wrangler.jsonc 의 `WEBTOON` 바인딩과 **같은 버킷**을
+// 가리켜야 한다 — 여기만 옛 이름으로 남으면 회차는 올라갔는데 화면에는 안 나온다.
+const BUCKET = { staging: "webtoon-assets-staging-apac", production: "webtoon-assets-apac" }[R2 ?? ""];
 if (R2 && !BUCKET) {
   console.error(`--r2 는 staging 또는 production 이어야 합니다 (받은 값: ${R2})`);
   process.exit(1);
