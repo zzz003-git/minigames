@@ -15,9 +15,10 @@
  * ── 파생물이라는 약점을 어떻게 막았나 ────────────────────────────────────
  * 내보낸 파일은 원본이 아니라 사본이다. 이 스크립트를 돌리는 걸 잊으면 **조용히 낡고**,
  * 읽는 쪽은 낡았다는 사실 자체를 알 수 없다 — 조사 세션이 정확히 이 점을 지적했다.
- * 그래서 머리글에 **생성 시점의 HEAD SHA** 를 박는다. 읽는 쪽은
- * `git log -1 --format=%h` 하나로 대조할 수 있고, 셸이 없는 기획 세션은 개발 세션에게
- * 그 값을 물으면 된다. 낡음을 감추지 않고 드러내는 것이 이 파일의 계약이다.
+ * 그래서 머리글에 **기준 커밋 SHA** 를 박는다. 읽는 쪽은 한 줄로 대조할 수 있고,
+ * 셸이 없는 기획 세션은 개발 세션에게 그 값을 물으면 된다.
+ * 낡음을 감추지 않고 드러내는 것이 이 파일의 계약이다.
+ * (기준이 HEAD 가 아니라 `BASE_ARGS` 인 이유는 그 주석에 적었다.)
  *
  * ── 무엇을 적는가 ────────────────────────────────────────────────────────
  * 커밋 메시지 전문은 넣지 않는다(이 저장소의 메시지는 길다 — 파일이 읽히지 않게 된다).
@@ -36,7 +37,15 @@ const CHECK = process.argv.includes("--check");
 const git = (...args) =>
   execFileSync("git", ["-c", "core.quotepath=false", ...args], { encoding: "utf8" }).trimEnd();
 
-const head = git("log", "-1", "--format=%h");
+/**
+ * 기준 SHA — **이 파일 자신 말고 다른 것을 바꾼 가장 최근 커밋.**
+ *
+ * 그냥 HEAD 를 박으면 안 된다. CHANGELOG 는 자기를 만든 커밋을 담을 수 없어서,
+ * 내보내고 커밋하는 순간 스스로 「낡음」이 된다. 늘 빨간 신호는 신호가 아니다.
+ * 이 파일만 고친 커밋은 이력의 내용을 바꾼 것이 아니므로 기준에서 뺀다.
+ */
+const BASE_ARGS = ["-1", "--format=%h", "--", ":!docs/CHANGELOG.md"];
+const head = git("log", ...BASE_ARGS);
 
 /**
  * 대조군(`reward-minigame-research/data/deployed_games.csv`)이 딛고 선 것들.
@@ -92,7 +101,7 @@ const lines = [
   "",
   "**이 파일은 손으로 고치지 않습니다.** `node scripts/gen-changelog.mjs` 가 `git log` 에서 만듭니다.",
   "",
-  `| 생성 시점 HEAD | \`${head}\` |`,
+  `| 기준 커밋 | \`${head}\` |`,
   "| --- | --- |",
   `| 커밋 수 | ${commits.length}개 |`,
   "",
@@ -100,8 +109,14 @@ const lines = [
   "",
   "사본이라 내보내기를 잊으면 **조용히 낡습니다.** 그래서 위에 생성 시점 SHA 를 박아 둡니다.",
   "",
-  "- `git log` 를 쓸 수 있는 세션(개발 · 조사) — `git log -1 --format=%h` 가 위 값과 같은지 봅니다.",
-  "- 셸이 없는 기획(앱) 세션 — 개발 세션에 현재 HEAD 를 물어 대조합니다.",
+  "- `git log` 를 쓸 수 있는 세션(개발 · 조사) — 아래 한 줄이 위 값과 같은지 봅니다.",
+  "",
+  "  ```",
+  "  git log -1 --format=%h -- ':!docs/CHANGELOG.md'",
+  "  ```",
+  "",
+  "  이 파일 자신만 고친 커밋은 빼고 봅니다 — 넣으면 내보낸 직후에도 늘 「낡음」이 됩니다.",
+  "- 셸이 없는 기획(앱) 세션 — 개발 세션에 그 값을 물어 대조합니다.",
   "",
   "다르면 이 파일은 낡은 것이고, 그 아래 내용을 근거로 쓰면 안 됩니다.",
   "",
@@ -139,15 +154,15 @@ if (CHECK) {
   // 낡음 판정은 「지금 다시 만들면 달라지는가」가 아니라 「머리글 SHA 가 HEAD 인가」로 한다.
   // 전자는 파일을 안 고친 커밋에도 반응해 소음이 된다.
   const cur = existsSync(OUT) ? readFileSync(OUT, "utf8") : "";
-  const stamped = cur.match(/생성 시점 HEAD \| `([0-9a-f]+)`/)?.[1] ?? null;
+  const stamped = cur.match(/기준 커밋 \| `([0-9a-f]+)`/)?.[1] ?? null;
   if (stamped === head) {
-    console.log(`최신입니다 — HEAD ${head}`);
+    console.log(`최신입니다 — 기준 커밋 ${head}`);
     process.exit(0);
   }
-  console.log(`낡았습니다 — 파일 ${stamped ?? "(없음)"} · HEAD ${head}`);
+  console.log(`낡았습니다 — 파일 ${stamped ?? "(없음)"} · 기준 커밋 ${head}`);
   console.log("  → node scripts/gen-changelog.mjs");
   process.exit(1);
 }
 
 writeFileSync(OUT, body, "utf8");
-console.log(`${OUT} — 커밋 ${commits.length}개 · HEAD ${head}`);
+console.log(`${OUT} — 커밋 ${commits.length}개 · 기준 ${head}`);
