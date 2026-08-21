@@ -151,6 +151,12 @@ push 하면 push 한 번에 버전이 두 개 생긴다.
 - 마이그레이션이 있으면 `npm run db:migrate`**(--remote)가 push 보다 먼저**다.
 순서가 바뀌면 새 게임의 세션 시작이 전부 500 이 된다.
 - 문서만 바꾼 커밋도 push 하면 배포가 돈다.
+- **push 직전에 `node scripts/gen-changelog.mjs` 를 돌리고, `docs/CHANGELOG.md` 만 담은
+커밋을 따로 만든다.** 조사·기획 세션은 `git log` 를 못 보거나 제한적으로만 본다 —
+이 파일이 그들이 「내 전제가 움직였나」를 확인하는 유일한 경로다.
+**다른 파일과 한 커밋에 담지 않는다.** 담으면 그 변경이 기준 커밋이 되어 파일이
+자기보다 항상 한 걸음 뒤처지고, `--check` 가 영구히 빨간불이 된다.
+`node scripts/gen-changelog.mjs --check` 가 0 이면 최신이다.
 
 ### 스테이징
 
