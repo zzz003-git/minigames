@@ -38,6 +38,17 @@ const state = {
   // 사본이고(설계서 §2·§4), 못 받으면 배우 화면을 열지 않는다
   actors: null,
   steps_ys2: [],
+  entries: [],
+  /**
+   * ✍✍ **진입한 문** (지시서 14 · 트랙 정본 §1·§2).
+   *
+   * 예전에는 배우 카드 한 장이 트랙을 정했다. 이젠 허브의 타일이 정하고
+   * 화면은 그것을 **유추하지 않고 그대로 신고한다.** 주소에 실려 오고(`?t=ys2`),
+   * 모르는 값이면 기존 문(`ys1`)이다 — 기존 북마크와 공유된 링크가 살아
+   * 있어야 하기 때문이다. 해시가 바뀌어도 `location.search` 는 남으므로
+   * 화면을 옮겨다니는 동안 이 값은 그대로다.
+   */
+  track: new URLSearchParams(location.search).get("t") === "ys2" ? "ys2" : "ys1",
   // 에디터 입력값 — 화면을 옮겨도 살아 있어야 한다. 빈 입력창이 이 서비스의
   // 최대 이탈 지점인데(plan §5-2), 잘못 눌러 날리는 것만큼 확실한 이탈은 없다
   draft: { cuts: 8, style: "auto", byline: "anon", actor: "auto" },
@@ -86,6 +97,8 @@ async function refresh() {
       styles: d.styles ?? [],
       steps: d.steps ?? [],
       steps_ys2: d.steps_ys2 ?? [],
+      // ✍✍ 두 문의 이름·소개·가격 자리. 화면은 읽기만 한다(설계서 §4)
+      entries: d.entries ?? [],
       limits: d.limits ?? state.limits,
       orders: d.orders ?? [],
       day: d.day,
@@ -107,7 +120,14 @@ function route() {
   const m = location.hash.match(/^#\/o\/(YS2?-\d{8}-\d{4})/);
   if (m) return openOrder(m[1]);
   if (location.hash === "#/write") return renderWrite();
-  if (location.hash === "#/actors") return renderActors();
+  // 두 문의 두 번째 화면. 자기 트랙이 아닌 화면으로는 들어가지 않는다 —
+  // 주소를 손으로 고쳐 들어와도 문이 정한 흐름이 이긴다 (지시서 14 §1-3)
+  if (location.hash === "#/actors") {
+    return state.track === "ys2" ? renderActors() : go("#/style");
+  }
+  if (location.hash === "#/style") {
+    return state.track === "ys1" ? renderStyle() : go("#/actors");
+  }
   if (location.hash === "#/shelves") return renderShelves();
   renderHome();
 }
@@ -269,16 +289,19 @@ function bindEditor() {
     });
   }
 
-  // ✍✍ 에디터의 CTA 는 **접수가 아니라 배우 선택으로** 간다 (설계서 §1 흐름).
+  // ✍✍ 에디터의 CTA 는 **접수가 아니라 두 번째 화면으로** 간다 (설계서 §1 흐름).
+  // 어느 화면인지는 **문이 정한다** — YS1 은 화풍, YS2 는 배우다 (지시서 14 §1-2).
   // 글은 화면 사이를 옮겨도 살아 있어야 해서 여기서 남긴다
   $("#submitBtn").addEventListener("click", () => {
     keepText($("#storyText").value.trim());
-    go("#/actors");
+    go(state.track === "ys2" ? "#/actors" : "#/style");
   });
   $("#actorsBack").addEventListener("click", () => go("#/write"));
+  $("#styleBack").addEventListener("click", () => go("#/write"));
+  $("#styleSubmit").addEventListener("click", () => submit("#styleSubmit"));
   $("#shelvesBack").addEventListener("click", () => go("#/"));
   $("#shelvesBtn").addEventListener("click", () => go("#/shelves"));
-  $("#castSubmit").addEventListener("click", submit);
+  $("#castSubmit").addEventListener("click", () => submit("#castSubmit"));
 }
 
 function renderWrite() {
@@ -336,17 +359,33 @@ function renderActors() {
   const host = clear($("#actorCards"));
   for (const c of cards) host.append(actorCard(c));
 
-  // 「이야기 맞춤 인물」은 기존 방식이라 **화풍을 고른다** — YS2 는 전용 화풍
-  // 1종이라 고를 것이 없고, 그 자리에 배우 선택이 들어온 것이다(설계서 §1-[1])
-  const custom = state.draft.actor === "custom";
-  $("#styleSlot").hidden = !custom;
-  if (custom) renderStyleChips();
-
+  // ✍✍ 화풍 슬롯은 여기 없다 — 그 방식은 **다른 문**이 됐다(지시서 14).
+  // YS2 는 전용 화풍 1종이라 고를 것이 없고, 그 자리가 배우 선택이다(설계서 §1-[1])
   const picked = cards.find((c) => c.id === state.draft.actor);
   $("#castSubmit").textContent =
-    state.draft.actor === "auto" ? "AI 추천으로 만들기"
-      : custom ? "맞춤 인물로 만들기"
-        : `${picked?.name ?? "이 배우"}${ro(picked?.name)} 만들기`;
+    state.draft.actor === "auto"
+      ? "AI 추천으로 만들기"
+      : `${picked?.name ?? "이 배우"}${ro(picked?.name)} 만들기`;
+}
+
+/**
+ * ✍✍ ②-1 화풍 선택 (YS1 · 지시서 14).
+ *
+ * 배우 화면의 형제다. 예전에는 배우 목록 안에 접혀 있던 슬롯이었고, 그래서
+ * **기존 방식이 카드 한 장 뒤에 숨어 있었다.** 이제 자기 화면을 갖는다.
+ */
+function renderStyle() {
+  if (!state.wallet) return go("#/");
+  showScreen("style");
+  // 문안은 서버가 준다 — 못 받았으면 화면이 지어내지 않는다(설계서 §4)
+  const entry = (state.entries ?? []).find((e) => e.track === "ys1");
+  if (!entry) {
+    toast("화면을 불러오지 못했어요", "error");
+    return go("#/write");
+  }
+  $("#styleQuestion").textContent = entry.pick_question;
+  $("#styleWallet").textContent = `TICKET ${state.wallet.tickets}`;
+  renderStyleChips();
 }
 
 /**
@@ -400,7 +439,7 @@ function renderStyleChips() {
         {
           class: `ys__chip ${state.draft.style === st.id ? "is-on" : ""}`,
           type: "button",
-          onclick: () => { state.draft.style = st.id; renderActors(); },
+          onclick: () => { state.draft.style = st.id; renderStyle(); },
         },
         el("span", { class: "ys__chipname" }, `${st.icon} ${st.label}`),
         el("span", { class: "ys__chiphint" }, st.hint),
@@ -508,17 +547,22 @@ const keepText = (t) => { try { localStorage.setItem(LAST_TEXT, t); } catch {} }
 const takeText = () => { try { return localStorage.getItem(LAST_TEXT) || ""; } catch { return ""; } };
 const dropText = () => { try { localStorage.removeItem(LAST_TEXT); } catch {} };
 
-async function submit() {
-  const btn = $("#castSubmit");
+async function submit(btnSel) {
+  const btn = $(btnSel);
   btn.disabled = true;
   keepText($("#storyText").value.trim());
   try {
+    const ys2 = state.track === "ys2";
     const d = await apiPost("/api/ys/orders", {
       text: $("#storyText").value.trim(),
       cuts: state.draft.cuts,
       style: state.draft.style,
-      // ✍✍ 트랙을 가르는 유일한 값 (설계서 §1-0 · §3)
-      actor_choice: state.draft.actor,
+      // ✍✍ **들어온 문을 그대로 신고한다** (지시서 14 §1-3). 고른 카드로
+      // 트랙을 유추하지 않는다 — 판정은 서버의 한 자리다(트랙 정본 §2)
+      track: state.track,
+      // 배우는 YS2 안에서만 뜻이 있다. YS1 주문에 실어 보내면 서버가
+      // 「고른 적 없음」과 구분하지 못한다
+      ...(ys2 ? { actor_choice: state.draft.actor } : {}),
       byline: state.draft.byline,
       nickname: $("#nickInput").value.trim(),
       title: $("#titleInput").value.trim(),

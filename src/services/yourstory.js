@@ -38,6 +38,7 @@ import {
   YS_ACTORS,
   YS_ACTOR_SPECIALS,
   YS_CAST_TEXT,
+  YS_ENTRY_TEXT,
   YS_BOARD_MAX_ROWS,
 } from "../lib/config.js";
 import { dayKey } from "../lib/time.js";
@@ -176,6 +177,16 @@ export async function state({ env, userId }) {
     service: alive ? queueState(waiting) : "reserve",
     waiting,
     styles: YOURSTORY.STYLES,
+    // ✍✍ 두 문의 이름·소개·가격 자리 (지시서 14 · 트랙 정본 §1).
+    //
+    // 허브 타일 두 장이 이 값으로 그려진다. 타일은 이 서비스의 **첫 문장**이라
+    // 화면이 지어내게 두면 배포본마다 다른 말을 하게 된다(설계서 §4).
+    // `price` 는 지금 둘 다 `null`(표시할 값 없음) — 자리만 서 있다
+    entries: YOURSTORY.TRACKS.map((t) => ({
+      track: t,
+      ...YS_ENTRY_TEXT[t],
+      price_krw: YOURSTORY.PRICE_KRW[t],
+    })),
     // 트랙마다 도장 수가 다르다 — 화면이 주문의 `track` 으로 고른다 (설계서 §1-[4])
     steps: YOURSTORY.STEPS,
     steps_ys2: YOURSTORY.STEPS_YS2,
@@ -230,12 +241,14 @@ const cardOf = (o) => ({
  */
 export async function actors() {
   return {
-    // 첫 카드(AI 추천) → 배우 10 → 마지막 카드(맞춤 인물). **순서가 규격이다**
-    // (설계서 §2 — AI 추천이 항상 첫 번째, 맞춤 인물이 마지막)
+    // 첫 카드(AI 추천) → 배우 10. **순서가 규격이다** (설계서 §2 — AI 추천이 항상 첫 번째)
+    //
+    // ✍✍ **「이야기 맞춤 인물」 카드는 여기 없다** (지시서 14 · 트랙 정본 §1).
+    // 그 문은 이제 허브의 YS1 타일이다 — 이 목록에 남겨 두면 문이 둘이 된 뒤에도
+    // YS2 안에서 다시 갈리게 되어, 문을 가른 이유가 그대로 사라진다
     cards: [
       { ...YS_ACTOR_SPECIALS.auto, kind: "auto", approved: true },
       ...YS_ACTORS.map((a) => ({ ...a, kind: "actor", card_image: a.card_image ?? null })),
-      { ...YS_ACTOR_SPECIALS.custom, kind: "custom", approved: true },
     ],
     texts: YS_CAST_TEXT,
     board_max_rows: YS_BOARD_MAX_ROWS,
@@ -418,18 +431,6 @@ const orderId = (track, day, seq) =>
   `${YOURSTORY.ID_PREFIX[track]}-${day.replaceAll("-", "")}-${String(seq).padStart(4, "0")}`;
 
 /**
- * 고객이 고른 카드 → 트랙 (설계서 §1-0 「track 결정 규칙」).
- *
- * **갈림은 카드 한 장이다** — 「이야기 맞춤 인물」만 기존 방식(`ys1`)으로 가고,
- * AI 추천과 배우 10명은 전부 `ys2` 다. 안 고르면 AI 추천이므로 기본은 `ys2`.
- */
-function trackOf(actorChoice) {
-  const special = YS_ACTOR_SPECIALS[actorChoice];
-  if (special) return special.track;
-  return YS_ACTORS.some((a) => a.id === actorChoice) ? "ys2" : null;
-}
-
-/**
  * 오늘 걸린 돈 (G3 일일 상한 — dev_spec §4.3).
  *
  * 만드는 중인 주문은 **아직 안 쓴 돈까지 상한으로 잡는다.** 다 쓰고 나서 세면
@@ -497,13 +498,26 @@ export async function createOrder({ env, userId, body }) {
   );
   const byline = requireOneOf(String(body?.byline ?? "anon"), "byline", ["anon", "nick"]);
 
-  // ✍✍ 배우 선택 — **이 트랙의 유일한 추가 입력**이고, 트랙을 가르는 자리다
-  // (설계서 §1-0·§3). 안 보내면 AI 추천이므로 기본은 `ys2` 다.
-  const actorChoice = String(body?.actor_choice ?? "auto");
-  const track = trackOf(actorChoice);
-  if (!track) {
-    throw new ApiError("BAD_PARAM", "고르신 배우를 확인할 수 없어요.", 400);
-  }
+  // ✍✍ **트랙은 진입한 문이 정한다** (지시서 14 · 트랙 정본 §1·§2).
+  //
+  // 예전에는 배우 카드 한 장으로 트랙을 유추했다. 그것이 결함이었다 — 「무엇을
+  // 골랐는가」와 「어느 서비스에 왔는가」는 다른 질문인데 한 값에 얹혀 있었고,
+  // 그래서 YS1 이 카드 12분의 1로 앉았다. 이제 화면이 자기가 들어온 문을
+  // 그대로 신고하고, 서버는 **그 값 하나만** 본다(정본 §2 「판정은 한 자리」).
+  //
+  // 빈 값은 `ys1` 로 잇지 않고 **반려**한다 — 빈 값이 결함을 가린 사고가 이
+  // 프로젝트의 반복 유형이다(PROJECT_GUIDE §2.16).
+  const track = requireOneOf(String(body?.track ?? ""), "track", YOURSTORY.TRACKS);
+
+  // 배우 선택은 **YS2 안에서만 의미가 있다.** YS1 주문에 값을 채우면 「고른 적
+  // 없음」과 「골랐음」이 구분되지 않는다 — 그 구분이 선반과 캐스팅 보드의 전제다
+  const actorChoice =
+    track === "ys2"
+      ? requireOneOf(String(body?.actor_choice ?? "auto"), "actor_choice", [
+          YS_ACTOR_SPECIALS.auto.id,
+          ...YS_ACTORS.map((a) => a.id),
+        ])
+      : null;
   // 화풍은 **트랙이 정한다.** YS2 는 전용 화풍 1종이라 고객이 고를 것이 없고
   // (설계서 §1-[1] — 화풍 칩 자리에 배우 선택이 들어왔다), YS1 로 오는 화풍
   // 선택값이 YS2 주문에 실리면 `S8-YS2` 와 섞인다(트랙 정본 §1 「화풍」).

@@ -125,17 +125,29 @@
 
       <div class="ys2__cards" id="actorCards" role="radiogroup" aria-label="배우 고르기"></div>
 
-      <!-- 「이야기 맞춤 인물」을 고른 경우에만 — 기존 방식은 화풍을 고른다 -->
-      <div id="styleSlot" hidden>
-        <h3 class="ys__field">화풍</h3>
-        <div class="ys__chips" id="styleChips" role="group" aria-label="화풍 고르기"></div>
-        <p class="ys__hint">화풍은 그림체만 정해요. 연출과 대사는 이야기의 분위기가 정합니다.</p>
-      </div>
-
       <p class="ys2__note" id="actorNote">—</p>
 
       <button type="button" class="ys__btn ys__btn--pri ys__btn--big ys__submit" id="castSubmit">
         이 배우로 만들기
+      </button>
+      <p class="ys__hint ys__hint--center">티켓 1장이 사용돼요 · AI로 그립니다</p>
+    </section>
+
+    <!-- ✍✍ ②-1 화풍 선택 (YS1 · 지시서 14 — 기존 방식의 두 번째 화면)
+         배우 화면과 **같은 자리**에 서는 형제 화면이다. YS2 가 배우를 고르는
+         동안 YS1 은 화풍을 고른다 — 문이 갈렸으므로 화면도 갈린다 -->
+    <section class="screen" data-screen="style">
+      <header class="ys__bar">
+        <button type="button" class="ys__back" id="styleBack" aria-label="글쓰기로 돌아가기">‹</button>
+        <b id="styleQuestion">—</b>
+        <span class="mono" id="styleWallet"></span>
+      </header>
+
+      <div class="ys__chips" id="styleChips" role="group" aria-label="화풍 고르기"></div>
+      <p class="ys__hint">화풍은 그림체만 정해요. 연출과 대사는 이야기의 분위기가 정합니다.</p>
+
+      <button type="button" class="ys__btn ys__btn--pri ys__btn--big ys__submit" id="styleSubmit">
+        이 화풍으로 만들기
       </button>
       <p class="ys__hint ys__hint--center">티켓 1장이 사용돼요 · AI로 그립니다</p>
     </section>

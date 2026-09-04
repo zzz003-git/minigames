@@ -94,43 +94,74 @@ const go = (hash) => { location.hash = hash; };
 const readCount = (workId) => state.read[workId]?.count ?? 0;
 
 /**
- * ✍ 너의스토리 진입 행 (plan §4).
+ * ✍✍ 너의스토리 진입 타일 **두 장** (plan §4 · 지시서 14 · 트랙 정본 §1).
  *
  * **초대받은 사람에게만 뜬다.** 0단계는 초대 베타라(plan §7), 못 쓰는 기능을
  * 읽기 홈에 세우면 눌러 보고 막히는 사람이 대부분이 된다.
  * 만드는 중인 이야기가 있으면 그것이 먼저다 — 재방문의 목적지가 그것이기 때문이다.
+ *
+ * ── 왜 타일이 둘인가 ────────────────────────────────────────────────────
+ * 문이 하나였을 때는 배우 선택 화면의 카드 한 장으로 갈렸고, 그래서 기존 방식이
+ * **카드 12분의 1**로 앉았다. 고객은 이제 어느 서비스인지 **여기서 먼저** 고른다.
+ * 그 선택이 `track` 이 되고, 화면은 그것을 유추하지 않고 그대로 신고한다.
+ *
+ * 문안은 **서버가 준다**(`ys.entries` · 설계서 §4). 타일은 이 서비스의 첫 문장이라
+ * 화면이 지어내면 배포본마다 다른 말을 하게 된다.
  */
 function renderYsRow() {
-  const row = $("#ysRow");
+  const host = $("#ysRow");
   const ys = state.ys;
-  if (!ys?.wallet) {
-    row.hidden = true;
+  // 숨김 규칙은 상자 하나가 갖는다 — 타일 둘이 같은 조건으로 함께 뜨고 함께 사라진다
+  if (!ys?.wallet || !ys.entries?.length) {
+    host.hidden = true;
     return;
   }
+  host.hidden = false;
 
-  const making = (ys.orders ?? []).find((o) =>
-    ["queued_brain", "brain_running", "queued_image", "image_running", "composing"].includes(o.status),
+  const MAKING = ["queued_brain", "brain_running", "queued_image", "image_running", "composing"];
+  clear(host).append(...ys.entries.map((e) => ysTile(e, ys, MAKING)));
+}
+
+/** 문 한 장. 만드는 중인 주문은 **자기 트랙의 타일에만** 뜬다 */
+function ysTile(entry, ys, MAKING) {
+  const making = (ys.orders ?? []).find(
+    (o) => MAKING.includes(o.status) && (o.track ?? "ys1") === entry.track,
   );
 
-  row.hidden = false;
-  row.href = making ? `yourstory/#/o/${making.id}` : "yourstory/";
-  clear(row).append(
-    // ✍✍ **타일은 하나 그대로다** — 새 타일을 만들지 않고 배지 한 개만 붙인다
-    // (프런트 설계서 §1-0 · 원칙 5 「같은 서비스의 두 번째 문」). 갈림은 이 허브가
-    // 아니라 배우 선택 화면의 카드 한 장이다
-    el("h3", {}, "✍ 너의스토리", el("span", { class: "wt__ysnew" }, "배우 캐스팅 오픈")),
+  return el(
+    "a",
+    {
+      class: `wt__ysrow wt__ysrow--${entry.track}`,
+      // 문이 track 을 정한다 — 주소에 실어 보낸다(지시서 14 §1-3).
+      // YS1 은 기존 주소 그대로다: 북마크·공유된 링크가 살아 있어야 한다
+      href: making
+        ? `yourstory/#/o/${making.id}`
+        : entry.track === "ys2"
+          ? "yourstory/?t=ys2"
+          : "yourstory/",
+    },
     el(
-      "p",
+      "h3",
       {},
-      making
-        ? making.cuts_done
-          ? `⟳ 만드는 중 · 그림 ${making.cuts_done}/${making.cuts}`
-          : // 멈춰 있는 동안에는 「곧 시작해요」라고 하지 않는다 (Y9 §2 예약 접수)
-            ys.service === "reserve"
-            ? "⟳ 예약됨 · 열리면 시작해요"
-            : "⟳ 만드는 중 · 곧 시작해요"
-        : "당신이 쓴 이야기가, 오늘 웹툰이 됩니다",
+      `${entry.icon} ${entry.name}`,
+      entry.badge ? el("span", { class: "wt__ysnew" }, entry.badge) : null,
     ),
+    // 만드는 중이 아니고 소개 문안도 없으면 **줄을 만들지 않는다** — 화면이
+    // 문장을 지어내지 않는다(설계서 §4). 빈 `<p>` 를 남기면 여백이 결함처럼 보인다
+    making || entry.tagline
+      ? el(
+          "p",
+          {},
+          making
+            ? making.cuts_done
+              ? `⟳ 만드는 중 · 그림 ${making.cuts_done}/${making.cuts}`
+              : // 멈춰 있는 동안에는 「곧 시작해요」라고 하지 않는다 (Y9 §2 예약 접수)
+                ys.service === "reserve"
+                ? "⟳ 예약됨 · 열리면 시작해요"
+                : "⟳ 만드는 중 · 곧 시작해요"
+            : entry.tagline,
+        )
+      : null,
     el(
       "p",
       { class: "mono" },

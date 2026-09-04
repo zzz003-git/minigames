@@ -3629,6 +3629,18 @@ a.hubcard:focus-visible { outline: 2px solid var(--t); outline-offset: 2px; }
   background: linear-gradient(180deg, rgba(217, 161, 91, 0.07), transparent);
   border: 1px solid rgba(217, 161, 91, 0.26);
 }
+/* ✍✍ 문 두 장 (지시서 14). 세로로 쌓는다 — 폭이 좁은 화면에서 나란히 두면
+   둘 다 읽히지 않고, 이 둘은 「고르는 것」이지 「비교하는 것」이 아니다 */
+.wt__ysrows { display: grid; gap: 10px; }
+.wt__ysrows .wt__ysrow { margin-top: 0; }
+.wt__ysrows { margin-top: 16px; }
+/* YS2 는 코럴 — 배지와 같은 축이다(설계서 §1-0). 앰버(YS1)와 색으로 갈라 두면
+   타일 이름을 읽기 전에 어느 쪽인지 알 수 있다 */
+.wt__ysrow--ys2 {
+  background: linear-gradient(180deg, rgba(232, 131, 111, 0.07), transparent);
+  border-color: rgba(232, 131, 111, 0.26);
+}
+.wt__ysrow--ys2 h3, .wt__ysrow--ys2 .mono { color: #f0a08e; }
 .wt__ysrow h3 { font-size: 14px; color: #d9a15b; }
 .wt__ysrow p { font-size: 12.5px; color: var(--text-sub); line-height: 1.55; }
 .wt__ysrow .mono { color: #d9a15b; font-family: var(--mono); letter-spacing: 0.06em; }

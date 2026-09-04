@@ -20,7 +20,7 @@
 import { readFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { execSync } from "node:child_process";
-import { YS_ORDER_ID_RE } from "../src/lib/config.js";
+import { YS_ORDER_ID_RE, YS_ACTORS } from "../src/lib/config.js";
 import { trackForJob } from "../src/routes/ys-worker.js";
 
 const BASE = process.env.TEST_BASE ?? "http://127.0.0.1:8787";
@@ -80,10 +80,15 @@ ok(YS_ORDER_ID_RE.test("YS2-20260831-0001") && YS_ORDER_ID_RE.test("YS-20260831-
 // ── ① 배우 카드 ──────────────────────────────────────────────────────
 console.log("\n① 배우 카드 목록");
 const actors = (await call("GET", "/api/ys/actors")).data;
-ok(actors?.cards?.length === 12, "카드 12장 (AI 추천 + 배우 10 + 맞춤 인물)",
-   `실제 ${actors?.cards?.length}`);
-ok(actors?.cards?.[0].id === "auto" && actors?.cards?.at(-1).id === "custom",
-   "AI 추천이 첫 카드 · 맞춤 인물이 마지막");
+// ✍✍ **개수를 세지 않는다** (09-03 등재 규칙 · 지시서 14 §3-4). 배우가 한 명
+// 늘 때마다 깨지는 시험은 무엇을 지키는지 말해 주지 않는다. 지켜야 하는 규칙은
+// 「YS2 목록에 기존 방식이 섞이지 않는다」 하나다 — 그 문은 이제 허브 타일이다
+ok(!actors?.cards?.some((c) => c.id === "custom" || c.kind === "custom"),
+   "YS2 목록에 `custom`(이야기 맞춤 인물) 카드가 없다",
+   cut(actors?.cards?.map((c) => c.id)));
+ok(actors?.cards?.[0].id === "auto", "AI 추천이 첫 카드");
+ok(actors?.cards?.filter((c) => c.kind === "actor").length === YS_ACTORS.length,
+   "배우 카드는 정본 목록과 같은 수", `실제 ${actors?.cards?.filter((c) => c.kind === "actor").length}`);
 ok(actors?.cards?.filter((c) => c.kind === "actor" && c.approved).length === 2,
    "표본 승인은 두 명뿐 (나머지 여덟은 와이어)");
 ok(actors?.cards?.every((c) => c.kind !== "actor" || (c.name && c.personality_line && c.quirk_line)),
@@ -100,7 +105,7 @@ ok(inv.status === 200, "초대코드 등록", cut(inv.data));
 
 const TEXT = "지난달에 팀을 옮겼다. 짐은 상자 하나였고 인사는 짧았다. ".repeat(6);
 const made = await call("POST", "/api/ys/orders",
-  { body: { text: TEXT, cuts: 8, actor_choice: "C06", title: "옮긴 자리" } });
+  { body: { text: TEXT, cuts: 8, track: "ys2", actor_choice: "C06", title: "옮긴 자리" } });
 ok(made.status === 200, "YS2 주문 접수", cut(made.data));
 const id = made.data?.id;
 ok(String(id).startsWith("YS2-"), "주문 ID 가 `YS2-` 접두", String(id));
@@ -185,10 +190,10 @@ ok(shelf?.works?.length === 1, "작품이 하나여도 선반은 보인다");
 ok(shelf?.can_reorder === true, "「이 배우와 또 만들기」가 열린다");
 
 // ── ⑥ YS1 회귀 — 맞춤 인물은 기존 방식 그대로 ────────────────────────
-console.log("\n⑥ YS1 회귀 — 「이야기 맞춤 인물」");
+console.log("\n⑥ YS1 회귀 — 기존 방식은 자기 문으로 들어온다");
 const ys1 = await call("POST", "/api/ys/orders",
-  { body: { text: TEXT, cuts: 8, actor_choice: "custom", style: "S5", title: "맞춤" } });
-ok(ys1.data?.track === "ys1", "맞춤 인물 카드는 ys1 로 간다", cut(ys1.data));
+  { body: { text: TEXT, cuts: 8, track: "ys1", style: "S5", title: "맞춤" } });
+ok(ys1.data?.track === "ys1", "YS1 문으로 들어오면 ys1 이다", cut(ys1.data));
 ok(String(ys1.data?.id).startsWith("YS-"), "ID 접두는 `YS-` 그대로", String(ys1.data?.id));
 // **일련번호가 이어지는 것이 「두 트랙 합산」의 증거다** — 세는 질의가 YS2 주문을
 // 못 세면 방금 만든 YS2 번호를 다시 내주고, 그 자리에서 번호가 겹친다
@@ -200,9 +205,34 @@ const ys1view = (await call("GET", `/api/ys/order?id=${ys1.data?.id}`)).data;
 ok(ys1view?.casting === undefined, "YS1 주문에는 캐스팅이 실리지 않는다", cut(ys1view?.casting));
 ok(ys1view?.style_choice === "S5", "YS1 은 화풍 선택이 그대로 산다", cut(ys1view?.style_choice));
 
+ok(ys1view?.actor_choice == null,
+   "YS1 주문의 actor_choice 는 비어 있다 (「고른 적 없음」이 보존된다)",
+   cut(ys1view?.actor_choice));
+
 const bad = await call("POST", "/api/ys/orders",
-  { body: { text: TEXT, cuts: 8, actor_choice: "C99" } });
+  { body: { text: TEXT, cuts: 8, track: "ys2", actor_choice: "C99" } });
 ok(bad.status === 400, "모르는 배우 id 는 반려한다", `status ${bad.status}`);
+
+// ✍✍ **트랙은 문이 정하고, 문이 없으면 반려다** (트랙 정본 §2 — 빈 값은 잇지 않는다).
+// 여기가 무너지면 「어느 서비스에 왔는가」를 다시 카드로 추측하게 된다
+const noTrack = await call("POST", "/api/ys/orders",
+  { body: { text: TEXT, cuts: 8, actor_choice: "C06" } });
+ok(noTrack.status === 400, "track 이 없으면 반려한다", `status ${noTrack.status}`);
+const badTrack = await call("POST", "/api/ys/orders",
+  { body: { text: TEXT, cuts: 8, track: "YS1" } });
+ok(badTrack.status === 400, "모르는 track 은 반려한다", `status ${badTrack.status}`);
+
+console.log("\n⑦ 두 문 — 문안·가격 자리는 서버가 준다");
+const st2 = (await call("GET", "/api/ys/state")).data;
+const e1 = st2?.entries?.find((e) => e.track === "ys1");
+const e2 = st2?.entries?.find((e) => e.track === "ys2");
+ok(st2?.entries?.length === 2, "두 문이 다 온다", cut(st2?.entries?.map((e) => e.track)));
+ok(Boolean(e1?.name && e2?.name && e1.name !== e2.name), "이름이 각각이다",
+   `${e1?.name} / ${e2?.name}`);
+ok(Boolean(e1?.pick_question && e2?.pick_question),
+   "두 번째 화면의 질문 문안도 서버가 준다");
+ok("price_krw" in (e1 ?? {}) && e1?.price_krw === e2?.price_krw,
+   "가격 자리가 두 트랙에 다 있고 값은 같다 (결정 19)", `${e1?.price_krw} / ${e2?.price_krw}`);
 
 // ── 정리 ─────────────────────────────────────────────────────────────
 console.log(`\n${"=".repeat(62)}`);
