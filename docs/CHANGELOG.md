@@ -2,9 +2,9 @@
 
 **이 파일은 손으로 고치지 않습니다.** `node scripts/gen-changelog.mjs` 가 `git log` 에서 만듭니다.
 
-| 기준 커밋 | `1f05ae6` |
+| 기준 커밋 | `6bcf07b` |
 | --- | --- |
-| 커밋 수 | 142개 |
+| 커밋 수 | 145개 |
 
 ## 이 파일이 낡았는지 확인하는 법
 
@@ -29,7 +29,32 @@
 
 ---
 
+## 2026-09-04
+
+### `6bcf07b` docs(handoff): 조사 세션 문서 2건 — 감시분류 요청 · 정답공유 점검 공유
+
+- `docs/handoff/2026-08-24_감시분류_01_조사요청.md`
+- `docs/handoff/2026-09-02_정답공유점검_01_조사공유.md`
+
+### `9bbd37c` feat(ys2): 배우 캐스팅 트랙 — 접수·워커 왕복·캐스팅 보드·배우별 선반
+> **대조군 영향** — 게임 설정
+
+- `migrations/0024_ys_track.sql`
+- `migrations/0025_ys_cast.sql`
+- `package.json`
+- `public/webtoon/ (2)`
+- `public/webtoon/yourstory/ (5)`
+- `scripts/test-ys2.mjs`
+- `scripts/ys-actors-check.mjs`
+- `src/index.js`
+- … 외 3곳
+
 ## 2026-08-21
+
+### `d8a8fa5` CHANGELOG 갱신 (기준 1f05ae6)
+> **대조군 영향** — 게임 문서
+
+- `docs/CHANGELOG.md`
 
 ### `1f05ae6` docs(handoff): 변경 이력 내보내기 01 요청 · 02 답변
 
