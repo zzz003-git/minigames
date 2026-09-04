@@ -2,9 +2,9 @@
 
 **이 파일은 손으로 고치지 않습니다.** `node scripts/gen-changelog.mjs` 가 `git log` 에서 만듭니다.
 
-| 기준 커밋 | `6bcf07b` |
+| 기준 커밋 | `99c96e9` |
 | --- | --- |
-| 커밋 수 | 145개 |
+| 커밋 수 | 148개 |
 
 ## 이 파일이 낡았는지 확인하는 법
 
@@ -30,6 +30,26 @@
 ---
 
 ## 2026-09-04
+
+### `99c96e9` feat(ys2): YS2 소개 문안 확정 — 「당신의 이야기를, 우리 배우가 연기합니다」
+> **대조군 영향** — 게임 설정
+
+- `src/lib/`
+
+### `f08c7f8` feat(ys2): 허브 타일 두 장 · 트랙별 흐름 분리 (지시서 14 · 결정 18 「다」)
+> **대조군 영향** — 게임 설정
+
+- `public/shared/`
+- `public/webtoon/ (2)`
+- `public/webtoon/yourstory/ (2)`
+- `scripts/test-ys2.mjs`
+- `src/lib/`
+- `src/services/`
+
+### `a84e5b6` CHANGELOG 갱신 (기준 6bcf07b)
+> **대조군 영향** — 게임 문서
+
+- `docs/CHANGELOG.md`
 
 ### `6bcf07b` docs(handoff): 조사 세션 문서 2건 — 감시분류 요청 · 정답공유 점검 공유
 
