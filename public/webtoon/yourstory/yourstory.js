@@ -88,9 +88,21 @@ async function loadActors() {
   }
 }
 
+/**
+ * ✍✍ 내가 들어온 문의 문안 묶음. **화면은 이 값만 읽는다** (지시서 15).
+ *
+ * 못 받았을 때 기본값을 돌려주지 않는다 — 조용한 폴백은 「값이 안 왔다」를
+ * 「원래 그런 화면이다」로 바꿔 놓는다. 오늘 고친 결함이 정확히 그 모양이었다.
+ */
+function myEntry() {
+  return (state.entries ?? []).find((e) => e.track === state.track) ?? null;
+}
+
 async function refresh() {
   try {
-    const d = await apiGet("/api/ys/state");
+    // 서랍은 **그 문의 주문만** 받는다. 거르는 자리는 서버 한 곳이고
+    // (지시서 15 §1-4), 화면은 받은 것을 그대로 그린다
+    const d = await apiGet(`/api/ys/state?t=${state.track}`);
     Object.assign(state, {
       wallet: d.wallet,
       service: d.service,
@@ -164,6 +176,12 @@ function renderHome() {
   $("#codeSwapBtn").hidden = !w || empty || codeSwapOpen;
   $("#walletBadge").textContent = w ? `TICKET ${w.tickets} · CREDIT ${w.credits}` : "";
 
+  // ✍✍ 헤더는 **들어온 문의 이름**이다 (지시서 15 §0-2). 화면에 박아 두었더니
+  // YS2 문으로 들어가도 「✍ 너의스토리」가 떴다
+  const me = myEntry();
+  $("#homeIcon").textContent = me?.icon ?? "";
+  $("#homeName").textContent = me?.name ?? "";
+
   // 오늘의 문장은 **날짜로 정해진다.** 무작위로 뽑으면 새로고침마다 바뀌어
   // 「오늘의」가 아니게 된다 (읽기 축이 회차 메타를 화면에 두는 것과 같은 규칙 —
   // 문장 자체는 콘텐츠라 서버가 아니라 seeds.js 가 가진다)
@@ -191,7 +209,13 @@ function renderHome() {
 
   // 선반은 **배우와 만든 작품이 있을 때만** 보인다. 빈 선반을 만들지 않는다
   // (설계서 §1-[7]) — 링크부터 없으면 빈 화면에 도착할 일이 없다
-  $("#shelvesBtn").hidden = !live.some((o) => o.track === "ys2" && o.status === "done");
+  // 선반은 **배우와 만든 작품이 있을 때만** 보인다(설계서 §1-[7]). 그 위에
+  // 조건이 하나 더 있다 — **그 문에 선반 문안이 있을 때만**이다. YS1 문에는
+  // `shelf_label` 이 없으므로 이 버튼 자체가 서지 않는다 (지시서 15 §1-2)
+  const shelfLabel = myEntry()?.shelf_label ?? null;
+  $("#shelvesBtn").textContent = shelfLabel ?? "";
+  $("#shelvesBtn").hidden =
+    !shelfLabel || !live.some((o) => o.status === "done");
 }
 
 /** 날짜 문자열을 정수로 — 같은 날이면 같은 문장이 나오게 하는 것이 전부다 */
@@ -329,6 +353,13 @@ function renderWrite() {
     );
   }
 
+  // ✍✍ 다음 단계 문구는 **문이 준다** (지시서 15 §1-1). 값이 없으면 버튼을
+  // 비활성으로 남겨 **그 사실이 드러나게** 한다 — 기본값을 두면 잘못된 문구가
+  // 조용히 나가고, 그것이 오늘 고친 결함의 모양이다
+  const me = myEntry();
+  $("#submitBtn").textContent = me?.next_label ?? "";
+  $("#submitNote").textContent = me?.next_note ?? "";
+
   updateCounter();
 }
 
@@ -378,7 +409,7 @@ function renderStyle() {
   if (!state.wallet) return go("#/");
   showScreen("style");
   // 문안은 서버가 준다 — 못 받았으면 화면이 지어내지 않는다(설계서 §4)
-  const entry = (state.entries ?? []).find((e) => e.track === "ys1");
+  const entry = myEntry();
   if (!entry) {
     toast("화면을 불러오지 못했어요", "error");
     return go("#/write");
@@ -530,8 +561,16 @@ function updateCounter() {
     el("b", {}, `${n}자`),
     n >= min_chars ? ` · ${est}컷 분량` : ` · ${min_chars}자부터 만들 수 있어요`,
   );
-  // 예약 접수라 `service` 로는 막지 않는다 — 글자 수만 본다 (Y9 §2, 2026-08-12 개정)
-  $("#submitBtn").disabled = n < min_chars;
+  // 예약 접수라 `service` 로는 막지 않는다 (Y9 §2, 2026-08-12 개정).
+  //
+  // ✍✍ **비활성 판정은 이 한 줄뿐이다** (지시서 15 §1-1). 처음엔 문안 조건을
+  // `renderWrite` 에 따로 두었는데, 글자 수를 세는 이 함수가 나중에 돌면서
+  // **그 판정을 덮어썼다** — 문안이 없어도 글자만 채우면 버튼이 살아났다.
+  // 같은 속성을 두 곳에서 정하면 나중에 도는 쪽이 이긴다.
+  //
+  // 문구를 못 받았으면 **누를 수 없어야 한다.** 기본값을 넣어 조용히 진행시키면
+  // 어느 문으로 들어왔든 같은 문구가 나가고, 그것이 이번에 고친 결함이다
+  $("#submitBtn").disabled = n < min_chars || !myEntry()?.next_label;
 }
 
 /**

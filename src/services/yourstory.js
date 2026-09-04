@@ -44,9 +44,14 @@ import {
 import { dayKey } from "../lib/time.js";
 import { sha256Hex, encryptJSON, decryptJSON } from "../lib/crypto.js";
 import { touchUser } from "../lib/suite.js";
-import { workerAlive, servicePause } from "../routes/ys-worker.js";
+import { workerAlive, servicePause, trackForJob } from "../routes/ys-worker.js";
 
 const ST = YOURSTORY.ST;
+
+// 서랍에 그리는 수(`DRAWER_SHOWN`)와 그걸 채우려고 읽어 오는 수(`DRAWER_WINDOW`).
+// 트랙별로 거르므로 **읽는 창이 그리는 수보다 넓어야** 한 문의 서랍이 비지 않는다
+const DRAWER_SHOWN = 20;
+const DRAWER_WINDOW = DRAWER_SHOWN * 3;
 const OPEN = YOURSTORY.OPEN_STATES.map((s) => `'${s}'`).join(",");
 
 // 원가표를 SQL 에 **옮겨 적지 않는다.** 같은 숫자가 세 곳(여기 · COST_KRW ·
@@ -139,7 +144,18 @@ export async function invite({ env, userId, body }) {
  * 않게 하는 것은 취향이 아니라 필요다. 제작 중 재방문이 이 서비스의 주 동선이라
  * (plan §4) 이 응답이 곧 「지금 어떻게 돼 가고 있나」의 답이다.
  */
-export async function state({ env, userId }) {
+export async function state({ env, userId, body }) {
+  /**
+   * ✍✍ **어느 문에서 부르는가** (지시서 15 §1-4).
+   *
+   * 서랍은 **그 문의 주문만** 보여야 한다 — 문이 갈렸는데 안이 안 갈리면 YS2 문에
+   * 기존 YS1 제작물이 뜬다. 거르는 자리는 **여기 한 곳**이다. 화면에서 숨기면
+   * 숨긴 것일 뿐 **여전히 내려간 것**이라, 남의 트랙 주문 목록이 그대로 나간다.
+   *
+   * 값이 없으면 **거르지 않는다.** 허브(`/webtoon/`)는 문 바깥이라 두 트랙의
+   * 진행 상황을 다 알아야 타일마다 「만드는 중」을 띄울 수 있다.
+   */
+  const only = YOURSTORY.TRACKS.includes(body?.t) ? body.t : null;
   const day = dayKey();
   await touchUser(env, userId, day);
 
@@ -153,7 +169,7 @@ export async function state({ env, userId }) {
           `SELECT id, status, step, title, requested_cuts, final_cuts, cuts_done,
                   tone_label, eta_sec, fail_reason, created_at, done_at, track
              FROM ys_order WHERE user_id = ? AND status != '${ST.DELETED}'
-            ORDER BY created_at DESC LIMIT 20`,
+            ORDER BY created_at DESC LIMIT ${DRAWER_WINDOW}`,
         )
           .bind(userId)
           .all()
@@ -161,6 +177,17 @@ export async function state({ env, userId }) {
   ]);
 
   const waiting = queue?.n ?? 0;
+
+  // 주문 행의 트랙 판정은 **새로 만들지 않고 `trackForJob` 한 자리를 그대로 쓴다**
+  // (원칙 15). 그래야 「칸이 비어 있으면 ID 접두로 잇는다」는 규칙이 워커와
+  // 화면에서 같은 답을 낸다 — 여기서 다시 짜면 그 순간 판정이 둘이 된다
+  //
+  // **자르는 것은 거른 뒤다.** LIMIT 을 먼저 걸면 한 트랙 주문이 창을 채웠을 때
+  // 다른 문의 서랍이 비어 보인다 — 화면에는 「없다」로 보이지만 실제로는
+  // 「이 창에 안 들어왔다」다. 그래서 넉넉히 읽고 거른 뒤 화면 몫만 남긴다
+  const mineRows = (mine.results ?? [])
+    .filter((o) => !only || trackForJob(o).track === only)
+    .slice(0, DRAWER_SHOWN);
 
   return {
     day,
@@ -197,7 +224,7 @@ export async function state({ env, userId }) {
       tiers: YOURSTORY.CUT_TIERS,
       free_tier: YOURSTORY.FREE_TIER_CUTS,
     },
-    orders: (mine.results ?? []).map(cardOf),
+    orders: mineRows.map(cardOf),
   };
 }
 

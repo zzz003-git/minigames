@@ -1758,6 +1758,13 @@ export const YS_ENTRY_TEXT = {
     tagline: "당신이 쓴 이야기가, 오늘 웹툰이 됩니다",
     badge: null,
     pick_question: "어떤 그림체로 그릴까요?",
+    // 공통 글쓰기 화면의 다음 단계 안내 (지시서 15 §0 표). 이 두 줄이 화면에
+    // 박혀 있어서 **YS1 문으로 들어가도 「배우 고르기」가 떴다** — 공통 화면이
+    // 트랙을 모르면 먼저 들어온 트랙의 어휘가 두 문 모두에 남는다
+    next_label: "그림체 고르기 →",
+    next_note: "다음 화면에서 그림체를 고르면 접수돼요",
+    // 선반(배우별 모아 보기)은 YS2 축의 장치다. `null` 이면 화면이 그 버튼을 띄우지 않는다
+    shelf_label: null,
   },
   ys2: {
     icon: "🎭",
@@ -1779,6 +1786,10 @@ export const YS_ENTRY_TEXT = {
     // 소개 한 줄이 오기 전까지 이 타일이 무엇인지 말해 주는 것은 이 배지뿐이다
     badge: "배우 캐스팅 오픈",
     pick_question: YS_CAST_TEXT.pick_question,
+    next_label: "배우 고르기 →",
+    next_note: "다음 화면에서 배우를 고르면 접수돼요",
+    // 화면에 박혀 있던 문구를 그대로 옮겨 온 것이다 (새로 짓지 않았다)
+    shelf_label: "배우별로 모아 보기 →",
   },
 };
 

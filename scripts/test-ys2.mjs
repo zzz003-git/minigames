@@ -186,7 +186,13 @@ console.log("\n⑤ 나의 기록들 (선반 = 배우)");
 const sh = (await call("GET", "/api/ys/shelves")).data;
 const shelf = sh?.shelves?.find((s) => s.actor_id === "C08");
 ok(Boolean(shelf), "화자 배우의 선반이 생긴다", cut(sh?.shelves?.map((s) => s.actor_id)));
-ok(shelf?.works?.length === 1, "작품이 하나여도 선반은 보인다");
+// ✍✍ **개수를 세지 않는다** (09-03 등재 규칙). 이 자리가 지키는 규칙은
+// 「작품이 하나뿐이어도 선반이 선다」— 최소 개수 문턱이 없다는 것이지,
+// 정확히 한 건이라는 뜻이 아니다. 개수로 재면 같은 지갑으로 두 번만 돌려도
+// 깨지고, 그러면 시연이 결함이 아닌 것을 결함이라 부른다
+ok((shelf?.works?.length ?? 0) >= 1 && shelf.works.some((w) => w.id === id),
+   "작품이 하나여도 선반은 보인다 (문턱 없음 · 방금 만든 작품이 그 선반에 있다)",
+   `${shelf?.works?.length}건`);
 ok(shelf?.can_reorder === true, "「이 배우와 또 만들기」가 열린다");
 
 // ── ⑥ YS1 회귀 — 맞춤 인물은 기존 방식 그대로 ────────────────────────
@@ -235,6 +241,65 @@ ok("price_krw" in (e1 ?? {}) && e1?.price_krw === e2?.price_krw,
    "가격 자리가 두 트랙에 다 있고 값은 같다 (결정 19)", `${e1?.price_krw} / ${e2?.price_krw}`);
 
 // ── 정리 ─────────────────────────────────────────────────────────────
+// ✍✍ ⑧ 두 문 안 — 공통 화면이 트랙을 안다 (지시서 15)
+console.log("\n⑧ 문 안 — 공통 화면이 트랙을 안다");
+
+const s1 = (await call("GET", "/api/ys/state?t=ys1")).data;
+const s2 = (await call("GET", "/api/ys/state?t=ys2")).data;
+const en = (d, t) => d?.entries?.find((e) => e.track === t);
+const m1 = en(s1, "ys1");
+const m2 = en(s2, "ys2");
+
+ok(Boolean(m1?.next_label && m2?.next_label) && m1.next_label !== m2.next_label,
+   "다음 단계 문구가 두 트랙에서 다르다", `${m1?.next_label} / ${m2?.next_label}`);
+// **어휘가 트랙과 맞는가** — 서로 다르기만 보면 뒤바뀐 것도 통과한다
+ok(!/배우|캐스팅|연기/.test(`${m1?.next_label} ${m1?.next_note}`),
+   "YS1 문구에 YS2 어휘가 없다", `${m1?.next_label} · ${m1?.next_note}`);
+ok(!/화풍|그림체/.test(`${m2?.next_label} ${m2?.next_note}`),
+   "YS2 문구에 YS1 어휘가 없다", `${m2?.next_label} · ${m2?.next_note}`);
+ok(Boolean(m1?.name && m2?.name) && m1.name !== m2.name && m1.icon !== m2.icon,
+   "홈 헤더 이름·아이콘이 트랙별로 다르다", `${m1?.icon}${m1?.name} / ${m2?.icon}${m2?.name}`);
+ok(m1?.shelf_label == null && Boolean(m2?.shelf_label),
+   "선반 버튼 문안은 YS2 에만 있다 (YS1 문에서는 버튼이 서지 않는다)",
+   `${m1?.shelf_label} / ${m2?.shelf_label}`);
+
+// **서랍은 서버가 거른다.** 화면에서 숨긴 것은 여전히 내려온 것이다
+const trOf = (d) => [...new Set((d?.orders ?? []).map((o) => o.track))];
+ok((s1.orders ?? []).length > 0 && trOf(s1).every((t) => t === "ys1"),
+   "YS1 문의 서랍에 ys2 주문이 섞이지 않는다", `트랙 ${cut(trOf(s1))} · ${s1.orders?.length}건`);
+ok((s2.orders ?? []).length > 0 && trOf(s2).every((t) => t === "ys2"),
+   "YS2 문의 서랍에 ys1 주문이 섞이지 않는다", `트랙 ${cut(trOf(s2))} · ${s2.orders?.length}건`);
+// 문 밖(허브)은 두 트랙을 다 봐야 타일마다 「만드는 중」을 띄운다
+const sAll = (await call("GET", "/api/ys/state")).data;
+ok((sAll.orders ?? []).length >= (s1.orders ?? []).length + (s2.orders ?? []).length,
+   "문 밖(허브)에서는 두 트랙이 다 보인다", `${sAll.orders?.length}건`);
+
+// ✍✍ ⑨ ★ 기계 게이트 — 공통 화면에 트랙 어휘가 박혀 있으면 실패 (지시서 15 §1-6)
+//
+// 오늘 네 자리가 사람 셋(개발·기획·시연)을 모두 통과했다. 사람의 기억으로는 못
+// 막는다. 새 문구를 공통 화면에 박는 순간 여기서 걸린다.
+//
+// **검사 대상은 `index.html` 원문**이다 — 화면이 「지어낸」 문자열은 거기 있다.
+// API 가 내려보내는 문안은 트랙별이라 이 검사의 대상이 아니다.
+console.log("\n⑨ 공통 화면에 트랙 어휘가 박혀 있지 않다 (기계 게이트)");
+{
+  const html = readFileSync(join(process.cwd(), "public/webtoon/yourstory/index.html"), "utf8");
+  const SHARED = ["home", "write", "viewer", "making", "notice"];
+  const VOCAB = /배우|캐스팅|연기|화풍|그림체/;
+  const secRe = /<section[^>]*data-screen="([a-z0-9-]+)"[^>]*>([\s\S]*?)<\/section>/g;
+  const bad = [];
+  let sec;
+  while ((sec = secRe.exec(html))) {
+    const [, name, inner] = sec;
+    if (!SHARED.includes(name)) continue; // ys2·style 전용 절은 대상이 아니다
+    for (const line of inner.replace(/<!--[\s\S]*?-->/g, "").split("\n")) {
+      if (VOCAB.test(line)) bad.push(`[${name}] ${line.trim().slice(0, 60)}`);
+    }
+  }
+  ok(bad.length === 0,
+     "공통 화면(home·write·viewer·making·notice)에 트랙 어휘가 없다", cut(bad));
+}
+
 console.log(`\n${"=".repeat(62)}`);
 console.log(`통과 ${pass} · 실패 ${fails.length}`);
 for (const f of fails) console.log(`  x ${f}`);

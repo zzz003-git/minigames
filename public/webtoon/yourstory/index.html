@@ -23,9 +23,11 @@
     <!-- ① 홈 -->
     <section class="screen is-active" data-screen="home">
       <header class="ys__head">
-        <span class="ys__icon" aria-hidden="true">✍</span>
+        <!-- 이름·아이콘은 들어온 문이 정한다 (지시서 15 §0-2). 화면에 박아 두면
+             YS2 문으로 들어가도 「✍ 너의스토리」가 뜬다 -->
+        <span class="ys__icon" id="homeIcon" aria-hidden="true"></span>
         <span class="ys__headtext">
-          <b>너의스토리</b>
+          <b id="homeName"></b>
           <span id="homeDate">—</span>
         </span>
         <span class="ys__wallet mono" id="walletBadge"></span>
@@ -59,9 +61,7 @@
       <div id="drawerSlot" hidden>
         <h2 class="ys__label">내 서랍 <small id="drawerNote"></small></h2>
         <div class="ys__grid" id="drawerGrid"></div>
-        <button type="button" class="ys__link ys2__shelflink" id="shelvesBtn" hidden>
-          배우별로 모아 보기 →
-        </button>
+        <button type="button" class="ys__link ys2__shelflink" id="shelvesBtn" hidden></button>
       </div>
 
       <p class="ys__legal">
@@ -109,10 +109,11 @@
       <label class="sr-only" for="titleInput">제목</label>
       <input id="titleInput" class="ys__input" placeholder="제목 (선택)" maxlength="60">
 
-      <button type="button" class="ys__btn ys__btn--pri ys__btn--big ys__submit" id="submitBtn">
-        배우 고르기 →
-      </button>
-      <p class="ys__hint ys__hint--center" id="submitNote">다음 화면에서 배우를 고르면 접수돼요</p>
+      <!-- 다음 단계 문구는 **문이 정한다** (지시서 15 §1-1). 화면에 기본값을 두지
+           않는다 — 못 받으면 버튼이 비활성으로 남아 그 사실이 드러나야 한다 -->
+      <button type="button" class="ys__btn ys__btn--pri ys__btn--big ys__submit" id="submitBtn"
+              disabled></button>
+      <p class="ys__hint ys__hint--center" id="submitNote"></p>
     </section>
 
     <!-- ②-2 배우 선택 (YS2 · 설계서 §1-[2]) — 이 트랙의 유일한 추가 입력 -->
