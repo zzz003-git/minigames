@@ -205,6 +205,11 @@ const ROUTES = {
   // 주문 ID 는 쿼리·본문으로 넘긴다 — 경로에 넣으려고 라우터를 바꾸는 것보다
   // 경로 하나를 양보하는 편이 싸다.
   "GET /api/ys/state": yourstory.state,
+  // ✍✍ YS2 — 배우 카드 12장과 화면 문안 (지갑이 없어도 볼 수 있다) ·
+  // 배우별 선반. 캐스팅 보드는 `GET /api/ys/order` 응답에 실린다 —
+  // 제작 중 화면과 뷰어가 같은 주소에서 같은 폴링으로 받아야 해서다
+  "GET /api/ys/actors": yourstory.actors,
+  "GET /api/ys/shelves": yourstory.shelves,
   "POST /api/ys/invite": yourstory.invite,
   "POST /api/ys/orders": yourstory.createOrder,
   "GET /api/ys/order": yourstory.order,
@@ -213,6 +218,7 @@ const ROUTES = {
   // PC 워커 브리지 — 사람이 아니라 워커가 부른다(`x-ys-worker` 시크릿)
   "POST /ys/w/claim": ysWorker.claim,
   "POST /ys/w/progress": ysWorker.progress,
+  "POST /ys/w/cast": ysWorker.cast,
   "POST /ys/w/charge": ysWorker.charge,
   "POST /ys/w/asset": ysWorker.asset,
   "POST /ys/w/done": ysWorker.done,

@@ -19,9 +19,22 @@
  */
 
 import { resolveUser } from "../lib/user.js";
+import { YS_ORDER_ID_RE } from "../lib/config.js";
 
-/** `/ys/a/<주문ID>/<파일명>` */
-const PATH = /^\/ys\/a\/(YS-\d{8}-\d{4})\/([a-z0-9_]+\.(?:png|jpg|webp))$/;
+/**
+ * `/ys/a/<주문ID>/<파일명>`
+ *
+ * ✍✍ **접두는 트랙마다 다르다** (`YS-` · `YS2-`). 여기가 한 접두로 박혀 있으면
+ * YS2 주문의 그림은 주소가 맞는데도 **404** 가 된다 — 조용히 새는 것이 아니라
+ * 고객 화면에서 빈 칸이 되는 자리다.
+ *
+ * ID 부분은 **`YS_ORDER_ID_RE` 를 그대로 떼어 쓴다** — 접두 목록에서 패턴을 여기서
+ * 또 짜면 그 순간 「같은 규칙을 두 곳에서 재는」 자리가 된다(원칙 21).
+ */
+const PATH = new RegExp(
+  `^/ys/a/(${YS_ORDER_ID_RE.source.replace(/^\^/, "").replace(/\$$/, "")})` +
+    String.raw`/([a-z0-9_]+\.(?:png|jpg|webp))$`,
+);
 
 export async function ysAsset(request, env) {
   const url = new URL(request.url);

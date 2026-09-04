@@ -59,6 +59,9 @@
       <div id="drawerSlot" hidden>
         <h2 class="ys__label">내 서랍 <small id="drawerNote"></small></h2>
         <div class="ys__grid" id="drawerGrid"></div>
+        <button type="button" class="ys__link ys2__shelflink" id="shelvesBtn" hidden>
+          배우별로 모아 보기 →
+        </button>
       </div>
 
       <p class="ys__legal">
@@ -91,10 +94,6 @@
         줄어든 만큼은 컷 크레딧으로 돌려드려요.
       </p>
 
-      <h3 class="ys__field">화풍</h3>
-      <div class="ys__chips" id="styleChips" role="group" aria-label="화풍 고르기"></div>
-      <p class="ys__hint">화풍은 그림체만 정해요. 연출과 대사는 이야기의 분위기가 정합니다.</p>
-
       <h3 class="ys__field">이름 표기</h3>
       <div class="ys__opts" id="bylineOpts" role="group" aria-label="이름 표기 고르기">
         <button type="button" class="ys__opt is-on" data-byline="anon">익명</button>
@@ -111,9 +110,47 @@
       <input id="titleInput" class="ys__input" placeholder="제목 (선택)" maxlength="60">
 
       <button type="button" class="ys__btn ys__btn--pri ys__btn--big ys__submit" id="submitBtn">
-        웹툰으로 만들기
+        배우 고르기 →
       </button>
-      <p class="ys__hint ys__hint--center" id="submitNote">티켓 1장이 사용돼요 · AI로 그립니다</p>
+      <p class="ys__hint ys__hint--center" id="submitNote">다음 화면에서 배우를 고르면 접수돼요</p>
+    </section>
+
+    <!-- ②-2 배우 선택 (YS2 · 설계서 §1-[2]) — 이 트랙의 유일한 추가 입력 -->
+    <section class="screen ys2" data-screen="actors">
+      <header class="ys__bar">
+        <button type="button" class="ys__back" id="actorsBack" aria-label="글쓰기로 돌아가기">‹</button>
+        <b id="actorQuestion">—</b>
+        <span class="mono" id="actorWallet"></span>
+      </header>
+
+      <div class="ys2__cards" id="actorCards" role="radiogroup" aria-label="배우 고르기"></div>
+
+      <!-- 「이야기 맞춤 인물」을 고른 경우에만 — 기존 방식은 화풍을 고른다 -->
+      <div id="styleSlot" hidden>
+        <h3 class="ys__field">화풍</h3>
+        <div class="ys__chips" id="styleChips" role="group" aria-label="화풍 고르기"></div>
+        <p class="ys__hint">화풍은 그림체만 정해요. 연출과 대사는 이야기의 분위기가 정합니다.</p>
+      </div>
+
+      <p class="ys2__note" id="actorNote">—</p>
+
+      <button type="button" class="ys__btn ys__btn--pri ys__btn--big ys__submit" id="castSubmit">
+        이 배우로 만들기
+      </button>
+      <p class="ys__hint ys__hint--center">티켓 1장이 사용돼요 · AI로 그립니다</p>
+    </section>
+
+    <!-- ⑥ 나의 기록들 (YS2 · 설계서 §1-[7]) — 선반은 배우다 -->
+    <section class="screen ys2" data-screen="shelves">
+      <header class="ys__bar">
+        <button type="button" class="ys__back" id="shelvesBack" aria-label="너의스토리로 돌아가기">‹</button>
+        <b>나의 기록들</b>
+        <span class="mono" id="shelfCount"></span>
+      </header>
+      <div id="shelfHost"></div>
+      <p class="ys__hint ys__hint--center" id="shelfEmpty" hidden>
+        아직 배우와 만든 이야기가 없어요.
+      </p>
     </section>
 
     <!-- ③ 제작 중 -->
@@ -155,6 +192,9 @@
         <b id="diagLabel">—</b>
         <span id="diagWhy"></span>
       </div>
+
+      <!-- 캐스팅 보드 — 결과물 앞 1장 (설계서 §1-[5]) -->
+      <div class="ys2__board" id="castBoard" hidden></div>
 
       <div class="ys__cuts" id="cutHost"></div>
 

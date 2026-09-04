@@ -115,7 +115,10 @@ function renderYsRow() {
   row.hidden = false;
   row.href = making ? `yourstory/#/o/${making.id}` : "yourstory/";
   clear(row).append(
-    el("h3", {}, "✍ 너의스토리"),
+    // ✍✍ **타일은 하나 그대로다** — 새 타일을 만들지 않고 배지 한 개만 붙인다
+    // (프런트 설계서 §1-0 · 원칙 5 「같은 서비스의 두 번째 문」). 갈림은 이 허브가
+    // 아니라 배우 선택 화면의 카드 한 장이다
+    el("h3", {}, "✍ 너의스토리", el("span", { class: "wt__ysnew" }, "배우 캐스팅 오픈")),
     el(
       "p",
       {},

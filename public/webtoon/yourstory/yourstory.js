@@ -34,9 +34,13 @@ const state = {
   limits: { min_chars: 100, max_chars: 6000, chars_per_cut: 26, tiers: [8, 12, 16], free_tier: 8 },
   orders: [],
   day: null,
+  // ✍✍ 배우 카드 12장과 화면 문안. **화면이 문구를 짓지 않는다** — 서버의 정본
+  // 사본이고(설계서 §2·§4), 못 받으면 배우 화면을 열지 않는다
+  actors: null,
+  steps_ys2: [],
   // 에디터 입력값 — 화면을 옮겨도 살아 있어야 한다. 빈 입력창이 이 서비스의
   // 최대 이탈 지점인데(plan §5-2), 잘못 눌러 날리는 것만큼 확실한 이탈은 없다
-  draft: { cuts: 8, style: "auto", byline: "anon" },
+  draft: { cuts: 8, style: "auto", byline: "anon", actor: "auto" },
 };
 
 let timer = null;
@@ -54,8 +58,23 @@ document.addEventListener("visibilitychange", () => {
 
 async function boot() {
   bindEditor();
-  await refresh();
+  await Promise.all([refresh(), loadActors()]);
   route();
+}
+
+/**
+ * 배우 카드와 화면 문안을 받아 둔다 (설계서 §2·§4).
+ *
+ * **못 받으면 배우 화면을 열지 않는다.** 문구를 화면이 지어내면 「무엇을
+ * 약속했는가」가 배포본마다 달라지는데, 그건 정직 고지에서 사고다 — 차라리
+ * 한 화면을 못 여는 편이 낫다.
+ */
+async function loadActors() {
+  try {
+    state.actors = await apiGet("/api/ys/actors");
+  } catch {
+    state.actors = null;
+  }
 }
 
 async function refresh() {
@@ -66,6 +85,7 @@ async function refresh() {
       service: d.service,
       styles: d.styles ?? [],
       steps: d.steps ?? [],
+      steps_ys2: d.steps_ys2 ?? [],
       limits: d.limits ?? state.limits,
       orders: d.orders ?? [],
       day: d.day,
@@ -82,9 +102,13 @@ async function refresh() {
 
 function route() {
   stopPolling();
-  const m = location.hash.match(/^#\/o\/(YS-\d{8}-\d{4})/);
+  // ✍✍ **접두 두 가지를 다 읽는다** — `YS2-…` 를 못 읽으면 YS2 주문은 주소로
+  // 도착할 수 없고, 그러면 완성 화면에 영영 못 들어간다 (트랙 정본 §1)
+  const m = location.hash.match(/^#\/o\/(YS2?-\d{8}-\d{4})/);
   if (m) return openOrder(m[1]);
   if (location.hash === "#/write") return renderWrite();
+  if (location.hash === "#/actors") return renderActors();
+  if (location.hash === "#/shelves") return renderShelves();
   renderHome();
 }
 
@@ -144,6 +168,10 @@ function renderHome() {
 
   const grid = clear($("#drawerGrid"));
   live.forEach((o, i) => grid.append(orderCard(o, live.length - i)));
+
+  // 선반은 **배우와 만든 작품이 있을 때만** 보인다. 빈 선반을 만들지 않는다
+  // (설계서 §1-[7]) — 링크부터 없으면 빈 화면에 도착할 일이 없다
+  $("#shelvesBtn").hidden = !live.some((o) => o.track === "ys2" && o.status === "done");
 }
 
 /** 날짜 문자열을 정수로 — 같은 날이면 같은 문장이 나오게 하는 것이 전부다 */
@@ -241,7 +269,16 @@ function bindEditor() {
     });
   }
 
-  $("#submitBtn").addEventListener("click", submit);
+  // ✍✍ 에디터의 CTA 는 **접수가 아니라 배우 선택으로** 간다 (설계서 §1 흐름).
+  // 글은 화면 사이를 옮겨도 살아 있어야 해서 여기서 남긴다
+  $("#submitBtn").addEventListener("click", () => {
+    keepText($("#storyText").value.trim());
+    go("#/actors");
+  });
+  $("#actorsBack").addEventListener("click", () => go("#/write"));
+  $("#shelvesBack").addEventListener("click", () => go("#/"));
+  $("#shelvesBtn").addEventListener("click", () => go("#/shelves"));
+  $("#castSubmit").addEventListener("click", submit);
 }
 
 function renderWrite() {
@@ -269,23 +306,174 @@ function renderWrite() {
     );
   }
 
+  updateCounter();
+}
+
+// ══════════════════════════════════════════════════════════════
+// ✍✍ ②-2 배우 선택 (YS2 · 설계서 §1-[2] · §2)
+// ══════════════════════════════════════════════════════════════
+
+/**
+ * 카드 12장. **1탭이 전부다** — 상세 페이지도, 확인 팝업도, 추가 질문도 없다.
+ *
+ * 안 고르고 들어와도 첫 카드(AI 추천)가 선택된 상태라 그대로 만들 수 있다.
+ * 이 트랙이 파는 것은 「최소 입력 → 감정 증폭」이라, 여기서 입력을 하나라도
+ * 더 늘리면 파는 것 자체가 바뀐다.
+ */
+function renderActors() {
+  if (!state.wallet) return go("#/");
+  if (!state.actors) {
+    // 문안을 못 받았다. **화면이 지어내지 않는다**(설계서 §4) — 글쓰기로 돌린다
+    toast("배우 목록을 불러오지 못했어요", "error");
+    return go("#/write");
+  }
+  showScreen("actors");
+  const { cards, texts } = state.actors;
+  $("#actorQuestion").textContent = texts.pick_question;
+  $("#actorNote").textContent = texts.pick_note;
+  $("#actorWallet").textContent = `TICKET ${state.wallet.tickets}`;
+
+  const host = clear($("#actorCards"));
+  for (const c of cards) host.append(actorCard(c));
+
+  // 「이야기 맞춤 인물」은 기존 방식이라 **화풍을 고른다** — YS2 는 전용 화풍
+  // 1종이라 고를 것이 없고, 그 자리에 배우 선택이 들어온 것이다(설계서 §1-[1])
+  const custom = state.draft.actor === "custom";
+  $("#styleSlot").hidden = !custom;
+  if (custom) renderStyleChips();
+
+  const picked = cards.find((c) => c.id === state.draft.actor);
+  $("#castSubmit").textContent =
+    state.draft.actor === "auto" ? "AI 추천으로 만들기"
+      : custom ? "맞춤 인물로 만들기"
+        : `${picked?.name ?? "이 배우"}${ro(picked?.name)} 만들기`;
+}
+
+/**
+ * 「…으로/…로」 — 이름 뒤에 붙는 조사.
+ *
+ * 배우 이름이 열 개라 **화면이 문장을 만든다.** 규칙 없이 「로」로 고정하면
+ * 「다온로 만들기」가 나가고, 그건 배우에게 이름을 붙여 파는 트랙에서 특히 나쁘다.
+ * 받침이 없거나 ㄹ 받침이면 「로」, 그 밖에는 「으로」다.
+ */
+function ro(name) {
+  const last = (name ?? "").trim().slice(-1);
+  const code = last.charCodeAt(0) - 0xac00;
+  if (!(code >= 0 && code <= 11171)) return "로";   // 한글이 아니면 건드리지 않는다
+  const jong = code % 28;
+  return jong === 0 || jong === 8 ? "로" : "으로";
+}
+
+/** 카드 한 장 — 4요소뿐이다. 결점·어울리는 이야기는 싣지 않는다 (설계서 §2) */
+function actorCard(c) {
+  const on = state.draft.actor === c.id;
+  const face = c.card_image
+    ? el("img", { class: "ys2__face", src: c.card_image, alt: "", width: 360, height: 360,
+                  loading: "lazy", decoding: "async" })
+    // 표본 승인 전 캐릭터는 **회색 박스 와이어**다 (F1 §3). 승인되면 그림만 들어온다
+    : el("span", { class: `ys2__face ys2__face--wire ${c.kind !== "actor" ? "is-symbol" : ""}` },
+         c.symbol ?? "준비 중");
+
+  return el(
+    "button",
+    {
+      class: `ys2__card ${on ? "is-on" : ""}`,
+      type: "button",
+      role: "radio",
+      "aria-checked": on ? "true" : "false",
+      onclick: () => { state.draft.actor = c.id; renderActors(); },
+    },
+    face,
+    el("span", { class: "ys2__name" }, c.name),
+    el("span", { class: "ys2__line" }, c.personality_line),
+    el("span", { class: "ys2__quirk" }, c.quirk_line || ""),
+    on ? el("span", { class: "ys2__check", "aria-hidden": "true" }, "✓") : null,
+  );
+}
+
+function renderStyleChips() {
   const chips = clear($("#styleChips"));
-  for (const s of state.styles) {
+  for (const st of state.styles) {
     chips.append(
       el(
         "button",
         {
-          class: `ys__chip ${state.draft.style === s.id ? "is-on" : ""}`,
+          class: `ys__chip ${state.draft.style === st.id ? "is-on" : ""}`,
           type: "button",
-          onclick: () => { state.draft.style = s.id; renderWrite(); },
+          onclick: () => { state.draft.style = st.id; renderActors(); },
         },
-        el("span", { class: "ys__chipname" }, `${s.icon} ${s.label}`),
-        el("span", { class: "ys__chiphint" }, s.hint),
+        el("span", { class: "ys__chipname" }, `${st.icon} ${st.label}`),
+        el("span", { class: "ys__chiphint" }, st.hint),
       ),
     );
   }
+}
 
-  updateCounter();
+// ══════════════════════════════════════════════════════════════
+// ✍✍ ⑥ 나의 기록들 — 선반은 배우다 (설계서 §1-[7])
+// ══════════════════════════════════════════════════════════════
+
+async function renderShelves() {
+  showScreen("shelves");
+  const host = clear($("#shelfHost"));
+  let d;
+  try {
+    d = await apiGet("/api/ys/shelves");
+  } catch (err) {
+    toast(err.message, "error");
+    return go("#/");
+  }
+  const shelves = d.shelves ?? [];
+  $("#shelfEmpty").hidden = shelves.length > 0;
+  $("#shelfCount").textContent = shelves.length ? `${shelves.length}명` : "";
+
+  for (const sh of shelves) {
+    const strip = el("div", { class: "ys2__strip" });
+    for (const wk of sh.works) {
+      strip.append(
+        el(
+          "button",
+          { class: "ys2__work", type: "button", onclick: () => go(`#/o/${wk.id}`) },
+          el("span", { class: "ys2__worktitle" }, wk.title || "제목 없는 이야기"),
+          el("span", { class: "ys2__worksub" },
+             [wk.tone_label, `${wk.cuts}컷`].filter(Boolean).join(" · ")),
+        ),
+      );
+    }
+    host.append(
+      el(
+        "section",
+        { class: "ys2__shelf" },
+        el(
+          "header",
+          { class: "ys2__shelfhead" },
+          sh.card_image
+            ? el("img", { class: "ys2__shelfface", src: sh.card_image, alt: "",
+                          width: 360, height: 360, loading: "lazy" })
+            // 그림이 아직 없는 배우와 **새 얼굴 선반**이 같은 자리를 쓴다 —
+            // 보드의 폴백 행과 같은 표식으로 둔다(두 화면이 다른 기호를 쓰면
+            // 같은 뜻인지 알 수 없다)
+            : el("span", { class: "ys2__shelfface ys2__face--wire" }, "◍"),
+          el("b", {}, sh.name),
+          // **작품이 하나여도 선반은 보인다** — 「다온의 선반 · 1편」
+          el("span", { class: "ys2__shelfn mono" }, `${sh.works.length}편`),
+        ),
+        strip,
+        // 재이용 회로의 최단 동선 — 그 배우가 선선택된 에디터로 간다
+        sh.can_reorder
+          ? el(
+              "button",
+              {
+                class: "ys__link ys2__again",
+                type: "button",
+                onclick: () => { state.draft.actor = sh.actor_id; go("#/write"); },
+              },
+              d.texts.cta,
+            )
+          : null,
+      ),
+    );
+  }
 }
 
 /**
@@ -321,7 +509,7 @@ const takeText = () => { try { return localStorage.getItem(LAST_TEXT) || ""; } c
 const dropText = () => { try { localStorage.removeItem(LAST_TEXT); } catch {} };
 
 async function submit() {
-  const btn = $("#submitBtn");
+  const btn = $("#castSubmit");
   btn.disabled = true;
   keepText($("#storyText").value.trim());
   try {
@@ -329,6 +517,8 @@ async function submit() {
       text: $("#storyText").value.trim(),
       cuts: state.draft.cuts,
       style: state.draft.style,
+      // ✍✍ 트랙을 가르는 유일한 값 (설계서 §1-0 · §3)
+      actor_choice: state.draft.actor,
       byline: state.draft.byline,
       nickname: $("#nickInput").value.trim(),
       title: $("#titleInput").value.trim(),
@@ -378,8 +568,11 @@ function renderMaking(o) {
     o.title || (o.worker_ok === false ? "예약해 두었어요" : "이야기를 웹툰으로 만들고 있어요");
 
   const list = clear($("#stepList"));
-  const now = state.steps.findIndex((s) => s.key === o.step);
-  state.steps.forEach((s, i) => {
+  // ✍✍ **도장은 트랙마다 다르다** — YS2 에는 「캐스팅」 한 칸이 더 있다.
+  // 같은 다섯 칸을 쓰면 캐스팅이 도는 동안 「분위기」에서 멎은 것으로 보인다
+  const steps = (o.track === "ys2" && state.steps_ys2.length) ? state.steps_ys2 : state.steps;
+  const now = steps.findIndex((s) => s.key === o.step);
+  steps.forEach((s, i) => {
     list.append(
       el(
         "li",
@@ -440,6 +633,8 @@ function renderViewer(o) {
    * **자리 높이를 미리 잡는다.** 그림이 들어오면서 아래가 밀리면 읽던 자리를
    * 잃는다. `width`·`height` 속성을 주면 브라우저가 종횡비로 자리를 잡아 준다.
    */
+  renderBoard(o);
+
   const host = clear($("#cutHost"));
   for (const [i, p] of (o.parts ?? []).entries()) {
     host.append(
@@ -489,6 +684,60 @@ function renderViewer(o) {
       toast(err.message, "error");
     }
   };
+}
+
+/**
+ * ✍✍ 캐스팅 보드 — 결과물 앞 1장 (설계서 §1-[5]).
+ *
+ * **읽는 데 5초를 넘지 않게** 배역 행을 다섯까지만 편다. 여섯 이상이면 그 자체가
+ * 캐스팅 설계를 의심할 신호이므로 **숨기지 않고 「몇 명 더」를 적는다** — 조용히
+ * 자르면 그 신호가 사라진다.
+ *
+ * 폴백·게이트 대체 문안은 **서버가 준 정본 그대로** 쓴다. 화면이 상황에 맞춰
+ * 고쳐 쓰면 「무엇을 약속했는가」가 배포본마다 달라진다(설계서 §4).
+ */
+function renderBoard(o) {
+  const box = $("#castBoard");
+  const board = o.casting;
+  box.hidden = !board?.rows?.length;
+  if (box.hidden) return;
+
+  const texts = state.actors?.texts ?? {};
+  const max = state.actors?.board_max_rows ?? 5;
+  const shown = board.rows.slice(0, max);
+  const rest = board.rows.length - shown.length;
+
+  // ⚠ **`null` 을 그대로 `append` 하지 않는다.** `el()` 은 null 자식을 건너뛰지만
+  // `Node.append()` 는 「null」이라는 **글자를 찍는다** — 화면에 실제로 그렇게 나왔다
+  const parts = [
+    el("div", { class: "ys2__boardkey mono" }, texts.board_label ?? "오늘의 캐스팅"),
+    ...shown.map((r) =>
+      el(
+        "div",
+        { class: `ys2__row ${r.is_fallback ? "is-fallback" : ""}` },
+        r.card_image
+          ? el("img", { class: "ys2__rowface", src: r.card_image, alt: "",
+                        width: 360, height: 360, loading: "lazy" })
+          // 폴백은 **회색 실루엣 + 정본 한 줄**이다. 다른 설명을 붙이지 않는다
+          : el("span", { class: "ys2__rowface ys2__face--wire" }, "◍"),
+        el(
+          "span",
+          { class: "ys2__rowbody" },
+          el("span", { class: "ys2__role" }, r.role_label),
+          el("span", { class: "ys2__actor" },
+             r.is_fallback ? (texts.fallback ?? "") : (r.actor_name ?? "")),
+        ),
+        r.is_customer_pick
+          ? el("span", { class: "ys2__pick" }, texts.customer_pick ?? "내가 고른 배우")
+          : null,
+      ),
+    ),
+    rest > 0 ? el("p", { class: "ys2__boardmore" }, `그 밖에 ${rest}명이 더 나와요`) : null,
+    // 게이트가 고객 선택을 대체했으면 **조용히 넘어가지 않는다** (F1 원칙 6)
+    board.gate_notice ? el("p", { class: "ys2__gate" }, board.gate_notice) : null,
+    el("p", { class: "ys2__boardtail" }, texts.board_tail ?? ""),
+  ];
+  clear(box).append(...parts.filter(Boolean));
 }
 
 /** 분할본 한 장의 대체 텍스트 — 그 장에 들어간 컷들의 대사·캡션을 잇는다 */

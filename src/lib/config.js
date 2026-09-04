@@ -1452,6 +1452,24 @@ export const YOURSTORY = {
     { key: "finish", label: "마무리" },
   ],
 
+  /**
+   * ✍✍ **YS2 는 도장이 하나 더 있다** — 「캐스팅」(프런트 설계서 §1-[4]).
+   *
+   * 두 트랙이 같은 다섯 칸을 쓰면 YS2 고객은 10~40분 중 캐스팅이 도는 구간을
+   * 「분위기」 칸에서 멎은 것으로 본다. 반대로 다섯 칸에 그냥 하나를 더하면
+   * YS1 고객이 **영원히 안 켜지는 도장**을 보게 된다 — 그래서 트랙별로 가른다.
+   *
+   * 키는 워커가 올려 보내는 `step` 값이고, 검사는 아래 `STEP_KEYS` 하나가 한다.
+   */
+  STEPS_YS2: [
+    { key: "intake", label: "이야기" },
+    { key: "tone", label: "분위기" },
+    { key: "cast", label: "캐스팅" },
+    { key: "beats", label: "컷나눔" },
+    { key: "draw", label: "그림" },
+    { key: "finish", label: "마무리" },
+  ],
+
   // 대기열 상태 표시 (Y9 §2). 워커 1대 순차라 이 수치가 곧 체감 대기시간이다
   QUEUE_BUSY_FROM: 6,
   QUEUE_FULL_FROM: 16,
@@ -1490,6 +1508,35 @@ export const YOURSTORY = {
   MONTHLY_BUDGET_KRW: 300000,
 
   /**
+   * ✍✍ 트랙 (`system/yourstory2_track_separation.md` §1 정본).
+   *
+   * ── 접두를 왜 나누는가 ────────────────────────────────────────────────
+   * 주문 ID 가 곧 폴더 이름이라(PC 쪽 `orders/`) 두 트랙이 같은 접두를 쓰면
+   * 산출물이 섞인다. 그래서 YS2 는 `YS2-` 다.
+   *
+   * ── ★ 접두를 나누는 순간 위험해지는 것 ────────────────────────────────
+   * 상한을 세는 질의 셋이 전부 `id LIKE 'YS-...'` 였다 — 일일 접수 상한 ·
+   * G3 일일 원가 상한 · 워커 상태판. 접두만 도입하고 이 셋을 안 고치면
+   * **YS2 주문이 어느 상한에도 안 세어져** 하루 원가 상한이 사실상 두 배가 된다.
+   * 그래서 `ID_LIKE` 한 자리를 만들고 세 곳이 **같은 값**을 쓴다(원칙 21) —
+   * 트랙이 하나 더 늘어도 고칠 곳이 한 군데다.
+   */
+  TRACKS: ["ys1", "ys2"],
+  ID_PREFIX: { ys1: "YS", ys2: "YS2" },
+
+  /**
+   * 트랙 판정을 얼마나 엄하게 하는가 (트랙 정본 §2 「단계 적용」).
+   *
+   *   false — 칸이 비어 있으면 **ID 접두로 잇고 감사에 warn** 을 남긴다.
+   *           워커가 아직 `track` 을 보내지 않던 기간의 다리다
+   *   true  — 빈 값도 반려. **워커 배포 후** 이 값을 올린다
+   *
+   * 값이 있는데 모르는 것(`""`·`"YS1"`)은 두 경우 다 반려다 — 빈 값이 결함을
+   * 가린 사고가 이 프로젝트의 반복 유형이다(`PROJECT_GUIDE.md` §2.16).
+   */
+  TRACK_STRICT: false,
+
+  /**
    * 주문 상태 (dev_spec §1.2).
    *
    * **전이는 서버만 한다.** 워커는 보고하고 서버가 옮긴다 — 워커가 직접 상태를
@@ -1511,6 +1558,16 @@ export const YOURSTORY = {
   },
 };
 
+/**
+ * 워커가 올려 보낼 수 있는 스텝 키 전부 (두 트랙 합집합).
+ *
+ * **검사는 한 자리다.** 트랙별 배열을 각각 훑게 두면 YS2 워커가 보낸 `cast` 가
+ * YS1 배열에 없다는 이유로 400 이 되고, 그 실패는 제작 한복판에서 난다.
+ */
+YOURSTORY.STEP_KEYS = [
+  ...new Set([...YOURSTORY.STEPS, ...YOURSTORY.STEPS_YS2].map((s) => s.key)),
+];
+
 /** 아직 끝나지 않은 주문 — 대기열·「만드는 중」의 정의 */
 YOURSTORY.OPEN_STATES = [
   YOURSTORY.ST.QUEUED_BRAIN,
@@ -1528,6 +1585,145 @@ YOURSTORY.WORKING_STATES = [
   YOURSTORY.ST.IMAGE_RUNNING,
   YOURSTORY.ST.COMPOSING,
 ];
+
+/**
+ * ✍ 너의스토리2 — 배우 카드 정본 (프런트 화면 설계서 §2·§3)
+ * ==========================================================================
+ *
+ * ── 왜 서버가 문구를 갖는가 ─────────────────────────────────────────────
+ * 설계서 §2 가 「성격 한 줄·말버릇 한 줄은 캐릭터 설계서 원문 그대로 · 프런트에서
+ * 새로 짓지 않는다」고 못 박았다. 화면이 문구를 가지면 화면마다 조금씩 달라지고,
+ * 그때부터 어느 것이 정본인지 아무도 모른다. **문구는 여기 한 자리에 있다.**
+ *
+ * ── 원본은 PC 저장소에 있다 ─────────────────────────────────────────────
+ * 진짜 정본은 `yourstory/site_design/yourstory2_characters_20260820.md` §1 표이고,
+ * 이 배열은 그 표의 **사본**이다(클라우드에서 그 파일을 읽을 수 없다). 사본은
+ * 반드시 어긋나므로 대조 스크립트를 함께 둔다 — `npm run ys:actors:check`.
+ *
+ * ── 이미지가 있는 배우는 둘뿐이다 ───────────────────────────────────────
+ * `approved: false` 인 여덟은 **회색 박스 와이어**로 그린다(F1 §3). 승인되면
+ * `card_image` 를 채우고 이 값만 true 로 바꾼다 — 화면 구조는 바뀌지 않는다.
+ */
+/**
+ * ✍✍ 주문 ID 검사 한 자리 (트랙 정본 §1).
+ *
+ * ── 접두를 나눌 때 고쳐야 할 곳은 「세는 질의 셋」만이 아니었다 ──────────
+ * ID 를 **정규식으로 검사하는 자리**가 둘 더 있다 — 조판본 업로드(`/ys/w/asset`)와
+ * 결과 그림 서빙(`/ys/a/…`). 둘 다 `^YS-\d{8}-\d{4}$` 로 박혀 있어서, 접두만
+ * 도입하면 **YS2 주문은 그림을 올리지도 보지도 못한다.** 상한 세 곳과 달리 이쪽은
+ * 조용히 새는 것이 아니라 그 자리에서 400·404 로 죽는다.
+ *
+ * 접두 목록에서 **한 번 만들어** 세 곳이 같은 것을 쓴다 — 트랙이 늘어도 고칠 곳은
+ * `ID_PREFIX` 하나다. **긴 접두를 앞에 둔다**: 정규식 교대는 왼쪽부터 보므로
+ * `YS|YS2` 로 두면 되돌아가기에 기대게 된다.
+ */
+export const YS_ORDER_ID_RE = new RegExp(
+  "^(?:" +
+    YOURSTORY.TRACKS.map((t) => YOURSTORY.ID_PREFIX[t])
+      .sort((a, b) => b.length - a.length)
+      .join("|") +
+    ")-\\d{8}-\\d{4}$",
+);
+
+/**
+ * ✍✍ **하루치 주문을 세는 자리는 셋이고, 셋 다 이 함수를 쓴다** (트랙 정본 §1).
+ *
+ * 세 곳 — 일일 접수 상한 · G3 일일 원가 상한 · 워커 상태판 — 이 전부
+ * `id LIKE 'YS-YYYYMMDD-%'` 였다. YS2 가 `YS2-` 접두를 쓰기 시작하는 순간 그 셋은
+ * **YS2 주문을 한 건도 세지 않는다.** 상한이 트랙마다 따로 서서 하루 원가가 최대
+ * 두 배가 되는 길이 그것이고, 정본이 「접두 도입과 이 셋의 수정은 같은 배포에서만」
+ * 이라고 못 박은 이유다.
+ *
+ * SQL 조각과 파라미터를 함께 돌려준다 — 세는 자리마다 패턴을 손으로 적으면
+ * 트랙이 하나 더 늘 때 또 세 곳을 찾아다녀야 한다(원칙 21).
+ */
+export function ysDayIdLike(day) {
+  const ymd = day.replaceAll("-", "");
+  const prefixes = YOURSTORY.TRACKS.map((t) => `${YOURSTORY.ID_PREFIX[t]}-${ymd}-%`);
+  return {
+    sql: `(${prefixes.map(() => "id LIKE ?").join(" OR ")})`,
+    params: prefixes,
+  };
+}
+
+export const YS_ACTORS = [
+  { id: "C01", name: "도도", slot: "초등 남",
+    personality_line: "호기심 대장 — 세상 모든 게 사건",
+    quirk_line: "「진짜예요!」", approved: false },
+  { id: "C02", name: "보미", slot: "초등 여",
+    personality_line: "야무진 참견쟁이 — 어른 말 흉내가 특기",
+    quirk_line: "「그건 그렇게 하는 거 아닌데?」", approved: false },
+  { id: "C03", name: "준", slot: "10대 남",
+    personality_line: "무심한 듯 다정 — 말은 짧고 마음은 길다",
+    quirk_line: "「어.」", approved: false },
+  { id: "C04", name: "새봄", slot: "10대 여",
+    personality_line: "감성 기록러 — 모든 것에 의미를 붙인다",
+    quirk_line: "「오늘은 하늘도 편들어 줬다」", approved: false },
+  { id: "C05", name: "호진", slot: "청년 남",
+    personality_line: "능청스러운 긍정 — 셀프디스로 웃긴다",
+    quirk_line: "「뭐 어떻게든 되겠죠」", approved: false },
+  { id: "C06", name: "다온", slot: "청년 여",
+    personality_line: "씩씩한 현실주의자 — 할 말은 한다",
+    quirk_line: "「그건 아니죠.」", approved: true,
+    card_image: "/webtoon/yourstory/actors/c06.png" },
+  { id: "C07", name: "강석", slot: "중년 남",
+    personality_line: "무뚝뚝한 속정 — 말끝이 짧고 침묵이 길다",
+    quirk_line: "「…그래.」", approved: true,
+    card_image: "/webtoon/yourstory/actors/c07.png" },
+  { id: "C08", name: "미란", slot: "중년 여",
+    personality_line: "유쾌한 살림 9단 — 비유가 찰지다",
+    quirk_line: "「그 인간 참 뚝배기 같아서, 늦게 끓어」", approved: false },
+  { id: "C09", name: "만복", slot: "노년 남",
+    personality_line: "느긋한 이야기꾼 — 속담과 옛말이 자산",
+    quirk_line: "「급할 거 없다」", approved: false },
+  { id: "C10", name: "금자", slot: "노년 여",
+    personality_line: "다정한 오지랖 — 온 동네를 먹인다",
+    quirk_line: "「밥부터 먹고 해」", approved: false },
+];
+
+/**
+ * 카드 12장 중 **배우가 아닌 두 장** (설계서 §1-0 · §2).
+ *
+ * 「AI 추천」은 첫 카드이자 기본값이고, 「이야기 맞춤 인물」은 마지막 카드다.
+ * 이 둘이 **트랙을 가르는 유일한 자리**다 — 맞춤 인물만 `ys1` 로 간다.
+ * 요소 수는 배우 카드와 같게 유지한다(4요소 규격 · 설정 덤핑 금지).
+ */
+export const YS_ACTOR_SPECIALS = {
+  auto: {
+    id: "auto", name: "AI 추천", slot: "",
+    personality_line: "이야기를 읽고 가장 어울리는 배우를 골라요",
+    quirk_line: "", symbol: "🎭", track: "ys2",
+  },
+  custom: {
+    id: "custom", name: "이야기 맞춤 인물", slot: "기존 방식",
+    personality_line: "이야기에 맞는 인물을 그때그때 새로 그려요",
+    quirk_line: "", symbol: "✎", track: "ys1",
+  },
+};
+
+/**
+ * 프런트에 나가는 고지 문안 (설계서 §1-[5-1] · §1-[5] 꼬리 · §1-[2] 안내).
+ *
+ * **변형을 만들지 않는다.** 문안 수정은 설계서 개정으로만 한다 — 프런트가 상황에
+ * 맞춰 조금씩 고쳐 쓰면 「무엇을 약속했는가」가 화면마다 달라진다.
+ */
+export const YS_CAST_TEXT = {
+  pick_question: "누가 당신의 이야기를 연기할까요?",
+  pick_note:
+    "나머지 등장인물은 저희 극단이 알아서 캐스팅해요 — 완성되면 캐스팅 보드에서 발표합니다",
+  board_label: "오늘의 캐스팅",
+  board_tail: "배역 캐릭터는 저희가 만든 배우입니다 · 이야기의 사실은 모두 당신의 것",
+  fallback: "이 배역은 새 얼굴이 연기합니다.",
+  // `{pick}`·`{final}` 두 자리만 채운다. 이유의 상세는 창작기록서가 싣는다
+  gate_replaced: "고르신 {pick}님이 이 이야기의 화자와 맞지 않아, {final}님으로 다시 캐스팅했어요.",
+  customer_pick: "내가 고른 배우",
+  new_face: "새 얼굴",
+  shelf_cta: "이 배우와 또 만들기",
+  other_shelf: "나의 다른 기록",
+};
+
+/** 배역 행은 다섯을 넘지 않는다 — 보드는 5초 안에 읽혀야 한다 (설계서 §1-[5]) */
+export const YS_BOARD_MAX_ROWS = 5;
 
 export const AD_TRIGGERS = {
   STOPWATCH_ATTEMPT: { game: "STOPWATCH", type: "REWARDED", perDay: STOPWATCH.AD_VIEWS_PER_DAY },

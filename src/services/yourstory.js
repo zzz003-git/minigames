@@ -32,7 +32,14 @@
  */
 
 import { ApiError, requireOneOf } from "../lib/http.js";
-import { YOURSTORY } from "../lib/config.js";
+import {
+  YOURSTORY,
+  ysDayIdLike,
+  YS_ACTORS,
+  YS_ACTOR_SPECIALS,
+  YS_CAST_TEXT,
+  YS_BOARD_MAX_ROWS,
+} from "../lib/config.js";
 import { dayKey } from "../lib/time.js";
 import { sha256Hex, encryptJSON, decryptJSON } from "../lib/crypto.js";
 import { touchUser } from "../lib/suite.js";
@@ -143,7 +150,7 @@ export async function state({ env, userId }) {
     wallet
       ? env.DB.prepare(
           `SELECT id, status, step, title, requested_cuts, final_cuts, cuts_done,
-                  tone_label, eta_sec, fail_reason, created_at, done_at
+                  tone_label, eta_sec, fail_reason, created_at, done_at, track
              FROM ys_order WHERE user_id = ? AND status != '${ST.DELETED}'
             ORDER BY created_at DESC LIMIT 20`,
         )
@@ -169,7 +176,9 @@ export async function state({ env, userId }) {
     service: alive ? queueState(waiting) : "reserve",
     waiting,
     styles: YOURSTORY.STYLES,
+    // 트랙마다 도장 수가 다르다 — 화면이 주문의 `track` 으로 고른다 (설계서 §1-[4])
     steps: YOURSTORY.STEPS,
+    steps_ys2: YOURSTORY.STEPS_YS2,
     limits: {
       min_chars: YOURSTORY.MIN_CHARS,
       max_chars: YOURSTORY.MAX_CHARS,
@@ -188,6 +197,7 @@ const queueState = (waiting) =>
 const cardOf = (o) => ({
   id: o.id,
   status: o.status,
+  track: o.track ?? null,
   step: o.step,
   title: o.title,
   cuts: o.final_cuts ?? o.requested_cuts,
@@ -199,6 +209,143 @@ const cardOf = (o) => ({
   created_at: o.created_at,
   done_at: o.done_at,
 });
+
+// ══════════════════════════════════════════════════════════════
+// ✍✍ 배우 (YS2 — 프런트 설계서 §2·§3)
+// ══════════════════════════════════════════════════════════════
+
+/**
+ * GET /api/ys/actors
+ *
+ * 배우 선택 화면이 그릴 **카드 12장과 화면 문안**을 한 번에 준다.
+ *
+ * ── 왜 문안까지 서버가 주는가 ───────────────────────────────────────────
+ * 설계서 §2·§4 가 「고지 문안·카드 문구는 정본 원문만 · 프런트에서 새로 짓지
+ * 않는다」로 못 박았다. 화면이 문자열을 가지면 화면마다 조금씩 달라지고, 그때부터
+ * **무엇을 약속했는지**가 배포본마다 다르다 — 권리·정직 고지에서 그것은 사고다.
+ *
+ * ── 지갑을 요구하지 않는다 ──────────────────────────────────────────────
+ * 이 목록은 개인 정보가 아니라 소개다. 초대코드가 없는 사람도 「누가 있는지」는
+ * 볼 수 있어야 초대를 받을 마음이 생긴다.
+ */
+export async function actors() {
+  return {
+    // 첫 카드(AI 추천) → 배우 10 → 마지막 카드(맞춤 인물). **순서가 규격이다**
+    // (설계서 §2 — AI 추천이 항상 첫 번째, 맞춤 인물이 마지막)
+    cards: [
+      { ...YS_ACTOR_SPECIALS.auto, kind: "auto", approved: true },
+      ...YS_ACTORS.map((a) => ({ ...a, kind: "actor", card_image: a.card_image ?? null })),
+      { ...YS_ACTOR_SPECIALS.custom, kind: "custom", approved: true },
+    ],
+    texts: YS_CAST_TEXT,
+    board_max_rows: YS_BOARD_MAX_ROWS,
+  };
+}
+
+/**
+ * 캐스팅 보드 한 장 (설계서 §1-[5]).
+ *
+ * **프런트는 이 데이터를 쓰지 않고 읽기만 한다.** 배역·배우·폴백·게이트 대체는
+ * 전부 워커가 `POST /ys/w/cast` 로 남긴 것이고, 여기서는 화면이 그릴 수 있는
+ * 모양으로 옮기기만 한다.
+ *
+ * 행이 다섯을 넘으면 **자르지 않고 그대로 준다** — 넘친다는 사실 자체가 캐스팅
+ * 설계를 의심할 신호라(설계서 §1-[5]) 조용히 숨기면 그 신호가 사라진다. 화면은
+ * `board_max_rows` 로 접어 보여 주되 「몇 명 더」를 적는다.
+ */
+async function castingBoard(env, id) {
+  const rows = await env.DB.prepare(
+    `SELECT seq, role_label, actor_id, actor_name, is_narrator, is_customer_pick,
+            is_fallback, gate_original_actor_id
+       FROM ys_cast WHERE order_id = ? ORDER BY seq`,
+  )
+    .bind(id)
+    .all();
+  const list = rows.results ?? [];
+  if (!list.length) return null;
+
+  const nameOf = (cid) => YS_ACTORS.find((a) => a.id === cid)?.name ?? null;
+  const replaced = list.find((r) => r.gate_original_actor_id);
+
+  return {
+    rows: list.map((r) => ({
+      role_label: r.role_label,
+      actor_id: r.actor_id,
+      actor_name: r.actor_name ?? nameOf(r.actor_id),
+      card_image: YS_ACTORS.find((a) => a.id === r.actor_id)?.card_image ?? null,
+      is_narrator: Boolean(r.is_narrator),
+      is_customer_pick: Boolean(r.is_customer_pick),
+      is_fallback: Boolean(r.is_fallback),
+    })),
+    // 게이트가 고객 선택을 대체했으면 **조용히 넘어가지 않는다**(F1 원칙 6).
+    // 문안 조립은 정본 한 줄에 이름 둘만 끼운다 — 이유의 상세는 창작기록서의 몫
+    gate_notice: replaced
+      ? YS_CAST_TEXT.gate_replaced
+          .replace("{pick}", nameOf(replaced.gate_original_actor_id) ?? "고르신 배우")
+          .replace("{final}", replaced.actor_name ?? nameOf(replaced.actor_id) ?? "다른 배우")
+      : null,
+  };
+}
+
+/**
+ * GET /api/ys/shelves — 나의 기록들 (설계서 §1-[7]).
+ *
+ * **선반은 배우다.** 같은 배우가 화자로 연기한 작품이 한 선반에 묶인다.
+ * 작품이 하나여도 선반은 보인다 — 빈 선반을 만들지 않을 뿐이다.
+ *
+ * 폴백(새 얼굴)이 화자였던 작품은 **「나의 다른 기록」 선반 하나**에 모인다.
+ * 배우가 없는 작품마다 선반을 만들면 선반이 작품 수만큼 늘어 모음이 아니게 된다.
+ *
+ * 연재가 아니라 **모음**이라 회차 번호를 붙이지 않는다. `MY.N` 은 서랍의 전체
+ * 통산 넘버링을 그대로 쓰므로 여기서 다시 세지 않는다.
+ */
+export async function shelves({ env, userId }) {
+  const wallet = await walletOf(env, userId);
+  if (!wallet) return { shelves: [] };
+
+  const rows = await env.DB.prepare(
+    `SELECT id, title, narrator_actor_id, final_cuts, requested_cuts, tone_label,
+            created_at, done_at
+       FROM ys_order
+      WHERE user_id = ? AND status = ? AND track = 'ys2'
+      ORDER BY created_at DESC LIMIT 100`,
+  )
+    .bind(userId, ST.DONE)
+    .all();
+
+  const groups = new Map();
+  for (const o of rows.results ?? []) {
+    const key = o.narrator_actor_id ?? "";
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push({
+      id: o.id,
+      title: o.title,
+      cuts: o.final_cuts ?? o.requested_cuts,
+      tone_label: o.tone_label,
+      done_at: o.done_at ?? o.created_at,
+    });
+  }
+
+  // 배우 순서는 ID 순 — 「나의 다른 기록」은 언제나 맨 뒤다
+  const ordered = [...groups.keys()].sort((a, b) =>
+    a === "" ? 1 : b === "" ? -1 : a.localeCompare(b),
+  );
+
+  return {
+    shelves: ordered.map((key) => {
+      const actor = YS_ACTORS.find((a) => a.id === key);
+      return {
+        actor_id: key || null,
+        name: actor ? actor.name : YS_CAST_TEXT.other_shelf,
+        card_image: actor?.card_image ?? null,
+        // 「이 배우와 또 만들기」는 배우가 있을 때만 — 새 얼굴은 다시 고를 수 없다
+        can_reorder: Boolean(actor),
+        works: groups.get(key),
+      };
+    }),
+    texts: { cta: YS_CAST_TEXT.shelf_cta },
+  };
+}
 
 // ══════════════════════════════════════════════════════════════
 // 접수
@@ -261,8 +408,26 @@ function screen(text) {
   return { masked, maskedKinds: [...new Set(found)], sensitive: SENSITIVE.test(text) };
 }
 
-/** 주문 ID — `YS-YYYYMMDD-NNNN` (00_OVERVIEW §2) */
-const orderId = (day, seq) => `YS-${day.replaceAll("-", "")}-${String(seq).padStart(4, "0")}`;
+/**
+ * 주문 ID — YS1 `YS-YYYYMMDD-NNNN` · YS2 **`YS2-`**YYYYMMDD-NNNN (트랙 정본 §1).
+ *
+ * **일련번호는 트랙별이 아니라 그날 전체다.** 트랙마다 따로 세면 같은 날 같은
+ * 번호가 두 개 생기고, 사람이 「0003번 주문」이라고 부를 때 어느 쪽인지 알 수 없다.
+ */
+const orderId = (track, day, seq) =>
+  `${YOURSTORY.ID_PREFIX[track]}-${day.replaceAll("-", "")}-${String(seq).padStart(4, "0")}`;
+
+/**
+ * 고객이 고른 카드 → 트랙 (설계서 §1-0 「track 결정 규칙」).
+ *
+ * **갈림은 카드 한 장이다** — 「이야기 맞춤 인물」만 기존 방식(`ys1`)으로 가고,
+ * AI 추천과 배우 10명은 전부 `ys2` 다. 안 고르면 AI 추천이므로 기본은 `ys2`.
+ */
+function trackOf(actorChoice) {
+  const special = YS_ACTOR_SPECIALS[actorChoice];
+  if (special) return special.track;
+  return YS_ACTORS.some((a) => a.id === actorChoice) ? "ys2" : null;
+}
 
 /**
  * 오늘 걸린 돈 (G3 일일 상한 — dev_spec §4.3).
@@ -278,14 +443,15 @@ const orderId = (day, seq) => `YS-${day.replaceAll("-", "")}-${String(seq).padSt
  * 접수일과 무관하게 전부 오늘의 부담으로 본다.**
  */
 async function committed(env, day) {
+  const like = ysDayIdLike(day);   // **두 트랙 합산** (`ysDayIdLike` 주석 참조)
   const row = await env.DB.prepare(
     `SELECT COALESCE(SUM(
               CASE WHEN status IN (${OPEN})
                    THEN ${COST_CASE}
                    ELSE image_cost_krw END), 0) AS krw
-       FROM ys_order WHERE id LIKE ? OR status IN (${OPEN})`,
+       FROM ys_order WHERE ${like.sql} OR status IN (${OPEN})`,
   )
-    .bind(`YS-${day.replaceAll("-", "")}-%`)
+    .bind(...like.params)
     .first();
   return row?.krw ?? 0;
 }
@@ -331,6 +497,18 @@ export async function createOrder({ env, userId, body }) {
   );
   const byline = requireOneOf(String(body?.byline ?? "anon"), "byline", ["anon", "nick"]);
 
+  // ✍✍ 배우 선택 — **이 트랙의 유일한 추가 입력**이고, 트랙을 가르는 자리다
+  // (설계서 §1-0·§3). 안 보내면 AI 추천이므로 기본은 `ys2` 다.
+  const actorChoice = String(body?.actor_choice ?? "auto");
+  const track = trackOf(actorChoice);
+  if (!track) {
+    throw new ApiError("BAD_PARAM", "고르신 배우를 확인할 수 없어요.", 400);
+  }
+  // 화풍은 **트랙이 정한다.** YS2 는 전용 화풍 1종이라 고객이 고를 것이 없고
+  // (설계서 §1-[1] — 화풍 칩 자리에 배우 선택이 들어왔다), YS1 로 오는 화풍
+  // 선택값이 YS2 주문에 실리면 `S8-YS2` 와 섞인다(트랙 정본 §1 「화풍」).
+  const styleFinal = track === "ys2" ? "auto" : style;
+
   // 티켓 1장 = 8컷이다(Y9 §1 — 무료 쿼터는 8컷 고정). 그 위는 **컷 크레딧으로
   // 보탠다** — 크레딧의 용처가 원래 「상위 등급 보태기」다(검토 A-4). 결제가 아직
   // 없는 파일럿에서 12·16컷을 시험할 수 있는 유일한 길이기도 하다.
@@ -357,8 +535,11 @@ export async function createOrder({ env, userId, body }) {
     );
   }
 
-  const today = await env.DB.prepare(`SELECT COUNT(*) AS n FROM ys_order WHERE id LIKE ?`)
-    .bind(`YS-${day.replaceAll("-", "")}-%`)
+  const todayLike = ysDayIdLike(day);   // **두 트랙 합산**
+  const today = await env.DB.prepare(
+    `SELECT COUNT(*) AS n FROM ys_order WHERE ${todayLike.sql}`,
+  )
+    .bind(...todayLike.params)
     .first();
   const madeToday = today?.n ?? 0;
   if (madeToday >= YOURSTORY.DAILY_INTAKE_LIMIT) {
@@ -380,13 +561,13 @@ export async function createOrder({ env, userId, body }) {
 
   let id = null;
   for (let attempt = 0; attempt < 5 && id === null; attempt++) {
-    const candidate = orderId(day, madeToday + 1 + attempt);
+    const candidate = orderId(track, day, madeToday + 1 + attempt);
     try {
       await env.DB.prepare(
         `INSERT INTO ys_order
            (id, user_id, invite_code, status, title, byline, nickname, requested_cuts,
-            style_choice, tone_hint, relay_allow, step, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'intake', ?)`,
+            style_choice, tone_hint, relay_allow, step, created_at, track, actor_choice)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'intake', ?, ?, ?)`,
       )
         .bind(
           candidate,
@@ -397,10 +578,14 @@ export async function createOrder({ env, userId, body }) {
           byline,
           byline === "nick" ? String(body?.nickname ?? "").slice(0, 20) || null : null,
           cuts,
-          style,
+          styleFinal,
           String(body?.tone_hint ?? "").slice(0, 40) || null,
           body?.relay_allow ? 1 : 0,
           now,
+          // **트랙은 접수에서 채운다.** 빈 값으로 두고 나중에 추정하는 길을
+          // 만들지 않는다 — 빈 값이 결함을 가린 사고가 반복 유형이다(트랙 정본 §2)
+          track,
+          actorChoice,
         )
         .run();
       id = candidate;
@@ -440,6 +625,8 @@ export async function createOrder({ env, userId, body }) {
 
   return {
     id,
+    track,
+    actor_choice: actorChoice,
     // 가린 것은 **그 자리에서 알린다**(policy §2-1). 나중에 결과에서 발견하면
     // 「몰래 고쳤다」로 읽힌다 — 이 서비스에서 그것은 신뢰의 문제다
     masked: maskedKinds,
@@ -479,7 +666,16 @@ export async function order({ env, userId, body }) {
     nickname: row.nickname,
     tone_reason: row.tone_reason,
     tone_confidence: row.tone_confidence,
+    track: row.track ?? null,
+    actor_choice: row.actor_choice ?? null,
   };
+
+  // ✍✍ 캐스팅 보드는 **완성 전에도 실린다.** 워커가 캐스팅을 마치는 순간부터
+  // 행이 생기므로, 제작 중 화면이 「캐스팅」 스텝에서 화자 배우까지는 보여 줄 수
+  // 있다(설계서 §1-[4] — 전체 배역은 보드에서 발표해 서프라이즈를 지킨다).
+  if (row.track === "ys2") {
+    out.casting = await castingBoard(env, id);
+  }
 
   if (row.status === ST.QUEUED_BRAIN) {
     // 「내 앞에 몇 개」는 대기 화면의 유일한 정직한 숫자다
@@ -560,8 +756,12 @@ export async function deleteOrder({ env, userId, body }) {
     env.DB.prepare(`DELETE FROM ys_order_source WHERE order_id = ?`).bind(id),
     env.DB.prepare(`DELETE FROM ys_cut WHERE order_id = ?`).bind(id),
     env.DB.prepare(`DELETE FROM ys_episode WHERE order_id = ?`).bind(id),
-    env.DB.prepare(`UPDATE ys_order SET status = ?, title = NULL, nickname = NULL WHERE id = ?`)
-      .bind(ST.DELETED, id),
+    // 캐스팅도 함께 지운다. 남겨 두면 지운 이야기가 **선반에 유령으로** 남는다
+    env.DB.prepare(`DELETE FROM ys_cast WHERE order_id = ?`).bind(id),
+    env.DB.prepare(
+      `UPDATE ys_order SET status = ?, title = NULL, nickname = NULL,
+              narrator_actor_id = NULL WHERE id = ?`,
+    ).bind(ST.DELETED, id),
   ]);
 
   return { id, deleted: true };

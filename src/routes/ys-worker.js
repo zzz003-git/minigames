@@ -29,6 +29,7 @@
  * 엔드포인트
  *   POST /ys/w/claim     대기열에서 한 건 집어간다        → brain_running
  *   POST /ys/w/progress  스텝·컷 진행률·톤 진단 갱신
+ *   POST /ys/w/cast      ✍✍ 캐스팅 결과 보고 (YS2 — 캐스팅 보드가 읽는다)
  *   POST /ys/w/charge    ★ 생성 시작 — 티켓 차감           → queued_image → image_running
  *   POST /ys/w/asset     조판 분할본 1장 업로드 (바이트 그대로)
  *   POST /ys/w/done      완성 보고                        → done
@@ -37,11 +38,44 @@
  */
 
 import { ApiError } from "../lib/http.js";
-import { YOURSTORY } from "../lib/config.js";
+import { YOURSTORY, YS_ACTORS, YS_ORDER_ID_RE, ysDayIdLike } from "../lib/config.js";
 import { dayKey } from "../lib/time.js";
 import { decryptJSON } from "../lib/crypto.js";
 
 const ST = YOURSTORY.ST;
+
+/**
+ * ✍✍ 이 주문은 어느 트랙인가 (`system/yourstory2_track_separation.md` §2).
+ *
+ * **트랙 판정은 한 자리다.** 경로·화풍 문자열·캐릭터 유무로 추정하는 코드는
+ * 반려 대상이라, 여기서 보는 것은 `track` 값 하나뿐이다.
+ *
+ * 빈 값의 처리만 단계가 있다 —
+ *   `TRACK_STRICT = false`  칸이 비면 **ID 접두로 잇고 감사에 warn**. 워커가
+ *                           `track` 을 보내지 않던 기간에 접수된 주문의 다리다
+ *   `TRACK_STRICT = true`   빈 값도 반려. 접수 핸들러가 언제나 채우게 된 뒤에 올린다
+ *
+ * **값이 있는데 모르는 것**(`""`·`"YS1"`)은 두 경우 다 반려다 — 오타가 조용히
+ * 기본값으로 흘러가는 것이 이 프로젝트의 반복 사고 유형이다.
+ */
+export function trackForJob(row) {
+  const raw = row.track;
+  if (YOURSTORY.TRACKS.includes(raw)) return { track: raw, warn: null };
+  if (raw !== null && raw !== undefined) {
+    return { track: null, warn: `track 값이 트랙 목록에 없다: ${JSON.stringify(raw)}` };
+  }
+  if (YOURSTORY.TRACK_STRICT) {
+    return { track: null, warn: "track 칸이 비어 있다 (TRACK_STRICT)" };
+  }
+  // ID 접두로 잇는다 — **긴 접두를 먼저** 본다. `YS2-…` 는 `YS-` 로도 시작하지
+  // 않지만, 접두가 늘어나면 짧은 쪽이 먼저 걸리는 실수가 나기 쉽다
+  const guess = [...YOURSTORY.TRACKS]
+    .sort((a, b) => YOURSTORY.ID_PREFIX[b].length - YOURSTORY.ID_PREFIX[a].length)
+    .find((t) => String(row.id).startsWith(`${YOURSTORY.ID_PREFIX[t]}-`));
+  return guess
+    ? { track: guess, warn: `track 칸이 비어 ID 접두로 이었다 → ${guess}` }
+    : { track: null, warn: `track 칸이 비었고 ID 접두도 모른다: ${row.id}` };
+}
 
 /**
  * 워커가 살아 있나.
@@ -154,7 +188,7 @@ export async function claim({ request, env }) {
 
   const row = await env.DB.prepare(
     `SELECT o.id, o.requested_cuts, o.style_choice, o.tone_hint, o.title, o.byline,
-            o.nickname, o.relay_allow, o.created_at,
+            o.nickname, o.relay_allow, o.created_at, o.track, o.actor_choice,
             s.masked, s.masked_map, s.sensitive, s.sha256, s.char_count
        FROM ys_order o JOIN ys_order_source s ON s.order_id = o.id
       WHERE o.status = ? ORDER BY o.created_at LIMIT 1`,
@@ -163,6 +197,21 @@ export async function claim({ request, env }) {
     .first();
 
   if (!row) return { order: null };
+
+  // ✍✍ **트랙을 모르는 주문은 내보내지 않는다.** 워커가 트랙 없이 받으면 어느
+  // 화풍·어느 파이프라인으로 갈지 스스로 추정하게 되고, 그 추정이 곧 두 트랙이
+  // 섞이는 자리다(트랙 정본 §2). 조용히 기본값으로 흘리지 않고 **주문을 세운다**
+  const { track, warn } = trackForJob(row);
+  if (!track) {
+    await env.DB.batch([
+      env.DB.prepare(`UPDATE ys_order SET status = ?, fail_reason = ? WHERE id = ?`)
+        .bind(ST.FAILED, "이야기를 만들 준비 중에 문제가 있었어요. 티켓은 그대로예요.", row.id),
+      auditStmt(env, row.id, {
+        gate: "G0", check: "track", verdict: "fail", detail: warn ?? "",
+      }),
+    ]);
+    return { order: null };
+  }
 
   const taken = await env.DB.prepare(
     `UPDATE ys_order SET status = ?, step = 'intake', claimed_at = ?
@@ -174,6 +223,14 @@ export async function claim({ request, env }) {
   // 그 사이 다른 폴링이 가져갔다면 이번엔 빈손으로 돌아간다 (다음 주기에 다시 묻는다)
   if (!taken.meta?.changes) return { order: null };
 
+  // 이어 붙인 트랙은 **조용히 넘어가지 않는다** — 감사에 남겨야 「언제까지
+  // 이 다리가 필요했나」를 보고 `TRACK_STRICT` 를 올릴 수 있다
+  if (warn) {
+    await auditStmt(env, row.id, {
+      gate: "G0", check: "track", verdict: "warn", detail: warn,
+    }).run();
+  }
+
   return {
     order: {
       id: row.id,
@@ -183,6 +240,10 @@ export async function claim({ request, env }) {
       sha256: row.sha256,
       char_count: row.char_count,
       requested_cuts: row.requested_cuts,
+      // ✍✍ 트랙과 배우 선택. **PC 는 이 두 값을 추정하지 않는다** — 화풍 분기·
+      // 캐스팅 게이트·창작기록서의 IP 절이 전부 `track` 하나를 읽는다
+      track,
+      actor_choice: row.actor_choice ?? null,
       style_choice: row.style_choice,
       tone_hint: row.tone_hint,
       title: row.title,
@@ -213,6 +274,74 @@ export async function claim({ request, env }) {
 }
 
 // ══════════════════════════════════════════════════════════════
+// ✍✍ 캐스팅 보고 (YS2)
+// ══════════════════════════════════════════════════════════════
+
+/**
+ * POST /ys/w/cast  { id, rows: [...] }
+ *
+ * 캐스팅 보드(설계서 §1-[5])가 읽을 배역 발표를 워커가 남긴다.
+ *
+ * ── 왜 워커가 쓰는가 ────────────────────────────────────────────────────
+ * 캐스팅은 PC 의 `ys_casting.py` 가 판정한다 — 사실원장을 읽어야 하고, 게이트
+ * 대체·폴백 사유가 거기서 나온다. 클라우드가 다시 판정하면 **같은 규칙을 두 곳에서
+ * 재게** 되고, 두 판정이 어긋나는 순간 화면과 결과물이 서로 다른 말을 한다.
+ * 그래서 여기는 **받아 적기만** 한다.
+ *
+ * ── 다시 보내도 안전하다 ────────────────────────────────────────────────
+ * 워커가 재시도하거나 캐스팅을 다시 돌릴 수 있으므로 **그 주문의 행을 통째로
+ * 갈아 끼운다.** 부분 갱신으로 두면 지난 회차의 배역이 남아 보드에 유령 행이 선다.
+ */
+export async function cast({ request, env, body }) {
+  authorize(request, env);
+  await beat(env);
+
+  const row = await held(env, String(body?.id ?? ""));
+  const rows = Array.isArray(body?.rows) ? body.rows.slice(0, 20) : [];
+
+  const known = new Set(YS_ACTORS.map((a) => a.id));
+  const stmts = [env.DB.prepare(`DELETE FROM ys_cast WHERE order_id = ?`).bind(row.id)];
+  let narrator = null;
+
+  rows.forEach((r, i) => {
+    // **풀에 없는 배우 id 는 새 얼굴로 내린다.** 모르는 id 를 그대로 적으면 보드가
+    // 이름 없는 배역을 그리고, 선반은 존재하지 않는 배우의 칸을 만든다
+    const actorId = known.has(r.actor_id) ? r.actor_id : null;
+    const isNarrator = Boolean(r.is_narrator);
+    if (isNarrator && actorId) narrator = actorId;
+    stmts.push(
+      env.DB.prepare(
+        `INSERT INTO ys_cast
+           (order_id, seq, role_label, actor_id, actor_name, is_narrator,
+            is_customer_pick, is_fallback, gate_original_actor_id)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      ).bind(
+        row.id,
+        i,
+        String(r.role_label ?? "").slice(0, 40) || "배역",
+        actorId,
+        actorId ? String(r.actor_name ?? "").slice(0, 20) || null : null,
+        isNarrator ? 1 : 0,
+        r.is_customer_pick ? 1 : 0,
+        actorId ? (r.is_fallback ? 1 : 0) : 1,
+        known.has(r.gate_original_actor_id) ? r.gate_original_actor_id : null,
+      ),
+    );
+  });
+
+  // 선반 그룹핑 키. **진실은 위 `is_narrator` 행**이고 이것은 목록 화면이 캐스팅
+  // 표를 훑지 않게 하는 사본이다 (0025 마이그레이션 주석)
+  stmts.push(
+    env.DB.prepare(`UPDATE ys_order SET narrator_actor_id = ? WHERE id = ?`)
+      .bind(narrator, row.id),
+  );
+  for (const a of body?.audits ?? []) stmts.push(auditStmt(env, row.id, a));
+
+  await env.DB.batch(stmts);
+  return { id: row.id, rows: rows.length, narrator_actor_id: narrator };
+}
+
+// ══════════════════════════════════════════════════════════════
 // 진행 보고
 // ══════════════════════════════════════════════════════════════
 
@@ -229,7 +358,9 @@ export async function progress({ request, env, body }) {
 
   const row = await held(env, String(body?.id ?? ""));
   const step = String(body?.step ?? "");
-  if (!YOURSTORY.STEPS.some((s) => s.key === step)) {
+  // **두 트랙 합집합으로 본다** — YS2 의 「캐스팅」 도장이 여기서 400 이 되면
+  // 그 실패는 제작 한복판에서 난다 (`STEP_KEYS` 주석)
+  if (!YOURSTORY.STEP_KEYS.includes(step)) {
     throw new ApiError("BAD_PARAM", `step 값이 올바르지 않습니다: ${step}`, 400);
   }
 
@@ -385,7 +516,9 @@ export async function asset({ request, env, url }) {
 
   const id = url.searchParams.get("id") ?? "";
   const name = url.searchParams.get("name") ?? "";
-  if (!/^YS-\d{8}-\d{4}$/.test(id) || !/^[a-z0-9_]+\.(png|jpg|webp)$/.test(name)) {
+  // ✍✍ **두 접두를 다 받는다** — 여기가 `YS-` 로 박혀 있으면 YS2 주문은 조판본을
+  // 올리지 못하고 그 자리에서 죽는다 (`YS_ORDER_ID_RE` 주석)
+  if (!YS_ORDER_ID_RE.test(id) || !/^[a-z0-9_]+\.(png|jpg|webp)$/.test(name)) {
     throw new ApiError("BAD_PARAM", "id 또는 name 이 올바르지 않습니다.", 400);
   }
   await held(env, id);
@@ -640,9 +773,14 @@ export async function ping({ request, env, body }) {
     env.DB.prepare(`SELECT COUNT(*) AS n FROM ys_order WHERE status = ?`)
       .bind(ST.QUEUED_BRAIN)
       .first(),
-    env.DB.prepare(`SELECT COUNT(*) AS n FROM ys_order WHERE id LIKE ?`)
-      .bind(`YS-${dayKey().replaceAll("-", "")}-%`)
-      .first(),
+    // **두 트랙 합산** — 접두를 나눈 뒤 이 자리를 안 고치면 상태판이 YS2 를
+    // 한 건도 세지 않는다 (`ysDayIdLike` 주석 · 트랙 정본 §1)
+    (() => {
+      const like = ysDayIdLike(dayKey());
+      return env.DB.prepare(`SELECT COUNT(*) AS n FROM ys_order WHERE ${like.sql}`)
+        .bind(...like.params)
+        .first();
+    })(),
   ]);
 
   return {
