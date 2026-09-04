@@ -305,8 +305,30 @@ console.log(`통과 ${pass} · 실패 ${fails.length}`);
 for (const f of fails) console.log(`  x ${f}`);
 process.exit(fails.length ? 1 : 0);
 
-/** 로컬 D1 에 초대코드를 하나 만들어 코드 문자열만 돌려준다 */
+/**
+ * 로컬 D1 에 초대코드를 하나 만들어 코드 문자열만 돌려준다.
+ *
+ * ✍✍ **원격을 보고 있으면 멈춘다** (지시서 16 §5 · 회신 23 §3).
+ *
+ * 이 함수는 `--local` 로 박혀 있다. 그런데 `TEST_BASE` 로 주소만 바꾸면 시연은
+ * **원격을 두드리면서 초대코드는 로컬에 심는다.** 그러면 접수가 전부
+ * `INVITE_UNKNOWN` 으로 떨어지고, 화면에는 **코드 결함처럼 보인다** — 실제로
+ * 2026-09-04 에 「통과 14 · 실패 25」로 한 번 멈췄고, 원인 둘 중 하나가 이것이었다.
+ *
+ * 조용히 로컬에 심어 놓고 원격에서 실패하는 것이 가장 나쁘다. **여기서 멈추고
+ * 무엇을 해야 하는지 말한다** — 시연이 거짓 실패를 내는 것보다 안 도는 편이 낫다.
+ */
 function seedInvite() {
+  if (!/^https?:\/\/(127\.0\.0\.1|localhost)(:|\/|$)/.test(BASE)) {
+    console.error(`\n  [정지] TEST_BASE 가 원격입니다: ${BASE}`);
+    console.error("  이 함수는 **로컬 D1** 에 코드를 심습니다. 그대로 두면 원격을");
+    console.error("  두드리면서 코드는 로컬에 심어, 접수가 전부 INVITE_UNKNOWN 으로");
+    console.error("  떨어집니다 — 코드 결함이 아닌데 결함처럼 보입니다.");
+    console.error("\n  원격 대상이면 그 환경에 코드를 발급하고 YS_TEST_CODE 로 넘기세요:");
+    console.error('    node scripts/ys-invite.mjs --label "STG-ys2" --tickets 6 --credits 32 --staging');
+    console.error("    $env:TEST_BASE=\"<주소>\"; $env:YS_TEST_CODE=\"<발급된 코드>\"; npm run test:ys2");
+    process.exit(2);
+  }
   const out = execSync(
     'node scripts/ys-invite.mjs --label "ys2-e2e" --tickets 5 --credits 16 --local',
     { encoding: "utf8" },
