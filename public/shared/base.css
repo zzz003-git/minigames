@@ -3644,3 +3644,159 @@ a.hubcard:focus-visible { outline: 2px solid var(--t); outline-offset: 2px; }
 .wt__ysrow h3 { font-size: 14px; color: #d9a15b; }
 .wt__ysrow p { font-size: 12.5px; color: var(--text-sub); line-height: 1.55; }
 .wt__ysrow .mono { color: #d9a15b; font-family: var(--mono); letter-spacing: 0.06em; }
+
+/* ══════════════════════════════════════════════════════════════
+   ㉛ 행운의 클로버 찾기 — docs/clover-game.md
+   조작이 드래그 궤적이라 규격(탭 1종류)을 벗어난 유일한 자리입니다.
+   클래스는 전부 `cv-` 로 묶습니다 — `.tile` `.merge` 는 이미 다른 게임이 씁니다.
+   ══════════════════════════════════════════════════════════════ */
+
+/* 잉크 두께는 칸 크기에 비례합니다. 고정 px 로 두면 작은 폰에서 글자를 덮습니다 */
+.game--clover { --cv-ink: #0b3018; --cv-o: calc(var(--cv-tile, 40px) * .048); --cv-d: calc(var(--cv-tile, 40px) * .034); }
+
+/* 연쇄 잔광 — 이어서 지울수록 화면 가장자리가 밝아집니다 */
+#cvGlow {
+  position: fixed; inset: 0; pointer-events: none; z-index: 5; opacity: 0;
+  background: radial-gradient(ellipse at center, transparent 45%, rgba(127, 216, 192, .30) 100%);
+  transition: opacity 260ms ease-out;
+}
+/* 사라진 자리의 파문. 판 밖으로도 번지므로 화면 전체를 덮습니다 */
+#cvFx { position: fixed; inset: 0; pointer-events: none; z-index: 6; }
+
+/* ── 담는 통 ─────────────────────────────────────────────── */
+.cv-tray {
+  display: flex; align-items: center; gap: 12px; padding: 11px 16px;
+  background: var(--surface-2); border: 1px solid var(--border-soft); border-radius: 20px;
+  transition: border-color 120ms, box-shadow 200ms;
+}
+.cv-tray.is-full { border-color: var(--mint); box-shadow: 0 0 0 3px rgba(127, 216, 192, .14); }
+.cv-tray__dots { display: flex; gap: 5px; flex: 1; }
+.cv-tray__dot {
+  flex: 1; aspect-ratio: 1; max-width: 15px; border-radius: 999px;
+  background: rgba(255, 255, 255, .07); transition: background 70ms, transform 70ms;
+}
+.cv-tray__dot.is-on {
+  transform: scale(1.15);
+  background: radial-gradient(circle at 35% 28%, #ccf7ea 0%, #7fd8c0 48%, #37806c 100%);
+  box-shadow: 0 0 6px rgba(127, 216, 192, .45);
+}
+.cv-tray.is-full .cv-tray__dot.is-on { animation: cvdot 280ms cubic-bezier(.34, 1.56, .64, 1); }
+@keyframes cvdot { 0% { transform: scale(1.15); } 40% { transform: scale(1.7); } 100% { transform: scale(1.15); } }
+.cv-tray__num {
+  flex: none; font-family: var(--mono); font-size: 15px; font-weight: 700;
+  color: var(--text-sub); font-variant-numeric: tabular-nums;
+}
+.cv-tray.is-full .cv-tray__num { color: var(--mint); }
+
+/* ── 판 ──────────────────────────────────────────────────── */
+.cv-stage { position: relative; padding: 10px 10px 18px; overflow: hidden; flex: 1; min-height: 0; place-items: center; }
+#cvTrail { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; }
+.cv-grid {
+  display: grid; grid-template-columns: repeat(var(--cv-cols, 8), var(--cv-tile, 40px));
+  gap: var(--cv-gap, 4px); justify-content: center; align-content: center;
+  /* 드래그가 스크롤·당겨서 새로고침으로 새지 않게 합니다 */
+  touch-action: none; position: relative; z-index: 1;
+}
+.cv-cell { position: relative; width: var(--cv-tile, 40px); height: var(--cv-tile, 40px); display: grid; place-items: center; }
+.cv-face {
+  position: relative; width: 100%; height: 100%; display: grid; place-items: center;
+  background-image: var(--cv-img-base); background-size: 100% 100%; background-repeat: no-repeat;
+  filter: drop-shadow(0 3px 5px rgba(0, 0, 0, .45));
+  transition: transform 70ms cubic-bezier(.34, 1.56, .64, 1);
+}
+/* 잉크 — 원안(사과게임)과 같은 방식으로 흰 글씨에 두꺼운 어두운 테두리를 두릅니다.
+   그림자 하나로는 담김(민트) 상태에서 대비가 2.3:1 로 무너집니다(2026-09-07 폰 실측) */
+.cv-face b {
+  position: relative; z-index: 1; font-family: var(--mono); font-weight: 700;
+  font-size: calc(var(--cv-tile, 40px) * .52); line-height: 1; color: #fff; letter-spacing: -.02em;
+  text-shadow:
+    var(--cv-o) 0 0 var(--cv-ink), calc(var(--cv-o) * -1) 0 0 var(--cv-ink),
+    0 var(--cv-o) 0 var(--cv-ink), 0 calc(var(--cv-o) * -1) 0 var(--cv-ink),
+    var(--cv-d) var(--cv-d) 0 var(--cv-ink), calc(var(--cv-d) * -1) var(--cv-d) 0 var(--cv-ink),
+    var(--cv-d) calc(var(--cv-d) * -1) 0 var(--cv-ink), calc(var(--cv-d) * -1) calc(var(--cv-d) * -1) 0 var(--cv-ink),
+    0 calc(var(--cv-o) * 1.4) calc(var(--cv-o) * 1.6) rgba(0, 0, 0, .45);
+}
+.cv-cell.is-sel .cv-face { background-image: var(--cv-img-pick); transform: scale(1.1); }
+.cv-cell.is-lucky { z-index: 2; }
+.cv-cell.is-lucky .cv-face {
+  background-image: var(--cv-img-lucky);
+  filter: drop-shadow(0 0 10px rgba(127, 216, 192, .55)) drop-shadow(0 3px 6px rgba(0, 0, 0, .5));
+}
+.cv-cell.is-lucky .cv-face b { --cv-ink: #12503f; }
+.cv-cell.is-hint .cv-face {
+  animation: cvhint 1.15s ease-in-out infinite;
+  filter: drop-shadow(0 0 7px rgba(255, 255, 255, .6)) drop-shadow(0 3px 5px rgba(0, 0, 0, .45));
+}
+@keyframes cvhint { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.06); } }
+.cv-cell.is-hidden { visibility: hidden; }
+
+/* 꼬리 — 성공한 칸과 합쳐진 덩이에서만 자랍니다 */
+.cv-stem {
+  position: absolute; left: 50%; top: 78%; width: 27%; height: 52%; z-index: 0; opacity: 0;
+  transform: translateX(-50%) scaleY(.04); transform-origin: 50% 0; pointer-events: none;
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, .45));
+}
+.cv-cell.is-lucky .cv-stem { animation: cvstem 280ms cubic-bezier(.34, 1.56, .64, 1) forwards; }
+@keyframes cvstem {
+  from { opacity: 0; transform: translateX(-50%) scaleY(.04); }
+  62% { opacity: 1; transform: translateX(-50%) scaleY(1.14); }
+  to { opacity: 1; transform: translateX(-50%) scaleY(1); }
+}
+
+/* ── 합쳐진 「10」 ────────────────────────────────────────── */
+/* 판 밖으로 나가 점수까지 날아가야 해서 body 에 붙입니다 */
+.cv-merge { position: fixed; z-index: 7; pointer-events: none; transform: translate(-50%, -50%); }
+.cv-merge__b { position: relative; width: 100%; height: 100%; display: grid; place-items: center; }
+.cv-merge__b .cv-stem { opacity: 1; animation: cvstem 280ms cubic-bezier(.34, 1.56, .64, 1) both; }
+.cv-merge__head {
+  position: absolute; inset: 0; width: 100%; height: 100%; transform: translateY(-11%);
+  filter: drop-shadow(0 0 16px rgba(127, 216, 192, .6)) drop-shadow(0 6px 12px rgba(0, 0, 0, .55));
+}
+.cv-merge b {
+  position: relative; z-index: 3; font-family: var(--mono); font-weight: 700; line-height: 1;
+  color: #fff; font-size: .36em; letter-spacing: -.02em;
+  text-shadow:
+    .028em 0 0 #12503f, -.028em 0 0 #12503f, 0 .028em 0 #12503f, 0 -.028em 0 #12503f,
+    .02em .02em 0 #12503f, -.02em .02em 0 #12503f, .02em -.02em 0 #12503f, -.02em -.02em 0 #12503f,
+    0 .04em .05em rgba(0, 0, 0, .5);
+}
+
+/* ── 배너 광고 자리 ──────────────────────────────────────── */
+.cv-banner {
+  margin-top: 2px; padding: 10px 12px; border-radius: 16px; background: var(--surface-2);
+  border: 1px dashed rgba(255, 255, 255, .14); display: flex; align-items: center; gap: 10px;
+}
+.cv-banner__ico {
+  width: 34px; height: 34px; flex: none; border-radius: 10px;
+  background: rgba(255, 255, 255, .07); display: grid; place-items: center; font-size: 15px; color: var(--text-dim);
+}
+.cv-banner__t { flex: 1; min-width: 0; font-size: 12px; color: var(--text-2); line-height: 1.45; }
+.cv-banner__t b { color: var(--text-main); }
+.cv-banner__tag { flex: none; font-family: var(--mono); font-size: 9.5px; letter-spacing: .1em; color: var(--text-dim); }
+.cv-banner__law { margin: 5px 0 0; text-align: center; font-size: 9.5px; color: #4f5a6d; }
+
+/* ── 판이 도는 동안에는 화면을 판에 몰아 줍니다 ──────────── */
+body.cv-playing { overflow: hidden; }
+body.cv-playing .app__body { gap: 9px; }
+body.cv-playing .hud { padding: 8px 14px; }
+body.cv-playing .hud__value { font-size: 17px; }
+/* 작은 폰 — 배너가 들어가며 세로가 빠듯해집니다. 위쪽을 더 접어 칸이 30px 밑으로
+   내려가지 않게 합니다. 판(8×10)은 접지 않습니다 — 순위가 판 크기에 걸려 있습니다 */
+@media (max-height: 700px) {
+  body.cv-playing .app__body { gap: 7px; }
+  body.cv-playing .hud { padding: 6px 14px; }
+  body.cv-playing .hud__value { font-size: 15px; }
+  body.cv-playing .hud__label { font-size: 9px; }
+  body.cv-playing .cv-tray { padding: 5px 12px; gap: 8px; }
+  body.cv-playing .cv-tray__dot { max-width: 9px; }
+  body.cv-playing .cv-tray__num { font-size: 13px; }
+  body.cv-playing .cv-stage { padding: 7px 7px 12px; }
+  body.cv-playing .cv-banner { padding: 7px 10px; }
+  body.cv-playing .cv-banner__ico { width: 28px; height: 28px; font-size: 13px; }
+  body.cv-playing .cv-banner__t { font-size: 11px; }
+}
+
+/* 점수가 오르는 순간을 눈에 띄게 — 합쳐진 네잎이 여기로 날아와 닿습니다 */
+#cvScore { display: inline-block; transition: transform 120ms cubic-bezier(.34, 1.56, .64, 1); }
+#cvScore.is-pop { transform: scale(1.35); }
+.timebar__fill.is-urgent { background: var(--coral); }

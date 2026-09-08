@@ -35,6 +35,9 @@ import { makeLevel as makeBalanceLevel } from "../src/games/arcade/balance.js";
 import { gradeStroke } from "../src/games/arcade/toktok.js";
 // ㉚ 쭉 — 「어떤 속도가 유리한가」는 요청을 실제 속도로 보내야 재현되므로 직접 부릅니다
 import { simulate as simulateStretch } from "../src/games/arcade/stretch.js";
+// ㉛ 행운의 클로버 찾기 — 값 분포(2칸 해를 줄이는 것)가 이 게임의 핵인데 한 판만 봐서는
+// 우연과 구별되지 않습니다. 여러 판을 직접 만들어 비율로 봅니다
+import { makeBoard as makeCloverBoard, waysOf as cloverWays } from "../src/games/arcade/clover.js";
 // ㉙ 소등 — 방 채점은 시간이 실제로 흘러야 재현되므로 경계값만 직접 부릅니다
 import { gradeRoom, makeRoom } from "../src/games/arcade/lightout.js";
 // 테스트 모드 잠금 — 환경 변수를 바꿔 재기동해야 재현되므로 판별 함수를 직접 부릅니다
@@ -240,6 +243,12 @@ const PLAYERS = {
   STRETCH: {
     // 라운드 = 한 번의 끌기. 끊어짐이 손상 모형의 결과라 전용 시나리오를 씁니다
     custom: stretchFlow,
+  },
+
+  CLOVER: {
+    // 라운드 = **한 구간**(첫 판 60초 · 이어하기 15초)입니다. 판정을 화면이 하고 서버는
+    // 「10을 몇 번 맞췄는가」만 받으므로 정답/오답이 없습니다 — 전용 시나리오를 씁니다.
+    custom: cloverFlow,
   },
 
   STACK: {
@@ -2109,6 +2118,118 @@ function stretchSamples(speed, seconds, stepMs, jitter = 0, startLen = 0) {
     out.push({ t, len: Number(Math.max(startLen, len + wob).toFixed(4)) });
   }
   return out;
+}
+
+/**
+ * ㉛ 행운의 클로버 찾기
+ *
+ * 이 게임은 **판정을 화면이 합니다**(REQ-10 결정 ㉒). 그래서 서버 쪽에서 볼 것은 셋뿐입니다 —
+ *   ① 판을 제대로 시드하는가 (값 분포와 「길이 있는가」)
+ *   ② 신고된 점수를 그대로 믿지 않는가 (사람 손으로 불가능한 값)
+ *   ③ 이어하기가 **판과 점수를 그대로 두는가** (「그대로 남습니다」가 구조로 지켜지는가)
+ */
+async function cloverFlow(game) {
+  const C = ARCADE[game];
+
+  // ── ⓪ 값 분포 — 서버 왕복으로는 우연과 구별되지 않아 직접 만들어 봅니다 ──
+  // 균등 분포로 두면 2칸 짝이 지배적이 되어 「이어서 쓸어 담는」 재미가 사라집니다.
+  // 기획 실측은 2칸 해가 약 6% 입니다. 넉넉히 20% 를 상한으로 봅니다.
+  let two = 0;
+  let all = 0;
+  for (let t = 0; t < 10; t++) {
+    const w = cloverWays(makeCloverBoard());
+    all += w.length;
+    two += w.filter((p) => p.length === 2).length;
+  }
+  const twoPct = all ? (two / all) * 100 : 100;
+  check(`${game} 2칸 해가 지배적이지 않다`, twoPct < 20,
+    `${twoPct.toFixed(1)}% (${two}/${all}) — 균등 분포로 되돌리면 여기서 걸립니다`);
+
+  const s = await post("/game/session/start", { game_type: game, fresh: true });
+  check(`${game} 시작`, s.data.ok === true, `(${s.data.code ?? "정상"})`);
+  if (!s.data.ok) return;
+
+  assertNoSecretLeak(game, s.data);
+  const sid = s.data.session_id;
+  const round = s.data.round;
+
+  // ── ① 판 ────────────────────────────────────────────────
+  check(`${game} 판이 ${C.COLS}×${C.ROWS} 고정`,
+    round?.cols === C.COLS && round?.rows === C.ROWS && round?.board?.length === C.COLS * C.ROWS,
+    `${round?.cols}×${round?.rows} · ${round?.board?.length}칸`);
+  check(`${game} 값은 1~9 뿐`,
+    (round?.board ?? []).every((v) => Number.isInteger(v) && v >= 1 && v <= 9),
+    `이상값 ${(round?.board ?? []).filter((v) => !(v >= 1 && v <= 9)).length}개`);
+  check(`${game} 첫 판에 길이 ${C.MIN_WAYS}개 이상`,
+    cloverWays(round?.board ?? [], C.MIN_WAYS).length >= C.MIN_WAYS,
+    `${cloverWays(round?.board ?? []).length}개`);
+  check(`${game} 이어하기 ${C.boostsPerRun}회`, s.data.max_boosts === C.boostsPerRun,
+    `max_boosts=${s.data.max_boosts}`);
+
+  const seg = (cleared, combo = 3) =>
+    post("/game/round", {
+      game_type: game, session_id: sid,
+      answer: { cleared, combo_best: combo, played_ms: C.PLAY_MS },
+    });
+
+  // ⚠ 상한은 **서버가 관측한 경과 시간**으로 잽니다. 그래서 이 시나리오는 실제로 기다립니다 —
+  //    60초를 기다릴 수는 없으므로 2.4초만 쓰고 그 창에 맞는 값(4장)을 신고합니다.
+  //    기다리지 않고 12장을 신고하면 상한에 걸립니다. **그게 이 방어의 전부입니다.**
+  const PLAY = 2400;
+  const capFor = (ms) => Math.ceil((ms / 1000) * C.MAX_CLEARS_PER_SEC);
+
+  // ── ② 한 구간이 끝나면 언제나 소진 → 이어하기 대기 ─────────
+  await sleep(PLAY);
+  const first = await seg(4);
+  check(`${game} 구간이 끝나면 소진`,
+    first.data.exhausted === true && first.data.game_over === false,
+    `can_boost=${first.data.can_boost}`);
+  check(`${game} 신고한 만큼 쌓인다`, first.data.data?.score === 4,
+    `score=${first.data.data?.score} (${PLAY}ms 안에서 상한 ${capFor(PLAY)})`);
+
+  const again = await seg(1);
+  check(`${game} 소진 후 추가 응답 거부`, again.data.code === "RUN_EXHAUSTED", `(${again.data.code})`);
+
+  // ── ③ 이어하기는 판도 점수도 그대로 둡니다 ─────────────────
+  const boost = await post("/ad/reward", { trigger: `${game}_BOOST`, session_id: sid });
+  const r = boost.data.reward;
+  check(`${game} 이어하기 보상이 유효`, r?.lives === 1 && r?.round != null, `목숨=${r?.lives}`);
+  check(`${game} 이어해도 찾은 네잎은 그대로`, r?.round?.score === 4, `score=${r?.round?.score}`);
+  check(`${game} 이어해도 판이 그대로`,
+    JSON.stringify(r?.round?.board) === JSON.stringify(round?.board), "판이 새로 짜이면 실패");
+  check(`${game} 이어하기 구간은 ${C.AD_MS / 1000}초`, r?.round?.play_ms === C.AD_MS,
+    `play_ms=${r?.round?.play_ms}`);
+  check(`${game} 이어하기 표시`, r?.round?.resumed === true, `resumed=${r?.round?.resumed}`);
+
+  // ── ④ 사람 손으로 불가능한 값은 깎고 이상치로 표시합니다 ────
+  // **기다리지 않고** 9,999 를 신고합니다 — 실제 부정의 모양이 이것입니다.
+  const cheat = await seg(9999);
+  const cap = cheat.data.data?.cleared ?? 0;
+  check(`${game} 기다리지 않은 신고는 잘려 나간다`, cap > 0 && cap <= capFor(1000),
+    `인정 ${cap}회 / 신고 9999회 (경과 1초 미만이면 상한 ${capFor(1000)})`);
+  check(`${game} 그 판은 이상치로 표시`, cheat.data.data?.capped === true, `capped=${cheat.data.data?.capped}`);
+
+  // ── ⑤ 결과 ──────────────────────────────────────────────
+  const done = await post("/game/finish", { game_type: game, session_id: sid });
+  const res = done.data.result;
+  check(`${game} 결과 확정`, res?.rank_metric != null, `점수=${res?.score} 리그=${res?.bucket}`);
+  if (!res) return;
+
+  check(`${game} 점수는 찾은 네잎 수`, res.score === 4 + cap, `score=${res.score} (4+${cap})`);
+  check(`${game} 순위는 많이 찾은 쪽이 위`, res.rank_metric === -(4 + cap), `metric=${res.rank_metric}`);
+  check(`${game} 상한에 걸린 런은 이상치`, res.suspect === true, `suspect=${res.suspect}`);
+  check(`${game} 보상 사용 런은 별도 리그`, res.bucket?.endsWith("+") === true, `bucket=${res.bucket}`);
+
+  // ── ⑥ 정상 범위만 신고한 런은 이상치가 아닙니다 ────────────
+  const clean = await post("/game/session/start", { game_type: game, fresh: true });
+  await sleep(PLAY);
+  await post("/game/round", {
+    game_type: game, session_id: clean.data.session_id,
+    answer: { cleared: 3, combo_best: 2, played_ms: C.PLAY_MS },
+  });
+  const cleanEnd = await post("/game/finish", { game_type: game, session_id: clean.data.session_id });
+  check(`${game} 정상 속도는 이상치 아님`, cleanEnd.data.result?.suspect === false,
+    `${PLAY}ms 에 3장 · suspect=${cleanEnd.data.result?.suspect}`);
 }
 
 async function stretchFlow(game) {

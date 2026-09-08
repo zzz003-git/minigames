@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>인스턴트 미니게임</title>
-  <meta name="description" content="스탑워치 · 숫자야구 · 타이핑 · 숫자기억력 + 광고 리워드 아케이드 26종">
+  <meta name="description" content="스탑워치 · 숫자야구 · 타이핑 · 숫자기억력 · 행운의 클로버 찾기 + 광고 리워드 아케이드 26종">
   <meta name="color-scheme" content="dark">
   <meta name="theme-color" content="#0F1420">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -35,12 +35,16 @@
           <b>게임</b>
           <span>기록과 순위가 남는 한 판</span>
         </span>
-        <span class="gamearea__count">GAMES 30</span>
+        <span class="gamearea__count">GAMES 31</span>
       </div>
 
-    <!-- 오리지널 4종 — 한 판이 길고 기록 경신형이라 설명을 함께 보여줍니다 -->
+    <!-- 오리지널 5종 — 한 판이 길고 기록 경신형이라 설명을 함께 보여줍니다.
+         ㉛ 행운의 클로버 찾기는 **아케이드 엔진**으로 만들었지만 여기 둡니다(2026-09-08
+         Master 지시) — 60초로 아케이드 중 가장 길고, 기록 경신형이고, 규격(탭 1종류)을
+         벗어난 드래그 게임이라 이 묶음의 정의에 맞습니다. 그래서 아래 ACTION/PUZZLE
+         숫자는 건드리지 않습니다(그 숫자는 「그 묶음에 그려진 카드 수」입니다). -->
     <section class="hub__section">
-      <div class="hub__section-title"><b>오리지널</b><span>기록 경신형 4종</span></div>
+      <div class="hub__section-title"><b>오리지널</b><span>기록 경신형 5종</span></div>
 
       <nav class="hub__grid">
         <a class="hub-card" href="games/stopwatch/"
@@ -83,6 +87,17 @@
             <span class="hub-card__title">숫자 기억력</span>
             <span class="hub-card__desc">잠깐 보여준 숫자를 기억해서 입력하기</span>
             <span class="hub-card__meta">LV1~10 · 4~13자리</span>
+          </span>
+          <span class="hub-card__go" aria-hidden="true">›</span>
+        </a>
+
+        <a class="hub-card" href="games/clover/"
+           style="--card-accent:#7FD8C0; --card-soft:rgba(127,216,192,.12)">
+          <span class="hub-card__icon" aria-hidden="true">🍀</span>
+          <span class="hub-card__text">
+            <span class="hub-card__title">행운의 클로버 찾기</span>
+            <span class="hub-card__desc">이어서 쓸어 담아 합을 10으로 맞추기</span>
+            <span class="hub-card__meta">60초 · 찾은 네잎 수로 순위</span>
           </span>
           <span class="hub-card__go" aria-hidden="true">›</span>
         </a>
