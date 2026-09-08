@@ -35,7 +35,7 @@ import { makeLevel as makeBalanceLevel } from "../src/games/arcade/balance.js";
 import { gradeStroke } from "../src/games/arcade/toktok.js";
 // ㉚ 쭉 — 「어떤 속도가 유리한가」는 요청을 실제 속도로 보내야 재현되므로 직접 부릅니다
 import { simulate as simulateStretch } from "../src/games/arcade/stretch.js";
-// ㉛ 행운의 클로버 찾기 — 값 분포(2칸 해를 줄이는 것)가 이 게임의 핵인데 한 판만 봐서는
+// ㉛ 행운의 클로버 — 값 분포(2칸 해를 줄이는 것)가 이 게임의 핵인데 한 판만 봐서는
 // 우연과 구별되지 않습니다. 여러 판을 직접 만들어 비율로 봅니다
 import { makeBoard as makeCloverBoard, waysOf as cloverWays } from "../src/games/arcade/clover.js";
 // ㉙ 소등 — 방 채점은 시간이 실제로 흘러야 재현되므로 경계값만 직접 부릅니다
@@ -246,7 +246,7 @@ const PLAYERS = {
   },
 
   CLOVER: {
-    // 라운드 = **한 구간**(첫 판 60초 · 이어하기 15초)입니다. 판정을 화면이 하고 서버는
+    // 라운드 = **한 구간**(첫 판 90초 · 이어하기 15초)입니다. 판정을 화면이 하고 서버는
     // 「10을 몇 번 맞췄는가」만 받으므로 정답/오답이 없습니다 — 전용 시나리오를 씁니다.
     custom: cloverFlow,
   },
@@ -2121,7 +2121,7 @@ function stretchSamples(speed, seconds, stepMs, jitter = 0, startLen = 0) {
 }
 
 /**
- * ㉛ 행운의 클로버 찾기
+ * ㉛ 행운의 클로버
  *
  * 이 게임은 **판정을 화면이 합니다**(REQ-10 결정 ㉒). 그래서 서버 쪽에서 볼 것은 셋뿐입니다 —
  *   ① 판을 제대로 시드하는가 (값 분포와 「길이 있는가」)
@@ -2173,7 +2173,7 @@ async function cloverFlow(game) {
     });
 
   // ⚠ 상한은 **서버가 관측한 경과 시간**으로 잽니다. 그래서 이 시나리오는 실제로 기다립니다 —
-  //    60초를 기다릴 수는 없으므로 2.4초만 쓰고 그 창에 맞는 값(4장)을 신고합니다.
+  //    90초를 기다릴 수는 없으므로 2.4초만 쓰고 그 창에 맞는 값(4장)을 신고합니다.
   //    기다리지 않고 12장을 신고하면 상한에 걸립니다. **그게 이 방어의 전부입니다.**
   const PLAY = 2400;
   const capFor = (ms) => Math.ceil((ms / 1000) * C.MAX_CLEARS_PER_SEC);

@@ -1,8 +1,8 @@
 /**
- * ㉛ 행운의 클로버 찾기
+ * ㉛ 행운의 클로버
  *
- * 붙어 있는 클로버를 손가락으로 쓸어 담아 합을 10으로 맞춥니다. 조작이 **드래그 궤적**이라
- * 아케이드 규격(탭 1종류)을 벗어납니다 — docs/clover-game.md.
+ * 붙어 있는 클로버를 손가락으로 쓸어 담아 합을 10으로 맞춥니다. 아케이드 규격을 **두 가지**에서
+ * 벗어납니다 — 조작이 드래그 궤적이고, 한 판이 90초로 10~60초를 넘습니다 — docs/clover-game.md.
  *
  * ── 서버와 나누는 것 ──────────────────────────────────────────────────────
  * 서버는 **첫 판을 시드**하고, 끝에 **「10을 몇 번 맞췄는가」**만 받습니다(REQ-10 결정 ㉒).
@@ -723,7 +723,7 @@ function tickHint() {
 // 런
 // ══════════════════════════════════════════════════════════════
 
-renderHeader($("#header"), { icon: "🍀", title: "행운의 클로버 찾기" });
+renderHeader($("#header"), { icon: "🍀", title: "행운의 클로버" });
 
 const run = createEndlessRun({
   game: GAME,
@@ -808,7 +808,7 @@ async function startRun() {
 }
 
 /**
- * 한 구간 시작 — 첫 판은 60초, 이어하기는 15초.
+ * 한 구간 시작 — 첫 판은 90초, 이어하기는 15초.
  *
  * 이어하기(`resumed`)에서는 **판을 새로 짜지 않습니다.** 손에 들고 있던 판이 그대로
  * 이어져야 「그대로 남습니다」가 화면에서도 지켜집니다.
@@ -819,7 +819,7 @@ function startSegment(round) {
 
   play.total = round.score ?? 0;
   play.seg = 0;
-  play.segMs = round.play_ms ?? 60000;
+  play.segMs = round.play_ms ?? 90000;
 
   if (!round.resumed) {
     board.cols = round.cols;
