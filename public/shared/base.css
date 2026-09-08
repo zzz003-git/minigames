@@ -3772,29 +3772,77 @@ a.hubcard:focus-visible { outline: 2px solid var(--t); outline-offset: 2px; }
 }
 .cv-banner__t { flex: 1; min-width: 0; font-size: 12px; color: var(--text-2); line-height: 1.45; }
 .cv-banner__t b { color: var(--text-main); }
+.cv-banner__sub { display: block; }
 .cv-banner__tag { flex: none; font-family: var(--mono); font-size: 9.5px; letter-spacing: .1em; color: var(--text-dim); }
 .cv-banner__law { margin: 5px 0 0; text-align: center; font-size: 9.5px; color: #4f5a6d; }
 
+/* ── 판 위에 놓이는 것은 한 덩어리뿐입니다 (REQ-11) ───────────
+   상단바·기록줄·시간줄·담는통이 각자 카드로 네 겹 쌓여 **202px** 을 먹었고,
+   393×720 폰에서 한 칸이 33.9px 까지 내려갔습니다. 손가락이 닿는 면적이 이 게임의
+   조작 그 자체라, 위쪽 장식보다 칸 크기가 먼저입니다. */
+.cv-playbar {
+  display: flex; flex-direction: column; gap: 5px; padding: 7px 12px 8px;
+  background: var(--surface-2); border: 1px solid var(--border-soft); border-radius: 16px;
+}
+.cv-playbar__row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.cv-playbar__x {
+  display: grid; place-items: center; width: 28px; height: 28px; flex: none; padding: 0;
+  border: none; border-radius: 999px; background: rgba(255, 255, 255, .06);
+  color: var(--text-sub); font-size: 12px; line-height: 1; cursor: pointer;
+}
+.cv-playbar__x:active { transform: scale(.92); }
+/* 덩어리 안에 들어온 담는 통은 자기 배경을 버립니다 — 카드 안의 카드는 높이만 먹습니다 */
+.cv-playbar .cv-tray { padding: 0; gap: 10px; background: none; border: none; border-radius: 0; box-shadow: none; }
+.cv-playbar .cv-tray.is-full { box-shadow: none; }
+.cv-playbar .cv-tray__dot { max-width: 12px; }
+.cv-playbar .timebar { height: 4px; }
+
 /* ── 판이 도는 동안에는 화면을 판에 몰아 줍니다 ──────────── */
 body.cv-playing { overflow: hidden; }
-body.cv-playing .app__body { gap: 9px; }
-body.cv-playing .hud { padding: 8px 14px; }
+body.cv-playing .app { height: 100dvh; min-height: 0; padding-bottom: 8px; }
+body.cv-playing .app__body { gap: 8px; padding: 8px 8px 0; }
+/* 상단바는 판이 도는 60초 동안 아무 일도 하지 않습니다. 나가기는 ✕ 로 옮겼습니다 */
+body.cv-playing .topbar { display: none; }
 body.cv-playing .hud__value { font-size: 17px; }
-/* 작은 폰 — 배너가 들어가며 세로가 빠듯해집니다. 위쪽을 더 접어 칸이 30px 밑으로
-   내려가지 않게 합니다. 판(8×10)은 접지 않습니다 — 순위가 판 크기에 걸려 있습니다 */
+/* 판 자체가 이미 카드처럼 보입니다 — 카드의 테두리·배경·안여백을 판에 돌려줍니다 */
+body.cv-playing .cv-stage { padding: 0; background: none; border: none; border-radius: 0; }
+/* 폭이 먼저 차서 세로가 남는 폰에서는 판을 아래로 내립니다 —
+   한 손 엄지로 쓸어 담는 게임이라 판이 아래에 있어야 윗줄까지 닿습니다 */
+body.cv-playing .cv-stage { margin-top: auto; }
+body.cv-playing .cv-banner { margin: 0; padding: 8px 10px; border-radius: 14px; }
+body.cv-playing .cv-banner__ico { width: 28px; height: 28px; font-size: 13px; }
+body.cv-playing .cv-banner__t { font-size: 11px; line-height: 1.35; }
+body.cv-playing .cv-banner__law { margin: 4px 0 0; }
+/* 작은 폰 — **글자를 줄이는 것보다 두 줄짜리를 한 줄로 눕히는 쪽**이 크게 남습니다 */
 @media (max-height: 700px) {
-  body.cv-playing .app__body { gap: 7px; }
-  body.cv-playing .hud { padding: 6px 14px; }
+  body.cv-playing .app__body { gap: 6px; padding-top: 6px; }
+  body.cv-playing .cv-playbar { padding: 5px 11px 6px; gap: 4px; }
+  body.cv-playing .cv-playbar__row .hud__item { flex-direction: row; align-items: baseline; gap: 5px; }
+  body.cv-playing .cv-playbar__x { width: 25px; height: 25px; }
   body.cv-playing .hud__value { font-size: 15px; }
   body.cv-playing .hud__label { font-size: 9px; }
-  body.cv-playing .cv-tray { padding: 5px 12px; gap: 8px; }
   body.cv-playing .cv-tray__dot { max-width: 9px; }
-  body.cv-playing .cv-tray__num { font-size: 13px; }
-  body.cv-playing .cv-stage { padding: 7px 7px 12px; }
-  body.cv-playing .cv-banner { padding: 7px 10px; }
-  body.cv-playing .cv-banner__ico { width: 28px; height: 28px; font-size: 13px; }
-  body.cv-playing .cv-banner__t { font-size: 11px; }
+  body.cv-playing .cv-tray__num { font-size: 12px; }
+  body.cv-playing .cv-banner { padding: 6px 10px; }
+  body.cv-playing .cv-banner__ico { width: 24px; height: 24px; font-size: 12px; }
+  body.cv-playing .cv-banner__t { font-size: 10.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  body.cv-playing .cv-banner__sub { display: inline; margin-left: 6px; }
+  body.cv-playing .cv-banner__law { font-size: 9px; }
 }
+
+/* ── 나가기 확인 ─────────────────────────────────────────── */
+#cvExitAsk {
+  position: fixed; inset: 0; z-index: 45; background: rgba(4, 7, 13, .72);
+  display: flex; align-items: center; justify-content: center; padding: 24px;
+}
+/* id 선택자가 브라우저 기본 [hidden] 을 이깁니다 — 명시하지 않으면 늘 떠 있습니다 */
+#cvExitAsk[hidden] { display: none; }
+.cv-sheet {
+  width: 100%; max-width: 340px; background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--r-card, 24px); padding: 22px; text-align: center;
+}
+.cv-sheet .headline { font-size: 17px; margin-bottom: 6px; }
+.cv-sheet .btn { margin-top: 10px; }
 
 /* 점수가 오르는 순간을 눈에 띄게 — 합쳐진 네잎이 여기로 날아와 닿습니다 */
 #cvScore { display: inline-block; transition: transform 120ms cubic-bezier(.34, 1.56, .64, 1); }

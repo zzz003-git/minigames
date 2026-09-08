@@ -69,26 +69,33 @@
 
       <!-- 플레이 -->
       <section class="screen" data-screen="play">
-        <div class="hud">
-          <div class="hud__item">
-            <span class="hud__label">FOUND</span>
-            <span class="hud__value hud__value--accent" id="cvScore">0</span>
+        <!-- 판 위에 놓이는 것은 **이 한 덩어리뿐**입니다.
+             전에는 상단바·기록줄·시간줄·담는통이 각자 카드로 네 겹 쌓여 202px 을 먹었고,
+             393×720 폰에서 한 칸이 33.9px 까지 내려갔습니다(2026-09-08 실측 · REQ-11).
+             손가락이 닿는 면적이 이 게임의 조작 그 자체라 위쪽 장식보다 칸 크기가 먼저입니다. -->
+        <div class="cv-playbar">
+          <div class="cv-playbar__row">
+            <!-- 판이 도는 동안 상단바를 접으므로 **이것이 유일한 출구**입니다 -->
+            <button class="cv-playbar__x" type="button" id="cvExit" aria-label="나가기">&#10005;</button>
+            <div class="hud__item">
+              <span class="hud__label">찾은 네잎</span>
+              <span class="hud__value hud__value--accent" id="cvScore">0</span>
+            </div>
+            <div class="hud__item">
+              <span class="hud__label">이어서</span>
+              <span class="hud__value" id="cvCombo">&mdash;</span>
+            </div>
+            <div class="hud__item hud__item--right">
+              <span class="hud__label">TIME</span>
+              <span class="hud__value" id="cvTime">60</span>
+            </div>
           </div>
-          <div class="hud__item">
-            <span class="hud__label">COMBO</span>
-            <span class="hud__value" id="cvCombo">&mdash;</span>
+          <div class="timebar"><div class="timebar__fill" id="cvBar"></div></div>
+          <!-- 담는 통 — 10까지 몇 개가 찼는지 눈으로 보입니다 -->
+          <div class="cv-tray" id="cvTray">
+            <div class="cv-tray__dots" id="cvTrayDots"></div>
+            <div class="cv-tray__num" id="cvTrayNum">0 / 10</div>
           </div>
-          <div class="hud__item hud__item--right">
-            <span class="hud__label">TIME</span>
-            <span class="hud__value" id="cvTime">60</span>
-          </div>
-        </div>
-        <div class="timebar"><div class="timebar__fill" id="cvBar"></div></div>
-
-        <!-- 담는 통 — 10까지 몇 개가 찼는지 눈으로 보입니다 -->
-        <div class="cv-tray" id="cvTray">
-          <div class="cv-tray__dots" id="cvTrayDots"></div>
-          <div class="cv-tray__num" id="cvTrayNum">0 / 10</div>
         </div>
 
         <div class="stage stage--tight cv-stage" id="cvStage">
@@ -100,7 +107,7 @@
         <!-- 하단 고정 배너 광고 자리. 라이브에서 이 높이만큼 판이 밀립니다 -->
         <div class="cv-banner" aria-label="광고 영역">
           <span class="cv-banner__ico" aria-hidden="true">▣</span>
-          <span class="cv-banner__t"><b>배너 광고 자리</b><br>실제 광고가 이 자리에 노출됩니다</span>
+          <span class="cv-banner__t"><b>배너 광고 영역</b><span class="cv-banner__sub">실제 광고가 이 자리에 노출됩니다</span></span>
           <span class="cv-banner__tag">AD</span>
         </div>
         <p class="cv-banner__law">준법감시인 심사필 제0000-00호 (표기 예정)</p>
@@ -159,6 +166,16 @@
       </section>
 
     </main>
+  </div>
+
+  <!-- 나가기 확인 — 상단바를 접었으므로 실수로 눌러 판이 날아가지 않게 한 번 묻습니다 -->
+  <div id="cvExitAsk" hidden>
+    <div class="cv-sheet" role="dialog" aria-modal="true" aria-labelledby="cvExitTitle">
+      <div class="headline" id="cvExitTitle">게임을 나가시겠어요?</div>
+      <p class="footnote">지금 판은 기록되지 않고, 쓴 기회도 돌아오지 않습니다.</p>
+      <button class="btn btn--primary" type="button" id="cvExitStay">계속하기</button>
+      <button class="btn" type="button" id="cvExitGo">나가기</button>
+    </div>
   </div>
 
   <script type="module" src="game.js"></script>

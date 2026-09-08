@@ -39,6 +39,13 @@ const TRIGGER_COPY = {
   TYPING_RANK: { title: "전체 순위 열람", reward: "전체 순위가 공개됩니다", seconds: 3 },
   MEMORY_LEVEL: { title: "다음 레벨 도전권", reward: "레벨 도전권 1장이 지급됩니다", seconds: 5 },
   MEMORY_RANK: { title: "전체 랭킹 열람", reward: "전체 랭킹이 공개됩니다", seconds: 3 },
+
+  // ㉛ 행운의 클로버 찾기만 **15초**입니다. 실제 보상형 영상이 15~30초라, 5초로 두면
+  // 테스트하는 사람이 겪는 시간이 실물과 달라집니다(Master 지시 「라이브에서 유저가
+  // 진행하게 되는 프로세스 그대로」). 여기 키가 있으면 `_BOOST` 기본값보다 먼저 잡히므로
+  // **다른 30종은 5초 그대로**입니다.
+  // title·reward 는 호출부(`boostReward`)가 덮어씁니다 — 실제로 쓰이는 것은 seconds 뿐입니다.
+  CLOVER_BOOST: { title: "이어서 15초 더 찾기", reward: "지금 판을 15초 더 진행합니다", seconds: 15 },
 };
 
 /** 접미사로 결정되는 기본 문구 */

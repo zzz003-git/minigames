@@ -236,7 +236,9 @@ function fitGrid() {
   root.setProperty("--cv-gap", `${GAP}px`);
   root.setProperty("--cv-cols", String(board.cols));
 
-  // 판에 딱 맞춰 줄이고 남는 높이는 아래(배너 자리)로 몰아 둡니다
+  // 판에 딱 맞춰 줄입니다. 여기서 `flex: none` 이 되는 순간 남는 높이가 생기고,
+  // 그때 스타일시트의 `margin-top: auto` 가 그것을 **판 위쪽**으로 몰아 줍니다 —
+  // 한 손 엄지로 쓸어 담는 게임이라 판이 아래에 있어야 윗줄까지 닿습니다(REQ-11 3-4).
   const pv = parseFloat(b.cs.paddingTop) + parseFloat(b.cs.paddingBottom);
   stageEl.style.flex = "none";
   stageEl.style.height = `${Math.ceil(board.rows * tile + (board.rows - 1) * GAP + pv + 2)}px`;
@@ -749,6 +751,22 @@ function keepJudged(res) {
 $("#startBtn").addEventListener("click", startRun);
 $("#pauseEndBtn").addEventListener("click", () => run.end());
 $("#retryBtn").addEventListener("click", () => loadReady());
+
+/**
+ * 나가기 — 판이 도는 동안 상단바를 접으므로 **✕ 가 유일한 출구**입니다(REQ-11).
+ *
+ * 한 번 묻습니다. 판 위에서 손가락이 계속 움직이는 게임이라 스칠 수 있고,
+ * 나가면 그 판은 기록되지 않고 쓴 기회도 돌아오지 않습니다.
+ * 돌아가는 곳은 상단바 「‹」 와 **같은 자리**(`/games/`)로 둡니다 —
+ * 출구가 둘로 갈리면 어느 쪽으로 나갔는지에 따라 다른 화면이 나옵니다.
+ */
+$("#cvExit").addEventListener("click", () => { $("#cvExitAsk").hidden = false; });
+$("#cvExitStay").addEventListener("click", () => { $("#cvExitAsk").hidden = true; });
+$("#cvExitGo").addEventListener("click", () => {
+  $("#cvExitAsk").hidden = true;
+  stopPlay();
+  location.href = "/games/";
+});
 $("#statsBackBtn").addEventListener("click", () => {
   showScreen("over");
   renderOverRewards();
