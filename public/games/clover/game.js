@@ -45,55 +45,6 @@ const formatBest = (metric) => `${Math.max(0, -metric)}장`;
 // 그림 — 기본·담김은 렌더본(PNG), 성공만 아직 코드로 그립니다
 // ══════════════════════════════════════════════════════════════
 
-/**
- * 성공(네잎+꼬리) 렌더는 아직 없습니다 — REQ-09 가 오면 `img/lucky.v1.png` 로 갈아 끼우고
- * 이 함수를 지웁니다. 그때까지 게임은 이 코드 그림으로 그대로 돕니다.
- *
- * 형태 규칙은 렌더본과 같습니다 — 잎을 겹쳐 한 덩이로 만들고 **가운데에 원을 그리지
- * 않습니다.** 원을 그리면 숫자가 「올려놓은 스티커」로 읽힙니다(2026-09-07 Master 지시).
- */
-function luckySVG() {
-  const c = { a: "#ffffff", b: "#e4f9f1", c: "#aadecd", d: "#7cbfa9", line: "#5ba18c" };
-  const W = 30, H = 52, CORE = 29;
-  const f = (x) => Math.round(x * 10) / 10;
-  const leaf =
-    `M0 0 C ${f(-W)} ${f(-H * 0.45)}, ${f(-W * 1.06)} ${f(-H * 0.94)}, ${f(-W * 0.42)} ${f(-H)}` +
-    ` C ${f(-W * 0.12)} ${f(-H * 1.03)}, 0 ${f(-H * 0.9)}, 0 ${f(-H * 0.7)}` +
-    ` C 0 ${f(-H * 0.9)}, ${f(W * 0.12)} ${f(-H * 1.03)}, ${f(W * 0.42)} ${f(-H)}` +
-    ` C ${f(W * 1.06)} ${f(-H * 0.94)}, ${f(W)} ${f(-H * 0.45)}, 0 0 Z`;
-
-  const angles = [45, 135, 225, 315];
-  const body = angles
-    .map((a) => `<path transform="translate(60,60) rotate(${a})" d="${leaf}"/>`)
-    .join("");
-
-  const svg =
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="240" height="240"><defs>` +
-    `<radialGradient id="g" cx="34%" cy="24%" r="80%">` +
-    `<stop offset="0" stop-color="${c.a}"/><stop offset=".38" stop-color="${c.b}"/>` +
-    `<stop offset=".74" stop-color="${c.c}"/><stop offset="1" stop-color="${c.d}"/></radialGradient>` +
-    // 숫자 자리 — 테두리 없는 그늘. 바깥으로 서서히 사라져 윤곽이 생기지 않습니다
-    `<radialGradient id="s" cx="50%" cy="50%" r="50%">` +
-    `<stop offset="0" stop-color="#0d2a16" stop-opacity=".26"/>` +
-    `<stop offset=".55" stop-color="#0d2a16" stop-opacity=".14"/>` +
-    `<stop offset="1" stop-color="#0d2a16" stop-opacity="0"/></radialGradient>` +
-    `<clipPath id="k">${body}</clipPath>` +
-    `<radialGradient id="mg" cx="50%" cy="50%" r="50%">` +
-    `<stop offset=".55" stop-color="#000"/><stop offset="1" stop-color="#fff"/></radialGradient>` +
-    `<mask id="m"><rect width="120" height="120" fill="#fff"/>` +
-    `<circle cx="60" cy="60" r="${CORE + 10}" fill="url(#mg)"/></mask>` +
-    `<filter id="b" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="3"/></filter>` +
-    `<filter id="c" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="5"/></filter>` +
-    `</defs>` +
-    `<g fill="url(#g)">${body}</g>` +
-    `<g clip-path="url(#k)" fill="none" stroke="${c.line}" stroke-opacity=".42" stroke-width="2.4" ` +
-    `stroke-linejoin="round" mask="url(#m)">${body}</g>` +
-    `<g clip-path="url(#k)"><ellipse cx="38" cy="29" rx="22" ry="12" fill="#fff" opacity=".32" filter="url(#b)" transform="rotate(-24 38 29)"/></g>` +
-    `<g clip-path="url(#k)"><circle cx="60" cy="60" r="${CORE + 9}" fill="url(#s)" filter="url(#c)"/></g>` +
-    `</svg>`;
-  return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
-}
-
 const STEM =
   '<svg class="cv-stem" viewBox="0 0 40 100" preserveAspectRatio="none" aria-hidden="true">' +
   '<defs><linearGradient id="cvsg" x1="0" y1="0" x2="1" y2="0">' +
@@ -103,7 +54,9 @@ const STEM =
   '<path d="M16 8 C11 30 11 52 16 70" fill="none" stroke="rgba(255,255,255,.40)" stroke-width="3" stroke-linecap="round"/>' +
   "</svg>";
 
-const IMG_LUCKY = luckySVG();
+// 성공(네잎+꼬리) 렌더가 들어왔습니다(REQ-09/A-8 · 2026-09-08). 코드로 그리던 자리표시자는
+// 지웠습니다 — 판 위 클로버는 렌더 PNG 인데 **성공 순간만 그림체가 갈리던** 자리입니다.
+const IMG_LUCKY = "/games/clover/img/lucky.v1.png";
 // ⚠ **절대 경로여야 합니다.** 커스텀 속성 안의 상대 URL 은 그 값을 **쓰는 스타일시트**
 //    (`shared/base.css`)를 기준으로 풀립니다 — 화면 파일이 아닙니다.
 //    `img/base.v1.png` 로 두면 `/shared/img/base.v1.png` 를 찾아가 조용히 404 가 나고,

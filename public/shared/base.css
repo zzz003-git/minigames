@@ -3800,8 +3800,13 @@ a.hubcard:focus-visible { outline: 2px solid var(--t); outline-offset: 2px; }
 /* ── 판이 도는 동안에는 화면을 판에 몰아 줍니다 ──────────── */
 body.cv-playing { overflow: hidden; }
 body.cv-playing .app { height: 100dvh; min-height: 0; padding-bottom: 8px; }
-body.cv-playing .app__body { gap: 8px; padding: 8px 8px 0; }
-/* 상단바는 판이 도는 60초 동안 아무 일도 하지 않습니다. 나가기는 ✕ 로 옮겼습니다 */
+/* ⚠ 좌우 24px 은 **iOS 뒤로가기 스와이프를 피하려고** 둔 것입니다(REQ-13 §1).
+   8px 로 줄였더니 왼쪽 첫 열이 화면 좌표 8.1px 에 놓여, **왼쪽 클로버를 잡으려 손을 대는
+   자리가 곧 제스처의 시작점**이 됐습니다(실기기 증상). 큰 폰에서 칸이 4px 작아지는 것을
+   내주고 조작을 지킵니다 — 닿지 않는 43.6px 보다 닿는 39.6px 이 낫습니다.
+   **줄이지 마십시오.** 아래 작은 폰 블록도 위아래만 건드립니다. */
+body.cv-playing .app__body { gap: 8px; padding: 8px 24px 0; }
+/* 상단바는 판이 도는 90초 동안 아무 일도 하지 않습니다. 나가기는 ✕ 로 옮겼습니다 */
 body.cv-playing .topbar { display: none; }
 body.cv-playing .hud__value { font-size: 17px; }
 /* 판 자체가 이미 카드처럼 보입니다 — 카드의 테두리·배경·안여백을 판에 돌려줍니다 */

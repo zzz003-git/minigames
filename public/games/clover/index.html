@@ -13,6 +13,7 @@
   <!-- 판이 열리자마자 클로버가 보여야 합니다. 첫 그리기 전에 받아 둡니다 -->
   <link rel="preload" as="image" href="/games/clover/img/base.v1.png">
   <link rel="preload" as="image" href="/games/clover/img/picked.v1.png">
+  <link rel="preload" as="image" href="/games/clover/img/lucky.v1.png">
 </head>
 <body class="game game--accent-mint">
   <!-- 연쇄 잔광 · 파문 — 판 위에 겹치므로 화면 밖에 둡니다 -->
@@ -110,7 +111,11 @@
           <span class="cv-banner__t"><b>배너 광고 영역</b><span class="cv-banner__sub">실제 광고가 이 자리에 노출됩니다</span></span>
           <span class="cv-banner__tag">AD</span>
         </div>
-        <p class="cv-banner__law">준법감시인 심사필 제0000-00호 (표기 예정)</p>
+        <!-- ⚠ 실제 심사필 번호가 나올 때까지 **감춰 둡니다**(REQ-13 §3).
+             번호 없이 「제0000-00호」를 공개 화면에 띄우면 **없는 심사를 받은 것처럼 읽힐 여지**가
+             있고, 「(표기 예정)」은 스크린샷으로 잘려 돌면 사라집니다.
+             자리 확인이 필요하면 `hidden` 만 떼면 됩니다 — 지우지 마십시오. -->
+        <p class="cv-banner__law" id="cvLaw" hidden>준법감시인 심사필 제0000-00호 (표기 예정)</p>
       </section>
 
       <!-- 소진 — 이어하기 -->
