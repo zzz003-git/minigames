@@ -129,6 +129,13 @@
 
 html { -webkit-text-size-adjust: 100%; }
 
+/* 좌우로 밀어 이전·다음 화면으로 넘어가는 것을 막습니다. 손가락으로 끄는 게임이
+   다섯 종(클로버·와르르 받기·슥슥 긁기·쭉·톡톡) 있어, 판 위의 드래그가 화면 이동으로
+   새면 조작이 통째로 끊깁니다. 안쪽 가로 스크롤 영역(순위표 등)에는 영향이 없습니다.
+   ⚠ **iOS Safari 에서 이것만으로 막히는지는 확인하지 못했습니다** — 본체는
+   `shared/backguard.js` 이고 이 줄은 값이 싼 보조입니다(REQ-14 §3). */
+html, body { overscroll-behavior-x: none; }
+
 body {
   margin: 0;
   min-height: 100dvh;
@@ -3800,21 +3807,22 @@ a.hubcard:focus-visible { outline: 2px solid var(--t); outline-offset: 2px; }
 /* ── 판이 도는 동안에는 화면을 판에 몰아 줍니다 ──────────── */
 body.cv-playing { overflow: hidden; }
 body.cv-playing .app { height: 100dvh; min-height: 0; padding-bottom: 8px; }
-/* ⚠ 좌우 24px 은 **iOS 뒤로가기 스와이프를 피하려고** 둔 것입니다(REQ-13 §1).
-   8px 로 줄였더니 왼쪽 첫 열이 화면 좌표 8.1px 에 놓여, **왼쪽 클로버를 잡으려 손을 대는
-   자리가 곧 제스처의 시작점**이 됐습니다(실기기 증상). 큰 폰에서 칸이 4px 작아지는 것을
-   내주고 조작을 지킵니다 — 닿지 않는 43.6px 보다 닿는 39.6px 이 낫습니다.
-   **줄이지 마십시오.** 아래 작은 폰 블록도 위아래만 건드립니다. */
-body.cv-playing .app__body { gap: 8px; padding: 8px 24px 0; }
+/* ⚠ 좌우 여백을 **넓혀서 iOS 뒤로가기 스와이프를 피하려는 시도는 실기기에서 통하지
+   않았습니다**(아이폰 16 Pro · 2026-09-08). 24px 로 넓혀도 그대로 넘어갔습니다.
+   가장자리 띠를 피하는 방식으로는 못 막습니다 — **제스처는 뒤로가기 가드**
+   (`shared/backguard.js`)로 잡고, 여기는 칸을 키우는 쪽으로 되돌립니다.
+   **다시 넓히지 마십시오.** 아무것도 사지 못하고 칸만 깎습니다. */
+body.cv-playing .app__body { gap: 8px; padding: 8px 8px 0; }
 /* 상단바는 판이 도는 90초 동안 아무 일도 하지 않습니다. 나가기는 ✕ 로 옮겼습니다 */
 body.cv-playing .topbar { display: none; }
 body.cv-playing .hud__value { font-size: 17px; }
 /* 판 자체가 이미 카드처럼 보입니다 — 카드의 테두리·배경·안여백을 판에 돌려줍니다 */
 body.cv-playing .cv-stage { padding: 0; background: none; border: none; border-radius: 0; }
-/* 폭이 먼저 차서 세로가 남는 폰에서는 판을 아래로 내립니다 —
-   한 손 엄지로 쓸어 담는 게임이라 판이 아래에 있어야 윗줄까지 닿습니다 */
-body.cv-playing .cv-stage { margin-top: auto; }
-body.cv-playing .cv-banner { margin: 0; padding: 8px 10px; border-radius: 14px; }
+/* 남는 세로는 **판 아래**로 보냅니다. 8열×10행 정사각 칸이면 세로가 긴 폰에서 폭이 먼저
+   차므로 남는 높이를 없앨 수는 없고, 정할 수 있는 것은 **어디에 두는가**뿐입니다.
+   **판 위에 두면 고장으로 읽힙니다**(아이폰 실측 지적 · 2026-09-08) — 판 아래 여백은
+   여백으로 읽힙니다. 그래서 판을 밀어 내리지 않고 **배너를 바닥으로** 밉니다. */
+body.cv-playing .cv-banner { margin: auto 0 0; padding: 8px 10px; border-radius: 14px; }
 body.cv-playing .cv-banner__ico { width: 28px; height: 28px; font-size: 13px; }
 body.cv-playing .cv-banner__t { font-size: 11px; line-height: 1.35; }
 body.cv-playing .cv-banner__law { margin: 4px 0 0; }

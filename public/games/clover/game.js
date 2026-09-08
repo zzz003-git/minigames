@@ -23,6 +23,7 @@ import {
   runApi, renderReady, renderRunOver, renderStatsScreen, openStats, loadRankList,
   clearRewards, attemptReward, statsReward, createEndlessRun, countdown, armScreen,
 } from "../../shared/run.js";
+import { createBackGuard } from "../../shared/backguard.js";
 
 const GAME = "CLOVER";
 // config.ARCADE.CLOVER 와 같은 값입니다. 화면에만 쓰는 값이라 여기 둡니다.
@@ -713,12 +714,32 @@ $("#retryBtn").addEventListener("click", () => loadReady());
  * 돌아가는 곳은 상단바 「‹」 와 **같은 자리**(`/games/`)로 둡니다 —
  * 출구가 둘로 갈리면 어느 쪽으로 나갔는지에 따라 다른 화면이 나옵니다.
  */
-$("#cvExit").addEventListener("click", () => { $("#cvExitAsk").hidden = false; });
+/**
+ * 나가는 길은 **하나로 모읍니다** — ✕ 를 눌렀든 뒤로가기 제스처가 왔든 같은 확인창입니다.
+ * 출구가 갈리면 어느 쪽으로 나갔는지에 따라 다른 화면이 나옵니다.
+ */
+function askExit() { $("#cvExitAsk").hidden = false; }
+function leaveNow() { location.href = "/games/"; }
+
+/**
+ * iOS 왼쪽 가장자리 스와이프 대책(REQ-14 §3).
+ * 좌우 여백을 넓혀 제스처 띠를 피하는 방법은 **실기기에서 통하지 않았습니다** —
+ * 제스처는 막지 못하니 **가더라도 페이지를 안 떠나게** 잡습니다.
+ */
+const backGuard = createBackGuard({
+  isPlaying: () => play.running,
+  onCaught: askExit,
+  // 판이 안 도는 중(결과 화면 등)이면 붙잡지 않습니다 — 붙잡으면 갇힙니다
+  onLeave: leaveNow,
+});
+
+$("#cvExit").addEventListener("click", askExit);
 $("#cvExitStay").addEventListener("click", () => { $("#cvExitAsk").hidden = true; });
 $("#cvExitGo").addEventListener("click", () => {
   $("#cvExitAsk").hidden = true;
   stopPlay();
-  location.href = "/games/";
+  backGuard.release(); // 끄자마자 나갑니다 — 끄고 안 나가면 다음 뒤로가기를 못 잡습니다
+  leaveNow();
 });
 $("#statsBackBtn").addEventListener("click", () => {
   showScreen("over");
@@ -803,6 +824,8 @@ function startSegment(round) {
 
   syncTray();
   syncHud();
+
+  backGuard.arm(); // 판이 도는 동안만 뒤로가기를 붙잡습니다
 
   play.clock?.stop();
   play.clock = countdown({
