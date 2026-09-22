@@ -3767,6 +3767,13 @@ a.hubcard:focus-visible { outline: 2px solid var(--t); outline-offset: 2px; }
     .02em .02em 0 #12503f, -.02em .02em 0 #12503f, .02em -.02em 0 #12503f, -.02em -.02em 0 #12503f,
     0 .04em .05em rgba(0, 0, 0, .5);
 }
+/* 「10」 밑의 +n — 몇 장을 얻었는지 그 자리에서 보여야 「길게 이으면 더 준다」가 그림으로 전해집니다(REQ-16) */
+.cv-merge__gain {
+  position: absolute; left: 50%; top: 76%; transform: translateX(-50%); z-index: 4;
+  padding: .055em .13em; border-radius: 999px; background: var(--mint); color: #0b3018;
+  font-family: var(--mono); font-weight: 700; font-style: normal; font-size: .155em; line-height: 1.25;
+  letter-spacing: -.01em; white-space: nowrap; box-shadow: 0 .02em .05em rgba(0, 0, 0, .45);
+}
 
 /* ── 배너 광고 자리 ──────────────────────────────────────── */
 .cv-banner {

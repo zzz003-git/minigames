@@ -2,7 +2,8 @@
  * ㉛ 행운의 클로버 — ENDLESS
  *
  * 붙어 있는 클로버를 손가락으로 쓸어 담아 합을 10으로 맞춥니다. 맞는 순간 담은 것들이
- * 한 덩이로 합쳐져 네잎 클로버 한 장이 됩니다. 90초 동안 몇 장을 찾는지가 기록입니다.
+ * 한 덩이로 합쳐져 네잎 클로버가 됩니다 — **담은 칸 수 − 1 장**(2칸 1장 … 5칸 4장, REQ-16).
+ * 90초 동안 몇 장을 찾는지가 기록입니다.
  * 기획: ../reward-minigame-research/plans/2026-09-04/PLAN-38_열까지.md · docs/clover-game.md
  *
  * ── 이 spec 이 하는 일은 다른 게임과 다릅니다 ─────────────────────────────
@@ -11,7 +12,7 @@
  * 네트워크 왕복이 그대로 얹힙니다**(기획 28절이 640ms → 278ms 로 줄여 놓은 값입니다).
  *
  * 그래서 REQ-10 결정 ㉒ 로 갑니다 — **서버는 첫 판을 시드하고, 판정은 화면이 하고,
- * 끝에 「10을 몇 번 맞췄는가」만 신고받습니다.**
+ * 끝에 「10을 몇 번 맞췄는가」와 「네잎을 몇 장 얻었는가」만 신고받습니다.**
  *
  * ⚠ **이 구조가 지금 안전한 이유는 「보상이 없어서」입니다.** 점수를 위조해서 얻을 수
  *    있는 것이 순위 표시뿐입니다. 보상을 붙이는 날(SYS-05) **서버가 한 수마다 판정하거나
@@ -128,7 +129,7 @@ function initExt(meta) {
   meta.ext = {
     ...(meta.ext ?? {}),
     board: makeBoard(),
-    score: 0, // 찾은 네잎 = 10을 맞춘 횟수
+    score: 0, // 찾은 네잎 — 조합마다 담은 칸 수 − 1 장
     segments: 0, // 90초 한 판 + 이어하기 15초들
     combo_best: 0,
     played_ms: 0,
@@ -196,7 +197,11 @@ export const spec = {
   },
 
   /**
-   * 한 구간이 끝났습니다. answer = `{ cleared, combo_best, played_ms }`
+   * 한 구간이 끝났습니다. answer = `{ cleared, gained, combo_best, played_ms }`
+   *
+   * `cleared` 는 10을 맞춘 **횟수**, `gained` 는 얻은 **네잎 장수**입니다. 둘을 나눈 이유는
+   * 점수가 칸 수에 따라 달라서입니다(REQ-16) — 길게 이을수록 많이 받아야 3~4칸 조합을
+   * 찾을 이유가 생깁니다. 상한도 두 겹입니다: 횟수는 초당 2회, 장수는 한 조합당 4장.
    *
    * **항상 fatal 입니다** — 시간이 다한 것은 실패가 아니라 소진이고, 소진이라야
    * 「광고 보고 15초 더 찾기」 자리가 열립니다(⑳ 슥슥 긁기와 같은 처리).
@@ -210,12 +215,22 @@ export const spec = {
     const cap = clearCap(roundNo, sinceIssuedMs);
     const cleared = Math.min(reported, cap);
 
+    // 장수 — 한 조합이 줄 수 있는 최대는 MAX_GAIN_PER_CLEAR(5칸 − 1) 장입니다.
+    // `gained` 가 없으면 그 조합들을 전부 2칸으로 칩니다 — 이 필드를 모르는 옛 화면이
+    // 캐시에 남아 있어도 점수가 0 이 되지 않습니다.
+    const graw = a.gained === undefined ? cleared : Number(a.gained);
+    const greported = Number.isInteger(graw) && graw >= 0 ? graw : 0;
+    const gainCap = cleared * C.MAX_GAIN_PER_CLEAR;
+    const gained = Math.min(greported, gainCap);
+    const overGain = greported > gainCap;
+
     // 숫자가 아니거나 사람 손으로 불가능한 값이면 그 판을 이상치로 표시합니다.
     // 판을 끊지는 않습니다 — 끊으면 통신이 튀었을 때 정상 이용자의 판이 날아갑니다.
-    const suspect = !Number.isInteger(raw) || raw < 0 || reported > cap;
-    if (reported > cap) ext.capped = (ext.capped ?? 0) + 1;
+    const suspect = !Number.isInteger(raw) || raw < 0 || reported > cap
+      || !Number.isInteger(graw) || graw < 0 || overGain;
+    if (reported > cap || overGain) ext.capped = (ext.capped ?? 0) + 1;
 
-    ext.score = (ext.score ?? 0) + cleared;
+    ext.score = (ext.score ?? 0) + gained;
     ext.segments = (ext.segments ?? 0) + 1;
     ext.played_ms = (ext.played_ms ?? 0) + segmentMs(roundNo);
 
@@ -230,7 +245,8 @@ export const spec = {
       suspect,
       data: {
         cleared,
-        capped: reported > cap,
+        gained,
+        capped: reported > cap || overGain,
         ...viewOf(ext),
       },
     };

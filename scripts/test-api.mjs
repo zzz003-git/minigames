@@ -37,7 +37,7 @@ import { gradeStroke } from "../src/games/arcade/toktok.js";
 import { simulate as simulateStretch } from "../src/games/arcade/stretch.js";
 // ㉛ 행운의 클로버 — 값 분포(2칸 해를 줄이는 것)가 이 게임의 핵인데 한 판만 봐서는
 // 우연과 구별되지 않습니다. 여러 판을 직접 만들어 비율로 봅니다
-import { makeBoard as makeCloverBoard, waysOf as cloverWays } from "../src/games/arcade/clover.js";
+import { makeBoard as makeCloverBoard, waysOf as cloverWays, spec as cloverSpec } from "../src/games/arcade/clover.js";
 // ㉙ 소등 — 방 채점은 시간이 실제로 흘러야 재현되므로 경계값만 직접 부릅니다
 import { gradeRoom, makeRoom } from "../src/games/arcade/lightout.js";
 // 테스트 모드 잠금 — 환경 변수를 바꿔 재기동해야 재현되므로 판별 함수를 직접 부릅니다
@@ -2145,6 +2145,20 @@ async function cloverFlow(game) {
   check(`${game} 2칸 해가 지배적이지 않다`, twoPct < 20,
     `${twoPct.toFixed(1)}% (${two}/${all}) — 균등 분포로 되돌리면 여기서 걸립니다`);
 
+  // ── ⓪-b 장수 = 담은 칸 수 − 1 — 상한은 서버 왕복의 시간 창과 무관하게 spec 으로 잽니다 ──
+  const judge = (answer) =>
+    cloverSpec.judgeRound({ answer, meta: {}, roundNo: 1, sinceIssuedMs: C.PLAY_MS }).data;
+  const five = judge({ cleared: 1, gained: 5 });
+  check(`${game} 한 조합에 ${C.MAX_GAIN_PER_CLEAR + 1}장 신고는 ${C.MAX_GAIN_PER_CLEAR}장으로 잘린다`,
+    five.score === C.MAX_GAIN_PER_CLEAR && five.capped === true,
+    `score=${five.score} capped=${five.capped}`);
+  const legit = judge({ cleared: 4, gained: 1 + 2 + 3 + 4 });
+  check(`${game} 2·3·4·5칸 조합이 1+2+3+4 로 쌓인다`, legit.score === 10 && legit.capped === false,
+    `score=${legit.score}`);
+  const old = judge({ cleared: 3 });
+  check(`${game} gained 없는 옛 화면은 조합당 1장`, old.score === 3 && old.capped === false,
+    `score=${old.score}`);
+
   const s = await post("/game/session/start", { game_type: game, fresh: true });
   check(`${game} 시작`, s.data.ok === true, `(${s.data.code ?? "정상"})`);
   if (!s.data.ok) return;
@@ -2166,10 +2180,10 @@ async function cloverFlow(game) {
   check(`${game} 이어하기 ${C.boostsPerRun}회`, s.data.max_boosts === C.boostsPerRun,
     `max_boosts=${s.data.max_boosts}`);
 
-  const seg = (cleared, combo = 3) =>
+  const seg = (cleared, gained, combo = 3) =>
     post("/game/round", {
       game_type: game, session_id: sid,
-      answer: { cleared, combo_best: combo, played_ms: C.PLAY_MS },
+      answer: { cleared, gained, combo_best: combo, played_ms: C.PLAY_MS },
     });
 
   // ⚠ 상한은 **서버가 관측한 경과 시간**으로 잽니다. 그래서 이 시나리오는 실제로 기다립니다 —
@@ -2180,21 +2194,21 @@ async function cloverFlow(game) {
 
   // ── ② 한 구간이 끝나면 언제나 소진 → 이어하기 대기 ─────────
   await sleep(PLAY);
-  const first = await seg(4);
+  const first = await seg(4, 9); // 2+3+4+4칸 → 1+2+3+3장
   check(`${game} 구간이 끝나면 소진`,
     first.data.exhausted === true && first.data.game_over === false,
     `can_boost=${first.data.can_boost}`);
-  check(`${game} 신고한 만큼 쌓인다`, first.data.data?.score === 4,
+  check(`${game} 신고한 만큼 쌓인다`, first.data.data?.score === 9,
     `score=${first.data.data?.score} (${PLAY}ms 안에서 상한 ${capFor(PLAY)})`);
 
-  const again = await seg(1);
+  const again = await seg(1, 1);
   check(`${game} 소진 후 추가 응답 거부`, again.data.code === "RUN_EXHAUSTED", `(${again.data.code})`);
 
   // ── ③ 이어하기는 판도 점수도 그대로 둡니다 ─────────────────
   const boost = await post("/ad/reward", { trigger: `${game}_BOOST`, session_id: sid });
   const r = boost.data.reward;
   check(`${game} 이어하기 보상이 유효`, r?.lives === 1 && r?.round != null, `목숨=${r?.lives}`);
-  check(`${game} 이어해도 찾은 네잎은 그대로`, r?.round?.score === 4, `score=${r?.round?.score}`);
+  check(`${game} 이어해도 찾은 네잎은 그대로`, r?.round?.score === 9, `score=${r?.round?.score}`);
   check(`${game} 이어해도 판이 그대로`,
     JSON.stringify(r?.round?.board) === JSON.stringify(round?.board), "판이 새로 짜이면 실패");
   check(`${game} 이어하기 구간은 ${C.AD_MS / 1000}초`, r?.round?.play_ms === C.AD_MS,
@@ -2203,7 +2217,7 @@ async function cloverFlow(game) {
 
   // ── ④ 사람 손으로 불가능한 값은 깎고 이상치로 표시합니다 ────
   // **기다리지 않고** 9,999 를 신고합니다 — 실제 부정의 모양이 이것입니다.
-  const cheat = await seg(9999);
+  const cheat = await seg(9999, 9999);
   const cap = cheat.data.data?.cleared ?? 0;
   check(`${game} 기다리지 않은 신고는 잘려 나간다`, cap > 0 && cap <= capFor(1000),
     `인정 ${cap}회 / 신고 9999회 (경과 1초 미만이면 상한 ${capFor(1000)})`);
@@ -2215,8 +2229,9 @@ async function cloverFlow(game) {
   check(`${game} 결과 확정`, res?.rank_metric != null, `점수=${res?.score} 리그=${res?.bucket}`);
   if (!res) return;
 
-  check(`${game} 점수는 찾은 네잎 수`, res.score === 4 + cap, `score=${res.score} (4+${cap})`);
-  check(`${game} 순위는 많이 찾은 쪽이 위`, res.rank_metric === -(4 + cap), `metric=${res.rank_metric}`);
+  const capGain = cap * C.MAX_GAIN_PER_CLEAR;
+  check(`${game} 점수는 찾은 네잎 수`, res.score === 9 + capGain, `score=${res.score} (9+${capGain})`);
+  check(`${game} 순위는 많이 찾은 쪽이 위`, res.rank_metric === -(9 + capGain), `metric=${res.rank_metric}`);
   check(`${game} 상한에 걸린 런은 이상치`, res.suspect === true, `suspect=${res.suspect}`);
   check(`${game} 보상 사용 런은 별도 리그`, res.bucket?.endsWith("+") === true, `bucket=${res.bucket}`);
 
@@ -2225,7 +2240,7 @@ async function cloverFlow(game) {
   await sleep(PLAY);
   await post("/game/round", {
     game_type: game, session_id: clean.data.session_id,
-    answer: { cleared: 3, combo_best: 2, played_ms: C.PLAY_MS },
+    answer: { cleared: 3, gained: 6, combo_best: 2, played_ms: C.PLAY_MS },
   });
   const cleanEnd = await post("/game/finish", { game_type: game, session_id: clean.data.session_id });
   check(`${game} 정상 속도는 이상치 아님`, cleanEnd.data.result?.suspect === false,

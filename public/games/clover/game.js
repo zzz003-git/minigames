@@ -84,6 +84,7 @@ const play = {
   segMs: 0,        // 이번 구간 길이
   total: 0,        // 서버가 들고 있는 누적 점수
   seg: 0,          // 이번 구간에 맞춘 횟수
+  gain: 0,         // 이번 구간에 얻은 네잎 — 조합마다 담은 칸 수 − 1 (REQ-16)
   comboBest: 0,
   combo: 0,
   lastClear: 0,
@@ -454,7 +455,11 @@ function resolve() {
   play.ptr = null;
   syncTray();
 
-  play.seg += 1; // 3칸이든 5칸이든 **1점** — 화면의 그림과 숫자를 맞춥니다
+  // 2칸 1장 · 3칸 2장 · 4칸 3장 · 5칸 4장(REQ-16). 늘 1장이면 작은 수 가중으로
+  // 3~4칸 조합을 기본으로 만들어 놓고도 2칸만 찾는 편이 이득이 됩니다.
+  const gain = gone.length - 1;
+  play.seg += 1;
+  play.gain += gain;
   syncHud();
 
   // ① 고른 클로버들이 가운데 한 점으로 모입니다
@@ -483,7 +488,7 @@ function resolve() {
   });
 
   // ② 한 덩이로 뭉친 네잎이 솟아 점수로 날아갑니다
-  if (drawable) flyMerged(cx, cy, cs);
+  if (drawable) flyMerged(cx, cy, cs, gain);
 
   // ③ 판은 기다리지 않습니다
   setTimeout(() => {
@@ -506,12 +511,12 @@ function resolve() {
 }
 
 /** 합쳐진 「10」 — 판 밖으로 나가야 해서 body 에 붙입니다 */
-function flyMerged(cx, cy, cs) {
+function flyMerged(cx, cy, cs, gain) {
   const size = Math.max(cs * 2.2, 78);
   const node = document.createElement("div");
   node.className = "cv-merge";
   node.style.cssText = `left:${cx}px;top:${cy}px;width:${size}px;height:${size}px;font-size:${size}px`;
-  node.innerHTML = `<div class="cv-merge__b">${STEM}<img class="cv-merge__head" src="${IMG_LUCKY}" alt=""><b>10</b></div>`;
+  node.innerHTML = `<div class="cv-merge__b">${STEM}<img class="cv-merge__head" src="${IMG_LUCKY}" alt=""><b>10</b><i class="cv-merge__gain">+${gain}</i></div>`;
   document.body.append(node);
 
   const tgt = $("#cvScore").getBoundingClientRect();
@@ -648,7 +653,7 @@ function syncTray() {
 }
 
 function syncHud() {
-  $("#cvScore").textContent = String(play.total + play.seg);
+  $("#cvScore").textContent = String(play.total + play.gain);
   const hot = performance.now() - play.lastClear < COMBO_MS && play.combo > 1;
   $("#cvCombo").textContent = hot ? `${play.combo}번째` : "—";
   $("#cvCombo").classList.toggle("hud__value--accent", hot);
@@ -733,6 +738,29 @@ const backGuard = createBackGuard({
   onLeave: leaveNow,
 });
 
+/**
+ * 가장자리에서 시작한 터치를 삼킵니다(REQ-17 §1) — 판이 도는 동안만.
+ *
+ * 위 가드는 `popstate` 로 잡는데, 아이폰 16 Pro Safari 에서는 **판이 도는 중에도 확인창이
+ * 한 번도 안 떴습니다**(2026-09-09 Master 확인). 제스처가 `popstate` 를 거치지 않는다는
+ * 뜻이라, 그 앞에서 막을 수 있는 수단이 이것 하나 남았습니다.
+ *
+ * ⚠ **iOS 에서 먹는지는 확인하지 못했습니다** — Chromium 은 Safari 의 가장자리 제스처를
+ *    재현하지 못합니다. 실기기에서 ① 스와이프가 막히는가 ② **첫 열·끝 열 드래그가 살아
+ *    있는가**를 함께 봐야 합니다. 조작이 죽으면 밴드를 12px 로 좁히거나 이것을 뺍니다.
+ * ⚠ `passive: false` 가 아니면 `preventDefault` 가 아무 일도 하지 않습니다.
+ *    드래그는 `pointerdown` + `setPointerCapture` 가 먼저 잡으므로 여기서 막히지 않습니다.
+ */
+const EDGE = 24;
+addEventListener("touchstart", (e) => {
+  if (!play.running) return;
+  const t = e.touches?.[0];
+  if (!t) return;
+  if (t.clientX <= EDGE || t.clientX >= innerWidth - EDGE) {
+    if (e.cancelable) e.preventDefault();
+  }
+}, { passive: false });
+
 $("#cvExit").addEventListener("click", askExit);
 $("#cvExitStay").addEventListener("click", () => { $("#cvExitAsk").hidden = true; });
 $("#cvExitGo").addEventListener("click", () => {
@@ -751,6 +779,9 @@ requestAnimationFrame(drawFx);
 
 async function loadReady() {
   stopPlay();
+  // 화면에 들어오자마자 켭니다(REQ-17 §2-2). 판 시작에서 켜면 시작 화면에서 민 것을
+  // 못 잡습니다. 붙잡는 판단은 isPlaying 이라 판이 안 돌 때는 그대로 내보냅니다.
+  backGuard.arm();
   showScreen("ready");
   document.body.classList.remove("cv-playing");
   clearRewards();
@@ -793,6 +824,7 @@ function startSegment(round) {
 
   play.total = round.score ?? 0;
   play.seg = 0;
+  play.gain = 0;
   play.segMs = round.play_ms ?? 90000;
 
   if (!round.resumed) {
@@ -824,8 +856,6 @@ function startSegment(round) {
 
   syncTray();
   syncHud();
-
-  backGuard.arm(); // 판이 도는 동안만 뒤로가기를 붙잡습니다
 
   play.clock?.stop();
   play.clock = countdown({
@@ -865,13 +895,14 @@ async function endSegment() {
 
   await run.answer({
     cleared: play.seg,
+    gained: play.gain,
     combo_best: play.comboBest,
     played_ms: play.segMs,
   });
 }
 
 function pauseText() {
-  const found = play.total + play.seg;
+  const found = play.total + play.gain;
   return {
     sub: found > 0
       ? "이어하면 지금 판을 그대로 15초 더 찾습니다 — 찾은 네잎은 그대로 남습니다"
