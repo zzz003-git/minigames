@@ -2,9 +2,9 @@
 
 **이 파일은 손으로 고치지 않습니다.** `node scripts/gen-changelog.mjs` 가 `git log` 에서 만듭니다.
 
-| 기준 커밋 | `123a75e` |
+| 기준 커밋 | `567635b` |
 | --- | --- |
-| 커밋 수 | 150개 |
+| 커밋 수 | 162개 |
 
 ## 이 파일이 낡았는지 확인하는 법
 
@@ -29,7 +29,119 @@
 
 ---
 
+## 2026-10-01
+
+### `567635b` 게임 진입 로딩 화면 — splash.js 추가 · 게임 31종 <body> 다음에 한 줄 (REQ-18)
+> **대조군 영향** — 게임 폴더
+
+- `public/games/balance/`
+- `public/games/baseball/`
+- `public/games/basket/`
+- `public/games/cardpair/`
+- `public/games/clover/`
+- `public/games/countdot/`
+- `public/games/detective/`
+- `public/games/dropcatch/`
+- … 외 24곳
+
+## 2026-09-22
+
+### `6c9d228` ㉛ 클로버 — 성공 그림 교체 · 칸 수만큼 네잎 · 가장자리 스와이프 차단 (REQ-15·16·17)
+> **대조군 영향** — 게임 폴더 · 게임 설정 · 게임 로직 · 게임 문서
+
+- `docs/clover-game.md`
+- `public/games/clover/ (3)`
+- `public/shared/ (2)`
+- `scripts/test-api.mjs`
+- `src/games/arcade/`
+- `src/lib/`
+
+## 2026-09-10
+
+### `c4b34be` 파비콘 — easy2Njoy 아이콘을 41개 페이지 전부에 붙인다
+> **대조군 영향** — 게임 폴더
+
+- `docs/handoff/2026-09-10_파비콘적용_01_브랜드세션.md`
+- `public/android-chrome-192x192.png`
+- `public/android-chrome-512x512.png`
+- `public/apple-touch-icon.png`
+- `public/favicon-16x16.png`
+- `public/favicon-32x32.png`
+- `public/favicon.ico`
+- `public/favicon.svg`
+- … 외 43곳
+
+## 2026-09-08
+
+### `6adf917` ㉛ 클로버 — 판 위 빈 공간을 없애고 뒤로가기를 가드로 잡는다 (REQ-14)
+> **대조군 영향** — 게임 폴더
+
+- `public/games/clover/`
+- `public/shared/ (2)`
+
+### `2fab301` ㉛ 클로버 — 라이브까지 남은 넷을 정리한다 (REQ-13)
+> **대조군 영향** — 게임 폴더
+
+- `public/games/clover/ (3)`
+- `public/games/`
+- `public/index.html`
+- `public/shared/`
+
+### `8516f44` ㉛ 클로버 — 이름을 「행운의 클로버」로, 한 판을 90초로 (REQ-12)
+> **대조군 영향** — 게임 폴더 · 게임 설정 · 게임 로직 · 게임 문서
+
+- `README.md`
+- `docs/clover-game.md`
+- `public/games/clover/ (2)`
+- `public/games/`
+- `public/index.html`
+- `public/shared/`
+- `scripts/test-api.mjs`
+- `src/games/arcade/`
+- … 외 1곳
+
+### `ea64585` ㉛ 클로버 — 판 위를 한 덩어리로 접어 터치 영역을 넓힌다 (REQ-11)
+> **대조군 영향** — 게임 폴더
+
+- `public/games/clover/ (2)`
+- `public/games/`
+- `public/shared/ (2)`
+
+### `fb4f479` ㉛ 행운의 클로버 찾기를 넣는다 (REQ-10)
+> **대조군 영향** — 게임 폴더 · 아케이드 레지스트리 · 게임 설정 · 게임 로직 · 게임 문서
+
+- `README.md`
+- `docs/clover-game.md`
+- `public/games/clover/ (4)`
+- `public/index.html`
+- `public/shared/`
+- `scripts/test-api.mjs`
+- `src/games/arcade/ (2)`
+- `src/lib/`
+
 ## 2026-09-04
+
+### `d9426d2` fix(test): seedInvite 가 원격 대상일 때 조용히 로컬에 심지 않고 멈춘다 (지시서 16 §5)
+
+- `scripts/test-ys2.mjs`
+
+### `a5b5557` chore: 줄바꿈 정규화 (CRLF → LF) — 내용 변경 0
+> **대조군 영향** — 게임 폴더 · 아케이드 레지스트리 · 게임 로직 · 게임 문서
+
+- `docs/store-game.md`
+- `public/games/basket/`
+- `public/games/store/ (2)`
+- `src/games/arcade/`
+- `src/routes/`
+
+### `b788cac` chore: .gitattributes 로 커밋되는 줄바꿈을 LF 로 고정한다 (지시서 16)
+
+- `.gitattributes`
+
+### `a5417eb` CHANGELOG 갱신 (기준 123a75e)
+> **대조군 영향** — 게임 문서
+
+- `docs/CHANGELOG.md`
 
 ### `123a75e` fix(ys2): 공통 화면이 트랙을 알게 한다 (지시서 15 · 네 자리)
 > **대조군 영향** — 게임 설정
