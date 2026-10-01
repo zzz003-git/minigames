@@ -41,6 +41,7 @@ import {
   TYPING,
   MEMORY,
   COMMON,
+  RETIRED_GAME_TYPES,
 } from "./lib/config.js";
 
 import * as stopwatch from "./games/stopwatch.js";
@@ -91,6 +92,9 @@ for (const [game, spec] of Object.entries(ARCADE_SPECS)) {
 
 async function sessionStart(ctx) {
   const gameType = requireOneOf(ctx.body.game_type, "game_type", GAME_TYPES);
+  if (RETIRED_GAME_TYPES.includes(gameType)) {
+    throw new ApiError("GAME_RETIRED", "서비스를 마친 게임입니다.", 410);
+  }
   return STARTERS[gameType](ctx);
 }
 

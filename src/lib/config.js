@@ -1249,6 +1249,13 @@ export const ARCADE_GAME_TYPES = Object.keys(ARCADE);
 /** 서비스 중인 전체 게임 목록 — 모든 입력 검증(requireOneOf)의 단일 출처 */
 export const GAME_TYPES = [...CLASSIC_GAME_TYPES, ...ARCADE_GAME_TYPES];
 
+/**
+ * 내린 게임 — **새 판 시작만** 막습니다(src/index.js sessionStart). 코드·기록·순위는 그대로라
+ * 다시 올리려면 여기서 빼고 public/_redirects 의 해당 줄과 허브 카드만 되돌리면 됩니다.
+ *   PATHLINE: DEP-017 「한 줄로 이어요」 — 2026-10-01 Master 지시로 내림 (REQ-21)
+ */
+export const RETIRED_GAME_TYPES = ["PATHLINE"];
+
 // ── 공통 ──────────────────────────────────────────────────────
 export const COMMON = {
   IP_AD_VIEWS_PER_DAY: 20, // 동일 IP 일일 광고 시청 최대 20회 (기획서 12장)

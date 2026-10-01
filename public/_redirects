@@ -1,0 +1,5 @@
+# 내린 게임 — 주소로 바로 들어와도 깨진 화면 대신 허브로 돌려보냅니다.
+# 서버 쪽 차단은 src/lib/config.js RETIRED_GAME_TYPES. 다시 올리면 이 줄도 지웁니다.
+# DEP-017 「한 줄로 이어요」 — 2026-10-01 Master 지시로 내림 (REQ-21)
+/games/pathline/* /games/ 302
+/games/pathline /games/ 302

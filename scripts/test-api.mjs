@@ -24,7 +24,7 @@
 
 import { ARCADE_SPECS } from "../src/games/arcade/index.js";
 import { validateSpec } from "../src/lib/arcade.js";
-import { ARCADE, MIND } from "../src/lib/config.js";
+import { ARCADE, MIND, RETIRED_GAME_TYPES } from "../src/lib/config.js";
 // ⑳ 슥슥 긁기 — 카드 생성·연속 일수 규칙은 서버 왕복으로 재현되지 않아 직접 호출합니다
 import { makeCard, streakFor, shiftDay } from "../src/games/arcade/scratch.js";
 // ㉑ 퍼펙트 스택 — 블록 위치는 서버와 **같은 식**으로 계산해야 탭 시각을 잡을 수 있습니다
@@ -2949,6 +2949,14 @@ async function arcadeFlows() {
 
     console.log(`\n  ── ${game} (${ARCADE[game].label}) ──`);
     useIp(testIp(40 + i++)); // 게임마다 다른 IP — 서로의 광고 한도를 먹지 않게
+
+    // 내린 게임은 흐름을 지우지 않고 건너뜁니다 — 새 판 시작이 거부되는지만 봅니다
+    if (RETIRED_GAME_TYPES.includes(game)) {
+      const r = await post("/game/session/start", { game_type: game, fresh: true });
+      check(`${game} 내린 게임은 새 판 시작 거부`, r.status === 410 && r.data.code === "GAME_RETIRED",
+        `status=${r.status} code=${r.data?.code}`);
+      continue;
+    }
 
     try {
       const result = player.custom
