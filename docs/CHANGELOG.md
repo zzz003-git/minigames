@@ -2,9 +2,9 @@
 
 **이 파일은 손으로 고치지 않습니다.** `node scripts/gen-changelog.mjs` 가 `git log` 에서 만듭니다.
 
-| 기준 커밋 | `ed2535a` |
+| 기준 커밋 | `756fa58` |
 | --- | --- |
-| 커밋 수 | 164개 |
+| 커밋 수 | 166개 |
 
 ## 이 파일이 낡았는지 확인하는 법
 
@@ -30,6 +30,17 @@
 ---
 
 ## 2026-10-01
+
+### `756fa58` 파비콘 잔여 2건 — apple-touch-icon 을 CI Kit v1.1 판으로 · manifest theme_color #0F1420 (REQ-19)
+
+- `docs/handoff/2026-09-10_파비콘적용_01_브랜드세션.md`
+- `public/apple-touch-icon.png`
+- `public/site.webmanifest`
+
+### `189f2e6` docs: CHANGELOG 재생성 (기준 ed2535a)
+> **대조군 영향** — 게임 문서
+
+- `docs/CHANGELOG.md`
 
 ### `ed2535a` 로딩 화면 — 최대 노출 2초 → 2.5초 (Master 지시 · REQ-18 후속)
 
