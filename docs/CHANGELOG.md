@@ -2,9 +2,9 @@
 
 **이 파일은 손으로 고치지 않습니다.** `node scripts/gen-changelog.mjs` 가 `git log` 에서 만듭니다.
 
-| 기준 커밋 | `756fa58` |
+| 기준 커밋 | `1966edb` |
 | --- | --- |
-| 커밋 수 | 166개 |
+| 커밋 수 | 169개 |
 
 ## 이 파일이 낡았는지 확인하는 법
 
@@ -30,6 +30,25 @@
 ---
 
 ## 2026-10-01
+
+### `1966edb` ⑲ 한 줄로 이어요(DEP-017) 내리기 — 허브 카드 제거 · 새 판 차단 · 주소 직접 접속은 허브로 (REQ-21)
+> **대조군 영향** — 게임 설정
+
+- `public/_redirects`
+- `public/games/`
+- `public/index.html`
+- `scripts/test-api.mjs`
+- `src/index.js`
+- `src/lib/`
+
+### `8e71ba7` 로딩 화면 — 최소 노출 0.5 → 1.5초 · 상한 2.5 → 3초 (REQ-20)
+
+- `public/shared/`
+
+### `aad85a1` docs: CHANGELOG 재생성 (기준 756fa58)
+> **대조군 영향** — 게임 문서
+
+- `docs/CHANGELOG.md`
 
 ### `756fa58` 파비콘 잔여 2건 — apple-touch-icon 을 CI Kit v1.1 판으로 · manifest theme_color #0F1420 (REQ-19)
 
