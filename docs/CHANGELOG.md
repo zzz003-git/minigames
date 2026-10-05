@@ -2,9 +2,9 @@
 
 **이 파일은 손으로 고치지 않습니다.** `node scripts/gen-changelog.mjs` 가 `git log` 에서 만듭니다.
 
-| 기준 커밋 | `2266a9a` |
+| 기준 커밋 | `3624828` |
 | --- | --- |
-| 커밋 수 | 188개 |
+| 커밋 수 | 192개 |
 
 ## 이 파일이 낡았는지 확인하는 법
 
@@ -30,6 +30,27 @@
 ---
 
 ## 2026-10-05
+
+### `3624828` 오늘의 선택 — 옛 캐시 호환용 통짜 mind-db.js 제거 (한 배포 주기 유지 후 · REQ-47 후속)
+
+- `public/mind/`
+- `public/pair/`
+- `scripts/gen-mind-db.mjs`
+- `scripts/test-mind.mjs`
+- `src/lib/`
+
+### `eded8ca` 타로 뽑기 「문양 의식」 — 시안 A-2+ · 의식 4초 (REQ-48 재작성)
+
+- `public/tarot/ (4)`
+
+### `dd63c77` 타로 — 카드를 고른 뒤 뒤집히기 전까지 기다림 모션 (REQ-48)
+
+- `public/tarot/ (3)`
+
+### `bb13c76` docs: CHANGELOG 재생성 (기준 2266a9a)
+> **대조군 영향** — 게임 문서
+
+- `docs/CHANGELOG.md`
 
 ### `2266a9a` 오늘의 선택 DB v2.1 — 182개 · 그날 실험만 받기 · 지난 선택 열기 · 대응 팁 (REQ-47)
 
