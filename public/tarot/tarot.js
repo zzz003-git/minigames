@@ -459,15 +459,17 @@ async function choose(node) {
   node.style.setProperty("--lift", `-${LIFT.CHOSEN}px`);
   node.classList.add("is-chosen");
   navigator.vibrate?.(18);
+  const waiting = startWaiting(node);
 
   // 올해·이달의 카드 — 일일 뽑기와 다른 길로 (SPEC-04 §3·§4)
-  if (state.mode) return chooseSpecial();
+  if (state.mode) return chooseSpecial(node, waiting);
 
   let res;
   try {
     res = await apiPost("/api/tarot/draw", { focus: state.focus });
   } catch (err) {
     state.busy = false;
+    stopWaiting(node, { reset: true });
     $("#fanStage").classList.remove("is-locked");
     if (err instanceof ApiFail && err.code === "FOCUS_USED") {
       toast(err.message, "error");
@@ -484,12 +486,64 @@ async function choose(node) {
 
   // 그림을 다 받은 뒤에 뒤집는다 — 뒤집힌 앞면이 비어 있다가 늦게 차면 연출이 깨진다
   const hasImg = await preload(CARD_IMG(res.card_id), PRELOAD_MAX_MS);
+  await waiting.atLeast(); // 너무 빨리 끝나 깜빡임처럼 보이지 않게
+  stopWaiting(node);
   await flipTo(res.card_id, hasImg);
   state.today = await apiGet("/api/tarot/today");
   // 이 뽑기로 78장이 됐으면(교환으로 채운 경우 포함) **결과보다 먼저** 완성 화면 (SPEC-03 §1-1 ①)
   if (state.today.gold_intro_pending) await showComplete();
   renderResult(res.card_id, state.focus, res);
   state.busy = false;
+}
+
+// ══════════════════════════════════════════════════════════════
+// 고른 뒤 뒤집기 전까지 — 기다림 모션 (REQ-48)
+// ══════════════════════════════════════════════════════════════
+
+/** 이보다 빨리 끝나도 이만큼은 보여 준다 — 깜빡임처럼 보이지 않게. 더 늦추지는 않는다 */
+const WAIT_MIN_MS = 400;
+/** 이보다 오래 걸리면 문구 끝에 점 세 개가 차례로 깜빡인다 */
+const WAIT_DOTS_MS = 3000;
+const FAN_HINT = "마음이 가는 카드를 한 장 고르세요";
+
+/**
+ * 카드를 고른 순간부터 뒤집기 직전까지(서버 응답 + 그림 받기 — 3G 에서 3~4초).
+ * 그동안 고른 카드가 위로 올라온 채 **멈춘 것처럼** 보였다(Master 확인). 스피너 대신 카드가
+ * 숨을 쉰다: 고른 카드는 천천히 떠 있고 가운데 빛이 번지며, 나머지는 어두워져 가라앉는다.
+ * 움직임은 CSS(tarot.css `.is-waiting`)가 하고, 움직임 줄이기면 문구만 바뀐다.
+ *
+ * @returns {{ atLeast: () => Promise<void> }} 최소 노출 시간을 채울 때까지 기다리는 함수
+ */
+function startWaiting(node) {
+  const startedAt = Date.now();
+  $("#fanStage").classList.add("is-waiting");
+  node.classList.add("is-floating");
+  const hint = $("#fanHint");
+  hint.textContent = "카드를 펼치는 중이에요";
+  hint.append(el("span", { class: "waitdots", "aria-hidden": "true" }, el("i", {}, "."), el("i", {}, "."), el("i", {}, ".")));
+  $("#fanSub").hidden = true;
+  state.waitTimer = setTimeout(() => hint.classList.add("is-long"), WAIT_DOTS_MS);
+  return {
+    atLeast: () => new Promise((r) => setTimeout(r, Math.max(0, WAIT_MIN_MS - (Date.now() - startedAt)))),
+  };
+}
+
+/**
+ * 모션을 끈다. `reset` 이면 고른 카드도 제자리로 — 오류·FOCUS_USED·NO_DRAWS 로 부채에
+ * 머물 때 들린 카드와 어두운 부채가 남지 않게 한다.
+ */
+function stopWaiting(node, { reset = false } = {}) {
+  clearTimeout(state.waitTimer);
+  $("#fanStage").classList.remove("is-waiting");
+  node?.classList.remove("is-floating");
+  const hint = $("#fanHint");
+  hint.classList.remove("is-long");
+  hint.textContent = FAN_HINT;
+  $("#fanSub").hidden = false;
+  if (reset && node) {
+    node.classList.remove("is-chosen");
+    node.style.removeProperty("--lift");
+  }
 }
 
 /**
@@ -1393,7 +1447,7 @@ function renderSpecialResult(res) {
   armScreen("special");
 }
 
-async function chooseSpecial() {
+async function chooseSpecial(node, waiting) {
   const { kind } = state.mode;
   let res;
   try {
@@ -1401,6 +1455,7 @@ async function chooseSpecial() {
   } catch (err) {
     state.busy = false;
     state.mode = null;
+    stopWaiting(node, { reset: true });
     $("#fanStage").classList.remove("is-locked");
     toast(err.message ?? "카드를 뽑지 못했습니다.", "error");
     state.today = await apiGet("/api/tarot/today");
@@ -1408,6 +1463,8 @@ async function chooseSpecial() {
     return;
   }
   const hasImg = await preload(CARD_IMG(res.card_id), PRELOAD_MAX_MS);
+  await waiting.atLeast();
+  stopWaiting(node);
   await flipTo(res.card_id, hasImg);
   state.today = await apiGet("/api/tarot/today");
   if (state.today.gold_intro_pending) await showComplete();

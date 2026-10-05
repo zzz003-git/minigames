@@ -465,3 +465,52 @@ button.collcell { padding: 0; cursor: pointer; color: inherit; font: inherit; }
 .lastbox__label { font-size: 11px; color: var(--t-goldline); }
 .lastbox__name { font-size: 13px; color: var(--text); }
 .lastbox__line { font-size: 11.5px; line-height: 1.4; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ══ 고른 뒤 뒤집기 전까지 — 기다림 모션 (REQ-48) ═══════════════════════════════
+   카드의 자리·회전·들어올림은 인라인 transform 이 쥐고 있어서, 움직임은 따로 합성되는
+   `translate` 속성으로 준다(transform 을 덮어쓰지 않는다). */
+
+/* 고른 카드 — 제자리에서 ±4px, 1.6초 주기로 떠 있다 */
+.fanstage.is-waiting .fcard.is-floating { animation: t-float 1.6s ease-in-out infinite; }
+@keyframes t-float {
+  0%, 100% { translate: 0 4px; }
+  50% { translate: 0 -4px; }
+}
+/* 뒷면 가운데 원이 숨쉬듯 빛난다 */
+.fcard::after {
+  content: ""; position: absolute; left: 50%; top: 40%;
+  width: 26%; aspect-ratio: 1; border-radius: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none; opacity: 0;
+}
+.fanstage.is-waiting .fcard.is-floating::after {
+  animation: t-glow 1.6s ease-in-out infinite;
+  background: radial-gradient(circle, rgba(255, 236, 170, 0.75) 0%, rgba(232, 196, 106, 0.35) 45%, transparent 72%);
+}
+@keyframes t-glow {
+  0%, 100% { opacity: 0.25; box-shadow: 0 0 6px 2px rgba(232, 196, 106, 0.2); }
+  50% { opacity: 1; box-shadow: 0 0 18px 8px rgba(232, 196, 106, 0.45); }
+}
+/* 나머지 부채 — 어두워지고 아래로 가라앉아 고른 카드가 주인공 */
+.fanstage.is-waiting .fcard:not(.is-chosen) {
+  filter: brightness(0.5);
+  translate: 0 8px;
+  transition: filter 0.4s ease, translate 0.4s ease;
+}
+
+/* 3초가 넘으면 문구 끝에 점 세 개가 차례로 깜빡인다 */
+.waitdots { display: none; }
+.is-long .waitdots { display: inline; }
+.waitdots i { font-style: normal; animation: t-dot 1.2s infinite; opacity: 0.2; }
+.waitdots i:nth-child(2) { animation-delay: 0.2s; }
+.waitdots i:nth-child(3) { animation-delay: 0.4s; }
+@keyframes t-dot { 0%, 60%, 100% { opacity: 0.2; } 30% { opacity: 1; } }
+
+/* 움직임 줄이기 — 떠 있기·빛 번짐·가라앉기 없이 문구만 바뀐다 */
+@media (prefers-reduced-motion: reduce) {
+  .fanstage.is-waiting .fcard.is-floating,
+  .fanstage.is-waiting .fcard.is-floating::after,
+  .waitdots i { animation: none; }
+  .fanstage.is-waiting .fcard:not(.is-chosen) { filter: none; translate: none; transition: none; }
+  .waitdots i { opacity: 1; }
+}
