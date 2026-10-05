@@ -2,9 +2,9 @@
 
 **이 파일은 손으로 고치지 않습니다.** `node scripts/gen-changelog.mjs` 가 `git log` 에서 만듭니다.
 
-| 기준 커밋 | `3d689e0` |
+| 기준 커밋 | `1ae9b2e` |
 | --- | --- |
-| 커밋 수 | 181개 |
+| 커밋 수 | 184개 |
 
 ## 이 파일이 낡았는지 확인하는 법
 
@@ -30,6 +30,31 @@
 ---
 
 ## 2026-10-05
+
+### `1ae9b2e` 타로 3단계 보완 — 한 마디 30일 누적 · 비공개 숫자 제거 · 스테이징 날짜 장치 (REQ-45)
+> **대조군 영향** — 게임 설정
+
+- `public/tarot/ (3)`
+- `scripts/test-tarot.mjs`
+- `src/lib/`
+- `src/routes/`
+- `src/services/`
+
+### `3299b0b` 오늘의 타로 3단계 — 한 마디 · 이달의 질문 · 올해/이달의 카드 (REQ-42 · SPEC-04)
+> **대조군 영향** — 게임 설정
+
+- `migrations/0029_tarot_stage3.sql`
+- `public/tarot/ (4)`
+- `scripts/gen-tarot-stage3.mjs`
+- `scripts/test-tarot.mjs`
+- `src/index.js`
+- `src/lib/`
+- `src/services/ (2)`
+
+### `cd0748f` docs: CHANGELOG 재생성 (기준 3d689e0)
+> **대조군 영향** — 게임 문서
+
+- `docs/CHANGELOG.md`
 
 ### `3d689e0` 타로 완성 화면 탭 잠금 — 안내 글 2줄 등장이 끝난 뒤부터 (REQ-44)
 
