@@ -36,6 +36,8 @@
         <div class="focus-row" id="focusRow"></div>
         <!-- 올해의 카드 · 이달의 카드 칩 (SPEC-04 §3·§4) — 일일 뽑기와 별개 · 광고 없음 -->
         <div class="focus-row specialrow" id="specialRow"></div>
+        <!-- 「작년의 올해 카드」 작은 상자 (SPEC-04 §3 · REQ-46) — 작년 기록이 있을 때만 -->
+        <div class="lastyearbox" id="lastYearBox" hidden></div>
 
         <div class="deckwrap">
           <div class="deck breathe" id="deck" role="button" tabindex="0"
@@ -72,7 +74,7 @@
           <p class="story" id="spStory" hidden></p>
           <p class="reading" id="spLine">—</p>
           <p class="tierline" id="spCollect"></p>
-          <p class="footnote--dim mt-sm">달력에 남겨 둘게요</p>
+          <p class="footnote--dim mt-sm" id="spSaved">달력에 남겨 둘게요</p>
         </div>
         <div class="card exchange" id="spExchange" hidden></div>
         <button class="btn" id="spBack" type="button">확인</button>

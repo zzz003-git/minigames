@@ -1289,13 +1289,41 @@ function renderSpecialRow() {
     b.addEventListener("click", () => enterSpecial(kind, period));
     host.append(b);
   };
+  renderLastYearBox(sp.year); // 특별 카드를 뽑는 중이면 스스로 숨는다
   if (state.mode) return; // 특별 카드를 뽑는 중에는 띄우지 않는다
   if (sp.year && sp.year.card_id == null) add("year", sp.year.period);
   if (sp.month && sp.month.card_id == null) add("month", sp.month.period);
-  const last = sp.year?.last;
-  if (last != null) {
-    host.append(el("p", { class: "lastyear" }, `작년의 올해 카드 · ${TAROT_DB.cards[last]?.name ?? "—"}`));
-  }
+}
+
+/**
+ * 「작년의 올해 카드」 작은 카드 상자 (SPEC-04 §3 · REQ-46).
+ *
+ * 1년 만에 다시 만나는 장면이라 글 한 줄로는 눈에 띄지 않았다(Master 폰 확인). 그래도 덱이
+ * 이 화면의 주인공이라 칩 줄 아래 작은 상자로만 둔다. 작년 기록이 없으면 **아예 그리지 않는다**
+ * (빈 상자 금지). 올해의 카드를 이미 뽑았어도 기간 동안 계속 보인다. 누르면 그때 결과를 다시 본다.
+ */
+function renderLastYearBox(year) {
+  const host = clear($("#lastYearBox"));
+  const id = year?.last;
+  host.hidden = id == null || state.mode != null;
+  if (host.hidden) return;
+  const period = String(Number(year.period) - 1);
+  const thumb = el("div", { class: `collcell lastbox__thumb ${tierClass(id)}` });
+  thumb.append(cardFace(id, true, THUMB_IMG(id)));
+  const box = el(
+    "button",
+    { type: "button", class: "lastbox", "aria-label": `작년의 올해 카드 ${TAROT_DB.cards[id]?.name ?? ""} 다시 보기` },
+    thumb,
+    el(
+      "span",
+      { class: "lastbox__text" },
+      el("span", { class: "lastbox__label" }, `✦ 작년의 올해 카드 · ${period}년`),
+      el("b", { class: "lastbox__name" }, TAROT_DB.cards[id]?.name ?? "—"),
+      el("span", { class: "lastbox__line" }, S3?.YEAR?.[id] ?? ""),
+    ),
+  );
+  box.addEventListener("click", () => renderSpecialResult({ kind: "year", period, card_id: id, view: true }));
+  host.append(box);
 }
 
 /** 특별 카드 모드로 덱을 연다 — 고민은 고르지 않고, 한 번 섞으면 펼쳐진다 */
@@ -1333,6 +1361,18 @@ function renderSpecialResult(res) {
   $("#spTitle").textContent = specialTitle(kind, period);
   $("#spName").textContent = TAROT_DB.cards[cardId].name;
   $("#spLine").textContent = (kind === "year" ? S3?.YEAR : S3?.MONTH)?.[cardId] ?? "";
+
+  // 다시 보기(작년의 올해 카드) — 읽기만. 도감·별가루 줄과 교환 연출은 없다 (REQ-46)
+  state.spView = Boolean(res.view);
+  $("#spCollect").hidden = state.spView;
+  $("#spSaved").hidden = state.spView;
+  if (state.spView) {
+    $("#spStory").hidden = true;
+    renderExchange(null, { host: $("#spExchange") });
+    showScreen("special");
+    armScreen("special");
+    return;
+  }
 
   const dustMax = state.today.dust_max ?? 4;
   const exchanged = res.exchanged_card_id != null || res.gold_exchanged_card_id != null;
@@ -1378,6 +1418,12 @@ async function chooseSpecial() {
 /** 특별 카드 결과에서 나가기 — 오늘 이미 뽑았으면 오늘의 카드로, 아니면 덱으로 */
 function leaveSpecial() {
   state.mode = null;
+  // 다시 보기에서 닫으면 덱으로 — 거기서 열었다 (REQ-46)
+  if (state.spView) {
+    state.spView = false;
+    enterDeck();
+    return;
+  }
   if (state.today.draws.length > 0) {
     const last = state.today.draws[state.today.draws.length - 1];
     renderResult(last.c, last.f, { gained: 0, replay: true });
