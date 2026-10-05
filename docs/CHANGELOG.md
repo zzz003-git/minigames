@@ -2,9 +2,9 @@
 
 **이 파일은 손으로 고치지 않습니다.** `node scripts/gen-changelog.mjs` 가 `git log` 에서 만듭니다.
 
-| 기준 커밋 | `1966edb` |
+| 기준 커밋 | `c016c40` |
 | --- | --- |
-| 커밋 수 | 169개 |
+| 커밋 수 | 175개 |
 
 ## 이 파일이 낡았는지 확인하는 법
 
@@ -29,7 +29,43 @@
 
 ---
 
+## 2026-10-05
+
+### `c016c40` 스테이징 타로 시험 계정 심기 스크립트 (REQ-38) — 도감 77 · 별가루 3
+
+- `scripts/seed-tarot-staging.mjs`
+
+### `5198553` 타로 고지 3화면 모두 안내 문구 색 · 12px (REQ-38)
+
+- `public/tarot/`
+
+### `e7aa568` 타로 덱 화면 AI 고지 글자색을 안내 문구와 같게 (REQ-37 후속 · Master 지시)
+
+- `public/tarot/`
+
+### `f4a07a1` 타로 — 해석 DB v2.0 확정본 재생성 · 덱 화면 AI 고지 (REQ-37)
+
+- `public/tarot/ (3)`
+
+### `df742a6` 오늘의 타로 78장 개편 1단계 — 별가루 교환 · 도감 78칸 · 카드 그림 (REQ-36)
+> **대조군 영향** — 게임 설정
+
+- `migrations/0026_tarot_v2.sql`
+- `package.json`
+- `public/_headers`
+- `public/assets/tarot/ (156)`
+- `public/shared/ (2)`
+- `public/tarot/ (4)`
+- `scripts/gen-tarot-db.mjs`
+- `scripts/test-tarot.mjs`
+- … 외 3곳
+
 ## 2026-10-01
+
+### `9315173` docs: CHANGELOG 재생성 (기준 1966edb)
+> **대조군 영향** — 게임 문서
+
+- `docs/CHANGELOG.md`
 
 ### `1966edb` ⑲ 한 줄로 이어요(DEP-017) 내리기 — 허브 카드 제거 · 새 판 차단 · 주소 직접 접속은 허브로 (REQ-21)
 > **대조군 영향** — 게임 설정
