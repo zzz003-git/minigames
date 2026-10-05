@@ -21,6 +21,7 @@ import { TAROT, SUITE } from "../lib/config.js";
 import { ApiError, requireOneOf } from "../lib/http.js";
 import { randomInt } from "../lib/crypto.js";
 import { dayKey, now } from "../lib/time.js";
+import { isTestMode } from "../lib/testmode.js";
 import { grantPoints, grantMany, completeDaily, dailyState, distribution, touchUser, pointState } from "../lib/suite.js";
 
 const parseDraws = (raw) => {
@@ -251,6 +252,43 @@ const firstDraw = (raw) => {
 };
 
 // ══════════════════════════════════════════════════════════════
+// 날짜 바꾸기 시험 장치 — 스테이징 전용 (REQ-45)
+// ══════════════════════════════════════════════════════════════
+
+/** 시험 날짜를 담는 쿠키. 화면(스테이징 띠)이 기기에 직접 심는다 — 그 기기만 바뀐다 */
+const TEST_DAY_COOKIE = "mg_testday";
+
+/**
+ * 타로가 쓰는 「오늘」.
+ *
+ * 올해의 카드(11/1~1/31)·작년의 올해 카드·이달의 질문(첫째 주 월요일)은 날짜가 와야만
+ * 보이므로, 스테이징에서는 시험 쿠키의 날짜를 오늘로 쓴다.
+ *
+ * **운영에서는 쿠키를 읽지조차 않는다.** `isTestMode` 는 `TEST_MODE=on` **이고**
+ * `ENV_NAME≠production` 일 때만 참이라(lib/testmode.js), 운영 요청에 쿠키가 붙어 와도
+ * 첫 줄에서 실제 날짜로 돌아간다.
+ */
+export function tarotDay(env, request) {
+  if (!isTestMode(env)) return dayKey();
+  const raw = (request?.headers?.get("cookie") ?? "")
+    .split(";")
+    .map((p) => p.trim())
+    .find((p) => p.startsWith(`${TEST_DAY_COOKIE}=`))
+    ?.slice(TEST_DAY_COOKIE.length + 1);
+  if (!raw || !/^20\d\d-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/.test(raw)) return dayKey();
+  const [y, m, d] = raw.split("-").map(Number);
+  const t = new Date(Date.UTC(y, m - 1, d));
+  // 2월 30일 같은 날짜는 받지 않는다
+  return t.getUTCMonth() === m - 1 && t.getUTCDate() === d ? raw : dayKey();
+}
+
+/** YYYY-MM-DD 에서 n 일 뒤(음수면 앞) */
+const addDays = (day, n) => {
+  const [y, m, d] = day.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10);
+};
+
+// ══════════════════════════════════════════════════════════════
 // 3단계 날짜 규칙 (SPEC-04) — 전부 날짜만으로 정해진다
 // ══════════════════════════════════════════════════════════════
 
@@ -297,8 +335,8 @@ const allowedDraws = (st, meta) =>
 // GET /api/tarot/today
 // ══════════════════════════════════════════════════════════════
 
-export async function today({ env, userId }) {
-  const day = dayKey();
+export async function today({ env, userId, request }) {
+  const day = tarotDay(env, request);
   await touchUser(env, userId, day);
 
   const [st, meta, coll, suite, points, dust, gold, lastYear, specials] = await Promise.all([
@@ -347,6 +385,8 @@ export async function today({ env, userId }) {
     question: { open: isQuestionDay(day), n: questionNo(day) },
     question_start_month: TAROT.QUESTION_START_MONTH,
     special: specialState(day, specials),
+    // 날짜 바꾸기 시험 장치 — **테스트 모드에서만** 실린다. 운영 응답에는 이 키가 없다(REQ-45)
+    ...(isTestMode(env) ? { test_clock: { day, real: dayKey() } } : {}),
     shuffles: st.draws.length === 0 ? TAROT.SHUFFLES_FIRST : TAROT.SHUFFLES_EXTRA,
     suite,
     points,
@@ -365,8 +405,8 @@ export async function today({ env, userId }) {
  *   ② 그 포커스를 오늘 이미 썼는가 — 같은 포커스를 다시 뽑아 마음에 드는 결과를
  *      고르는 것을 막는다(기획서 T-02 「결과 쇼핑 방지」)
  */
-export async function draw({ env, userId, body }) {
-  const day = dayKey();
+export async function draw({ env, userId, body, request }) {
+  const day = tarotDay(env, request);
   // 첫째 주 월요일에는 5번째 칩 「이달의 질문」(`q`)이 열린다 (SPEC-04 §2)
   const focus = requireOneOf(body?.focus, "focus", isQuestionDay(day) ? [...TAROT.FOCUSES, "q"] : TAROT.FOCUSES);
 
@@ -562,8 +602,8 @@ function specialState(day, rows) {
  * 기간당 1장은 `tarot_special` 의 PK 가 정한다 — 먼저 자리를 잡고(INSERT OR IGNORE) 그
  * 다음에 도감에 넣으므로, 연타해도 두 장이 되지 않는다.
  */
-export async function special({ env, userId, body }) {
-  const day = dayKey();
+export async function special({ env, userId, body, request }) {
+  const day = tarotDay(env, request);
   const kind = requireOneOf(body?.kind, "kind", ["year", "month"]);
   const period = kind === "year" ? yearCardPeriod(day) : day.slice(0, 7);
   if (!period) {
@@ -611,24 +651,27 @@ export async function special({ env, userId, body }) {
 // 한 마디 (SPEC-04 §1)
 // ══════════════════════════════════════════════════════════════
 
-/** 같은 날 같은 카드의 키워드별 수 — 합이 기준 미만이면 비율을 감춘다 */
+/**
+ * 같은 카드의 키워드별 수 — **오늘 포함 최근 30일 누적**(REQ-45). 합이 기준 미만이면 감춘다.
+ *
+ * 처음엔 「같은 날 같은 카드」였는데, 그러면 하루 이용자가 1,500명쯤 돼야 열려 출시 초기엔
+ * 거의 안 보인다(기획 계산). 키워드는 카드의 성격이라 날짜가 달라도 뜻이 같다.
+ * 집계 표는 날짜별 그대로 두고 읽을 때 30일을 더한다 — 창을 바꿔도 다시 쌓을 필요가 없다.
+ */
 async function wordDist(env, day, cardId) {
   const rows = await env.DB.prepare(
-    `SELECT kw, cnt FROM tarot_word_agg WHERE day = ? AND card_id = ?`,
+    `SELECT kw, SUM(cnt) AS cnt FROM tarot_word_agg
+      WHERE card_id = ? AND day >= ? AND day <= ? GROUP BY kw`,
   )
-    .bind(day, cardId)
+    .bind(cardId, addDays(day, -(TAROT.WORD_WINDOW_DAYS - 1)), day)
     .all();
   const counts = new Array(TAROT.WORD_KEYWORDS).fill(0);
   for (const r of rows?.results ?? []) if (r.kw >= 0 && r.kw < counts.length) counts[r.kw] = Math.max(0, r.cnt);
   const total = counts.reduce((a, b) => a + b, 0);
-  const open = total >= TAROT.WORD_MIN_SAMPLES;
-  return {
-    open,
-    total,
-    threshold: TAROT.WORD_MIN_SAMPLES,
-    // 비공개면 숫자를 아예 보내지 않는다 — 화면이 감춰도 응답에 있으면 공개한 것이다
-    pct: open ? counts.map((c) => Math.round((c / total) * 100)) : null,
-  };
+  // 비공개면 **숫자를 하나도 보내지 않는다** — 합(n)도 규모를 드러낸다(REQ-45).
+  // 화면이 감춰도 응답에 있으면 공개한 것이다
+  if (total < TAROT.WORD_MIN_SAMPLES) return { open: false };
+  return { open: true, pct: counts.map((c) => Math.round((c / total) * 100)) };
 }
 
 async function wordState(env, userId, day, cardId) {
@@ -652,8 +695,8 @@ async function drewToday(env, userId, day, cardId) {
 }
 
 /** GET /api/tarot/word?card_id= */
-export async function word({ env, userId, body }) {
-  const day = dayKey();
+export async function word({ env, userId, body, request }) {
+  const day = tarotDay(env, request);
   const cardId = Number(body?.card_id);
   if (!Number.isInteger(cardId) || cardId < 0 || cardId >= TAROT.CARDS) {
     throw new ApiError("BAD_PARAM", "card_id 값이 올바르지 않습니다.");
@@ -669,8 +712,8 @@ export async function word({ env, userId, body }) {
  * 모든 문장이 「아직 안 바꿨고 키워드가 다르다」는 같은 조건을 보고, 마지막 문장이 그 조건을
  * 닫는다.
  */
-export async function wordPick({ env, userId, body }) {
-  const day = dayKey();
+export async function wordPick({ env, userId, body, request }) {
+  const day = tarotDay(env, request);
   const cardId = Number(body?.card_id);
   const kw = Number(body?.kw);
   if (!Number.isInteger(cardId) || cardId < 0 || cardId >= TAROT.CARDS) {
@@ -765,8 +808,8 @@ export async function goldIntroSeen({ env, userId }) {
  * 오늘의 카드가 아니다. 뽑지 않은 날은 아예 돌려주지 않는다(빈칸 = 벌점이 아니다).
  * 새로 모으는 것은 없다 — 이미 있는 `tarot_daily` 를 읽기만 한다.
  */
-export async function calendar({ env, userId, body }) {
-  const month = String(body?.month ?? dayKey().slice(0, 7));
+export async function calendar({ env, userId, body, request }) {
+  const month = String(body?.month ?? tarotDay(env, request).slice(0, 7));
   if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) {
     throw new ApiError("BAD_MONTH", "month 는 YYYY-MM 형식이어야 합니다.", 400);
   }
@@ -802,8 +845,8 @@ export async function calendar({ env, userId, body }) {
  * 전국 분포. **광고를 봐야 열린다**(T-04) — 시청 여부는 `tarot_daily.ad_stats_seen`.
  * 표본이 임계 미만이면 「집계 중」으로 응답한다(SUITE 1.5).
  */
-export async function stats({ env, userId }) {
-  const day = dayKey();
+export async function stats({ env, userId, request }) {
+  const day = tarotDay(env, request);
   const st = await loadDay(env, userId, day);
 
   if (!st.adStatsSeen) {

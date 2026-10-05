@@ -1415,9 +1415,10 @@ export const TAROT = {
   WELCOME_DRAW: true,
 
   // ── 3단계 (TAROT-SPEC-04) ──
-  // 한 마디 — 카드당 키워드 6개 · 같은 날 같은 카드 선택이 이만큼 모여야 비율을 보여 준다(§1)
+  // 한 마디 — 카드당 키워드 6개 · 같은 카드 선택이 최근 30일에 이만큼 모여야 비율을 보여 준다(§1 · REQ-45)
   WORD_KEYWORDS: 6,
   WORD_MIN_SAMPLES: 20,
+  WORD_WINDOW_DAYS: 30, // 공개 기준·비율은 같은 카드의 오늘 포함 최근 30일 누적 (REQ-45)
   WORD_CHANGES: 1, // 고른 뒤 바꾸기 허용 횟수
   // 이달의 질문 — 은행 36개를 이 달부터 순서대로 하나씩(§2). 서비스 시작 월을 정확히 정하면 여기만 고친다
   QUESTION_START_MONTH: "2026-10",

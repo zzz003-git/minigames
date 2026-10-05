@@ -22,12 +22,13 @@ import * as saju from "../services/saju.js";
  * 서비스가 늘어나면 여기에 한 줄씩 는다. 게임 분기와 달리 「무엇을 주는가」가
  * 트리거마다 다르므로 표 하나로 묶지 않고 서비스 모듈에 위임한다.
  */
-function grantServiceReward(env, userId, triggerKey) {
+function grantServiceReward(env, userId, triggerKey, request) {
   switch (triggerKey) {
     case "TAROT_ATTEMPT":
-      return tarot.grantExtraDraw(env, userId);
+      // 타로는 스테이징 시험 날짜를 따른다(REQ-45) — 운영에서는 tarotDay 가 실제 날짜다
+      return tarot.grantExtraDraw(env, userId, tarot.tarotDay(env, request));
     case "TAROT_STATS":
-      return tarot.unlockStats(env, userId);
+      return tarot.unlockStats(env, userId, tarot.tarotDay(env, request));
     case "SAJU_TOMORROW":
       return saju.unlockTomorrow(env, userId);
     case "SAJU_PERSON":
@@ -54,7 +55,7 @@ import {
   bumpSessionAdViews,
 } from "../lib/db.js";
 
-export async function reward({ env, userId, ipHash, body }) {
+export async function reward({ env, userId, ipHash, body, request }) {
   const triggerKey = requireOneOf(body.trigger, "trigger", Object.keys(AD_TRIGGERS));
   const spec = AD_TRIGGERS[triggerKey];
   // 스위트 서비스(타로·사주·심리)는 `game` 이 없다. 광고 기록은 게임과 같은 표를
@@ -89,7 +90,7 @@ export async function reward({ env, userId, ipHash, body }) {
         429,
       );
     }
-    reward = await grantServiceReward(env, userId, triggerKey);
+    reward = await grantServiceReward(env, userId, triggerKey, request);
     reward.remaining_today =
       spec.perDay != null ? Math.max(0, spec.perDay - viewed - 1) : null;
   } else if (spec.type === "REWARDED") {

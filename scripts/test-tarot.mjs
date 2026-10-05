@@ -19,7 +19,7 @@ import { randomInt } from "../src/lib/crypto.js";
 import { TAROT } from "../src/lib/config.js";
 import { dayKey } from "../src/lib/time.js";
 // 3단계 날짜 규칙 — 오늘 날짜로는 재현이 안 되는 기간(11~1월 등)이 있어 직접 부른다
-import { isQuestionDay, questionNo, yearCardPeriod } from "../src/services/tarot.js";
+import { isQuestionDay, questionNo, yearCardPeriod, tarotDay } from "../src/services/tarot.js";
 
 const BASE = "http://127.0.0.1:8787";
 if (process.env.TEST_BASE && process.env.TEST_BASE !== BASE) {
@@ -38,11 +38,13 @@ function check(name, cond, extra = "") {
 /** 계정 하나 = 쿠키 하나. IP 는 광고 한도와 무관하게 넓게 흩는다 */
 function client() {
   let cookie = "";
+  let testDay = null; // 날짜 바꾸기 시험 쿠키 (REQ-45)
   const ip = `10.${randomInt(1, 250)}.${randomInt(1, 250)}.${randomInt(1, 250)}`;
   const call = async (method, path, body) => {
+    const jar = [cookie, testDay ? `mg_testday=${testDay}` : ""].filter(Boolean).join("; ");
     const res = await fetch(BASE + path, {
       method,
-      headers: { "content-type": "application/json", "cf-connecting-ip": ip, ...(cookie ? { cookie } : {}) },
+      headers: { "content-type": "application/json", "cf-connecting-ip": ip, ...(jar ? { cookie: jar } : {}) },
       body: body ? JSON.stringify(body) : undefined,
     });
     const sc = res.headers.get("set-cookie");
@@ -50,7 +52,11 @@ function client() {
     const j = await res.json();
     return { status: res.status, data: j.data ?? j };
   };
-  return { get: (p) => call("GET", p), post: (p, b) => call("POST", p, b) };
+  return {
+    get: (p) => call("GET", p),
+    post: (p, b) => call("POST", p, b),
+    setTestDay: (d) => (testDay = d),
+  };
 }
 
 /**
@@ -516,7 +522,8 @@ console.log("\n[19] 한 마디 — 카드별 하루 1회 · 바꾸기 1회 · 20
   check("고르기 전 → kw null · 비율 안 보냄", g0.data.kw === null && g0.data.dist === null);
   const p1 = await c.post("/api/tarot/word", { card_id: card, kw: 2 });
   check("처음 고름 → kw 2 · 바꾸기 1회 남음", p1.data.kw === 2 && p1.data.changes_left === 1);
-  check("20명 미만 → 비공개 · 숫자 안 보냄", p1.data.dist.open === false && p1.data.dist.pct === null && p1.data.dist.total === 1);
+  check("20명 미만 → 비공개 · 숫자 하나도 안 보냄 (n 도 없음)", p1.data.dist.open === false && Object.keys(p1.data.dist).length === 1,
+    JSON.stringify(p1.data.dist));
   const same = await c.post("/api/tarot/word", { card_id: card, kw: 2 });
   check("같은 칩 → 그대로 (바꾸기 안 씀)", same.data.changes_left === 1);
   const p2 = await c.post("/api/tarot/word", { card_id: card, kw: 4 });
@@ -560,6 +567,77 @@ console.log("\n[20] 한 마디 — 바꾸기 동시 요청 2건이어도 1번만
     else console.log(`    #${r} sum ${sumBefore}→${sumAfter} · ${a.status}/${b.status}`);
   }
   check("5회 모두 집계 합 +1 (이중 반영 없음)", ok === 5, `${ok}/5`);
+}
+
+console.log("\n[21] 한 마디 — 오늘 포함 최근 30일 누적 · 31일 전은 빠짐 (REQ-45)");
+{
+  const day = today();
+  const back = (n) => {
+    const [y, m, d] = day.split("-").map(Number);
+    return new Date(Date.UTC(y, m - 1, d - n)).toISOString().slice(0, 10);
+  };
+  // 오늘 뽑은 카드 하나에 내가 1명, 다른 날짜에 19명을 심는다
+  const run = async (daysBack) => {
+    const c = client();
+    await c.get("/api/tarot/today");
+    const d = await c.post("/api/tarot/draw", { focus: "money" });
+    const card = d.data.card_id;
+    // 이 카드의 지난 집계를 비우고 시작한다 — 다른 회차가 같은 카드를 뽑았을 수 있다
+    sql(`DELETE FROM tarot_word_agg WHERE card_id = ${card} AND day < ${q(day)}`);
+    sql(`UPDATE tarot_word_agg SET cnt = 0 WHERE card_id = ${card} AND day = ${q(day)}`);
+    sql(`INSERT INTO tarot_word_agg (day, card_id, kw, cnt) VALUES (${q(back(daysBack))}, ${card}, 3, 19)`);
+    return c.post("/api/tarot/word", { card_id: card, kw: 1 });
+  };
+  const in29 = await run(29);
+  check("29일 전(30일 창 안) 19명 + 오늘 1명 → 공개", in29.data.dist?.open === true, JSON.stringify(in29.data.dist));
+  const in30 = await run(30);
+  check("30일 전(31번째 날) 19명 + 오늘 1명 → 비공개", in30.data.dist?.open === false && Object.keys(in30.data.dist).length === 1,
+    JSON.stringify(in30.data.dist));
+}
+
+console.log("\n[22] 날짜 바꾸기 시험 장치 — 운영 환경에서는 무시 (REQ-45)");
+{
+  const req = (cookie) => ({ headers: new Headers(cookie ? { cookie } : {}) });
+  const real = dayKey();
+  const prod = { TEST_MODE: "on", ENV_NAME: "production" };
+  const stg = { TEST_MODE: "on", ENV_NAME: "staging" };
+  check("운영(ENV_NAME=production) → 쿠키가 있어도 실제 날짜", tarotDay(prod, req("mg_testday=2026-11-02")) === real);
+  check("TEST_MODE 꺼짐 → 쿠키 무시", tarotDay({ ENV_NAME: "staging" }, req("mg_testday=2026-11-02")) === real);
+  check("스테이징 → 쿠키 날짜", tarotDay(stg, req("a=1; mg_testday=2026-11-02; b=2")) === "2026-11-02");
+  check("잘못된 날짜(2월 30일 · 형식) → 실제 날짜",
+    tarotDay(stg, req("mg_testday=2027-02-30")) === real && tarotDay(stg, req("mg_testday=hello")) === real);
+}
+
+console.log("\n[23] 날짜 바꾸기 — 서버 왕복 (로컬이 테스트 모드일 때만)");
+{
+  const c = client();
+  const t0 = await c.get("/api/tarot/today");
+  if (!t0.data.test_clock) {
+    check("테스트 모드가 아닌 서버 → today 에 test_clock 없음 (운영과 같다)", !("test_clock" in t0.data));
+    console.log("    (날짜 왕복 시험은 건너뜀 — `wrangler dev --var TEST_MODE:on --var ENV_NAME:local` 로 띄우면 돈다)");
+  } else {
+    c.setTestDay("2026-11-02");
+    const t1 = await c.get("/api/tarot/today");
+    check("11/02 로 → today.day · 이달의 질문 2번 열림", t1.data.day === "2026-11-02" && t1.data.question.open === true && t1.data.question.n === 2);
+    check("11/02 → 올해의 카드 기간(2027)", t1.data.special.year?.period === "2027" && t1.data.special.year?.card_id === null);
+    const y = await c.post("/api/tarot/special", { kind: "year" });
+    check("올해의 카드 뽑기 200 · 기간 2027", y.status === 200 && y.data.period === "2027", `status=${y.status}`);
+    const y2 = await c.post("/api/tarot/special", { kind: "year" });
+    check("같은 해 두 번째 → 409", y2.status === 409);
+    const cal = await c.get("/api/tarot/calendar?month=2027-01");
+    check("달력 2027년 → 올해의 카드 띠", cal.data.year_card === y.data.card_id);
+
+    c.setTestDay("2027-01-15");
+    const t2 = await c.get("/api/tarot/today");
+    check("1/15 → 같은 2027 기간 · 이미 뽑음", t2.data.special.year?.period === "2027" && t2.data.special.year?.card_id === y.data.card_id);
+
+    c.setTestDay("2027-11-01");
+    const t3 = await c.get("/api/tarot/today");
+    check("다음 해 11/01 → 「작년의 올해 카드」", t3.data.special.year?.period === "2028" && t3.data.special.year?.last === y.data.card_id,
+      JSON.stringify(t3.data.special.year));
+    const m = await c.post("/api/tarot/special", { kind: "month" });
+    check("다음 해 11월의 카드 200 (달마다 1회)", m.status === 200 && m.data.period === "2027-11");
+  }
 }
 
 console.log(`\n${pass} 통과 · ${failures.length} 실패`);

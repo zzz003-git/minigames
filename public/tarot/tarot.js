@@ -161,6 +161,8 @@ async function boot() {
     return;
   }
 
+  renderTestClock();
+
   // 78장을 다 모았는데 완성 화면을 끝까지 못 봤다 — 이번 방문 첫 화면에 다시 (SPEC-03 §1-1 ②)
   if (state.today.gold_intro_pending) await showComplete();
 
@@ -1239,7 +1241,8 @@ function drawWord(cardId, st) {
   if (!st.dist) return;
   if (!st.dist.open) {
     // 소수일 때 비율을 보이면 그 값이 사람 한두 명을 뜻한다 (SUITE 공개 유예와 같은 취지)
-    out.append(el("p", { class: "footnote--dim" }, `아직 고른 사람이 적어요 (${st.dist.total}/${st.dist.threshold})`));
+    // 몇 명인지도 적지 않는다 — 규모를 드러내지 않는다(REQ-45). 서버도 숫자를 안 보낸다
+    out.append(el("p", { class: "footnote--dim" }, "아직 고른 사람이 적어요"));
     return;
   }
   // 막대 3개 — 많이 고른 순. 내 선택이 3위 밖이면 세 번째 자리에 내 것을 둔다
@@ -1400,4 +1403,48 @@ function showSpecialDetail(kind, period, id) {
   );
   box.hidden = false;
   box.scrollIntoView({ block: "nearest", behavior: reducedMotion() ? "auto" : "smooth" });
+}
+
+// ══════════════════════════════════════════════════════════════
+// 🧪 날짜 바꾸기 시험 장치 — 스테이징 전용 (REQ-45)
+// ══════════════════════════════════════════════════════════════
+
+/**
+ * 올해의 카드(11/1~1/31)·작년의 올해 카드·이달의 질문(첫째 주 월요일)은 그날이 와야 보인다.
+ * 스테이징에서 그 날짜로 가 보게 하는 띠다.
+ *
+ * 서버가 `test_clock` 을 줄 때만 그린다 — 운영 서버는 이 키를 아예 보내지 않고, 쿠키가
+ * 붙어 와도 읽지 않는다(services/tarot.js `tarotDay`). 날짜는 **이 기기 쿠키**에만 담긴다.
+ */
+const TEST_DAY_COOKIE = "mg_testday";
+
+function renderTestClock() {
+  const host = $("#testClock");
+  const tc = state.today.test_clock;
+  host.hidden = !tc;
+  if (!tc) return;
+
+  const shifted = tc.day !== tc.real;
+  const input = el("input", { type: "date", value: tc.day, class: "testclock__date", "aria-label": "시험 날짜" });
+  const apply = el("button", { type: "button", class: "testclock__btn" }, "이 날짜로");
+  const reset = el("button", { type: "button", class: "testclock__btn" }, "오늘로");
+  const secure = location.protocol === "https:" ? "; Secure" : "";
+
+  apply.addEventListener("click", () => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(input.value)) return toast("날짜를 골라 주세요", "error");
+    document.cookie = `${TEST_DAY_COOKIE}=${input.value}; Path=/; Max-Age=2592000; SameSite=Lax${secure}`;
+    location.reload();
+  });
+  reset.addEventListener("click", () => {
+    document.cookie = `${TEST_DAY_COOKIE}=; Path=/; Max-Age=0; SameSite=Lax${secure}`;
+    location.reload();
+  });
+
+  clear(host).append(
+    el("span", { class: "testclock__label" }, shifted ? `🧪 시험 날짜 ${tc.day} (실제 ${tc.real})` : "🧪 시험 날짜 — 실제 오늘"),
+    input,
+    apply,
+    ...(shifted ? [reset] : []),
+  );
+  host.classList.toggle("is-shifted", shifted);
 }
