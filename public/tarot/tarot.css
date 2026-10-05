@@ -243,3 +243,117 @@
 /* 덱 화면 고지 — 안내 문구 아래에 둔다. 처음엔 `margin-top: auto` 로 화면 맨 아래에
    붙였는데, 높이 705px 창에서 **접힌 아래로 밀려 안 보였다.** 덱(셔플 손짓)과는 이 정도면 떨어진다 */
 .legal--bottom { margin-top: 28px; padding-bottom: 12px; }
+
+/* ══ 2단계 — 금빛 도감 · 숨은 이야기 · 기록 달력 (TAROT-SPEC-03 · REQ-40) ═══════ */
+
+/* ── 은색 · 금빛 (§3) — 그림은 그대로, 테두리와 빛줄기만 코드로 ──
+   78장 완성 전에는 두 클래스 모두 붙지 않는다(tarot.js tierClass). */
+.suite--tarot { --t-silver: #c9ced8; --t-goldline: #e8c46a; }
+.is-silver { border-color: var(--t-silver) !important; }
+.is-gold {
+  position: relative; overflow: hidden;
+  border-color: var(--t-goldline) !important;
+  box-shadow: 0 0 0 1px var(--t-goldline), 0 0 14px rgba(232, 196, 106, 0.35);
+}
+/* 3초마다 한 번 대각선으로 지나가는 빛줄기 */
+.is-gold::after {
+  content: ""; position: absolute; inset: -40%;
+  background: linear-gradient(115deg, transparent 42%, rgba(255, 236, 170, 0.55) 50%, transparent 58%);
+  transform: translateX(-60%);
+  animation: t-shine 3s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes t-shine {
+  0% { transform: translateX(-60%); }
+  30%, 100% { transform: translateX(60%); }
+}
+/* 미니 교환 카드는 뒤집히는 상자라 빛줄기를 앞면에 건다 */
+.flipcard--mini.is-gold { overflow: visible; box-shadow: none; }
+.flipcard--mini.is-gold::after { content: none; }
+.flipcard--mini.is-gold .flipcard__face--front { border-color: var(--t-goldline); box-shadow: 0 0 0 1px var(--t-goldline), 0 0 14px rgba(232, 196, 106, 0.35); }
+
+/* 금빛이 되는 순간 — 번짐 0.8초 (tarot.js GOLD_BLOOM_MS) */
+.is-blooming { animation: t-bloom 0.8s ease-out; }
+@keyframes t-bloom {
+  0% { box-shadow: 0 0 0 0 rgba(232, 196, 106, 0); filter: brightness(1); }
+  45% { box-shadow: 0 0 0 6px rgba(232, 196, 106, 0.55), 0 0 46px rgba(232, 196, 106, 0.8); filter: brightness(1.35); }
+  100% { box-shadow: 0 0 0 1px var(--t-goldline), 0 0 14px rgba(232, 196, 106, 0.35); filter: brightness(1); }
+}
+
+/* 움직임 줄이기 — 빛줄기·번짐 없이 금색 테두리만 (§3) */
+@media (prefers-reduced-motion: reduce) {
+  .is-gold::after { content: none; }
+  .is-blooming { animation: none; }
+}
+
+/* ── 숨은 이야기 ── */
+.story {
+  min-height: 1.6em; margin-top: 8px;
+  font-size: 14px; line-height: 1.7; color: var(--t-goldline);
+  word-break: keep-all; cursor: pointer;
+}
+.story--locked { color: var(--text-dim); cursor: default; }
+.exchange .story { font-size: 13px; margin-top: 8px; }
+.lastyear { margin-top: 12px; font-size: 12.5px; color: var(--text-sub); }
+.goldintro { font-size: 13px; line-height: 1.6; color: var(--text-sub); border-color: var(--t-goldline); }
+.goldintro b { display: block; color: var(--t-goldline); font-size: 14px; margin-bottom: 4px; }
+
+/* ── 도감: 금빛 진척 바 · 상세 ── */
+.collbar--gold .collbar__fill { background: linear-gradient(90deg, var(--t-silver), var(--t-goldline)); }
+button.collcell { padding: 0; cursor: pointer; color: inherit; font: inherit; }
+.detail {
+  position: relative; display: flex; gap: 14px; align-items: center;
+  margin: 10px 0; padding: 12px; border-radius: 12px;
+  border: 1px solid var(--t-line); background: var(--t-surface);
+}
+.collcell--detail { width: 84px; flex: none; }
+.detail__text { flex: 1; min-width: 0; }
+.detail__close {
+  position: absolute; top: 6px; right: 8px; border: 0; background: none;
+  color: var(--text-dim); font-size: 14px; cursor: pointer; padding: 4px;
+}
+.reading--sm { font-size: 13.5px; margin-top: 6px; }
+
+/* ── 도감 | 달력 탭 ── */
+.viewtabs { display: flex; gap: 4px; padding: 4px; border-radius: 12px; background: var(--t-surface); border: 1px solid var(--t-line); }
+.viewtabs button {
+  flex: 1; padding: 8px 0; border: 0; border-radius: 9px; background: none;
+  color: var(--text-sub); font: inherit; font-size: 13.5px; cursor: pointer;
+}
+.viewtabs button.is-sel { background: rgba(232, 196, 106, 0.12); color: var(--t-gold); }
+
+/* ── 달력 ── */
+.cal__head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.cal__nav {
+  width: 34px; height: 34px; border-radius: 50%;
+  border: 1px solid var(--t-line); background: none; color: var(--text-sub);
+  font-size: 18px; cursor: pointer;
+}
+.cal__nav:disabled { opacity: 0.3; cursor: default; }
+.cal__grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.cal__wk { text-align: center; font-size: 11px; color: var(--text-dim); padding-bottom: 2px; }
+.cal__cell {
+  position: relative; aspect-ratio: 2 / 3; border-radius: 6px;
+  border: 1px solid transparent; background: rgba(255, 255, 255, 0.02);
+  overflow: hidden; padding: 0; font: inherit; color: var(--text-dim);
+}
+.cal__cell span { position: absolute; top: 2px; left: 4px; font-size: 10.5px; font-family: var(--mono); }
+.cal__cell.is-pad { background: none; }
+.cal__cell.is-today { border-color: var(--t-gold-dim); }
+.cal__cell.has-card { cursor: pointer; border-color: var(--t-line); }
+.cal__cell.has-card img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.cal__cell.has-card span { color: #fff; text-shadow: 0 1px 3px rgba(0, 0, 0, 0.9); }
+
+.calsuits { display: flex; height: 10px; border-radius: 999px; overflow: hidden; margin-top: 6px; background: var(--t-line); }
+.calsuit--major { background: #e8c46a; }
+.calsuit--wands { background: #e0864a; }
+.calsuit--cups { background: #6aa8e0; }
+.calsuit--swords { background: #b7bfcc; }
+.calsuit--pentacles { background: #7cc48a; }
+.calsuit-legend { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 6px; font-size: 11.5px; color: var(--text-sub); }
+.calsuit-key::before { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 4px; vertical-align: 1px; }
+.calsuit-key--major::before { background: #e8c46a; }
+.calsuit-key--wands::before { background: #e0864a; }
+.calsuit-key--cups::before { background: #6aa8e0; }
+.calsuit-key--swords::before { background: #b7bfcc; }
+.calsuit-key--pentacles::before { background: #7cc48a; }

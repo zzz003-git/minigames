@@ -136,6 +136,85 @@ async function exchangeDust(env, userId, day) {
   };
 }
 
+// ══════════════════════════════════════════════════════════════
+// 금빛 도감 (SPEC-03 §1) — 78장 완성 뒤의 두 번째 바퀴
+// ══════════════════════════════════════════════════════════════
+
+async function goldCards(env, userId) {
+  const rows = await env.DB.prepare(
+    `SELECT card_id FROM tarot_coll WHERE user_id = ? AND gold = 1 ORDER BY card_id`,
+  )
+    .bind(userId)
+    .all();
+  return (rows?.results ?? []).map((r) => r.card_id);
+}
+
+/**
+ * 은색 카드를 뽑았으면 그 카드가 금빛이 된다. 이미 금빛이면 false.
+ * `gold = 0` 조건이 곧 판정이라, 같은 카드가 동시에 두 번 들어와도 한쪽만 바뀐다.
+ */
+async function goldByDraw(env, userId, cardId, day) {
+  const r = await env.DB.prepare(
+    `UPDATE tarot_coll SET gold = 1, gold_day = ?3, gold_via = 'draw'
+      WHERE user_id = ?1 AND card_id = ?2 AND gold = 0`,
+  )
+    .bind(userId, cardId, day)
+    .run();
+  return (r?.meta?.changes ?? 0) > 0;
+}
+
+/**
+ * 금빛 카드 중복 → 별가루 +1, 4개면 은색 1장이 무작위로 금빛 (SPEC-03 §1).
+ *
+ * 1회차 `exchangeDust` 와 같은 구조다 — 판단과 지급을 한 batch 안에 두고, 차감과 지급을
+ * `ex_pending` 끈으로 잇는다. 다른 것은 ③이 「미보유 카드 지급」이 아니라 「은색 → 금빛」
+ * 이라는 것과, 카드별 적립이 없다는 것(SPEC-03 §4 가안)뿐이다.
+ *
+ * @returns {{ dustGained:number, goldExchangedCardId:number|null }}
+ */
+async function exchangeGold(env, userId, day) {
+  const t = now();
+  const silver = `SELECT card_id FROM tarot_coll WHERE user_id = ?1 AND gold = 0`;
+
+  const res = await env.DB.batch([
+    // ① 별가루 +1
+    env.DB.prepare(
+      `INSERT INTO tarot_meta (user_id, dust, dust_total, updated_at) VALUES (?1, 1, 1, ?2)
+       ON CONFLICT (user_id) DO UPDATE SET dust = dust + 1, dust_total = dust_total + 1,
+                                           updated_at = excluded.updated_at`,
+    ).bind(userId, t),
+    // ② 4 이상이고 은색 카드가 남았으면 차감 — 78장 금빛 뒤에는 쌓이기만 한다
+    env.DB.prepare(
+      `UPDATE tarot_meta SET dust = dust - ?2, exchanged = exchanged + 1, ex_pending = 1
+        WHERE user_id = ?1 AND dust >= ?2 AND EXISTS (${silver})`,
+    ).bind(userId, TAROT.DUST_PER_EXCHANGE),
+    // ③ 차감했으면 은색 1장을 금빛으로
+    env.DB.prepare(
+      `UPDATE tarot_coll SET gold = 1, gold_day = ?2, gold_via = 'dust'
+        WHERE user_id = ?1
+          AND EXISTS (SELECT 1 FROM tarot_meta WHERE user_id = ?1 AND ex_pending = 1)
+          AND card_id = (${silver} ORDER BY card_id LIMIT 1
+                         OFFSET (?3 % MAX(1, (SELECT COUNT(*) FROM (${silver})))))
+       RETURNING card_id`,
+    ).bind(userId, day, randomInt(0, 2 ** 31 - 1)),
+    // ④ 끈을 푼다
+    env.DB.prepare(`UPDATE tarot_meta SET ex_pending = 0 WHERE user_id = ?1 AND ex_pending = 1`).bind(
+      userId,
+    ),
+  ]);
+
+  return { dustGained: 1, goldExchangedCardId: res[2]?.results?.[0]?.card_id ?? null };
+}
+
+/** 하루 기록의 첫 카드(그날의 「오늘의 카드」) */
+const firstDraw = (raw) => {
+  const d = parseDraws(raw)[0];
+  return d ? { card_id: d.c, focus: d.f } : null;
+};
+
+/** 같은 날짜의 1년 전. 2월 29일은 전년에 없으므로 자연히 기록이 없다 */
+const yearAgo = (day) => `${Number(day.slice(0, 4)) - 1}${day.slice(4)}`;
+
 /**
  * 오늘 몇 장까지 뽑을 수 있는가.
  *
@@ -155,14 +234,19 @@ export async function today({ env, userId }) {
   const day = dayKey();
   await touchUser(env, userId, day);
 
-  const [st, meta, coll, suite, points, dust] = await Promise.all([
+  const [st, meta, coll, suite, points, dust, gold, lastYear] = await Promise.all([
     loadDay(env, userId, day),
     loadMeta(env, userId),
     collection(env, userId),
     dailyState(env, userId, day),
     pointState(env, userId, day),
     loadDust(env, userId),
+    goldCards(env, userId),
+    env.DB.prepare(`SELECT draws FROM tarot_daily WHERE user_id = ? AND day = ?`)
+      .bind(userId, yearAgo(day))
+      .first(),
   ]);
+  const ly = firstDraw(lastYear?.draws);
 
   return {
     day,
@@ -181,6 +265,12 @@ export async function today({ env, userId }) {
     milestones: TAROT.MILESTONES,
     dust,
     dust_max: TAROT.DUST_PER_EXCHANGE,
+    // 금빛 도감 (SPEC-03) — 78장 완성 전엔 늘 빈 배열이다
+    gold,
+    gold_count: gold.length,
+    gold_milestones: TAROT.GOLD_MILESTONES,
+    // 「작년 오늘」 — 1년 전 같은 날 기록이 있을 때만 (SPEC-03 §5)
+    last_year: ly ? { day: yearAgo(day), ...ly } : null,
     shuffles: st.draws.length === 0 ? TAROT.SHUFFLES_FIRST : TAROT.SHUFFLES_EXTRA,
     suite,
     points,
@@ -254,10 +344,28 @@ export async function draw({ env, userId, body }) {
     .run();
   const isNew = (ins?.meta?.changes ?? 0) > 0;
 
-  // 중복이면 별가루 — 「한 장 더」로 뽑은 중복도 같다(T-08)
-  const ex = isNew ? { dustGained: 0, exchangedCardId: null, gained: 0 } : await exchangeDust(env, userId, day);
+  // 중복이면 — 78장을 다 모으기 전엔 별가루(T-08), 다 모은 뒤엔 금빛 바퀴(SPEC-03 §1).
+  // 「한 장 더」로 뽑은 중복도 같다. 완성은 줄어들지 않으므로 여기서 한 번 세면 된다.
+  let ex = { dustGained: 0, exchangedCardId: null, gained: 0 };
+  let goldNew = false;
+  let goldExchangedCardId = null;
+  if (!isNew) {
+    const owned = await env.DB.prepare(`SELECT COUNT(*) AS n FROM tarot_coll WHERE user_id = ?`)
+      .bind(userId)
+      .first();
+    if ((owned?.n ?? 0) < TAROT.CARDS) {
+      ex = await exchangeDust(env, userId, day);
+    } else {
+      goldNew = await goldByDraw(env, userId, cardId, day);
+      if (!goldNew) {
+        const g = await exchangeGold(env, userId, day);
+        ex = { ...ex, dustGained: g.dustGained };
+        goldExchangedCardId = g.goldExchangedCardId;
+      }
+    }
+  }
 
-  const coll = await collection(env, userId);
+  const [coll, gold] = await Promise.all([collection(env, userId), goldCards(env, userId)]);
 
   // ── 적립 ────────────────────────────────────────────────────
   // 코어 완료는 **하루 1회**다. 「한 장 더」로 두 번째를 뽑아도 적립은 늘지 않는다
@@ -285,6 +393,13 @@ export async function draw({ env, userId, body }) {
       grants.push({ key: `MILESTONE_TAROT_${m.n}`, reason: `MILESTONE_TAROT_${m.n}`, amount: m.p, day });
     }
   }
+  // 금빛 마일스톤 — 카드별 적립은 없다(SPEC-03 §4 가안)
+  for (const m of TAROT.GOLD_MILESTONES) {
+    if (gold.length >= m.n) {
+      const key = `MILESTONE_TAROT_GOLD_${m.n}`;
+      grants.push({ key, reason: key, amount: m.p, day });
+    }
+  }
   const gained = (await grantMany(env, userId, grants)) + ex.gained;
 
   // 허브 갱신·분포·트리플 판정은 **첫 뽑기에서만**. 두 번째 카드로 오늘의 축이
@@ -305,6 +420,9 @@ export async function draw({ env, userId, body }) {
     dust: await loadDust(env, userId),
     dust_gained: ex.dustGained,
     exchanged_card_id: ex.exchangedCardId,
+    gold_new: goldNew, // 뽑은 은색 카드가 금빛이 됐다
+    gold_exchanged_card_id: goldExchangedCardId, // 별가루로 금빛이 된 카드
+    gold_count: gold.length,
     gained,
     core_done: isFirstDraw,
     remaining: Math.max(0, allowedDraws(after, afterMeta) - after.draws.length),
@@ -322,7 +440,7 @@ export async function draw({ env, userId, body }) {
 /** 도감 78칸. 못 만난 칸은 `first_day: null` (SPEC-02 4절) */
 export async function collectionView({ env, userId }) {
   const rows = await env.DB.prepare(
-    `SELECT card_id, first_day, via FROM tarot_coll WHERE user_id = ?`,
+    `SELECT card_id, first_day, via, gold, gold_day, gold_via FROM tarot_coll WHERE user_id = ?`,
   )
     .bind(userId)
     .all();
@@ -331,15 +449,52 @@ export async function collectionView({ env, userId }) {
   const cells = [];
   for (let id = 0; id < TAROT.CARDS; id++) {
     const r = got.get(id);
-    cells.push({ card_id: id, first_day: r?.first_day ?? null, via: r?.via ?? null });
+    cells.push({
+      card_id: id,
+      first_day: r?.first_day ?? null,
+      via: r?.via ?? null,
+      gold: Boolean(r?.gold),
+      gold_day: r?.gold_day ?? null,
+      gold_via: r?.gold_via ?? null,
+    });
   }
   return {
     cells,
     count: got.size,
+    gold_count: cells.filter((c) => c.gold).length,
     milestones: TAROT.MILESTONES,
+    gold_milestones: TAROT.GOLD_MILESTONES,
     dust: await loadDust(env, userId),
     dust_max: TAROT.DUST_PER_EXCHANGE,
   };
+}
+
+// ══════════════════════════════════════════════════════════════
+// GET /api/tarot/calendar?month=YYYY-MM
+// ══════════════════════════════════════════════════════════════
+
+/**
+ * 나의 카드 달력 (SPEC-03 §5). 날마다 **그날 첫 카드**만 — 「한 장 더」로 뽑은 카드는
+ * 오늘의 카드가 아니다. 뽑지 않은 날은 아예 돌려주지 않는다(빈칸 = 벌점이 아니다).
+ * 새로 모으는 것은 없다 — 이미 있는 `tarot_daily` 를 읽기만 한다.
+ */
+export async function calendar({ env, userId, body }) {
+  const month = String(body?.month ?? dayKey().slice(0, 7));
+  if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) {
+    throw new ApiError("BAD_MONTH", "month 는 YYYY-MM 형식이어야 합니다.", 400);
+  }
+  const rows = await env.DB.prepare(
+    `SELECT day, draws FROM tarot_daily WHERE user_id = ? AND day >= ? AND day <= ? ORDER BY day`,
+  )
+    .bind(userId, `${month}-01`, `${month}-31`)
+    .all();
+
+  const days = [];
+  for (const r of rows?.results ?? []) {
+    const f = firstDraw(r.draws);
+    if (f) days.push({ day: r.day, ...f });
+  }
+  return { month, days };
 }
 
 // ══════════════════════════════════════════════════════════════
