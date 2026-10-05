@@ -193,6 +193,7 @@ const ROUTES = {
   "GET /api/tarot/today": tarot.today,
   "POST /api/tarot/draw": tarot.draw,
   "GET /api/tarot/stats": tarot.stats,
+  "GET /api/tarot/collection": tarot.collectionView,
   "GET /api/mind/state": mind.state,
   "POST /api/mind/submit": mind.submit,
   "GET /api/mind/stats": mind.stats,

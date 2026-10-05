@@ -161,3 +161,80 @@
 /* 끌어서 고르므로 무대에서 스크롤 제스처를 받지 않는다 */
 .fanstage { touch-action: none; }
 .hint--sub { display: inline-block; margin-top: 4px; font-size: 12px; color: var(--text-dim); }
+
+/* ══ 78장 개편 (TAROT-SPEC-02 · REQ-36) ═══════════════════════════════════ */
+
+/* ── 카드 그림 · 폴백 ──
+   그림은 프레임까지 합성된 720×1080(2:3) 완성본이다. 잘리지 않게 같은 비율의 상자에 꽉 채운다. */
+.cardimg {
+  display: block; width: 100%; height: 100%;
+  object-fit: cover; border-radius: inherit;
+  user-select: none; -webkit-user-drag: none;
+}
+/* 그림을 못 받았을 때 — 이모지만으로는 마이너 56장을 알아볼 수 없어 이름을 함께 쓴다 */
+.cardfb {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 8px; width: 100%; height: 100%; padding: 8px; text-align: center;
+}
+.cardfb__glyph { font-size: 52px; line-height: 1; }
+.cardfb__name { font-size: 13px; color: var(--t-gold); line-height: 1.35; word-break: keep-all; }
+
+.flipcard__face--front { overflow: hidden; }
+
+/* 결과의 카드 — 1.0 은 이모지 한 글자(60px)였다 */
+.tcard {
+  width: 168px; aspect-ratio: 2 / 3; margin: 6px auto 10px;
+  border-radius: 12px; overflow: hidden;
+  border: 1.5px solid var(--t-gold-dim);
+  background: linear-gradient(180deg, #2e2757, #221d43);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+}
+
+/* ── 별가루 ── */
+.dustchip {
+  font-size: 12px; color: var(--t-gold);
+  border: 1px solid var(--t-gold-dim); border-radius: 999px;
+  padding: 3px 9px; white-space: nowrap;
+}
+.card--info .card__head { margin-bottom: 6px; }
+
+/* ── 교환 연출 — 두 번째 카드가 스스로 뒤집힌다 ── */
+.exchange { display: flex; align-items: center; gap: 14px; }
+.flipwrap--mini { flex: none; }
+.flipcard--mini { width: 96px; height: 144px; }
+.flipcard--mini .flipcard__face { border-radius: 9px; font-size: 32px; }
+.flipcard--mini .cardfb__glyph { font-size: 30px; }
+.flipcard--mini .cardfb__name { font-size: 11px; }
+.exchange__text { flex: 1; min-width: 0; opacity: 0; transition: opacity 0.4s ease 0.5s; }
+.exchange__text.is-shown { opacity: 1; }
+.exchange__title { font-size: 12.5px; color: var(--text-sub); line-height: 1.5; word-break: keep-all; }
+.exchange__name { font-size: 16px; font-weight: 700; color: var(--text); margin-top: 4px; }
+.exchange .advice { margin-top: 8px; padding-top: 8px; }
+
+/* ── 도감 진척 바 · 마일스톤 4점 ── */
+.collbar {
+  position: relative; height: 6px; margin: 4px 6px 26px;
+  border-radius: 999px; background: var(--t-line);
+}
+.collbar__fill { height: 100%; border-radius: inherit; background: var(--t-gold); }
+.collbar__tick {
+  position: absolute; top: 50%; width: 12px; height: 12px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%; border: 2px solid var(--t-gold-dim); background: #171226;
+}
+.collbar__tick.is-on { background: var(--t-gold); border-color: var(--t-gold); }
+.collbar__tick span {
+  position: absolute; top: 14px; left: 50%; transform: translateX(-50%);
+  font-size: 10.5px; color: var(--text-dim); font-family: var(--mono);
+}
+
+/* ── 수트 탭 ── */
+.colltabs { justify-content: flex-start; gap: 6px; margin: 0 0 4px; }
+.colltabs .chip-focus { padding: 6px 10px; font-size: 12px; }
+
+/* 칸은 썸네일 비율(240×360 = 2:3)에 맞춘다 */
+.collcell { aspect-ratio: 2 / 3; overflow: hidden; }
+.collcell__img { display: block; width: 100%; height: 100%; object-fit: cover; }
+
+/* ── 고지 ── */
+.legal { margin-top: 18px; font-size: 11px; line-height: 1.6; color: var(--text-faint); }

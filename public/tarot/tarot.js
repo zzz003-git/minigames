@@ -1,7 +1,7 @@
 /**
  * 🔮 오늘의 타로 — 화면
  *
- * 기획: TAROT-SPEC-01 · 인터랙션 1차 사양은 프로토
+ * 기획: TAROT-SPEC-02(78장 · 별가루 · 카드 그림) · 1.0 인터랙션 1차 사양은 프로토
  * (`../reward-minigame-research/tarot/prototype/TAROT-PROTO-01_오늘의타로.html`)
  *
  * ── 화면이 정하는 것과 정하지 못하는 것 ──────────────────────────────────
@@ -31,6 +31,28 @@ const ARM_DELAY_MS = 400;
 /** 3D 플립 (tarot.css 의 transition 과 같은 값) */
 const FLIP_MS = 900;
 
+/**
+ * 카드 그림 (SPEC-02 5.5). 78장이 4.5MB 라 묶어 싣지 않는다 — **뽑힌 한 장만** 받는다.
+ * 경로의 `s2` 가 덱 이름이고 1년 캐시가 걸려 있다(`public/_headers`).
+ */
+const CARD_IMG = (id) => `/assets/tarot/deck/s2/${id}.webp`;
+const THUMB_IMG = (id) => `/assets/tarot/thumb/s2/${id}.webp`;
+/**
+ * 플립 전에 그림을 기다리는 상한. 넘으면 이모지로 뒤집는다 — 뒷면인 채 멈춰 있는
+ * 것보다 낫다. 3G(약 400kbps)에서 최대 124KB 가 약 2.5초라 그 세 배쯤 둔다.
+ */
+const PRELOAD_MAX_MS = 8000;
+
+/** 도감 수트 탭. id 범위는 SPEC-02 0절 */
+const SUITS = [
+  { k: "all", label: "전체", from: 0, to: 77 },
+  { k: "major", label: "메이저", from: 0, to: 21 },
+  { k: "wands", label: "완드", from: 22, to: 35 },
+  { k: "cups", label: "컵", from: 36, to: 49 },
+  { k: "swords", label: "소드", from: 50, to: 63 },
+  { k: "pentacles", label: "펜타클", from: 64, to: 77 },
+];
+
 const state = {
   today: null,
   focus: null,
@@ -38,6 +60,7 @@ const state = {
   needShuffles: 3,
   dragX: null,
   busy: false,
+  collTab: "all",
 };
 
 // 원안의 `activeView = inSuite ? 'hub' : v` — 서비스 화면에서도 「오늘의 나」 탭이
@@ -210,7 +233,8 @@ deck.addEventListener("keydown", (e) => {
 // ══════════════════════════════════════════════════════════════
 
 /**
- * 22장을 부채로 펼친다.
+ * 22장을 부채로 펼친다 — 78장 중 22장만(SPEC-02 1절). 전부 뒷면이라 체감은 같고,
+ * 서버 추첨은 펼친 22장과 무관하다.
  *
  * 배치 순서는 `hash(day + 회차)` 로 섞는다. 카드에 정보가 없으므로(전부 뒷면) 이것은
  * 결과에 영향을 주지 않고, **매번 같은 자리에 펼쳐지지 않게** 하기 위한 것뿐이다.
@@ -231,7 +255,7 @@ function openFan() {
   const stage = clear($("#fanStage"));
   stage.classList.remove("is-locked");
 
-  const n = TAROT_DB.cards.length;
+  const n = state.today.fan ?? 22;
   const seed = seeded(`${state.today.day}|${state.today.draws.length}`);
   const fan = [];
 
@@ -403,16 +427,67 @@ async function choose(node) {
     return;
   }
 
-  await flipTo(res.card_id);
+  // 그림을 다 받은 뒤에 뒤집는다 — 뒤집힌 앞면이 비어 있다가 늦게 차면 연출이 깨진다
+  const hasImg = await preload(CARD_IMG(res.card_id), PRELOAD_MAX_MS);
+  await flipTo(res.card_id, hasImg);
   state.today = await apiGet("/api/tarot/today");
   renderResult(res.card_id, state.focus, res);
   state.busy = false;
 }
 
-/** 3D 플립. 연출이 끝날 때까지 입력을 받지 않는다(기획서 1절) */
-function flipTo(cardId) {
+/**
+ * 그림 한 장을 받아 디코드까지 끝낸다. 실패·시간 초과면 false — 이모지로 대신한다.
+ * 결과 화면이 같은 주소를 다시 쓰므로 두 번째부터는 캐시에서 나온다.
+ */
+function preload(src, maxMs) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    let loaded = false;
+    // 상한은 decode 까지 덮는다. **탭이 백그라운드면 decode 가 끝나지 않는다** — 받아
+    // 놓고도 뒷면인 채 멈췄다(브라우저 확인에서 그대로 걸렸다). 받았으면 그림으로 간다.
+    const timer = setTimeout(() => resolve(loaded), maxMs);
+    img.onload = () => {
+      loaded = true;
+      const done = () => {
+        clearTimeout(timer);
+        resolve(true);
+      };
+      if (!img.decode) return done();
+      img.decode().then(done, done);
+      // decode 가 묶여도 오래 기다리지 않는다
+      setTimeout(done, 600);
+    };
+    img.onerror = () => {
+      clearTimeout(timer);
+      resolve(false);
+    };
+    img.src = src;
+  });
+}
+
+/**
+ * 카드 앞면. 그림이 없으면 이모지 + 이름(SPEC-02 5.5 폴백) — 이모지만 두면 마이너
+ * 56장은 무슨 카드인지 알 수 없다.
+ */
+function cardFace(cardId, hasImg, src = CARD_IMG(cardId)) {
   const card = TAROT_DB.cards[cardId];
-  $("#flipFront").textContent = card.glyph;
+  if (hasImg) {
+    const img = el("img", { class: "cardimg", src, alt: card.name, draggable: "false" });
+    // 받았다고 판단한 뒤에 깨지는 경우(캐시 축출 등)도 같은 폴백으로
+    img.addEventListener("error", () => img.replaceWith(cardFace(cardId, false)), { once: true });
+    return img;
+  }
+  return el(
+    "div",
+    { class: "cardfb" },
+    el("span", { class: "cardfb__glyph" }, card.glyph),
+    el("span", { class: "cardfb__name" }, card.name),
+  );
+}
+
+/** 3D 플립. 연출이 끝날 때까지 입력을 받지 않는다(기획서 1절) */
+function flipTo(cardId, hasImg) {
+  clear($("#flipFront")).append(cardFace(cardId, hasImg));
   const fc = $("#flipCard");
   fc.classList.remove("is-flipped");
   showScreen("flip");
@@ -436,7 +511,9 @@ function renderResult(cardId, focus, res) {
   const focusLabel = FOCUS.find((f) => f.k === focus)?.label ?? "오늘 하루";
 
   $("#resFocus").textContent = focusLabel;
-  $("#resGlyph").textContent = r.card.glyph;
+  // 뽑기 직후면 플립 전에 받아 둔 그림이 캐시에서 나온다. 다시 들어온 경우엔 받는 동안
+  // 잠깐 빈칸일 수 있지만, 실패하면 이모지로 바뀐다
+  clear($("#resGlyph")).append(cardFace(cardId, true));
   $("#resName").textContent = r.card.name;
   $("#resInterp").textContent = r.interp;
   $("#resAdvice").textContent = r.advice;
@@ -448,11 +525,24 @@ function renderResult(cardId, focus, res) {
   );
 
   const coll = state.today.collection?.length ?? 0;
+  const total = TAROT_DB.cards.length;
+  const dustMax = state.today.dust_max ?? 4;
+  // 중복이어도 해석·적립은 그대로 — 꽝이 없다. 달라지는 것은 별가루 한 줄뿐이다
+  const pick = res.replay
+    ? ""
+    : res.is_new
+      ? " · 새 카드가 도감에 들어왔어요"
+      : res.exchanged_card_id != null
+        ? ` · 별가루 +1 (${dustMax}/${dustMax})`
+        : ` · 별가루 +1 (${res.dust ?? state.today.dust}/${dustMax})`;
   $("#resGain").textContent = res.replay
-    ? `오늘 뽑은 카드예요 · 도감 ${coll}/${TAROT_DB.cards.length}장`
-    : `+${res.gained}P 적립 · 도감 ${coll}/${TAROT_DB.cards.length}장${res.is_new ? " (새 카드!)" : " (이미 있는 카드)"}`;
+    ? `오늘 뽑은 카드예요 · 도감 ${coll}/${total}장`
+    : `+${res.gained}P 적립 · 도감 ${coll}/${total}장${pick}`;
+  $("#resDust").textContent = `✦ 별가루 ${state.today.dust ?? 0}/${dustMax}`;
 
-  setHeaderBadge(`도감 ${coll}/${TAROT_DB.cards.length}`);
+  renderExchange(res.replay ? null : res.exchanged_card_id);
+
+  setHeaderBadge(`도감 ${coll}/${total}`);
   renderCrossChips();
   renderResultAds();
 
@@ -464,6 +554,49 @@ function renderResult(cardId, focus, res) {
 
   showScreen("result");
   armScreen("result");
+}
+
+/** 교환 카드가 스스로 뒤집히기까지의 뜸 — 결과 화면을 먼저 한 번 보게 한다 */
+const EXCHANGE_DELAY_MS = 700;
+
+/**
+ * 별가루 교환 연출 (SPEC-02 1절) — 결과 직후 **두 번째 카드가 스스로 뒤집힌다.**
+ *
+ * 이 카드는 오늘의 카드가 아니다. 그래서 오늘의 해석 대신 카드 조언 한 줄만 보인다.
+ * 누를 것이 없다 — 손을 대지 않아도 뒤집히므로, 마지막 탭이 이 자리에 떨어져도
+ * 아무것도 열리지 않는다.
+ */
+function renderExchange(cardId) {
+  const host = clear($("#exchange"));
+  host.hidden = cardId == null;
+  if (cardId == null) return;
+
+  const card = TAROT_DB.cards[cardId];
+  const advice = card.advice[seeded(`${state.today.day}|ex|${cardId}`) % card.advice.length];
+  const flip = el(
+    "div",
+    { class: "flipcard flipcard--mini" },
+    el("div", { class: "flipcard__face flipcard__face--back" }),
+    el("div", { class: "flipcard__face flipcard__face--front" }),
+  );
+  const caption = el(
+    "div",
+    { class: "exchange__text" },
+    el("div", { class: "exchange__title" }, "별가루 4개가 모여 아직 못 만난 카드가 왔어요"),
+    el("div", { class: "exchange__name" }, card.name),
+    el("p", { class: "advice" }, advice),
+  );
+  host.append(el("div", { class: "flipwrap flipwrap--mini" }, flip), caption);
+
+  preload(CARD_IMG(cardId), PRELOAD_MAX_MS).then((ok) => {
+    flip.lastChild.append(cardFace(cardId, ok));
+    setTimeout(() => {
+      void flip.offsetWidth;
+      flip.classList.add("is-flipped");
+      caption.classList.add("is-shown");
+      navigator.vibrate?.([10, 50, 18]);
+    }, EXCHANGE_DELAY_MS);
+  });
 }
 
 const stat = (label, value) =>
@@ -574,32 +707,92 @@ async function loadStats() {
 // 도감
 // ══════════════════════════════════════════════════════════════
 
+/**
+ * 도감 78칸 (SPEC-02 1절) — 수트 탭 · 진척 바와 마일스톤 4점 · 별가루.
+ *
+ * 칸에는 **썸네일**(240×360, 평균 10KB)을 쓰고 `loading="lazy"` 로 화면에 들어올 때만
+ * 받는다. 78장을 한 번에 받으면 1MB 가까이 되는데, 대부분은 아직 없는 칸이다.
+ */
 function showCollection() {
   const have = new Set(state.today.collection ?? []);
-  const host = clear($("#collGrid"));
+  const total = TAROT_DB.cards.length;
+  const n = have.size;
+  const ms = state.today.milestones ?? [];
 
-  TAROT_DB.cards.forEach((c, i) => {
-    host.append(
+  $("#collTitle").textContent = `도감 ${n} / ${total}`;
+  $("#collDust").textContent = `✦ 별가루 ${state.today.dust ?? 0}/${state.today.dust_max ?? 4}`;
+
+  // 진척 바 — 마일스톤 자리에 점을 찍고, 넘은 점은 채운다
+  const bar = clear($("#collBar"));
+  bar.append(el("div", { class: "collbar__fill", style: `width:${((n / total) * 100).toFixed(1)}%` }));
+  for (const m of ms) {
+    bar.append(
       el(
         "div",
         {
-          class: `collcell ${have.has(i) ? "is-have" : "is-miss"}`,
-          title: have.has(i) ? c.name : "아직 만나지 않은 카드",
+          class: `collbar__tick ${n >= m.n ? "is-on" : ""}`,
+          style: `left:${((m.n / total) * 100).toFixed(1)}%`,
+          title: `${m.n}장 +${m.p}P`,
         },
-        have.has(i) ? c.glyph : "?",
+        el("span", {}, String(m.n)),
       ),
     );
-  });
+  }
 
-  const n = have.size;
-  const { half, full } = state.today.milestones ?? { half: 11, full: 22 };
-  $("#collTitle").textContent = `도감 ${n} / ${TAROT_DB.cards.length}`;
-  $("#collNote").textContent =
-    n >= full
-      ? "도감을 모두 채웠어요."
-      : n >= half
-        ? `${full}장을 모으면 완성 보너스가 있어요 (${full - n}장 남음)`
-        : `${half}장을 모으면 보너스가 있어요 (${half - n}장 남음)`;
+  const next = ms.find((m) => n < m.n);
+  $("#collNote").textContent = next
+    ? `${next.n}장을 모으면 +${next.p}P (${next.n - n}장 남음) · 겹친 카드는 별가루가 되고, 4개면 아직 못 만난 카드로 바뀌어요`
+    : "도감을 모두 채웠어요.";
 
+  renderCollTabs(have);
+  renderCollGrid(have);
   showScreen("coll");
+}
+
+function renderCollTabs(have) {
+  const host = clear($("#collTabs"));
+  for (const s of SUITS) {
+    let got = 0;
+    for (let i = s.from; i <= s.to; i++) if (have.has(i)) got++;
+    const node = el(
+      "button",
+      { class: `chip-focus ${state.collTab === s.k ? "is-sel" : ""}`, type: "button" },
+      `${s.label} ${got}/${s.to - s.from + 1}`,
+    );
+    node.addEventListener("click", () => {
+      state.collTab = s.k;
+      renderCollTabs(have);
+      renderCollGrid(have);
+    });
+    host.append(node);
+  }
+}
+
+function renderCollGrid(have) {
+  const s = SUITS.find((x) => x.k === state.collTab) ?? SUITS[0];
+  const host = clear($("#collGrid"));
+
+  for (let i = s.from; i <= s.to; i++) {
+    const c = TAROT_DB.cards[i];
+    const got = have.has(i);
+    const cell = el("div", {
+      class: `collcell ${got ? "is-have" : "is-miss"}`,
+      title: got ? c.name : "아직 만나지 않은 카드",
+    });
+    if (got) {
+      const img = el("img", {
+        class: "collcell__img",
+        src: THUMB_IMG(i),
+        alt: c.name,
+        loading: "lazy",
+        decoding: "async",
+        draggable: "false",
+      });
+      img.addEventListener("error", () => img.replaceWith(c.glyph), { once: true });
+      cell.append(img);
+    } else {
+      cell.append("?");
+    }
+    host.append(cell);
+  }
 }

@@ -2,7 +2,7 @@
  * 🔮 오늘의 타로 — 서버
  * ==========================================================================
  *
- * 기획: TAROT-SPEC-01 · 레퍼런스 구현 `tarot/prototype/TAROT-PROTO-01_오늘의타로.html`
+ * 기획: TAROT-SPEC-02(78장 · 별가루) · 1.0 레퍼런스 구현 `tarot/prototype/TAROT-PROTO-01_오늘의타로.html`
  *
  * ── 아케이드가 아니다 ────────────────────────────────────────────────────
  * 순위도 실패도 없다. 그래서 `sessions`/`results` 를 쓰지 않고 아케이드 런 엔진도
@@ -62,6 +62,80 @@ async function collection(env, userId) {
   return (rows?.results ?? []).map((r) => r.card_id);
 }
 
+async function loadDust(env, userId) {
+  const row = await env.DB.prepare(`SELECT dust FROM tarot_meta WHERE user_id = ?`)
+    .bind(userId)
+    .first();
+  return row?.dust ?? 0;
+}
+
+/**
+ * 중복 1장 → 별가루 +1, 4개면 그 자리에서 미보유 카드 1장으로 바꾼다 (T-08).
+ *
+ * ── 왜 한 batch 인가 ─────────────────────────────────────────────────────
+ * 「별가루를 읽고 → 4 이상이면 → 빼고 → 카드를 준다」를 왕복으로 나누면, 「한 장 더」를
+ * 연타해 두 요청이 같이 들어왔을 때 둘 다 3을 읽고 둘 다 교환한다. D1 의 batch 는 한
+ * 트랜잭션으로 돌고 다른 쓰기가 끼어들지 못하므로, 판단과 지급을 **전부 SQL 안에** 둔다.
+ *
+ * 차감과 지급을 잇는 끈은 `ex_pending` 이다. ②가 4를 빼면서 1로 세우고, ③④는 그것이
+ * 1일 때만 움직이고, ⑤가 0으로 되돌린다 — batch 밖에서는 언제나 0이다.
+ *
+ * 교환 카드는 미보유 카드 중 균등 무작위다. 난수는 SQLite `random()` 이 아니라 서버
+ * 추첨과 같은 `randomInt` 로 뽑아 미보유 목록의 순번으로 쓴다(`% 미보유 수`). 2^31 을
+ * 78 이하로 나눈 나머지의 치우침은 장당 1억분의 4 미만이라 무시한다.
+ *
+ * @returns {{ dustGained:number, exchangedCardId:number|null, gained:number }}
+ */
+async function exchangeDust(env, userId, day) {
+  const t = now();
+  const unowned = `
+    WITH RECURSIVE n(i) AS (SELECT 0 UNION ALL SELECT i + 1 FROM n WHERE i < ${TAROT.CARDS - 1})
+    SELECT i FROM n WHERE i NOT IN (SELECT card_id FROM tarot_coll WHERE user_id = ?1)`;
+
+  const res = await env.DB.batch([
+    // ① 별가루 +1
+    env.DB.prepare(
+      `INSERT INTO tarot_meta (user_id, dust, dust_total, updated_at) VALUES (?1, 1, 1, ?2)
+       ON CONFLICT (user_id) DO UPDATE SET dust = dust + 1, dust_total = dust_total + 1,
+                                           updated_at = excluded.updated_at`,
+    ).bind(userId, t),
+    // ② 4 이상이고 아직 못 만난 카드가 있으면 차감 — 78장 완성 뒤에는 쌓이기만 한다
+    env.DB.prepare(
+      `UPDATE tarot_meta SET dust = dust - ?2, exchanged = exchanged + 1, ex_pending = 1
+        WHERE user_id = ?1 AND dust >= ?2
+          AND (SELECT COUNT(*) FROM tarot_coll WHERE user_id = ?1) < ?3`,
+    ).bind(userId, TAROT.DUST_PER_EXCHANGE, TAROT.CARDS),
+    // ③ 차감했으면 미보유 1장 지급
+    env.DB.prepare(
+      `INSERT INTO tarot_coll (user_id, card_id, first_day, via)
+       SELECT ?1, i, ?2, 'dust' FROM (${unowned})
+        WHERE EXISTS (SELECT 1 FROM tarot_meta WHERE user_id = ?1 AND ex_pending = 1)
+        ORDER BY i LIMIT 1 OFFSET (?3 % MAX(1, (SELECT COUNT(*) FROM (${unowned}))))
+       RETURNING card_id`,
+    ).bind(userId, day, randomInt(0, 2 ** 31 - 1)),
+    // ④ 그 카드의 신규 적립 — 뽑기로 얻은 카드와 **같은 키**다(카드별 평생 1회)
+    env.DB.prepare(
+      `INSERT OR IGNORE INTO suite_points (user_id, key, reason, amount, day, created_at)
+       SELECT ?1, 'TAROT_NEW:' || card_id, 'TAROT_NEW', ?2, ?3, ?4
+         FROM tarot_coll
+        WHERE user_id = ?1 AND via = 'dust'
+          AND EXISTS (SELECT 1 FROM tarot_meta WHERE user_id = ?1 AND ex_pending = 1)`,
+    ).bind(userId, SUITE.POINTS.COLLECT_NEW, day, t),
+    // ⑤ 끈을 푼다
+    env.DB.prepare(`UPDATE tarot_meta SET ex_pending = 0 WHERE user_id = ?1 AND ex_pending = 1`).bind(
+      userId,
+    ),
+  ]);
+
+  const exchangedCardId = res[2]?.results?.[0]?.card_id ?? null;
+  const granted = res[3]?.meta?.changes ?? 0;
+  return {
+    dustGained: 1,
+    exchangedCardId,
+    gained: granted * SUITE.POINTS.COLLECT_NEW,
+  };
+}
+
 /**
  * 오늘 몇 장까지 뽑을 수 있는가.
  *
@@ -81,12 +155,13 @@ export async function today({ env, userId }) {
   const day = dayKey();
   await touchUser(env, userId, day);
 
-  const [st, meta, coll, suite, points] = await Promise.all([
+  const [st, meta, coll, suite, points, dust] = await Promise.all([
     loadDay(env, userId, day),
     loadMeta(env, userId),
     collection(env, userId),
     dailyState(env, userId, day),
     pointState(env, userId, day),
+    loadDust(env, userId),
   ]);
 
   return {
@@ -100,7 +175,12 @@ export async function today({ env, userId }) {
     ad_stats_seen: st.adStatsSeen,
     welcome_available: TAROT.WELCOME_DRAW && !meta.welcomeUsed,
     collection: coll,
-    milestones: { half: TAROT.MILESTONE_HALF, full: TAROT.MILESTONE_FULL },
+    collection_count: coll.length,
+    cards: TAROT.CARDS,
+    fan: TAROT.FAN,
+    milestones: TAROT.MILESTONES,
+    dust,
+    dust_max: TAROT.DUST_PER_EXCHANGE,
     shuffles: st.draws.length === 0 ? TAROT.SHUFFLES_FIRST : TAROT.SHUFFLES_EXTRA,
     suite,
     points,
@@ -139,8 +219,8 @@ export async function draw({ env, userId, body }) {
     throw new ApiError("FOCUS_USED", "오늘 이미 뽑은 고민이에요. 다른 고민을 골라 보세요.", 400);
   }
 
-  // 균등 추첨. 22장 전부 같은 확률이고 이미 뽑은 카드도 다시 나온다 —
-  // 「오늘의 카드」는 그날의 뽑기이지 수집 게임이 아니다.
+  // 균등 추첨. 78장 전부 같은 확률이고 이미 뽑은 카드도 다시 나온다 —
+  // 「오늘의 카드」는 그날의 뽑기다. 수집 속도는 확률이 아니라 별가루(T-08)가 맡는다.
   const cardId = randomInt(0, TAROT.CARDS - 1);
   const nextDraws = [...st.draws, { c: cardId, f: focus }];
   const isFirstDraw = st.draws.length === 0;
@@ -165,13 +245,17 @@ export async function draw({ env, userId, body }) {
       .run();
   }
 
-  // 도감. 처음 뽑은 카드만 남긴다 — 중복은 "이미 있는 카드" 일 뿐 잃는 것이 없다.
+  // 도감. 처음 뽑은 카드만 남긴다 — 중복은 별가루가 되어 잃는 것이 없다.
+  // 새 카드인지는 PK 충돌로 정해진다. 동시 요청이어도 한쪽만 changes 1 을 받는다.
   const ins = await env.DB.prepare(
     `INSERT OR IGNORE INTO tarot_coll (user_id, card_id, first_day) VALUES (?, ?, ?)`,
   )
     .bind(userId, cardId, day)
     .run();
   const isNew = (ins?.meta?.changes ?? 0) > 0;
+
+  // 중복이면 별가루 — 「한 장 더」로 뽑은 중복도 같다(T-08)
+  const ex = isNew ? { dustGained: 0, exchangedCardId: null, gained: 0 } : await exchangeDust(env, userId, day);
 
   const coll = await collection(env, userId);
 
@@ -195,23 +279,13 @@ export async function draw({ env, userId, body }) {
       day,
     });
   }
-  if (coll.length >= TAROT.MILESTONE_HALF) {
-    grants.push({
-      key: "MILESTONE_TAROT_HALF",
-      reason: "MILESTONE_TAROT_HALF",
-      amount: SUITE.POINTS.MILESTONE_HALF,
-      day,
-    });
+  // 마일스톤은 교환 카드까지 센 뒤에 본다 — 교환으로 20장째가 되어도 받는다
+  for (const m of TAROT.MILESTONES) {
+    if (coll.length >= m.n) {
+      grants.push({ key: `MILESTONE_TAROT_${m.n}`, reason: `MILESTONE_TAROT_${m.n}`, amount: m.p, day });
+    }
   }
-  if (coll.length >= TAROT.MILESTONE_FULL) {
-    grants.push({
-      key: "MILESTONE_TAROT_FULL",
-      reason: "MILESTONE_TAROT_FULL",
-      amount: SUITE.POINTS.MILESTONE_FULL,
-      day,
-    });
-  }
-  const gained = await grantMany(env, userId, grants);
+  const gained = (await grantMany(env, userId, grants)) + ex.gained;
 
   // 허브 갱신·분포·트리플 판정은 **첫 뽑기에서만**. 두 번째 카드로 오늘의 축이
   // 바뀌면 「오늘의 나 한 장」이 뽑을 때마다 달라진다.
@@ -228,6 +302,9 @@ export async function draw({ env, userId, body }) {
     focus,
     is_new: isNew,
     collection_count: coll.length,
+    dust: await loadDust(env, userId),
+    dust_gained: ex.dustGained,
+    exchanged_card_id: ex.exchangedCardId,
     gained,
     core_done: isFirstDraw,
     remaining: Math.max(0, allowedDraws(after, afterMeta) - after.draws.length),
@@ -235,6 +312,33 @@ export async function draw({ env, userId, body }) {
     triple_gained: suiteResult?.tripleGained ?? 0,
     suite: await dailyState(env, userId, day),
     points: await pointState(env, userId, day),
+  };
+}
+
+// ══════════════════════════════════════════════════════════════
+// GET /api/tarot/collection
+// ══════════════════════════════════════════════════════════════
+
+/** 도감 78칸. 못 만난 칸은 `first_day: null` (SPEC-02 4절) */
+export async function collectionView({ env, userId }) {
+  const rows = await env.DB.prepare(
+    `SELECT card_id, first_day, via FROM tarot_coll WHERE user_id = ?`,
+  )
+    .bind(userId)
+    .all();
+  const got = new Map((rows?.results ?? []).map((r) => [r.card_id, r]));
+
+  const cells = [];
+  for (let id = 0; id < TAROT.CARDS; id++) {
+    const r = got.get(id);
+    cells.push({ card_id: id, first_day: r?.first_day ?? null, via: r?.via ?? null });
+  }
+  return {
+    cells,
+    count: got.size,
+    milestones: TAROT.MILESTONES,
+    dust: await loadDust(env, userId),
+    dust_max: TAROT.DUST_PER_EXCHANGE,
   };
 }
 

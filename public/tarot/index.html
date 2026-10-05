@@ -70,10 +70,16 @@
           <p class="advice" id="resAdvice">—</p>
         </div>
 
+        <!-- 별가루 교환 (SPEC-02 T-08) — 두 번째 카드가 스스로 뒤집힌다. 누를 것이 없다 -->
+        <div class="card exchange" id="exchange" hidden></div>
+
         <div class="stats stats--inset" id="resLucky"></div>
 
         <div class="card card--info">
-          <div class="card__label">오늘의 적립</div>
+          <div class="card__head">
+            <span class="card__label">오늘의 적립</span>
+            <span class="dustchip" id="resDust">✦ 별가루 0/4</span>
+          </div>
           <p class="footnote" id="resGain">—</p>
           <p class="footnote--dim mt-sm" id="resDist">전국 분포는 광고를 보면 열려요</p>
         </div>
@@ -86,18 +92,24 @@
 
         <button class="btn" id="collBtn">도감 보기</button>
         <div class="footnote--dim center" id="resNote"></div>
+        <!-- 고지 (TAROT-PLAN-01 10절 · 인공지능기본법 31조① — dev/개발수정요청_AI고지) -->
+        <p class="legal center">본 콘텐츠는 오락용입니다.<br>카드 이미지는 생성형 AI를 활용해 제작했습니다.</p>
       </section>
 
-      <!-- 도감 -->
+      <!-- 도감 78칸 (SPEC-02 1절) -->
       <section class="screen" data-screen="coll">
         <div class="card">
           <div class="card__head">
             <span class="card__title" id="collTitle">도감</span>
+            <span class="dustchip" id="collDust">✦ 별가루 0/4</span>
           </div>
+          <div class="collbar" id="collBar" aria-hidden="true"></div>
+          <div class="focus-row colltabs" id="collTabs"></div>
           <div class="collgrid" id="collGrid"></div>
           <p class="footnote--dim mt-md" id="collNote">—</p>
         </div>
         <button class="btn" id="collBackBtn">← 돌아가기</button>
+        <p class="legal center">카드 이미지는 생성형 AI를 활용해 제작했습니다.</p>
       </section>
 
     </main>

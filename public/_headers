@@ -12,3 +12,9 @@
 # 캐시를 비켜 간다. 규칙 변경은 제작 쪽이 사전 공유한다(인수인계 B-4).
 /webtoon/w/*
   Cache-Control: public, max-age=31536000, immutable
+
+# ── 타로 카드 그림도 바뀌지 않는다 (TAROT-SPEC-02 5.5 · REQ-36) ──────────────
+# 경로에 덱 이름(`s2`)이 들어 있다. 그림을 바꿀 일이 생기면 같은 자리에 덮어쓰지 말고
+# 새 덱 폴더(`s3`)를 만든다 — 그래야 1년 캐시를 쥔 이용자도 새 그림을 받는다.
+/assets/tarot/*
+  Cache-Control: public, max-age=31536000, immutable
