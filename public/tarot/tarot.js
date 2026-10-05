@@ -18,6 +18,7 @@ import { $, el, clear, showScreen, toast, renderHeader, setHeaderBadge } from ".
 import { watchAdForReward, renderRewardCard, clearRewardCard } from "../shared/ad.js";
 import { TAROT_DB } from "./tarot-db.js";
 import { renderSiteNav } from "../shared/sitenav.js";
+import { startRitual } from "./tarot-ritual.js";
 
 const FOCUS = [
   { k: "day", label: "오늘 하루" },
@@ -459,17 +460,18 @@ async function choose(node) {
   node.style.setProperty("--lift", `-${LIFT.CHOSEN}px`);
   node.classList.add("is-chosen");
   navigator.vibrate?.(18);
-  const waiting = startWaiting(node);
+  // 고른 순간부터 열리기까지 「문양 의식」(REQ-48) — 응답이 빨라도 4초, 늦으면 받는 즉시
+  const ritual = beginRitual(node);
 
   // 올해·이달의 카드 — 일일 뽑기와 다른 길로 (SPEC-04 §3·§4)
-  if (state.mode) return chooseSpecial(node, waiting);
+  if (state.mode) return chooseSpecial(node, ritual);
 
   let res;
   try {
     res = await apiPost("/api/tarot/draw", { focus: state.focus });
   } catch (err) {
     state.busy = false;
-    stopWaiting(node, { reset: true });
+    endRitual(ritual, node, { reset: true });
     $("#fanStage").classList.remove("is-locked");
     if (err instanceof ApiFail && err.code === "FOCUS_USED") {
       toast(err.message, "error");
@@ -484,12 +486,14 @@ async function choose(node) {
     return;
   }
 
-  // 그림을 다 받은 뒤에 뒤집는다 — 뒤집힌 앞면이 비어 있다가 늦게 차면 연출이 깨진다
+  // 카드가 정해졌다 — 의식이 그 계열 색으로 물든다
+  ritual.answer(res.card_id);
+  // 그림을 다 받은 뒤에 연다 — 열린 앞면이 비어 있다가 늦게 차면 연출이 깨진다
   const hasImg = await preload(CARD_IMG(res.card_id), PRELOAD_MAX_MS);
-  await waiting.atLeast(); // 너무 빨리 끝나 깜빡임처럼 보이지 않게
-  stopWaiting(node);
-  await flipTo(res.card_id, hasImg);
+  await ritual.reveal(cardFace(res.card_id, hasImg));
   state.today = await apiGet("/api/tarot/today");
+  // 다음 화면으로 바꾸는 같은 순간에 걷는다 — 사이에 부채가 비치지 않게
+  endRitual(ritual, node);
   // 이 뽑기로 78장이 됐으면(교환으로 채운 경우 포함) **결과보다 먼저** 완성 화면 (SPEC-03 §1-1 ①)
   if (state.today.gold_intro_pending) await showComplete();
   renderResult(res.card_id, state.focus, res);
@@ -497,48 +501,23 @@ async function choose(node) {
 }
 
 // ══════════════════════════════════════════════════════════════
-// 고른 뒤 뒤집기 전까지 — 기다림 모션 (REQ-48)
+// 고른 뒤 열리기까지 — 「문양 의식」 (REQ-48 · 연출은 tarot-ritual.js)
 // ══════════════════════════════════════════════════════════════
 
-/** 이보다 빨리 끝나도 이만큼은 보여 준다 — 깜빡임처럼 보이지 않게. 더 늦추지는 않는다 */
-const WAIT_MIN_MS = 400;
-/** 이보다 오래 걸리면 문구 끝에 점 세 개가 차례로 깜빡인다 */
-const WAIT_DOTS_MS = 3000;
 const FAN_HINT = "마음이 가는 카드를 한 장 고르세요";
 
-/**
- * 카드를 고른 순간부터 뒤집기 직전까지(서버 응답 + 그림 받기 — 3G 에서 3~4초).
- * 그동안 고른 카드가 위로 올라온 채 **멈춘 것처럼** 보였다(Master 확인). 스피너 대신 카드가
- * 숨을 쉰다: 고른 카드는 천천히 떠 있고 가운데 빛이 번지며, 나머지는 어두워져 가라앉는다.
- * 움직임은 CSS(tarot.css `.is-waiting`)가 하고, 움직임 줄이기면 문구만 바뀐다.
- *
- * @returns {{ atLeast: () => Promise<void> }} 최소 노출 시간을 채울 때까지 기다리는 함수
- */
-function startWaiting(node) {
-  const startedAt = Date.now();
-  $("#fanStage").classList.add("is-waiting");
-  node.classList.add("is-floating");
-  const hint = $("#fanHint");
-  hint.textContent = "카드를 펼치는 중이에요";
-  hint.append(el("span", { class: "waitdots", "aria-hidden": "true" }, el("i", {}, "."), el("i", {}, "."), el("i", {}, ".")));
+function beginRitual(node) {
   $("#fanSub").hidden = true;
-  state.waitTimer = setTimeout(() => hint.classList.add("is-long"), WAIT_DOTS_MS);
-  return {
-    atLeast: () => new Promise((r) => setTimeout(r, Math.max(0, WAIT_MIN_MS - (Date.now() - startedAt)))),
-  };
+  return startRitual({ stage: $("#fanStage"), node, hint: $("#fanHint"), reduced: reducedMotion() });
 }
 
 /**
- * 모션을 끈다. `reset` 이면 고른 카드도 제자리로 — 오류·FOCUS_USED·NO_DRAWS 로 부채에
- * 머물 때 들린 카드와 어두운 부채가 남지 않게 한다.
+ * 의식을 걷는다. `reset` 이면 고른 카드도 제자리로 — 오류·FOCUS_USED·NO_DRAWS 로 부채에
+ * 머물 때 들린 카드·흐린 부채·바뀐 문구가 남지 않게 한다.
  */
-function stopWaiting(node, { reset = false } = {}) {
-  clearTimeout(state.waitTimer);
-  $("#fanStage").classList.remove("is-waiting");
-  node?.classList.remove("is-floating");
-  const hint = $("#fanHint");
-  hint.classList.remove("is-long");
-  hint.textContent = FAN_HINT;
+function endRitual(ritual, node, { reset = false } = {}) {
+  ritual?.cancel();
+  $("#fanHint").textContent = FAN_HINT;
   $("#fanSub").hidden = false;
   if (reset && node) {
     node.classList.remove("is-chosen");
@@ -594,22 +573,6 @@ function cardFace(cardId, hasImg, src = CARD_IMG(cardId)) {
     el("span", { class: "cardfb__glyph" }, card.glyph),
     el("span", { class: "cardfb__name" }, card.name),
   );
-}
-
-/** 3D 플립. 연출이 끝날 때까지 입력을 받지 않는다(기획서 1절) */
-function flipTo(cardId, hasImg) {
-  clear($("#flipFront")).append(cardFace(cardId, hasImg));
-  const fc = $("#flipCard");
-  fc.classList.remove("is-flipped");
-  showScreen("flip");
-
-  // 전환을 걸기 전에 리플로를 강제한다. rAF 로 미루면 **탭이 백그라운드일 때
-  // 콜백이 아예 오지 않아** 결과 화면으로 넘어가지 못하고 뒷면인 채로 멈춘다
-  // (브라우저 확인에서 그대로 걸렸다). setTimeout 은 배경에서도 발화한다.
-  void fc.offsetWidth;
-  fc.classList.add("is-flipped");
-  navigator.vibrate?.([12, 60, 22]);
-  return new Promise((resolve) => setTimeout(resolve, FLIP_MS + 260));
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -1447,7 +1410,7 @@ function renderSpecialResult(res) {
   armScreen("special");
 }
 
-async function chooseSpecial(node, waiting) {
+async function chooseSpecial(node, ritual) {
   const { kind } = state.mode;
   let res;
   try {
@@ -1455,18 +1418,18 @@ async function chooseSpecial(node, waiting) {
   } catch (err) {
     state.busy = false;
     state.mode = null;
-    stopWaiting(node, { reset: true });
+    endRitual(ritual, node, { reset: true });
     $("#fanStage").classList.remove("is-locked");
     toast(err.message ?? "카드를 뽑지 못했습니다.", "error");
     state.today = await apiGet("/api/tarot/today");
     enterDeck();
     return;
   }
+  ritual.answer(res.card_id);
   const hasImg = await preload(CARD_IMG(res.card_id), PRELOAD_MAX_MS);
-  await waiting.atLeast();
-  stopWaiting(node);
-  await flipTo(res.card_id, hasImg);
+  await ritual.reveal(cardFace(res.card_id, hasImg));
   state.today = await apiGet("/api/tarot/today");
+  endRitual(ritual, node);
   if (state.today.gold_intro_pending) await showComplete();
   renderSpecialResult(res);
   state.busy = false;

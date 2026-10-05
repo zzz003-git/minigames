@@ -466,51 +466,89 @@ button.collcell { padding: 0; cursor: pointer; color: inherit; font: inherit; }
 .lastbox__name { font-size: 13px; color: var(--text); }
 .lastbox__line { font-size: 11.5px; line-height: 1.4; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-/* ══ 고른 뒤 뒤집기 전까지 — 기다림 모션 (REQ-48) ═══════════════════════════════
-   카드의 자리·회전·들어올림은 인라인 transform 이 쥐고 있어서, 움직임은 따로 합성되는
-   `translate` 속성으로 준다(transform 을 덮어쓰지 않는다). */
+/* ══ 고른 뒤 열리기까지 — 「문양 의식」 (REQ-48 · 시안 A-2+ · tarot-ritual.js) ══════════
+   색은 --c (카드가 정해지기 전엔 금빛, 정해지면 그 계열 색). */
 
-/* 고른 카드 — 제자리에서 ±4px, 1.6초 주기로 떠 있다 */
-.fanstage.is-waiting .fcard.is-floating { animation: t-float 1.6s ease-in-out infinite; }
-@keyframes t-float {
-  0%, 100% { translate: 0 4px; }
-  50% { translate: 0 -4px; }
+.ritual { position: absolute; inset: 0; pointer-events: none; --c: #f3e3b0; }
+.ritual__fx { position: absolute; inset: 0; width: 100%; height: 100%; }
+
+/* 나머지 부채 — 흐려지며 사라진다 */
+.fanstage.is-ritual .fcard { opacity: 0; filter: blur(2px); transition: opacity 0.6s, filter 0.6s; }
+
+/* 의식 카드 — 고른 자리에서 가운데로 떠오르며 1.45배 */
+.ritual__card {
+  position: absolute; width: 96px; height: 144px; border-radius: 10px;
+  transform-style: preserve-3d;
+  transition: left 0.7s cubic-bezier(.2, .8, .2, 1), top 0.7s cubic-bezier(.2, .8, .2, 1), transform 0.7s cubic-bezier(.2, .8, .2, 1);
 }
-/* 뒷면 가운데 원이 숨쉬듯 빛난다 */
-.fcard::after {
-  content: ""; position: absolute; left: 50%; top: 40%;
-  width: 26%; aspect-ratio: 1; border-radius: 50%;
-  transform: translate(-50%, -50%);
-  pointer-events: none; opacity: 0;
+.ritual__back, .ritual__front {
+  position: absolute; inset: 0; border-radius: 10px; overflow: hidden;
+  backface-visibility: hidden; -webkit-backface-visibility: hidden;
 }
-.fanstage.is-waiting .fcard.is-floating::after {
-  animation: t-glow 1.6s ease-in-out infinite;
-  background: radial-gradient(circle, rgba(255, 236, 170, 0.75) 0%, rgba(232, 196, 106, 0.35) 45%, transparent 72%);
+.ritual__back {
+  border: 1.5px solid var(--t-gold-dim);
+  background: repeating-linear-gradient(135deg, #2b2350 0 9px, #332a5e 9px 18px);
 }
-@keyframes t-glow {
-  0%, 100% { opacity: 0.25; box-shadow: 0 0 6px 2px rgba(232, 196, 106, 0.2); }
-  50% { opacity: 1; box-shadow: 0 0 18px 8px rgba(232, 196, 106, 0.45); }
-}
-/* 나머지 부채 — 어두워지고 아래로 가라앉아 고른 카드가 주인공 */
-.fanstage.is-waiting .fcard:not(.is-chosen) {
-  filter: brightness(0.5);
-  translate: 0 8px;
-  transition: filter 0.4s ease, translate 0.4s ease;
+.ritual__front { transform: rotateY(180deg); border: 1.5px solid var(--t-gold); background: #221d43; }
+
+/* 공중에서 천천히 기울며 흔들림 */
+.ritual__card.tilt { animation: t-rtilt 4s ease-in-out infinite; }
+@keyframes t-rtilt {
+  0%, 100% { transform: translate(-50%, -50%) scale(1.45) perspective(600px) rotateY(-6deg) rotateX(3deg); }
+  50% { transform: translate(-50%, -50%) scale(1.45) perspective(600px) rotateY(6deg) rotateX(-3deg); }
 }
 
-/* 3초가 넘으면 문구 끝에 점 세 개가 차례로 깜빡인다 */
-.waitdots { display: none; }
-.is-long .waitdots { display: inline; }
-.waitdots i { font-style: normal; animation: t-dot 1.2s infinite; opacity: 0.2; }
-.waitdots i:nth-child(2) { animation-delay: 0.2s; }
-.waitdots i:nth-child(3) { animation-delay: 0.4s; }
-@keyframes t-dot { 0%, 60%, 100% { opacity: 0.2; } 30% { opacity: 1; } }
+/* 금빛 고리 — 테두리를 따라 돈다 */
+@property --ra { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
+.ritual__ring {
+  position: absolute; inset: -6px; border-radius: 14px; padding: 2px; opacity: 0; transition: opacity 0.6s;
+  background: conic-gradient(from var(--ra, 0deg), transparent 0 70%, var(--c) 85%, transparent 100%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+}
+.ritual__ring.on { opacity: 1; animation: t-rspin 1.6s linear infinite; }
+@keyframes t-rspin { to { --ra: 360deg; } }
 
-/* 움직임 줄이기 — 떠 있기·빛 번짐·가라앉기 없이 문구만 바뀐다 */
+/* 뒤로 은은한 안개빛 */
+.ritual__mist {
+  position: absolute; inset: -30px; border-radius: 50%; opacity: 0; transition: opacity 1s;
+  background: radial-gradient(circle, color-mix(in srgb, var(--c) 35%, transparent) 0, transparent 65%);
+  animation: t-rmist 3s ease-in-out infinite;
+}
+.ritual__mist.on { opacity: 1; }
+@keyframes t-rmist { 50% { transform: scale(1.15); } }
+
+/* 문양 */
+.ritual svg.myst { position: absolute; left: 50%; top: 50%; width: 86px; height: 86px; margin: -43px; overflow: visible; }
+.ritual svg.myst .ln { fill: none; stroke: var(--c); stroke-linecap: round; stroke-linejoin: round; transition: stroke 0.8s; }
+.ritual svg.myst .glow { filter: drop-shadow(0 0 2px var(--c)) drop-shadow(0 0 6px var(--c)); }
+.ritual svg.myst .node { fill: #fff; opacity: 0; transition: opacity 0.3s, fill 0.8s; }
+.ritual svg.myst .pen { fill: #fff; filter: drop-shadow(0 0 4px #fff) drop-shadow(0 0 10px var(--c)); }
+.ritual svg.myst .rotA { transform-origin: 0 0; animation: t-rrot 18s linear infinite; }
+.ritual svg.myst .rotB { transform-origin: 0 0; animation: t-rrot 26s linear infinite reverse; }
+@keyframes t-rrot { to { transform: rotate(360deg); } }
+.ritual svg.myst .rays line { stroke: var(--c); stroke-width: 0.8; opacity: 0; stroke-linecap: round; }
+.ritual svg.myst.done .rays line { animation: t-rray 1.6s ease-in-out infinite; }
+@keyframes t-rray { 0%, 100% { opacity: 0; } 50% { opacity: 0.9; } }
+.ritual svg.myst.done .core { animation: t-rcore 1.6s ease-in-out infinite; }
+@keyframes t-rcore { 50% { filter: drop-shadow(0 0 6px #fff) drop-shadow(0 0 16px var(--c)); } }
+
+/* 열림 — 그 색의 섬광 + 튕기듯 뒤집힘 */
+.ritual__flash { position: absolute; inset: 0; opacity: 0; background: radial-gradient(circle at 50% 50%, var(--c) 0, transparent 60%); }
+.ritual__flash.go { animation: t-rflash 0.7s ease-out; }
+@keyframes t-rflash { 20% { opacity: 0.85; } 100% { opacity: 0; } }
+.ritual__card.is-revealed {
+  transition: transform 0.9s cubic-bezier(.3, 1.4, .4, 1);
+  transform: translate(-50%, -50%) scale(1.6) rotateY(180deg);
+}
+
+/* 움직임 줄이기 — 알갱이·회전·흔들림·펜 끝 없이 완성된 문양 정지 · 색만 바뀜 · 열림은 겹쳐 바뀜 */
+.ritual svg.myst.is-static *, .ritual__ring.is-static, .ritual__mist.is-static { animation: none !important; }
+.ritual__card.is-revealed-still .ritual__back { opacity: 0; transition: opacity 0.3s; }
+.ritual__card.is-revealed-still .ritual__front { transform: none; opacity: 1; }
 @media (prefers-reduced-motion: reduce) {
-  .fanstage.is-waiting .fcard.is-floating,
-  .fanstage.is-waiting .fcard.is-floating::after,
-  .waitdots i { animation: none; }
-  .fanstage.is-waiting .fcard:not(.is-chosen) { filter: none; translate: none; transition: none; }
-  .waitdots i { opacity: 1; }
+  .ritual__card { transition: none; }
+  .ritual__flash.go { animation: none; }
+  .fanstage.is-ritual .fcard { transition: none; filter: none; }
 }
+#fanHint { transition: opacity 0.25s; }
