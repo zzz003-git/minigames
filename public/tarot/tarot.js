@@ -749,8 +749,17 @@ function renderResultAds() {
   clearRewardCard($("#adbarMore"));
   clearRewardCard($("#adbarStats"));
 
-  // 「한 장 더」 — 상한을 다 쓰면 **버튼을 숨긴다**(비활성화가 아니라 제거)
-  if ((state.today.ad_more_used ?? 0) < (state.today.ad_more_max ?? 2)) {
+  // 이미 받아 둔 장수가 남았으면(첫 방문 보너스 · 광고 보고 안 뽑은 장) **광고 없이** 덱으로.
+  //
+  // 처음엔 덱으로 돌아가는 길이 광고 카드뿐이었다. 그래서 광고 2회를 다 쓰면 「오늘 1장 더
+  // 뽑을 수 있어요」라고 적혀 있는데 누를 것이 없었고, 남은 장이 있는데도 광고를 또 보게
+  // 했다. 폰 실기에서 「뽑아도 진행이 안 된다」로 드러났다(REQ-40 스테이징 확인 2026-10-05).
+  if ((state.today.remaining ?? 0) > 0) {
+    const btn = el("button", { class: "btn", type: "button" }, `한 장 더 뽑기 (${state.today.remaining}장 남음)`);
+    btn.addEventListener("click", () => enterDeck());
+    $("#adbarMore").append(btn);
+  } else if ((state.today.ad_more_used ?? 0) < (state.today.ad_more_max ?? 2)) {
+    // 「한 장 더」 광고 — 상한을 다 쓰면 **버튼을 숨긴다**(비활성화가 아니라 제거)
     renderRewardCard($("#adbarMore"), {
       icon: "🔮",
       title: "광고 보고 한 장 더",
