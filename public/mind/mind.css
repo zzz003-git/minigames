@@ -120,3 +120,10 @@
 .paircard__psy p + p { margin-top: 5px; }
 .paircard__care { color: var(--m-key); }
 .paircard__avoid { color: var(--text-faint); }
+
+/* ── REQ-47 — 대응 팁 · 지난 선택 목록 ── */
+.type__meet { margin-top: 10px; font-size: 12.5px; line-height: 1.6; color: var(--text-sub); word-break: keep-all; }
+.archivelist { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
+.archivelist .btn { font-size: 13.5px; }
+/* 그날 선택을 받는 중 — 열 수 없다 (REQ-47) */
+.envelope.is-loading { opacity: 0.5; pointer-events: none; }

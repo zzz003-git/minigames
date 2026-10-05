@@ -18,7 +18,7 @@
 
 import { apiGet, apiPost, ApiFail } from "../shared/api.js";
 import { $, el, clear, showScreen, toast } from "../shared/ui.js";
-import { MIND_DB } from "../mind/mind-db.js";
+import { MIND_COMMON as MIND_DB } from "../mind/mind-common.js"; // 페어는 공통(문항·근거·마음 읽기·케미)만 받는다 (REQ-47)
 
 const RELATION_LABEL = {
   lover: "연인",

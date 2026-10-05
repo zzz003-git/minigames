@@ -25,6 +25,22 @@ import { ApiError } from "../lib/http.js";
 import { dayKey } from "../lib/time.js";
 import { grantMany, completeDaily, dailyState, distribution, touchUser, pointState } from "../lib/suite.js";
 import { createLink, answerLink, openLink, myLinks } from "../lib/pair.js";
+// 도감용 목록(id·요일·months·제목·유형 이름)과 그날의 선택 고르기 — 화면과 **같은 파일**을 쓴다.
+// 본문(장면·문항)은 여전히 서버에 없다. 목록만 있으면 「그날 회전 결과가 이 실험인가」와
+// 「목록에 있는 실험인가」를 판정할 수 있다 (REQ-47)
+import { MIND_INDEX } from "../../public/mind/mind-index.js";
+import { expOfDay } from "../../public/mind/mind-pick.js";
+
+const KNOWN_EXP = new Set(MIND_INDEX.experiments.map((e) => e.id));
+
+/** 그날 회전으로 나오는 실험 id — 화면과 같은 규칙(mind-pick.js) */
+const rotationOf = (day) => expOfDay(MIND_INDEX.experiments, dowOf(day), day)?.id ?? null;
+
+/** YYYY-MM-DD 에서 n 일 뒤(음수면 앞) */
+const addDays = (day, n) => {
+  const [y, m, d] = day.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10);
+};
 
 /** 'YYYY-MM' — 지도의 월간 리셋 키 */
 const monthKey = (day = dayKey()) => day.slice(0, 7);
@@ -75,7 +91,33 @@ async function collection(env, userId) {
   )
     .bind(userId)
     .all();
-  return (rows?.results ?? []).map((r) => `${r.exp_id}:${r.type_idx}`);
+  // 목록에 있는 실험만 센다 — 예전엔 exp_id 를 검증하지 않아 엉뚱한 키가 섞였을 수 있다 (REQ-47)
+  return (rows?.results ?? []).filter((r) => KNOWN_EXP.has(r.exp_id)).map((r) => `${r.exp_id}:${r.type_idx}`);
+}
+
+/**
+ * 「지난 선택」 창 — 오늘을 뺀 직전 6일(MIND-SPEC-01 M-04).
+ *
+ *   played    그날 오늘의 선택을 했다(done=1)
+ *   opened    광고로 열어 두었고 아직 안 했다 — 행이 있고 exp_id 가 있고 done=0
+ *   available 아무것도 없다 → 광고로 열 수 있다
+ *
+ * 「열어 둠」을 따로 표에 두지 않고 **그날의 mind_daily 행**에 적는다(그날 회전 실험 id, done=0).
+ * 새 열이 필요 없고(마이그레이션 없음), 그날을 하면 같은 행이 done=1 이 된다.
+ */
+async function archiveWindow(env, userId, day) {
+  const days = Array.from({ length: MIND.ARCHIVE_DAYS }, (_, i) => addDays(day, -(i + 1))); // 최근 날부터
+  const rows = await env.DB.prepare(
+    `SELECT day, done, exp_id FROM mind_daily WHERE user_id = ? AND day >= ? AND day <= ?`,
+  )
+    .bind(userId, days.at(-1), days[0])
+    .all();
+  const byDay = new Map((rows?.results ?? []).map((r) => [r.day, r]));
+  return days.map((d) => {
+    const r = byDay.get(d);
+    const status = r?.done ? "played" : r?.exp_id ? "opened" : "available";
+    return { day: d, status, exp_id: status === "opened" ? r.exp_id : rotationOf(d) };
+  });
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -121,12 +163,13 @@ export async function state({ env, userId }) {
   await touchUser(env, userId, day);
 
   const month = monthKey(day);
-  const [st, axes, coll, suite, points] = await Promise.all([
+  const [st, axes, coll, suite, points, win] = await Promise.all([
     loadDay(env, userId, day),
     loadAxes(env, userId, month),
     collection(env, userId),
     dailyState(env, userId, day),
     pointState(env, userId, day),
+    archiveWindow(env, userId, day),
   ]);
 
   return {
@@ -145,6 +188,12 @@ export async function state({ env, userId }) {
     collection: coll,
     ad_archive_used: st.adArchiveUsed,
     ad_archive_max: MIND.AD_ARCHIVE_PER_DAY,
+    // 지난 선택 (M-04) — 열 수 있는 날 수와, 열어 두고 아직 안 한 날들(최근 날부터).
+    // 열 것이 없으면 화면은 광고 카드를 아예 숨긴다(광고 보고 아무것도 없는 상황 금지)
+    archive: {
+      available: win.filter((w) => w.status === "available").length,
+      opened: win.filter((w) => w.status === "opened").map(({ day: d, exp_id }) => ({ day: d, exp_id })),
+    },
     ad_stats_seen: st.adStats,
     suite,
     points,
@@ -192,6 +241,11 @@ export async function submit({ env, userId, body }) {
   if (!answers.every((a) => Number.isInteger(a) && a >= 0 && a < MIND.OPTIONS)) {
     throw new ApiError("BAD_PARAM", "선택지 번호가 올바르지 않습니다.", 400);
   }
+  // 목록에 없는 실험은 받지 않는다 — 도감 칸이 엉뚱한 키로 늘지 않게 (REQ-47)
+  if (!KNOWN_EXP.has(expId)) throw new ApiError("BAD_PARAM", "알 수 없는 선택입니다.", 400);
+
+  // 지난 선택(광고로 연 날)은 길이 따로다 — 오늘 행·적립을 건드리지 않는다 (M-04)
+  if (body?.archive_day != null) return submitArchive(env, userId, day, String(body.archive_day), expId, questions, answers);
 
   const st = await loadDay(env, userId, day);
   if (st.done) {
@@ -278,6 +332,75 @@ export async function submit({ env, userId, body }) {
   };
 }
 
+/**
+ * 지난 선택 제출 (MIND-SPEC-01 M-04 · REQ-47).
+ *
+ * 검증: 직전 6일 안 · 오늘이 아님 · 그날 회전 결과가 그 실험 · 그날 행이 「광고로 열어 둠」(done=0).
+ * 반영: **그날 행**만 done=1 · 도감(mind_coll)·이번 달 마음 지도 축.
+ * 반영하지 않음: 오늘 행 · 코어(MIND_DONE)·신규(MIND_NEW)·초상·3종 완료 적립 · 허브 · 전국 분포.
+ *
+ * 「열어 둠 → 함」 전환을 조건부 UPDATE 하나로 한다(`AND done = 0`). 같은 날을 두 번 동시에
+ * 내도 한쪽만 changes 1 을 받고, 도감·지도는 그쪽만 반영한다.
+ */
+async function submitArchive(env, userId, today, archiveDay, expId, questions, answers) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(archiveDay)) throw new ApiError("BAD_PARAM", "날짜 형식이 올바르지 않습니다.", 400);
+  const win = await archiveWindow(env, userId, today);
+  const slot = win.find((w) => w.day === archiveDay);
+  if (!slot) {
+    throw new ApiError("ARCHIVE_RANGE", `지난 선택은 직전 ${MIND.ARCHIVE_DAYS}일 안의 날만 할 수 있어요.`, 400);
+  }
+  if (rotationOf(archiveDay) !== expId) {
+    throw new ApiError("ARCHIVE_MISMATCH", "그날의 선택이 아니에요.", 400);
+  }
+  if (slot.status !== "opened") {
+    throw new ApiError(
+      slot.status === "played" ? "ALREADY_DONE" : "ARCHIVE_NOT_OPENED",
+      slot.status === "played" ? "그날의 선택은 이미 했어요." : "광고로 먼저 열어야 하는 날이에요.",
+      409,
+    );
+  }
+
+  const { typeIdx, gain } = judge(questions, answers);
+  const upd = await env.DB.prepare(
+    `UPDATE mind_daily SET done = 1, type_idx = ? WHERE user_id = ? AND day = ? AND exp_id = ? AND done = 0`,
+  )
+    .bind(typeIdx, userId, archiveDay, expId)
+    .run();
+  if ((upd?.meta?.changes ?? 0) === 0) {
+    throw new ApiError("ALREADY_DONE", "그날의 선택은 이미 했어요.", 409);
+  }
+
+  // 마음 지도 — **이번 달** 지도에 반영한다(지난 날을 해도 지금 그리는 지도다)
+  const month = monthKey(today);
+  const before = await loadAxes(env, userId, month);
+  const after = before.ax.map((n, i) => n + (gain[i] ?? 0));
+  await env.DB.prepare(
+    `INSERT INTO mind_axes (user_id, month, ax) VALUES (?, ?, ?)
+     ON CONFLICT (user_id, month) DO UPDATE SET ax = excluded.ax`,
+  )
+    .bind(userId, month, JSON.stringify(after))
+    .run();
+
+  const ins = await env.DB.prepare(
+    `INSERT OR IGNORE INTO mind_coll (user_id, exp_id, type_idx, first_day) VALUES (?, ?, ?, ?)`,
+  )
+    .bind(userId, expId, typeIdx, today)
+    .run();
+
+  return {
+    archive_day: archiveDay,
+    type_idx: typeIdx,
+    exp_id: expId,
+    is_new: (ins?.meta?.changes ?? 0) > 0,
+    axes: after,
+    axes_gain: gain,
+    map_complete: after.every((n) => n >= MIND.AXIS_GOAL),
+    portrait_new: false,
+    gained: 0, // 적립 없음 — 코어 1회 원칙
+    points: await pointState(env, userId, today),
+  };
+}
+
 // ══════════════════════════════════════════════════════════════
 // GET /api/mind/stats
 // ══════════════════════════════════════════════════════════════
@@ -299,13 +422,36 @@ export async function stats({ env, userId }) {
 // ══════════════════════════════════════════════════════════════
 
 /**
- * 「지난 실험 열기」 — 직전 6일 안의 못 한 실험을 하나 연다.
+ * 「지난 선택 열기」 — 직전 6일 중 **안 한 날 하나**(가장 최근 날)를 연다 (M-04 · REQ-47).
  *
- * **적립은 없다**(기획서 M-04 「코어 1회 원칙」). 도감·지도에는 반영된다.
- * 무엇을 열지는 화면이 고르고, 서버는 횟수만 센다 — 어느 실험을 여는지는 보상과
- * 무관하기 때문이다.
+ * 처음엔 횟수만 세고 아무것도 열지 않았다(광고를 보고 아무 일도 없었다). 이제 그날 행에
+ * 회전 실험 id 를 적어 「열어 둠」으로 둔다 — 화면은 그 목록을 보고 그날 선택을 받아 연다.
+ *
+ * **적립은 없다**(코어 1회 원칙). 도감·지도에는 반영된다(submitArchive).
+ * 열 날이 없으면 오류 — 광고 기록도 남지 않는다(지급이 실패하면 기록 전에 끝난다).
+ * 조건부 INSERT(`DO UPDATE … WHERE done = 0 AND exp_id IS NULL`)라 동시에 두 번 와도 같은 날을
+ * 두 번 「열지」 않고, 다음 날로 넘어간다.
  */
 export async function grantArchive(env, userId, day = dayKey()) {
+  let openedDay = null;
+  for (const w of await archiveWindow(env, userId, day)) {
+    if (w.status !== "available" || !w.exp_id) continue;
+    const r = await env.DB.prepare(
+      `INSERT INTO mind_daily (user_id, day, exp_id) VALUES (?, ?, ?)
+       ON CONFLICT (user_id, day) DO UPDATE SET exp_id = excluded.exp_id
+         WHERE mind_daily.done = 0 AND mind_daily.exp_id IS NULL`,
+    )
+      .bind(userId, w.day, w.exp_id)
+      .run();
+    if ((r?.meta?.changes ?? 0) > 0) {
+      openedDay = w;
+      break;
+    }
+  }
+  if (!openedDay) {
+    throw new ApiError("ARCHIVE_EMPTY", `직전 ${MIND.ARCHIVE_DAYS}일 중 열 수 있는 선택이 없어요.`, 409);
+  }
+
   await env.DB.prepare(
     `INSERT INTO mind_daily (user_id, day, ad_archive_used) VALUES (?, ?, 1)
      ON CONFLICT (user_id, day) DO UPDATE SET ad_archive_used = ad_archive_used + 1`,
@@ -316,6 +462,7 @@ export async function grantArchive(env, userId, day = dayKey()) {
   const st = await loadDay(env, userId, day);
   return {
     kind: "MIND_ARCHIVE",
+    opened: { day: openedDay.day, exp_id: openedDay.exp_id },
     ad_archive_used: st.adArchiveUsed,
     ad_archive_max: MIND.AD_ARCHIVE_PER_DAY,
     archive_days: MIND.ARCHIVE_DAYS,

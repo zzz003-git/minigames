@@ -25,6 +25,7 @@
 import { ARCADE_SPECS } from "../src/games/arcade/index.js";
 import { validateSpec } from "../src/lib/arcade.js";
 import { ARCADE, MIND, RETIRED_GAME_TYPES } from "../src/lib/config.js";
+import { MIND_INDEX } from "../public/mind/mind-index.js";
 // ⑳ 슥슥 긁기 — 카드 생성·연속 일수 규칙은 서버 왕복으로 재현되지 않아 직접 호출합니다
 import { makeCard, streakFor, shiftDay } from "../src/games/arcade/scratch.js";
 // ㉑ 퍼펙트 스택 — 블록 위치는 서버와 **같은 식**으로 계산해야 탭 시각을 잡을 수 있습니다
@@ -482,7 +483,8 @@ async function pairResendContract() {
   const st = await get("/api/mind/state");
   const opts = Array.from({ length: MIND.OPTIONS }, (_, i) => ({ ty: i % MIND.TYPES, ax: [0, 1] }));
   const done = await post("/api/mind/submit", {
-    exp_id: "regress",
+    // 서버가 목록에 없는 실험을 거절한다(REQ-47) — 실제 목록의 첫 실험을 쓴다
+    exp_id: MIND_INDEX.experiments[0].id,
     questions: Array.from({ length: MIND.QUESTIONS }, () => ({ opts })),
     answers: new Array(MIND.QUESTIONS).fill(0),
   });

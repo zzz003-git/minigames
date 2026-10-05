@@ -15,8 +15,17 @@
  * ==========================================================================
  */
 
-import { MIND_DB } from "../public/mind/mind-db.js";
+import { readFileSync, readdirSync } from "node:fs";
+import { MIND_INDEX } from "../public/mind/mind-index.js";
+import { MIND_COMMON } from "../public/mind/mind-common.js";
 import { expOfDay } from "../public/mind/mind-pick.js";
+
+// 분할 산출물을 직접 읽는다(REQ-47) — 화면이 받는 바로 그 파일들이다
+const EXP_DIR = new URL("../public/mind/exp/", import.meta.url);
+const MIND_DB = {
+  experiments: MIND_INDEX.experiments.map((e) => JSON.parse(readFileSync(new URL(`${e.id}.json`, EXP_DIR), "utf8"))),
+};
+MIND_DB.typeMeet = Object.fromEntries(MIND_DB.experiments.map((e) => [e.id, e.typeMeet]));
 
 let pass = 0;
 const failures = [];
@@ -28,7 +37,7 @@ function check(name, cond, extra = "") {
 }
 
 const dowOf = (day) => new Date(`${day}T00:00:00Z`).getUTCDay();
-const pick = (day) => expOfDay(MIND_DB.experiments, dowOf(day), day);
+const pick = (day) => expOfDay(MIND_INDEX.experiments, dowOf(day), day);
 
 console.log("\n[1] 날짜 고정 회전 (요청서 5번)");
 for (const [day, want] of [
@@ -45,7 +54,7 @@ for (const [day, want] of [
   check("2026-12-09(수) → months 없는 항목", !e.months?.length, `got=${e.id}`);
 }
 
-console.log("\n[2] 회전 — 2년(730일)");
+console.log("\n[2] 회전 — 2년(730일) · 도감용 목록으로 고른다(화면과 같음)");
 {
   const start = Date.UTC(2026, 10, 1);
   const seen = new Map();
@@ -59,7 +68,7 @@ console.log("\n[2] 회전 — 2년(730일)");
     if (e.months?.length && !e.months.includes(m)) wrongMonth++;
     if (e.dow !== dowOf(day)) wrongDow++;
   }
-  check("91개 모두 등장", seen.size === MIND_DB.experiments.length, `${seen.size}/${MIND_DB.experiments.length}`);
+  check("182개 모두 등장", seen.size === MIND_INDEX.experiments.length, `${seen.size}/${MIND_INDEX.experiments.length}`);
   check("계절 항목은 그달에만", wrongMonth === 0, `위반 ${wrongMonth}`);
   check("요일 주제와 날짜 요일이 같다", wrongDow === 0, `위반 ${wrongDow}`);
 }
@@ -67,8 +76,12 @@ console.log("\n[2] 회전 — 2년(730일)");
 console.log("\n[3] 콘텐츠 커버리지");
 {
   const ex = MIND_DB.experiments;
-  check("선택 91개 · 요일마다 13개", ex.length === 91 && [0, 1, 2, 3, 4, 5, 6].every((d) => ex.filter((e) => e.dow === d).length === 13));
-  check("계절 항목 8개", ex.filter((e) => e.months?.length).length === 8);
+  check("선택 182개 · 요일마다 26개", ex.length === 182 && [0, 1, 2, 3, 4, 5, 6].every((d) => ex.filter((e) => e.dow === d).length === 26));
+  check("계절 항목 9개", ex.filter((e) => e.months?.length).length === 9);
+  check("실험 파일 = 목록 (182)", readdirSync(EXP_DIR).filter((f) => f.endsWith(".json")).length === MIND_INDEX.experiments.length);
+  check("목록과 실험 파일의 제목·유형 이름이 같다",
+    MIND_INDEX.experiments.every((m, i) => m.title === ex[i].title && m.types.every((t, k) => t.n === ex[i].types[k].n && t.g === ex[i].types[k].g)));
+  check("공통 파일에 실험 본문 없음 · 축 8", !("experiments" in MIND_COMMON) && !("typeMeet" in MIND_COMMON) && MIND_COMMON.axes.length === 8);
 
   let unreachable = 0;
   let missingMeet = 0;
@@ -83,7 +96,7 @@ console.log("\n[3] 콘텐츠 커버리지");
     });
   }
   check("실험마다 4유형 모두 나올 수 있음", unreachable === 0, `미도달 ${unreachable}`);
-  check("typeMeet 91 × 4", missingMeet === 0 && Object.keys(MIND_DB.typeMeet).length === 91, `누락 ${missingMeet}`);
+  check("typeMeet 182 × 4", missingMeet === 0 && Object.keys(MIND_DB.typeMeet).length === 182, `누락 ${missingMeet}`);
   const legacyOnly = warnings.every((w) => /^(thu_late|fri_choice) /.test(w));
   check("문항별 4유형 미충족은 기존 배포분뿐(경고)", legacyOnly, warnings.join(" / "));
 }

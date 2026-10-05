@@ -48,7 +48,15 @@
           </div>
         </div>
 
+        <!-- 그날 선택을 못 받았을 때 (REQ-47) — 다른 날 선택으로 대신하지 않고 다시 시도 -->
+        <div class="card card--info" id="mindError" hidden>
+          <p class="footnote" id="mindErrorText">선택을 불러오지 못했어요.</p>
+          <button class="btn mt-sm" id="mindRetryBtn" type="button">다시 시도</button>
+        </div>
+
         <button class="btn" id="mapBtn">마음 지도 보기</button>
+        <!-- 광고로 열어 둔 지난 선택 (M-04) — 오늘 기록·적립과 무관 -->
+        <div class="archivelist" id="archiveList" hidden></div>
         <div id="adbarArchive"></div>
         <p class="footnote--dim center" id="homeNote">오락용이에요 — 심리학적 진단이 아닙니다</p>
       </section>
@@ -79,6 +87,8 @@
           <div class="type__glyph" id="typeGlyph">🛌</div>
           <div class="headline" id="typeName">—</div>
           <p class="type__desc" id="typeDesc">—</p>
+          <!-- 유형별 대응 팁 (REQ-47 · typeMeet) — 공유 카드에는 넣지 않는다 -->
+          <p class="type__meet" id="typeMeet" hidden></p>
         </div>
 
         <div class="card card--info">
@@ -107,6 +117,7 @@
              그 결과를 본 이 자리가 가장 자연스럽다. 코랄은 페어 전용 색이다. -->
         <a class="btn btn--pair" id="pairCta" href="/pair/">너를 맞혀볼게 — 링크 보내기</a>
         <button class="btn" id="collBtn">도감 보기</button>
+        <button class="btn" id="archiveBackBtn" type="button">← 처음으로</button>
         <div class="footnote--dim center" id="resNote"></div>
       </section>
 
