@@ -1066,7 +1066,19 @@ function showCalDay(rec) {
 // ══════════════════════════════════════════════════════════════
 
 /** 이보다 이른 탭은 무시한다 — 결과를 넘기던 손가락이 그대로 이 화면을 닫지 않게 */
-const COMPLETE_TAP_GUARD_MS = 1000;
+/**
+ * 완성 화면 탭 잠금 (SPEC-03 §1-1 ① · REQ-44).
+ *
+ * **안내 글 2줄이 다 나타난 뒤부터** 탭을 받는다. 습관적으로 누르는 사람도 글을 보게 하려는
+ * 화면이라, 고정 초가 아니라 두 번째 줄(`.complete__sub`)의 등장 연출이 끝나는 순간에 묶는다 —
+ * 연출 시간을 고쳐도 잠금이 따라간다. 처음엔 1초였는데 글이 3초쯤 뒤에 나와서 읽기 전에
+ * 넘길 수 있었다.
+ *
+ * 움직임 줄이기면 글이 처음부터 보이므로 1초만 잠근다. 연출 끝 이벤트가 끝내 안 오는 경우
+ * (브라우저가 애니메이션을 건너뜀 등)를 위해 상한을 둔다 — 화면에 갇히는 것보다 낫다.
+ */
+const COMPLETE_TAP_GUARD_REDUCED_MS = 1000;
+const COMPLETE_TAP_GUARD_MAX_MS = 6000;
 
 /**
  * 결과보다 먼저 띄우는 전체 화면. 도감 78칸이 채워짐 → 은색 물결 → 한 장이 금빛으로 반짝 →
@@ -1087,13 +1099,24 @@ function showComplete() {
   showScreen("complete");
   box.focus?.({ preventScroll: true });
 
-  const shownAt = Date.now();
-  setTimeout(() => box.classList.add("is-ready"), COMPLETE_TAP_GUARD_MS);
+  let ready = false;
+  const arm = () => {
+    if (ready) return;
+    ready = true;
+    box.classList.add("is-ready");
+  };
+  if (reducedMotion()) {
+    setTimeout(arm, COMPLETE_TAP_GUARD_REDUCED_MS);
+  } else {
+    const sub = box.querySelector(".complete__sub");
+    sub.addEventListener("animationend", arm, { once: true });
+    setTimeout(arm, COMPLETE_TAP_GUARD_MAX_MS);
+  }
 
   return new Promise((resolve) => {
     const done = (e) => {
       if (e.type === "keydown" && e.key !== "Enter" && e.key !== " ") return;
-      if (Date.now() - shownAt < COMPLETE_TAP_GUARD_MS) return; // 1초 전 탭은 무시
+      if (!ready) return; // 글 2줄이 다 나오기 전의 탭은 무시
       e.preventDefault?.();
       box.removeEventListener("click", done);
       box.removeEventListener("keydown", done);
