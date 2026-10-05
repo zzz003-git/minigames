@@ -2,9 +2,9 @@
 
 **이 파일은 손으로 고치지 않습니다.** `node scripts/gen-changelog.mjs` 가 `git log` 에서 만듭니다.
 
-| 기준 커밋 | `c016c40` |
+| 기준 커밋 | `a555390` |
 | --- | --- |
-| 커밋 수 | 175개 |
+| 커밋 수 | 179개 |
 
 ## 이 파일이 낡았는지 확인하는 법
 
@@ -30,6 +30,34 @@
 ---
 
 ## 2026-10-05
+
+### `a555390` 타로 — 금빛 단계 진입 안내 4종 (REQ-41 · SPEC-03 §1-1)
+
+- `migrations/0028_tarot_gold_intro.sql`
+- `public/tarot/ (3)`
+- `scripts/test-tarot.mjs`
+- `src/index.js`
+- `src/services/`
+
+### `ac42307` 타로 — 남은 장수가 있으면 광고 없이 「한 장 더 뽑기」 (광고 소진 시 덱으로 갈 길이 없던 결함)
+
+- `public/tarot/`
+
+### `028fd7f` 오늘의 타로 2단계 — 금빛 도감 · 숨은 이야기 · 기록 달력 (REQ-40)
+> **대조군 영향** — 게임 설정
+
+- `migrations/0027_tarot_gold.sql`
+- `public/tarot/ (4)`
+- `scripts/gen-tarot-story.mjs`
+- `scripts/test-tarot.mjs`
+- `src/index.js`
+- `src/lib/`
+- `src/services/`
+
+### `24bb3d9` docs: CHANGELOG 재생성 (기준 c016c40)
+> **대조군 영향** — 게임 문서
+
+- `docs/CHANGELOG.md`
 
 ### `c016c40` 스테이징 타로 시험 계정 심기 스크립트 (REQ-38) — 도감 77 · 별가루 3
 
