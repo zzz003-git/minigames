@@ -486,12 +486,12 @@ async function choose(node) {
     return;
   }
 
-  // 카드가 정해졌다 — 의식이 그 계열 색으로 물든다
-  ritual.answer(res.card_id);
-  // 그림을 다 받은 뒤에 연다 — 열린 앞면이 비어 있다가 늦게 차면 연출이 깨진다
-  const hasImg = await preload(CARD_IMG(res.card_id), PRELOAD_MAX_MS);
-  await ritual.reveal(cardFace(res.card_id, hasImg));
-  state.today = await apiGet("/api/tarot/today");
+  // 카드가 정해졌다 — 의식이 그 계열 색으로 물들고, 앞면 그림을 지금 붙여 그려질 준비를 한다.
+  // 결과 화면에 쓸 오늘 상태도 **동시에** 부른다 — 열린 뒤 머무는 1.2초 안에 끝나 있게 (REQ-49)
+  ritual.answer(res.card_id, prepareFace(res.card_id));
+  const todayP = apiGet("/api/tarot/today").catch(() => null);
+  await ritual.reveal();
+  state.today = (await todayP) ?? (await apiGet("/api/tarot/today"));
   // 다음 화면으로 바꾸는 같은 순간에 걷는다 — 사이에 부채가 비치지 않게
   endRitual(ritual, node);
   // 이 뽑기로 78장이 됐으면(교환으로 채운 경우 포함) **결과보다 먼저** 완성 화면 (SPEC-03 §1-1 ①)
@@ -523,6 +523,33 @@ function endRitual(ritual, node, { reset = false } = {}) {
     node.classList.remove("is-chosen");
     node.style.removeProperty("--lift");
   }
+}
+
+/**
+ * 의식 카드의 앞면 — **이 요소 하나**를 받아 decode 까지 끝내면 「준비 완료」(REQ-49).
+ *
+ * 예전엔 별도 `Image` 로 받아 두고 열 때 새 `<img>` 를 붙였다. 같은 그림을 두 번 다루는 데다,
+ * 새 요소가 그려지기 전에 뒤집혀 폰에서 빈 앞면이 보였다. 이제 의식이 이 요소를 보이지 않는
+ * 면에 미리 붙이고, 준비가 끝나야 연다.
+ *
+ * 탭이 백그라운드면 decode 가 끝나지 않는다(전에 겪음) — 받기를 마쳤으면 1.5초 안에 준비로 친다.
+ * 8초 상한·실패 → 이모지+이름(기존 폴백).
+ */
+function prepareFace(cardId) {
+  const node = el("img", { class: "cardimg", src: CARD_IMG(cardId), alt: TAROT_DB.cards[cardId].name, draggable: "false" });
+  const ready = new Promise((resolve) => {
+    let done = false;
+    const finish = (ok) => {
+      if (done) return;
+      done = true;
+      resolve(ok);
+    };
+    setTimeout(() => finish(false), PRELOAD_MAX_MS);
+    node.addEventListener("error", () => finish(false), { once: true });
+    node.addEventListener("load", () => setTimeout(() => finish(true), 1500), { once: true });
+    node.decode?.().then(() => finish(true), () => {});
+  });
+  return { node, ready, fallback: () => cardFace(cardId, false) };
 }
 
 /**
@@ -1425,10 +1452,10 @@ async function chooseSpecial(node, ritual) {
     enterDeck();
     return;
   }
-  ritual.answer(res.card_id);
-  const hasImg = await preload(CARD_IMG(res.card_id), PRELOAD_MAX_MS);
-  await ritual.reveal(cardFace(res.card_id, hasImg));
-  state.today = await apiGet("/api/tarot/today");
+  ritual.answer(res.card_id, prepareFace(res.card_id));
+  const todayP = apiGet("/api/tarot/today").catch(() => null);
+  await ritual.reveal();
+  state.today = (await todayP) ?? (await apiGet("/api/tarot/today"));
   endRitual(ritual, node);
   if (state.today.gold_intro_pending) await showComplete();
   renderSpecialResult(res);

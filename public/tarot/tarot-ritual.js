@@ -38,8 +38,22 @@ const RITUAL_MS = 4000;
 const RITUAL_REDUCED_MS = 1500;
 /** 응답이 늦었을 때도 물든 색을 이만큼은 보여 준 뒤 연다 */
 const COLOR_MIN_MS = 900;
-/** 열림(섬광 + 뒤집힘) 연출 길이 — 시안 reveal 의 0.9초 전이 + 잠깐 머묾 */
-const REVEAL_MS = 1200;
+/**
+ * 문양 그리기 — 시작과 마지막 획이 끝나는 시각(고른 순간 기준). 시안은 약 2초(0.35→2.4초)인데
+ * 그러면 2.4초에 다 그려지고 열리는 4초까지 1.6초 동안 「끝난 카드」가 떠 있었다(REQ-49).
+ * 획 순서·모양은 그대로 두고 시간만 비례로 늘려 **열리기 직전(3.6초)** 에 끝나게 한다.
+ */
+const SIGIL_START_MS = 350;
+const SIGIL_END_MS = 3600;
+const SIGIL_NOMINAL_MS = 2050; // 시안 시간표로 그렸을 때 걸리는 시간(두 갈래 중 긴 쪽)
+/** 마무리 — 문양이 차오르며 고리가 가운데로 모여듦 → 섬광 → 뒤집힘 */
+const FINALE_MS = 400;
+/**
+ * 열림(섬광 + 뒤집힘) 연출 길이 — 시안 reveal 의 0.9초 전이 + 잠깐 머묾.
+ * 결과 화면을 그리는 데 저사양(CPU 4배)에서 0.2초 남짓 들어, 「열린 뒤 결과까지 1.4초 안」을
+ * 지키려고 1.2 → 1.15초로 줄였다(REQ-49 측정)
+ */
+const REVEAL_MS = 1150;
 /** 빛 알갱이 동시 상한 */
 const MAX_PARTS = 120;
 
@@ -55,6 +69,7 @@ export function startRitual({ stage, node, hint, reduced }) {
   let raf = 0;
   let parts = [];
   let answeredAt = null;
+  let sigilDoneAt = null;
   const timers = [];
   const later = (ms, f) => {
     const t = setTimeout(() => alive && f(), ms);
@@ -108,6 +123,8 @@ export function startRitual({ stage, node, hint, reduced }) {
   }
 
   const svg = buildSigil(card);
+  /** 마지막 획이 끝나면 풀린다 */
+  let sigilDone;
 
   if (reduced) {
     // 움직임 줄이기 — 알갱이·회전·흔들림·펜 끝 없이 완성된 문양을 정지 상태로
@@ -116,12 +133,33 @@ export function startRitual({ stage, node, hint, reduced }) {
     svg.classList.add("is-static");
     ring.classList.add("on", "is-static");
     mist.classList.add("on", "is-static");
+    sigilDoneAt = t0;
+    sigilDone = Promise.resolve();
   } else {
     later(300, () => ring.classList.add("on"));
     later(400, () => mist.classList.add("on"));
     later(500, () => card.classList.add("tilt"));
-    later(350, () => drawSigil(svg, () => alive).then(() => alive && svg.classList.add("done")));
+    const scale = (SIGIL_END_MS - SIGIL_START_MS) / SIGIL_NOMINAL_MS;
+    sigilDone = new Promise((res) => {
+      later(SIGIL_START_MS, () =>
+        drawSigil(svg, () => alive, scale).then(() => {
+          sigilDoneAt = performance.now();
+          mark("sigil");
+          if (alive) svg.classList.add("done"); // 완성 뒤 회전·빛살·숨쉬기 — 열릴 때까지
+          res();
+        }),
+      );
+    });
     runParticles();
+  }
+
+  /** 측정용 시각 표시(performance.mark) — 회신의 시각표가 이것으로 잰다 */
+  function mark(name) {
+    try {
+      performance.mark(`ritual:${name}`);
+    } catch {
+      /* 표시 실패는 연출과 무관 */
+    }
   }
 
   function runParticles() {
@@ -160,6 +198,8 @@ export function startRitual({ stage, node, hint, reduced }) {
   }
 
   const ritualMs = reduced ? RITUAL_REDUCED_MS : RITUAL_MS;
+  /** 앞면 준비 — answer() 가 정한다 */
+  let faceReady = null;
 
   return {
     /**
@@ -169,40 +209,70 @@ export function startRitual({ stage, node, hint, reduced }) {
      * 전**까지 기다렸다 물들인다. 받는 즉시 물들이면 「알아보는 중 → 기운이 모이고」가 통째로
      * 건너뛰어지고 4초 내내 「모습을 드러내요」만 남는다(개발 측정). 늦게 오면 받는 즉시 물든다.
      */
-    answer(cardId) {
+    answer(cardId, face) {
       if (!alive) return;
       const show = () => {
         answeredAt = performance.now();
+        mark("color");
         root.style.setProperty("--c", suitColor(cardId));
         say("오늘의 카드가 모습을 드러내요");
       };
       const wait = t0 + ritualMs - COLOR_MIN_MS - performance.now();
       if (wait > 0) later(wait, show);
       else show();
+
+      // 앞면을 **지금** 보이지 않는 면에 붙여 두고, 그 요소가 실제로 그려질 준비가 되면 열 수 있다.
+      // 열리는 순간 새 그림을 붙이고 바로 뒤집으면 폰에서는 빈 앞면이 먼저 보였다(REQ-49)
+      front.replaceChildren(face.node);
+      faceReady = face.ready.then((ok) => {
+        if (!ok && alive) front.replaceChildren(face.fallback()); // 8초 상한·실패 → 이모지+이름
+        mark("face");
+      });
     },
 
     /**
-     * 열 때가 되면 연다 — 고른 뒤 4초(움직임 줄이기 1.5초)와 물든 뒤 0.9초 중 늦은 쪽.
-     * @param {Node} face 카드 앞면(실제 그림)
+     * 열 때가 되면 연다.
+     *
+     * 마무리(0.4초)는 **문양이 다 그려지고 그리고 앞면이 준비된 뒤**에만 시작한다 — 「끝난 것처럼
+     * 멈춘 카드」가 보이지 않게, 준비가 늦으면 그동안 완성 문양의 회전·빛살·숨쉬기가 계속된다.
+     * 빠를 때는 의식 4초(움직임 줄이기 1.5초)와 「물든 뒤 0.9초」를 지킨다.
      */
-    async reveal(face) {
+    async reveal() {
       // 물들기가 예약돼 있으면 그때를 기다린다
-      while (alive && answeredAt == null) await sleep(50);
-      const now = performance.now();
-      const at = Math.max(t0 + ritualMs, answeredAt + COLOR_MIN_MS);
-      await sleep(at - now);
+      while (alive && (answeredAt == null || !faceReady)) await sleep(30);
+      await Promise.all([sigilDone, faceReady]);
       if (!alive) return;
+      const finale = reduced ? 0 : FINALE_MS;
+      const at = Math.max(t0 + ritualMs - finale, answeredAt + COLOR_MIN_MS - finale);
+      await sleep(at - performance.now());
+      if (!alive) return;
+      if (finale) {
+        mark("finale");
+        card.classList.add("is-finale"); // 문양이 차오르며 고리가 가운데로 모여듦
+        await sleep(finale);
+        if (!alive) return;
+      }
       cancelAnimationFrame(raf);
       canvas.getContext("2d")?.clearRect(0, 0, canvas.width, canvas.height);
-      front.append(face);
+      mark("flip");
       flash.classList.remove("go");
       void flash.offsetWidth;
       flash.classList.add("go");
       card.classList.remove("tilt");
       for (const e of card.querySelectorAll(".ritual__ring, .ritual__mist, svg")) e.remove();
+      // 가운데로 옮길 때 넣은 인라인 transform 이 「뒤집힘」 클래스를 이겨서 **카드가 실제로는
+      // 뒤집히지 않았다** — 문양만 걷힌 빈 뒷면이 1.2초 남았다(REQ-49 의 「빈 카드」, 측정으로
+      // 확인). 지금 자리(scale 1.45)에서 한 번 계산시킨 뒤 인라인 값을 걷어 클래스가 뒤집게 한다
+      void card.offsetWidth;
+      card.style.transform = "";
       card.classList.add(reduced ? "is-revealed-still" : "is-revealed");
       navigator.vibrate?.([12, 60, 22]);
       await sleep(REVEAL_MS);
+    },
+
+    /** 측정·시험용 — 마지막 획이 끝난 시각 */
+    get sigilDoneAt() {
+      return sigilDoneAt;
     },
 
     /** 전부 걷는다 — rAF·타이머·캔버스·덧붙인 요소·무대 상태 */
@@ -295,16 +365,17 @@ function buildSigil(card) {
  * 두 갈래로 동시에 그린다 — 바깥(고리·룬)과 안쪽(별·달·눈). 약 2초에 완성.
  * 진행도는 **지난 시간**으로 정한다(탭이 숨었다 돌아와도 제자리로 따라온다).
  */
-function drawSigil(svg, isAlive) {
+function drawSigil(svg, isAlive, scale = 1) {
   const paths = [...svg.querySelectorAll("path")];
   const outer = paths.slice(0, 14);
   const inner = paths.slice(14);
   const nodes = [...svg.querySelectorAll(".node")];
   const penA = svg.querySelector(".penA");
   const penB = svg.querySelector(".penB");
-  const dur = [380, 260, ...Array(12).fill(200)];
-  const durIn = [220, 480, 160, 320, 220, 170];
-  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  // 시안 시간표 × scale — 획 순서·모양은 그대로, 시간만 늘린다(REQ-49)
+  const dur = [380, 260, ...Array(12).fill(200)].map((v) => v * scale);
+  const durIn = [220, 480, 160, 320, 220, 170].map((v) => v * scale);
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms * scale));
 
   const drawOne = (p, ms, pen) =>
     new Promise((res) => {

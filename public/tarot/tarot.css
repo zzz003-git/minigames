@@ -552,3 +552,14 @@ button.collcell { padding: 0; cursor: pointer; color: inherit; font: inherit; }
   .fanstage.is-ritual .fcard { transition: none; filter: none; }
 }
 #fanHint { transition: opacity 0.25s; }
+
+/* 마무리 0.4초 (REQ-49) — 문양 전체가 한 번 밝게 차오르며 고리가 가운데로 모여든다 → 섬광 → 뒤집힘 */
+.ritual__card.is-finale svg.myst { animation: t-rfinale 0.4s ease-in forwards; }
+@keyframes t-rfinale {
+  0% { transform: scale(1); filter: brightness(1); }
+  55% { transform: scale(1.08); filter: brightness(2) drop-shadow(0 0 10px var(--c)); }
+  100% { transform: scale(0.45); filter: brightness(2.6) drop-shadow(0 0 16px var(--c)); opacity: 0.9; }
+}
+.ritual__card.is-finale .ritual__ring { opacity: 1; filter: brightness(1.8); }
+/* 움직임 줄이기의 열림도 인라인 transform 을 걷은 뒤라 자리를 클래스가 잡는다 */
+.ritual__card.is-revealed-still { transform: translate(-50%, -50%) scale(1.45); }
