@@ -4,7 +4,7 @@
  *
  *   node scripts/test-mind.mjs
  *
- * 서버가 필요 없다 — 화면이 쓰는 `public/mind/mind-pick.js` 와 `mind-db.js` 를 직접 부른다.
+ * 서버가 필요 없다 — 화면이 쓰는 `public/mind/mind-pick.js` 와 분할 산출물(`mind-index.js` · `exp/`)을 직접 부른다.
  *
  * 커버리지는 「콘텐츠가 다 쓰이는가」를 본다:
  *   · 실험마다 4유형이 모두 **나올 수 있는가**(어느 문항이든 그 유형 선택지가 하나는 있는가)

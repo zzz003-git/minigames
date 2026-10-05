@@ -13,8 +13,6 @@
  *                                그날의 선택 고르기·도감·분포 이름이 여기서 읽는다. 서버도 읽는다
  *   public/mind/exp/<id>.json    실험 하나의 본문(장면·문항) + 그 실험의 typeMeet.
  *                                화면은 그날(또는 저장된 · 지난) 실험만 받는다
- *   public/mind/mind-db.js       예전 통짜 파일 — **옛 mind.js 캐시 호환용으로 한 배포 주기만**
- *                                남긴다. 새 코드는 읽지 않는다(다음 배포에서 지운다)
  *   public/shared/hub-index.js   허브 카드의 mind 칸(실험 전체 · 이름·그림)
  *
  * 182개를 통짜로 받으면 gzip 146KB 인데, 그날 실험은 하나뿐이다.
@@ -112,12 +110,8 @@ for (const e of experiments) {
   writeFileSync(join(expDir, `${e.id}.json`), JSON.stringify({ ...e, typeMeet: typeMeet[e.id] }));
 }
 
-// 옛 mind.js 캐시 호환 — 한 배포 주기만 (새 코드는 읽지 않는다)
-writeFileSync(
-  join(pub, "mind-db.js"),
-  head("**예전 통짜 파일 — 옛 화면 캐시 호환용, 다음 배포에서 지운다**") +
-    `\nexport const MIND_DB = ${JSON.stringify(db)};\n`,
-);
+// 예전 통짜 파일(mind-db.js)은 옛 화면 캐시 호환용으로 한 배포 주기(2026-10-05 운영 bb13c76)만
+// 두었다가 그다음 배포에서 지웠다 — 더 만들지 않는다
 
 // 허브 인덱스의 mind 칸 — HUB_INDEX 객체의 마지막 칸이다: `"mind":{…}};` 로 파일 끝까지
 const hubSrc = readFileSync(hub, "utf8");
