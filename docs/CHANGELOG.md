@@ -2,9 +2,9 @@
 
 **이 파일은 손으로 고치지 않습니다.** `node scripts/gen-changelog.mjs` 가 `git log` 에서 만듭니다.
 
-| 기준 커밋 | `1ae9b2e` |
+| 기준 커밋 | `2266a9a` |
 | --- | --- |
-| 커밋 수 | 184개 |
+| 커밋 수 | 188개 |
 
 ## 이 파일이 낡았는지 확인하는 법
 
@@ -30,6 +30,35 @@
 ---
 
 ## 2026-10-05
+
+### `2266a9a` 오늘의 선택 DB v2.1 — 182개 · 그날 실험만 받기 · 지난 선택 열기 · 대응 팁 (REQ-47)
+
+- `package.json`
+- `public/mind/exp/ (182)`
+- `public/mind/ (6)`
+- `public/p/`
+- `public/pair/`
+- `public/shared/`
+- `scripts/gen-mind-db.mjs`
+- `scripts/test-api.mjs`
+- … 외 3곳
+
+### `11e2e0e` 타로 「작년의 올해 카드」 — 글 한 줄을 작은 카드 상자로 · 눌러서 다시 보기 (REQ-46)
+
+- `public/tarot/ (3)`
+
+### `2ddcc79` 오늘의 선택 DB v2 — 선택 14 → 91 · 계절 항목 규칙 · 도감 정리 (REQ-43)
+
+- `package.json`
+- `public/mind/ (3)`
+- `public/shared/`
+- `scripts/gen-mind-db.mjs`
+- `scripts/test-mind.mjs`
+
+### `c444d34` docs: CHANGELOG 재생성 (기준 1ae9b2e)
+> **대조군 영향** — 게임 문서
+
+- `docs/CHANGELOG.md`
 
 ### `1ae9b2e` 타로 3단계 보완 — 한 마디 30일 누적 · 비공개 숫자 제거 · 스테이징 날짜 장치 (REQ-45)
 > **대조군 영향** — 게임 설정
