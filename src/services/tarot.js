@@ -86,7 +86,7 @@ async function loadDust(env, userId) {
  *
  * @returns {{ dustGained:number, exchangedCardId:number|null, gained:number }}
  */
-async function exchangeDust(env, userId, day) {
+async function exchangeDust(env, userId, day, { grant = true } = {}) {
   const t = now();
   const unowned = `
     WITH RECURSIVE n(i) AS (SELECT 0 UNION ALL SELECT i + 1 FROM n WHERE i < ${TAROT.CARDS - 1})
@@ -113,14 +113,15 @@ async function exchangeDust(env, userId, day) {
         ORDER BY i LIMIT 1 OFFSET (?3 % MAX(1, (SELECT COUNT(*) FROM (${unowned}))))
        RETURNING card_id`,
     ).bind(userId, day, randomInt(0, 2 ** 31 - 1)),
-    // ④ 그 카드의 신규 적립 — 뽑기로 얻은 카드와 **같은 키**다(카드별 평생 1회)
+    // ④ 그 카드의 신규 적립 — 뽑기로 얻은 카드와 **같은 키**다(카드별 평생 1회).
+    //    올해·이달의 카드에서 온 교환은 적립하지 않는다(SPEC-04 §5 ③) — 금액 0 이면 넣지 않는다
     env.DB.prepare(
       `INSERT OR IGNORE INTO suite_points (user_id, key, reason, amount, day, created_at)
        SELECT ?1, 'TAROT_NEW:' || card_id, 'TAROT_NEW', ?2, ?3, ?4
          FROM tarot_coll
-        WHERE user_id = ?1 AND via = 'dust'
+        WHERE user_id = ?1 AND via = 'dust' AND ?2 > 0
           AND EXISTS (SELECT 1 FROM tarot_meta WHERE user_id = ?1 AND ex_pending = 1)`,
-    ).bind(userId, SUITE.POINTS.COLLECT_NEW, day, t),
+    ).bind(userId, grant ? SUITE.POINTS.COLLECT_NEW : 0, day, t),
     // ⑤ 끈을 푼다
     env.DB.prepare(`UPDATE tarot_meta SET ex_pending = 0 WHERE user_id = ?1 AND ex_pending = 1`).bind(
       userId,
@@ -134,6 +135,43 @@ async function exchangeDust(env, userId, day) {
     exchangedCardId,
     gained: granted * SUITE.POINTS.COLLECT_NEW,
   };
+}
+
+/**
+ * 뽑힌 한 장을 도감에 반영한다 — 새 카드 · 별가루 교환 · 금빛 (1·2단계 규칙 그대로).
+ * 일일 뽑기와 올해·이달의 카드가 같이 쓴다. `grant=false` 면 교환 카드의 신규 적립을 넣지
+ * 않는다(올해·이달의 카드는 적립 없음 · SPEC-04 §5 ③).
+ */
+async function collectCard(env, userId, cardId, day, { via = "draw", grant = true } = {}) {
+  // 새 카드인지는 PK 충돌로 정해진다. 동시 요청이어도 한쪽만 changes 1 을 받는다.
+  const ins = await env.DB.prepare(
+    `INSERT OR IGNORE INTO tarot_coll (user_id, card_id, first_day, via) VALUES (?, ?, ?, ?)`,
+  )
+    .bind(userId, cardId, day, via)
+    .run();
+  const isNew = (ins?.meta?.changes ?? 0) > 0;
+
+  // 중복이면 — 78장을 다 모으기 전엔 별가루(T-08), 다 모은 뒤엔 금빛 바퀴(SPEC-03 §1).
+  // 완성은 줄어들지 않으므로 여기서 한 번 세면 된다.
+  let ex = { dustGained: 0, exchangedCardId: null, gained: 0 };
+  let goldNew = false;
+  let goldExchangedCardId = null;
+  if (!isNew) {
+    const owned = await env.DB.prepare(`SELECT COUNT(*) AS n FROM tarot_coll WHERE user_id = ?`)
+      .bind(userId)
+      .first();
+    if ((owned?.n ?? 0) < TAROT.CARDS) {
+      ex = await exchangeDust(env, userId, day, { grant });
+    } else {
+      goldNew = await goldByDraw(env, userId, cardId, day);
+      if (!goldNew) {
+        const g = await exchangeGold(env, userId, day);
+        ex = { ...ex, dustGained: g.dustGained };
+        goldExchangedCardId = g.goldExchangedCardId;
+      }
+    }
+  }
+  return { isNew, ex, goldNew, goldExchangedCardId };
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -212,6 +250,35 @@ const firstDraw = (raw) => {
   return d ? { card_id: d.c, focus: d.f } : null;
 };
 
+// ══════════════════════════════════════════════════════════════
+// 3단계 날짜 규칙 (SPEC-04) — 전부 날짜만으로 정해진다
+// ══════════════════════════════════════════════════════════════
+
+const ymd = (day) => day.split("-").map(Number);
+
+/** 그달 첫째 주 월요일인가 — 이달의 질문 칩이 열리는 날 (§2) */
+export function isQuestionDay(day) {
+  const [y, m, d] = ymd(day);
+  return d <= 7 && new Date(Date.UTC(y, m - 1, d)).getUTCDay() === 1;
+}
+
+/** 이달의 질문 번호(1~36) — 시작 월부터 한 달에 하나씩, 36개 뒤 처음으로 (§2) */
+export function questionNo(day) {
+  const [y, m] = ymd(day);
+  const [sy, sm] = TAROT.QUESTION_START_MONTH.split("-").map(Number);
+  const k = (y - sy) * 12 + (m - sm);
+  return (((k % TAROT.QUESTION_COUNT) + TAROT.QUESTION_COUNT) % TAROT.QUESTION_COUNT) + 1;
+}
+
+/**
+ * 올해의 카드 기간 — 11·12월은 「다음 해의 카드」, 1월은 「그해의 카드」. 기간 밖이면 null (§3)
+ */
+export function yearCardPeriod(day) {
+  const [y, m] = ymd(day);
+  if (!TAROT.YEAR_CARD_OPEN_MONTHS.includes(m)) return null;
+  return String(m === 1 ? y : y + 1);
+}
+
 /** 같은 날짜의 1년 전. 2월 29일은 전년에 없으므로 자연히 기록이 없다 */
 const yearAgo = (day) => `${Number(day.slice(0, 4)) - 1}${day.slice(4)}`;
 
@@ -234,7 +301,7 @@ export async function today({ env, userId }) {
   const day = dayKey();
   await touchUser(env, userId, day);
 
-  const [st, meta, coll, suite, points, dust, gold, lastYear] = await Promise.all([
+  const [st, meta, coll, suite, points, dust, gold, lastYear, specials] = await Promise.all([
     loadDay(env, userId, day),
     loadMeta(env, userId),
     collection(env, userId),
@@ -245,6 +312,7 @@ export async function today({ env, userId }) {
     env.DB.prepare(`SELECT draws FROM tarot_daily WHERE user_id = ? AND day = ?`)
       .bind(userId, yearAgo(day))
       .first(),
+    loadSpecials(env, userId),
   ]);
   const ly = firstDraw(lastYear?.draws);
 
@@ -273,6 +341,12 @@ export async function today({ env, userId }) {
     gold_intro_pending: coll.length >= TAROT.CARDS && !meta.goldIntroSeen,
     // 「작년 오늘」 — 1년 전 같은 날 기록이 있을 때만 (SPEC-03 §5)
     last_year: ly ? { day: yearAgo(day), ...ly } : null,
+    // ── 3단계 (SPEC-04) ──
+    // 이달의 질문: 번호만 준다(문구는 화면이 가진 은행). 지난날 달력도 같은 식으로 계산하라고
+    // 시작 월을 같이 준다
+    question: { open: isQuestionDay(day), n: questionNo(day) },
+    question_start_month: TAROT.QUESTION_START_MONTH,
+    special: specialState(day, specials),
     shuffles: st.draws.length === 0 ? TAROT.SHUFFLES_FIRST : TAROT.SHUFFLES_EXTRA,
     suite,
     points,
@@ -293,7 +367,8 @@ export async function today({ env, userId }) {
  */
 export async function draw({ env, userId, body }) {
   const day = dayKey();
-  const focus = requireOneOf(body?.focus, "focus", TAROT.FOCUSES);
+  // 첫째 주 월요일에는 5번째 칩 「이달의 질문」(`q`)이 열린다 (SPEC-04 §2)
+  const focus = requireOneOf(body?.focus, "focus", isQuestionDay(day) ? [...TAROT.FOCUSES, "q"] : TAROT.FOCUSES);
 
   await touchUser(env, userId, day);
 
@@ -337,35 +412,9 @@ export async function draw({ env, userId, body }) {
       .run();
   }
 
-  // 도감. 처음 뽑은 카드만 남긴다 — 중복은 별가루가 되어 잃는 것이 없다.
-  // 새 카드인지는 PK 충돌로 정해진다. 동시 요청이어도 한쪽만 changes 1 을 받는다.
-  const ins = await env.DB.prepare(
-    `INSERT OR IGNORE INTO tarot_coll (user_id, card_id, first_day) VALUES (?, ?, ?)`,
-  )
-    .bind(userId, cardId, day)
-    .run();
-  const isNew = (ins?.meta?.changes ?? 0) > 0;
-
-  // 중복이면 — 78장을 다 모으기 전엔 별가루(T-08), 다 모은 뒤엔 금빛 바퀴(SPEC-03 §1).
-  // 「한 장 더」로 뽑은 중복도 같다. 완성은 줄어들지 않으므로 여기서 한 번 세면 된다.
-  let ex = { dustGained: 0, exchangedCardId: null, gained: 0 };
-  let goldNew = false;
-  let goldExchangedCardId = null;
-  if (!isNew) {
-    const owned = await env.DB.prepare(`SELECT COUNT(*) AS n FROM tarot_coll WHERE user_id = ?`)
-      .bind(userId)
-      .first();
-    if ((owned?.n ?? 0) < TAROT.CARDS) {
-      ex = await exchangeDust(env, userId, day);
-    } else {
-      goldNew = await goldByDraw(env, userId, cardId, day);
-      if (!goldNew) {
-        const g = await exchangeGold(env, userId, day);
-        ex = { ...ex, dustGained: g.dustGained };
-        goldExchangedCardId = g.goldExchangedCardId;
-      }
-    }
-  }
+  // 도감. 처음 뽑은 카드만 남긴다 — 중복은 별가루(완성 뒤엔 금빛)가 되어 잃는 것이 없다.
+  // 「한 장 더」로 뽑은 중복도 같다.
+  const { isNew, ex, goldNew, goldExchangedCardId } = await collectCard(env, userId, cardId, day);
 
   const [coll, gold] = await Promise.all([collection(env, userId), goldCards(env, userId)]);
 
@@ -472,6 +521,218 @@ export async function collectionView({ env, userId }) {
 }
 
 // ══════════════════════════════════════════════════════════════
+// 올해의 카드 · 이달의 카드 (SPEC-04 §3·§4)
+// ══════════════════════════════════════════════════════════════
+
+async function loadSpecials(env, userId) {
+  const rows = await env.DB.prepare(
+    `SELECT kind, period, card_id, day FROM tarot_special WHERE user_id = ?`,
+  )
+    .bind(userId)
+    .all();
+  return rows?.results ?? [];
+}
+
+/**
+ * 덱 화면이 칩을 띄울지 판단할 상태.
+ *   year  : 기간 안이면 { period, card_id|null, last } — last 는 「작년의 올해 카드」
+ *   month : { period, card_id|null } — 달마다 한 번
+ */
+function specialState(day, rows) {
+  const find = (kind, period) => rows.find((r) => r.kind === kind && r.period === period);
+  const yp = yearCardPeriod(day);
+  const year = yp
+    ? {
+        period: yp,
+        card_id: find("year", yp)?.card_id ?? null,
+        last: find("year", String(Number(yp) - 1))?.card_id ?? null,
+      }
+    : null;
+  const mp = day.slice(0, 7);
+  return { year, month: { period: mp, card_id: find("month", mp)?.card_id ?? null } };
+}
+
+/**
+ * POST /api/tarot/special  body: { kind: 'year' | 'month' }
+ *
+ * 일일 뽑기와 **별개**다 — 하루 장수·고민을 쓰지 않고, 광고도 없다. 도감·별가루·금빛 규칙은
+ * 그대로 적용하되 **적립은 없다**(코어·신규·마일스톤 모두 · SPEC-04 §5 ③). 마일스톤은 다음
+ * 일일 뽑기에서 도감 수를 다시 볼 때 들어온다.
+ *
+ * 기간당 1장은 `tarot_special` 의 PK 가 정한다 — 먼저 자리를 잡고(INSERT OR IGNORE) 그
+ * 다음에 도감에 넣으므로, 연타해도 두 장이 되지 않는다.
+ */
+export async function special({ env, userId, body }) {
+  const day = dayKey();
+  const kind = requireOneOf(body?.kind, "kind", ["year", "month"]);
+  const period = kind === "year" ? yearCardPeriod(day) : day.slice(0, 7);
+  if (!period) {
+    throw new ApiError("NOT_OPEN", "올해의 카드는 11월 1일부터 1월 31일까지 뽑을 수 있어요.", 403);
+  }
+
+  await touchUser(env, userId, day);
+  const cardId = randomInt(0, TAROT.CARDS - 1);
+  const ins = await env.DB.prepare(
+    `INSERT OR IGNORE INTO tarot_special (user_id, kind, period, card_id, day) VALUES (?, ?, ?, ?, ?)`,
+  )
+    .bind(userId, kind, period, cardId, day)
+    .run();
+  if ((ins?.meta?.changes ?? 0) === 0) {
+    throw new ApiError(
+      "ALREADY_DRAWN",
+      kind === "year" ? "올해의 카드는 이미 뽑았어요." : "이달의 카드는 이미 뽑았어요.",
+      409,
+    );
+  }
+
+  const { isNew, ex, goldNew, goldExchangedCardId } = await collectCard(env, userId, cardId, day, {
+    via: kind,
+    grant: false,
+  });
+  const [coll, gold] = await Promise.all([collection(env, userId), goldCards(env, userId)]);
+
+  return {
+    kind,
+    period,
+    card_id: cardId,
+    is_new: isNew,
+    collection_count: coll.length,
+    dust: await loadDust(env, userId),
+    dust_gained: ex.dustGained,
+    exchanged_card_id: ex.exchangedCardId,
+    gold_new: goldNew,
+    gold_exchanged_card_id: goldExchangedCardId,
+    gold_count: gold.length,
+    gained: 0,
+  };
+}
+
+// ══════════════════════════════════════════════════════════════
+// 한 마디 (SPEC-04 §1)
+// ══════════════════════════════════════════════════════════════
+
+/** 같은 날 같은 카드의 키워드별 수 — 합이 기준 미만이면 비율을 감춘다 */
+async function wordDist(env, day, cardId) {
+  const rows = await env.DB.prepare(
+    `SELECT kw, cnt FROM tarot_word_agg WHERE day = ? AND card_id = ?`,
+  )
+    .bind(day, cardId)
+    .all();
+  const counts = new Array(TAROT.WORD_KEYWORDS).fill(0);
+  for (const r of rows?.results ?? []) if (r.kw >= 0 && r.kw < counts.length) counts[r.kw] = Math.max(0, r.cnt);
+  const total = counts.reduce((a, b) => a + b, 0);
+  const open = total >= TAROT.WORD_MIN_SAMPLES;
+  return {
+    open,
+    total,
+    threshold: TAROT.WORD_MIN_SAMPLES,
+    // 비공개면 숫자를 아예 보내지 않는다 — 화면이 감춰도 응답에 있으면 공개한 것이다
+    pct: open ? counts.map((c) => Math.round((c / total) * 100)) : null,
+  };
+}
+
+async function wordState(env, userId, day, cardId) {
+  const pick = await env.DB.prepare(
+    `SELECT kw, changed FROM tarot_word_pick WHERE user_id = ? AND day = ? AND card_id = ?`,
+  )
+    .bind(userId, day, cardId)
+    .first();
+  return {
+    card_id: cardId,
+    kw: pick ? pick.kw : null,
+    changes_left: pick ? Math.max(0, TAROT.WORD_CHANGES - pick.changed) : TAROT.WORD_CHANGES,
+    dist: pick ? await wordDist(env, day, cardId) : null, // 고르기 전에는 남의 선택을 안 보여 준다
+  };
+}
+
+/** 오늘 뽑은 카드인가 — 한 마디는 오늘의 뽑기 카드에만 단다 */
+async function drewToday(env, userId, day, cardId) {
+  const st = await loadDay(env, userId, day);
+  return st.draws.some((d) => d.c === cardId);
+}
+
+/** GET /api/tarot/word?card_id= */
+export async function word({ env, userId, body }) {
+  const day = dayKey();
+  const cardId = Number(body?.card_id);
+  if (!Number.isInteger(cardId) || cardId < 0 || cardId >= TAROT.CARDS) {
+    throw new ApiError("BAD_PARAM", "card_id 값이 올바르지 않습니다.");
+  }
+  return wordState(env, userId, day, cardId);
+}
+
+/**
+ * POST /api/tarot/word  body: { card_id, kw }
+ *
+ * 처음 고르면 집계 +1. 다른 키워드로 바꾸면 **1회만** — 옛 키워드 −1, 새 키워드 +1.
+ * 바꾸기는 판단과 반영을 한 batch 에 둔다(연타로 두 번 바뀌거나 집계가 어긋나지 않게):
+ * 모든 문장이 「아직 안 바꿨고 키워드가 다르다」는 같은 조건을 보고, 마지막 문장이 그 조건을
+ * 닫는다.
+ */
+export async function wordPick({ env, userId, body }) {
+  const day = dayKey();
+  const cardId = Number(body?.card_id);
+  const kw = Number(body?.kw);
+  if (!Number.isInteger(cardId) || cardId < 0 || cardId >= TAROT.CARDS) {
+    throw new ApiError("BAD_PARAM", "card_id 값이 올바르지 않습니다.");
+  }
+  if (!Number.isInteger(kw) || kw < 0 || kw >= TAROT.WORD_KEYWORDS) {
+    throw new ApiError("BAD_PARAM", "kw 값이 올바르지 않습니다.");
+  }
+  if (!(await drewToday(env, userId, day, cardId))) {
+    throw new ApiError("NOT_DRAWN", "오늘 뽑은 카드에만 한 마디를 고를 수 있어요.", 403);
+  }
+
+  const first = await env.DB.prepare(
+    `INSERT OR IGNORE INTO tarot_word_pick (user_id, day, card_id, kw) VALUES (?, ?, ?, ?)`,
+  )
+    .bind(userId, day, cardId, kw)
+    .run();
+
+  if ((first?.meta?.changes ?? 0) > 0) {
+    await env.DB.prepare(
+      `INSERT INTO tarot_word_agg (day, card_id, kw, cnt) VALUES (?, ?, ?, 1)
+       ON CONFLICT (day, card_id, kw) DO UPDATE SET cnt = cnt + 1`,
+    )
+      .bind(day, cardId, kw)
+      .run();
+    return wordState(env, userId, day, cardId);
+  }
+
+  const cur = await env.DB.prepare(
+    `SELECT kw, changed FROM tarot_word_pick WHERE user_id = ? AND day = ? AND card_id = ?`,
+  )
+    .bind(userId, day, cardId)
+    .first();
+  if (cur.kw === kw) return wordState(env, userId, day, cardId); // 같은 칩 — 아무 일 없음
+  if (cur.changed >= TAROT.WORD_CHANGES) {
+    throw new ApiError("WORD_LOCKED", "오늘 이 카드의 한 마디는 이미 바꿨어요.", 409);
+  }
+
+  const can = `EXISTS (SELECT 1 FROM tarot_word_pick
+                        WHERE user_id = ?1 AND day = ?2 AND card_id = ?3 AND changed < ?5 AND kw <> ?4)`;
+  await env.DB.batch([
+    // ① 옛 키워드 −1
+    env.DB.prepare(
+      `UPDATE tarot_word_agg SET cnt = cnt - 1
+        WHERE day = ?2 AND card_id = ?3 AND ${can}
+          AND kw = (SELECT kw FROM tarot_word_pick WHERE user_id = ?1 AND day = ?2 AND card_id = ?3)`,
+    ).bind(userId, day, cardId, kw, TAROT.WORD_CHANGES),
+    // ② 새 키워드 +1
+    env.DB.prepare(
+      `INSERT INTO tarot_word_agg (day, card_id, kw, cnt) SELECT ?2, ?3, ?4, 1 WHERE ${can}
+       ON CONFLICT (day, card_id, kw) DO UPDATE SET cnt = cnt + 1`,
+    ).bind(userId, day, cardId, kw, TAROT.WORD_CHANGES),
+    // ③ 선택을 바꾸고 조건을 닫는다
+    env.DB.prepare(
+      `UPDATE tarot_word_pick SET kw = ?4, changed = changed + 1
+        WHERE user_id = ?1 AND day = ?2 AND card_id = ?3 AND changed < ?5 AND kw <> ?4`,
+    ).bind(userId, day, cardId, kw, TAROT.WORD_CHANGES),
+  ]);
+  return wordState(env, userId, day, cardId);
+}
+
+// ══════════════════════════════════════════════════════════════
 // POST /api/tarot/gold-intro
 // ══════════════════════════════════════════════════════════════
 
@@ -520,7 +781,17 @@ export async function calendar({ env, userId, body }) {
     const f = firstDraw(r.draws);
     if (f) days.push({ day: r.day, ...f });
   }
-  return { month, days };
+
+  // 올해의 카드는 그 해 달력 위 고정 띠, 이달의 카드는 그달 위에 (SPEC-04 §3·§4)
+  const sp = await env.DB.prepare(
+    `SELECT kind, period, card_id FROM tarot_special
+      WHERE user_id = ? AND ((kind = 'year' AND period = ?) OR (kind = 'month' AND period = ?))`,
+  )
+    .bind(userId, month.slice(0, 4), month)
+    .all();
+  const pick = (k) => (sp?.results ?? []).find((r) => r.kind === k)?.card_id ?? null;
+
+  return { month, days, year_card: pick("year"), month_card: pick("month") };
 }
 
 // ══════════════════════════════════════════════════════════════

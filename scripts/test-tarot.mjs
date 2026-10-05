@@ -18,6 +18,8 @@ import { join } from "node:path";
 import { randomInt } from "../src/lib/crypto.js";
 import { TAROT } from "../src/lib/config.js";
 import { dayKey } from "../src/lib/time.js";
+// 3단계 날짜 규칙 — 오늘 날짜로는 재현이 안 되는 기간(11~1월 등)이 있어 직접 부른다
+import { isQuestionDay, questionNo, yearCardPeriod } from "../src/services/tarot.js";
 
 const BASE = "http://127.0.0.1:8787";
 if (process.env.TEST_BASE && process.env.TEST_BASE !== BASE) {
@@ -429,6 +431,135 @@ console.log("\n[14] 금빛 단계 진입 안내 — 완성 화면 1회 · 재노
       sql(`SELECT gold_intro_seen FROM tarot_meta WHERE user_id = ${q(uid)}`)[0].gold_intro_seen === 1);
   }
   check("시나리오가 돌았다", ran);
+}
+
+// ══════════════════════════════════════════════════════════════
+// 3단계 — 한 마디 · 이달의 질문 · 올해/이달의 카드 (TAROT-SPEC-04 §6)
+// ══════════════════════════════════════════════════════════════
+
+console.log("\n[15] 이달의 질문 — 첫째 주 월요일 · 은행 순서 자동 순환");
+{
+  check("2026-10-05(첫 월요일) → 열림", isQuestionDay("2026-10-05"));
+  check("2026-10-12(둘째 월요일) → 닫힘", !isQuestionDay("2026-10-12"));
+  check("2026-11-02(첫 월요일) → 열림 · 11-09 닫힘", isQuestionDay("2026-11-02") && !isQuestionDay("2026-11-09"));
+  check("2027-02-01(1일이 월요일) → 열림", isQuestionDay("2027-02-01"));
+  check("시작 달 = 1번 · 다음 달 = 2번", questionNo("2026-10-05") === 1 && questionNo("2026-11-02") === 2);
+  check("36번째 달 뒤 처음으로 (2029-09 = 36 · 2029-10 = 1)", questionNo("2029-09-03") === 36 && questionNo("2029-10-01") === 1);
+
+  const c = client();
+  const t = await c.get("/api/tarot/today");
+  const qday = isQuestionDay(t.data.day);
+  check("today.question.open 이 날짜 규칙과 같다", t.data.question?.open === qday && t.data.question?.n === questionNo(t.data.day));
+  const d = await c.post("/api/tarot/draw", { focus: "q" });
+  check(qday ? "질문 날 → 포커스 q 로 뽑기 200" : "질문 날 아님 → 포커스 q 거절 400", qday ? d.status === 200 : d.status === 400, `status=${d.status}`);
+}
+
+console.log("\n[16] 올해의 카드 기간 — 11/1 ~ 1/31 · 연도 표기");
+{
+  check("11·12월 → 다음 해", yearCardPeriod("2026-11-01") === "2027" && yearCardPeriod("2026-12-31") === "2027");
+  check("1월 → 그해", yearCardPeriod("2027-01-01") === "2027" && yearCardPeriod("2027-01-31") === "2027");
+  check("2~10월 → 닫힘", yearCardPeriod("2027-02-01") === null && yearCardPeriod("2026-10-31") === null);
+  const c = client();
+  const r = await c.post("/api/tarot/special", { kind: "year" });
+  const open = yearCardPeriod(today()) != null;
+  check(open ? "기간 안 → 올해의 카드 200" : "기간 밖 → 올해의 카드 403", open ? r.status === 200 : r.status === 403, `status=${r.status}`);
+}
+
+console.log("\n[17] 이달의 카드 — 달마다 1회 · 도감 반영 · 적립 없음");
+{
+  const c = client();
+  await c.get("/api/tarot/today");
+  const uid = lastUser();
+  const before = sql(`SELECT COALESCE(SUM(amount),0) AS p FROM suite_points WHERE user_id = ${q(uid)}`)[0].p;
+  const a = await c.post("/api/tarot/special", { kind: "month" });
+  check("이달의 카드 200 · 새 카드 · 적립 0", a.status === 200 && a.data.is_new === true && a.data.gained === 0, `status=${a.status}`);
+  const after = sql(`SELECT COALESCE(SUM(amount),0) AS p FROM suite_points WHERE user_id = ${q(uid)}`)[0].p;
+  check("포인트 변화 없음 (TAROT_NEW 도 없음)", after === before, `${before}→${after}`);
+  const row = sql(`SELECT via FROM tarot_coll WHERE user_id = ${q(uid)} AND card_id = ${a.data.card_id}`)[0];
+  check("도감에 들어감 (via=month)", row?.via === "month");
+  const b = await c.post("/api/tarot/special", { kind: "month" });
+  check("같은 달 두 번째 → 409", b.status === 409, `status=${b.status}`);
+  const t = await c.get("/api/tarot/today");
+  check("today.special.month.card_id", t.data.special?.month?.card_id === a.data.card_id);
+  const cal = await c.get(`/api/tarot/calendar?month=${today().slice(0, 7)}`);
+  check("달력 month_card", cal.data.month_card === a.data.card_id);
+  // 일일 뽑기 장수를 쓰지 않는다
+  check("일일 뽑기 장수 그대로", t.data.draws.length === 0 && t.data.remaining >= 1);
+}
+
+console.log("\n[18] 이달의 카드 — 중복이면 별가루, 교환 카드도 적립 없음");
+{
+  let ran = false;
+  for (let k = 0; k < 5 && !ran; k++) {
+    const missing = randomInt(0, 77);
+    const { c, uid } = await freshUser({ missing: [missing], dust: 3 });
+    const r = await c.post("/api/tarot/special", { kind: "month" });
+    if (r.data.is_new) continue;
+    ran = true;
+    check("중복 → 별가루 교환 → 미보유 카드", r.data.exchanged_card_id === missing && r.data.dust === 0);
+    const pts = sql(`SELECT key FROM suite_points WHERE user_id = ${q(uid)}`).map((x) => x.key);
+    check("교환 카드 TAROT_NEW 없음 · 마일스톤 없음", pts.length === 0, pts.join(" "));
+  }
+  check("시나리오가 돌았다", ran);
+}
+
+console.log("\n[19] 한 마디 — 카드별 하루 1회 · 바꾸기 1회 · 20명 미만 비공개");
+{
+  const c = client();
+  await c.get("/api/tarot/today");
+  const uid = lastUser();
+  const notDrawn = await c.post("/api/tarot/word", { card_id: 0, kw: 1 });
+  check("오늘 안 뽑은 카드 → 403", notDrawn.status === 403);
+  const d = await c.post("/api/tarot/draw", { focus: "day" });
+  const card = d.data.card_id;
+  const g0 = await c.get(`/api/tarot/word?card_id=${card}`);
+  check("고르기 전 → kw null · 비율 안 보냄", g0.data.kw === null && g0.data.dist === null);
+  const p1 = await c.post("/api/tarot/word", { card_id: card, kw: 2 });
+  check("처음 고름 → kw 2 · 바꾸기 1회 남음", p1.data.kw === 2 && p1.data.changes_left === 1);
+  check("20명 미만 → 비공개 · 숫자 안 보냄", p1.data.dist.open === false && p1.data.dist.pct === null && p1.data.dist.total === 1);
+  const same = await c.post("/api/tarot/word", { card_id: card, kw: 2 });
+  check("같은 칩 → 그대로 (바꾸기 안 씀)", same.data.changes_left === 1);
+  const p2 = await c.post("/api/tarot/word", { card_id: card, kw: 4 });
+  check("바꿈 → kw 4 · 남은 바꾸기 0", p2.data.kw === 4 && p2.data.changes_left === 0);
+  const p3 = await c.post("/api/tarot/word", { card_id: card, kw: 5 });
+  check("두 번째 바꾸기 → 409", p3.status === 409);
+  const agg = sql(`SELECT kw, cnt FROM tarot_word_agg WHERE day = ${q(today())} AND card_id = ${card} AND cnt > 0`);
+  check("집계: 옛 키워드 −1 · 새 키워드 +1 (이 계정 몫 1)",
+    !agg.some((r) => r.kw === 2) || agg.find((r) => r.kw === 2).cnt >= 0, JSON.stringify(agg));
+
+  // 공개 기준 — 같은 카드에 다른 계정 19명분을 심어 20명을 만든다
+  const day = today();
+  sql(
+    `INSERT INTO tarot_word_agg (day, card_id, kw, cnt) VALUES (${q(day)}, ${card}, 0, 19)
+       ON CONFLICT (day, card_id, kw) DO UPDATE SET cnt = cnt + 19`,
+  );
+  const g1 = await c.get(`/api/tarot/word?card_id=${card}`);
+  check("20명 이상 → 비율 공개 · 합 ≈ 100", g1.data.dist.open === true && Math.abs(g1.data.dist.pct.reduce((a, b) => a + b, 0) - 100) <= 3,
+    JSON.stringify(g1.data.dist));
+  void uid;
+}
+
+console.log("\n[20] 한 마디 — 바꾸기 동시 요청 2건이어도 1번만 · 집계 합 그대로");
+{
+  let ok = 0;
+  for (let r = 0; r < 5; r++) {
+    const c = client();
+    await c.get("/api/tarot/today");
+    const d = await c.post("/api/tarot/draw", { focus: "work" });
+    const card = d.data.card_id;
+    const day = today();
+    const sumBefore = sql(`SELECT COALESCE(SUM(cnt),0) AS s FROM tarot_word_agg WHERE day = ${q(day)} AND card_id = ${card}`)[0].s;
+    await c.post("/api/tarot/word", { card_id: card, kw: 0 });
+    const [a, b] = await Promise.all([
+      c.post("/api/tarot/word", { card_id: card, kw: 1 }),
+      c.post("/api/tarot/word", { card_id: card, kw: 3 }),
+    ]);
+    const sumAfter = sql(`SELECT COALESCE(SUM(cnt),0) AS s FROM tarot_word_agg WHERE day = ${q(day)} AND card_id = ${card}`)[0].s;
+    const okOne = [a, b].filter((x) => x.status === 200 && x.data.changes_left === 0).length >= 1;
+    if (sumAfter === sumBefore + 1 && okOne) ok++;
+    else console.log(`    #${r} sum ${sumBefore}→${sumAfter} · ${a.status}/${b.status}`);
+  }
+  check("5회 모두 집계 합 +1 (이중 반영 없음)", ok === 5, `${ok}/5`);
 }
 
 console.log(`\n${pass} 통과 · ${failures.length} 실패`);

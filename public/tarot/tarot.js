@@ -43,6 +43,22 @@ const THUMB_IMG = (id) => `/assets/tarot/thumb/s2/${id}.webp`;
  */
 const PRELOAD_MAX_MS = 8000;
 
+/** 3단계 콘텐츠 모듈 (tarot-stage3.js) — boot 에서 받는다. 못 받으면 null 이고 3단계 부분만 빠진다 */
+let S3 = null;
+
+/**
+ * 그날의 이달의 질문 {q, focus} — 시작 월부터 한 달에 하나씩, 36개 뒤 처음으로 (SPEC-04 §2).
+ * 서버(`questionNo`)와 같은 식이다. 지난날 달력도 날짜만으로 다시 계산한다.
+ */
+function monthQuestion(day) {
+  if (!S3) return null;
+  const [y, m] = day.split("-").map(Number);
+  const [sy, sm] = (state.today?.question_start_month ?? "2026-10").split("-").map(Number);
+  const n = S3.QUESTIONS.length;
+  const k = (y - sy) * 12 + (m - sm);
+  return S3.QUESTIONS[((k % n) + n) % n];
+}
+
 /** 전체 장수 (SPEC-02) — 이만큼 모으면 금빛 바퀴가 열린다(SPEC-03) */
 const TOTAL = 78;
 /** 금빛 번짐 연출 길이 (tarot.css 의 t-bloom 과 같은 값) */
@@ -83,6 +99,7 @@ $("#collBackBtn").addEventListener("click", () => {
 for (const b of document.querySelectorAll("#collViewTabs button")) {
   b.addEventListener("click", () => setCollView(b.dataset.view));
 }
+$("#spBack").addEventListener("click", () => leaveSpecial());
 $("#calPrev").addEventListener("click", () => renderCalendar(shiftMonth(state.calMonth, -1)));
 $("#calNext").addEventListener("click", () => renderCalendar(shiftMonth(state.calMonth, 1)));
 
@@ -114,6 +131,8 @@ function seeded(str) {
  */
 function reading(day, cardId, focus) {
   const card = TAROT_DB.cards[cardId];
+  // 이달의 질문(`q`)은 그 질문에 지정된 포커스의 문장을 쓴다 (SPEC-04 §2)
+  if (focus === "q") focus = monthQuestion(day)?.focus ?? "day";
   const variants = card.interp[focus] ?? card.interp.day;
   const advicePool = [...card.advice, ...TAROT_DB.advicePool];
 
@@ -131,7 +150,12 @@ function reading(day, cardId, focus) {
 
 async function boot() {
   try {
-    state.today = await apiGet("/api/tarot/today");
+    // 3단계 콘텐츠(키워드·질문 은행 등)는 해석 DB 와 떼어 두었다 — 오늘 상태와 같이 받는다
+    // 못 받아도 오늘의 카드는 뽑을 수 있어야 한다 — 3단계 부분만 빠진다
+    [state.today, S3] = await Promise.all([
+      apiGet("/api/tarot/today"),
+      import("./tarot-stage3.js").catch(() => null),
+    ]);
   } catch (err) {
     toast(err.message ?? "오늘의 카드를 불러오지 못했습니다.", "error");
     return;
@@ -155,11 +179,13 @@ async function boot() {
 // ══════════════════════════════════════════════════════════════
 
 function enterDeck() {
+  state.mode = null;
   state.focus = null;
   state.shuffles = 0;
   state.needShuffles = state.today.shuffles ?? 3;
 
   renderFocusRow();
+  renderSpecialRow();
   renderDots();
   $("#deck").classList.add("breathe");
   $("#deckHint").textContent = "무엇이 궁금하세요?";
@@ -176,8 +202,11 @@ function enterDeck() {
 function renderFocusRow() {
   const host = clear($("#focusRow"));
   const used = state.today.used_focuses ?? [];
+  // 그달 첫째 주 월요일에만 5번째 칩 「이달의 질문」 (SPEC-04 §2)
+  const mq = state.today.question?.open ? monthQuestion(state.today.day) : null;
+  const chips = mq ? [...FOCUS, { k: "q", label: `✦ ${mq.q}` }] : FOCUS;
 
-  for (const f of FOCUS) {
+  for (const f of chips) {
     const isUsed = used.includes(f.k);
     const node = el(
       "button",
@@ -429,6 +458,9 @@ async function choose(node) {
   node.classList.add("is-chosen");
   navigator.vibrate?.(18);
 
+  // 올해·이달의 카드 — 일일 뽑기와 다른 길로 (SPEC-04 §3·§4)
+  if (state.mode) return chooseSpecial();
+
   let res;
   try {
     res = await apiPost("/api/tarot/draw", { focus: state.focus });
@@ -531,9 +563,14 @@ function flipTo(cardId, hasImg) {
 function renderResult(cardId, focus, res) {
   const day = state.today.day;
   const r = reading(day, cardId, focus);
-  const focusLabel = FOCUS.find((f) => f.k === focus)?.label ?? "오늘 하루";
+  const focusLabel =
+    focus === "q"
+      ? `이달의 질문 · ${monthQuestion(day)?.q ?? ""}`
+      : (FOCUS.find((f) => f.k === focus)?.label ?? "오늘 하루");
 
   $("#resFocus").textContent = focusLabel;
+  // 한 마디 — 해석을 읽은 뒤 아래에서 키워드 하나 (SPEC-04 §1). 다시 들어와도 고른 것이 보인다
+  renderWord(cardId);
   // 뽑기 직후면 플립 전에 받아 둔 그림이 캐시에서 나온다. 다시 들어온 경우엔 받는 동안
   // 잠깐 빈칸일 수 있지만, 실패하면 이모지로 바뀐다
   const hero = clear($("#resGlyph"));
@@ -620,8 +657,8 @@ const EXCHANGE_DELAY_MS = 700;
  * 누를 것이 없다 — 손을 대지 않아도 뒤집히므로, 마지막 탭이 이 자리에 떨어져도
  * 아무것도 열리지 않는다.
  */
-function renderExchange(cardId, { gold = false } = {}) {
-  const host = clear($("#exchange"));
+function renderExchange(cardId, { gold = false, host: target = $("#exchange") } = {}) {
+  const host = clear(target);
   host.hidden = cardId == null;
   if (cardId == null) return;
 
@@ -994,12 +1031,30 @@ async function renderCalendar(month) {
   $("#calDetail").hidden = true;
 
   let days = [];
+  let cal = {};
   try {
-    days = (await apiGet(`/api/tarot/calendar?month=${month}`)).days ?? [];
+    cal = await apiGet(`/api/tarot/calendar?month=${month}`);
+    days = cal.days ?? [];
   } catch (err) {
     toast(err.message ?? "달력을 불러오지 못했습니다.", "error");
   }
   if (token !== state.calToken) return; // 그사이 다른 달로 넘어갔다
+
+  // 올해의 카드는 그 해 달력 위 고정 띠, 이달의 카드는 그달 위에 (SPEC-04 §3·§4)
+  const band = clear($("#calBand"));
+  const bandItem = (kind, period, id) => {
+    const b = el(
+      "button",
+      { type: "button", class: `calband__item calband__item--${kind}` },
+      el("img", { src: THUMB_IMG(id), alt: "", loading: "lazy", decoding: "async", draggable: "false" }),
+      el("span", {}, el("b", {}, `✦ ${specialTitle(kind, period)}`), TAROT_DB.cards[id]?.name ?? "—"),
+    );
+    b.addEventListener("click", () => showSpecialDetail(kind, period, id));
+    band.append(b);
+  };
+  if (cal.year_card != null) bandItem("year", month.slice(0, 4), cal.year_card);
+  if (cal.month_card != null) bandItem("month", month, cal.month_card);
+  band.hidden = band.childElementCount === 0;
 
   const byDay = new Map(days.map((d) => [d.day, d]));
   const grid = clear($("#calGrid"));
@@ -1042,7 +1097,10 @@ async function renderCalendar(month) {
 /** 날짜를 누르면 — 그날 카드 · 고민 · 해석 한 줄(회전 규칙 그대로 다시 계산) */
 function showCalDay(rec) {
   const r = reading(rec.day, rec.card_id, rec.focus);
-  const focusLabel = FOCUS.find((f) => f.k === rec.focus)?.label ?? "오늘 하루";
+  const focusLabel =
+    rec.focus === "q"
+      ? `이달의 질문 · ${monthQuestion(rec.day)?.q ?? ""}`
+      : (FOCUS.find((f) => f.k === rec.focus)?.label ?? "오늘 하루");
   const [, mm, dd] = rec.day.split("-").map(Number);
   const box = clear($("#calDetail"));
   const thumb = el("div", { class: "collcell collcell--detail" });
@@ -1132,3 +1190,214 @@ function showComplete() {
 
 /** 금빛으로 반짝일 한 칸 — 배치 연출일 뿐이라 하루 단위로 고정한다 */
 const randomShineCell = () => seeded(`${state.today.day}|complete`) % TOTAL;
+
+// ══════════════════════════════════════════════════════════════
+// 한 마디 (SPEC-04 §1) — 키워드 6개 중 하나. 자유 입력은 없다
+// ══════════════════════════════════════════════════════════════
+
+/** 그 카드의 한 마디 칸을 그린다. 고른 적 있으면 서버 상태(내 선택·남은 바꾸기·비율)를 받아 온다 */
+async function renderWord(cardId) {
+  const host = $("#word");
+  const kws = S3?.KEYWORDS?.[cardId];
+  host.hidden = !kws;
+  if (!kws) return;
+  drawWord(cardId, { kw: null, changes_left: 1, dist: null });
+  try {
+    const st = await apiGet(`/api/tarot/word?card_id=${cardId}`);
+    if (st.kw != null) drawWord(cardId, st);
+  } catch {
+    /* 고르기 전 상태 그대로 둔다 */
+  }
+}
+
+function drawWord(cardId, st) {
+  const kws = S3.KEYWORDS[cardId];
+  const chips = clear($("#wordChips"));
+  // 이미 골랐고 바꾸기도 다 썼으면 칩을 잠근다 — 고른 칩만 강조해 남긴다
+  const locked = st.kw != null && st.changes_left <= 0;
+  kws.forEach((k, i) => {
+    const b = el(
+      "button",
+      {
+        type: "button",
+        class: `chip-focus ${st.kw === i ? "is-sel" : ""}`,
+        ...(locked && st.kw !== i ? { disabled: "" } : {}),
+      },
+      k,
+    );
+    b.addEventListener("click", () => pickWord(cardId, i, st));
+    chips.append(b);
+  });
+
+  const out = clear($("#wordDist"));
+  $("#wordNote").textContent =
+    st.kw == null
+      ? "하나를 고르면 오늘 같은 카드를 뽑은 사람들이 고른 것을 보여 드려요"
+      : st.changes_left > 0
+        ? "한 번 바꿀 수 있어요"
+        : "";
+  if (!st.dist) return;
+  if (!st.dist.open) {
+    // 소수일 때 비율을 보이면 그 값이 사람 한두 명을 뜻한다 (SUITE 공개 유예와 같은 취지)
+    out.append(el("p", { class: "footnote--dim" }, `아직 고른 사람이 적어요 (${st.dist.total}/${st.dist.threshold})`));
+    return;
+  }
+  // 막대 3개 — 많이 고른 순. 내 선택이 3위 밖이면 세 번째 자리에 내 것을 둔다
+  const order = kws.map((_, i) => i).sort((a, b) => st.dist.pct[b] - st.dist.pct[a]);
+  let top = order.slice(0, 3);
+  if (st.kw != null && !top.includes(st.kw)) top = [top[0], top[1], st.kw];
+  for (const i of top) {
+    out.append(
+      el(
+        "div",
+        { class: `wordbar ${i === st.kw ? "is-mine" : ""}` },
+        el("span", { class: "wordbar__label" }, kws[i]),
+        el("span", { class: "wordbar__track" }, el("i", { style: `--w:${st.dist.pct[i]}%` })),
+        el("span", { class: "wordbar__pct" }, `${st.dist.pct[i]}%`),
+      ),
+    );
+  }
+}
+
+async function pickWord(cardId, kw, prev) {
+  if (prev.kw === kw) return;
+  try {
+    const st = await apiPost("/api/tarot/word", { card_id: cardId, kw });
+    navigator.vibrate?.(8);
+    drawWord(cardId, st);
+  } catch (err) {
+    toast(err.message ?? "고르지 못했어요.", "error");
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+// 올해의 카드 · 이달의 카드 (SPEC-04 §3·§4) — 일일 뽑기와 별개, 광고 없음, 적립 없음
+// ══════════════════════════════════════════════════════════════
+
+const specialTitle = (kind, period) =>
+  kind === "year" ? `${period}년의 카드` : `${Number(period.slice(5, 7))}월의 카드`;
+
+/** 덱 화면의 특별 카드 칩 — 아직 안 뽑은 것만. 「작년의 올해 카드」 한 줄도 여기 */
+function renderSpecialRow() {
+  const host = clear($("#specialRow"));
+  const sp = state.today.special ?? {};
+  const add = (kind, period) => {
+    const b = el("button", { type: "button", class: "chip-focus chip-special" }, `✦ ${specialTitle(kind, period)} 뽑기`);
+    b.addEventListener("click", () => enterSpecial(kind, period));
+    host.append(b);
+  };
+  if (state.mode) return; // 특별 카드를 뽑는 중에는 띄우지 않는다
+  if (sp.year && sp.year.card_id == null) add("year", sp.year.period);
+  if (sp.month && sp.month.card_id == null) add("month", sp.month.period);
+  const last = sp.year?.last;
+  if (last != null) {
+    host.append(el("p", { class: "lastyear" }, `작년의 올해 카드 · ${TAROT_DB.cards[last]?.name ?? "—"}`));
+  }
+}
+
+/** 특별 카드 모드로 덱을 연다 — 고민은 고르지 않고, 한 번 섞으면 펼쳐진다 */
+function enterSpecial(kind, period) {
+  state.mode = { kind, period };
+  state.focus = "__special";
+  state.shuffles = 0;
+  state.needShuffles = 1;
+  clear($("#focusRow")).append(
+    el("span", { class: "special-label" }, `✦ ${specialTitle(kind, period)}`),
+    (() => {
+      const b = el("button", { type: "button", class: "chip-focus" }, "취소");
+      b.addEventListener("click", () => {
+        state.mode = null;
+        enterDeck();
+      });
+      return b;
+    })(),
+  );
+  renderSpecialRow();
+  renderDots();
+  $("#deckHint").textContent = "덱을 한 번 쓸어 섞어 주세요";
+  $("#deckSub").textContent =
+    kind === "year" ? "올해를 비춰 줄 카드 한 장이에요" : "이번 달을 비춰 줄 카드 한 장이에요";
+}
+
+/** 특별 카드 결과 — 카드 · 한 줄 · 「달력에 남겨 둘게요」 */
+function renderSpecialResult(res) {
+  const { kind, period } = res;
+  const cardId = res.card_id;
+  const hero = clear($("#spGlyph"));
+  hero.append(cardFace(cardId, true));
+  hero.className = `tcard ${tierClass(cardId)}`;
+  if (res.gold_new) hero.classList.add("is-blooming");
+  $("#spTitle").textContent = specialTitle(kind, period);
+  $("#spName").textContent = TAROT_DB.cards[cardId].name;
+  $("#spLine").textContent = (kind === "year" ? S3?.YEAR : S3?.MONTH)?.[cardId] ?? "";
+
+  const dustMax = state.today.dust_max ?? 4;
+  const exchanged = res.exchanged_card_id != null || res.gold_exchanged_card_id != null;
+  $("#spCollect").textContent = res.is_new
+    ? "새 카드가 도감에 들어왔어요"
+    : res.gold_new
+      ? "✦ 금빛이 됐어요 · 숨은 이야기"
+      : `별가루 +1 (${exchanged ? dustMax : res.dust}/${dustMax})`;
+
+  const story = $("#spStory");
+  story.hidden = true;
+  if (res.gold_new) showStory(story, cardId, GOLD_BLOOM_MS);
+
+  if (res.gold_exchanged_card_id != null) renderExchange(res.gold_exchanged_card_id, { gold: true, host: $("#spExchange") });
+  else renderExchange(res.exchanged_card_id, { host: $("#spExchange") });
+
+  showScreen("special");
+  armScreen("special");
+}
+
+async function chooseSpecial() {
+  const { kind } = state.mode;
+  let res;
+  try {
+    res = await apiPost("/api/tarot/special", { kind });
+  } catch (err) {
+    state.busy = false;
+    state.mode = null;
+    $("#fanStage").classList.remove("is-locked");
+    toast(err.message ?? "카드를 뽑지 못했습니다.", "error");
+    state.today = await apiGet("/api/tarot/today");
+    enterDeck();
+    return;
+  }
+  const hasImg = await preload(CARD_IMG(res.card_id), PRELOAD_MAX_MS);
+  await flipTo(res.card_id, hasImg);
+  state.today = await apiGet("/api/tarot/today");
+  if (state.today.gold_intro_pending) await showComplete();
+  renderSpecialResult(res);
+  state.busy = false;
+}
+
+/** 특별 카드 결과에서 나가기 — 오늘 이미 뽑았으면 오늘의 카드로, 아니면 덱으로 */
+function leaveSpecial() {
+  state.mode = null;
+  if (state.today.draws.length > 0) {
+    const last = state.today.draws[state.today.draws.length - 1];
+    renderResult(last.c, last.f, { gained: 0, replay: true });
+  } else {
+    enterDeck();
+  }
+}
+
+/** 달력 띠의 올해·이달의 카드를 누르면 — 카드 · 그 한 줄 */
+function showSpecialDetail(kind, period, id) {
+  const box = clear($("#calDetail"));
+  const thumb = el("div", { class: "collcell collcell--detail" });
+  thumb.append(cardFace(id, true, THUMB_IMG(id)));
+  box.append(
+    thumb,
+    el(
+      "div",
+      { class: "detail__text" },
+      el("div", { class: "exchange__title" }, `✦ ${specialTitle(kind, period)}`),
+      el("div", { class: "exchange__name" }, TAROT_DB.cards[id]?.name ?? "—"),
+      el("p", { class: "reading reading--sm" }, (kind === "year" ? S3?.YEAR : S3?.MONTH)?.[id] ?? ""),
+    ),
+  );
+  box.hidden = false;
+  box.scrollIntoView({ block: "nearest", behavior: reducedMotion() ? "auto" : "smooth" });
+}

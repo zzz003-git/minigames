@@ -405,3 +405,38 @@ button.collcell { padding: 0; cursor: pointer; color: inherit; font: inherit; }
   .complete__title, .complete__sub, .complete__tap { animation: none; opacity: 1; transform: none; }
   .complete__grid i.is-shine { border-color: var(--t-goldline); background: rgba(232, 196, 106, 0.55); }
 }
+
+/* ══ 3단계 — 한 마디 · 이달의 질문 · 올해/이달의 카드 (SPEC-04 · REQ-42) ═══════ */
+
+/* 덱 화면 특별 카드 칩 */
+.specialrow { margin: -12px 0 14px; }
+.specialrow:empty { display: none; }
+.chip-special { border-color: var(--t-goldline); color: var(--t-goldline); }
+.special-label { align-self: center; color: var(--t-goldline); font-size: 14px; font-weight: 700; margin-right: 6px; }
+
+/* 한 마디 */
+.word .card__label { margin-bottom: 10px; }
+.wordchips { justify-content: flex-start; margin: 0 0 10px; gap: 6px; }
+.wordchips .chip-focus { padding: 7px 11px; font-size: 12.5px; }
+.wordchips .chip-focus:disabled { opacity: 0.35; }
+.worddist { display: flex; flex-direction: column; gap: 6px; margin-bottom: 6px; }
+.wordbar { display: grid; grid-template-columns: 7.5em 1fr 3em; align-items: center; gap: 8px; font-size: 12.5px; color: var(--text-sub); }
+.wordbar__label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wordbar__track { height: 8px; border-radius: 999px; background: var(--t-line); overflow: hidden; }
+.wordbar__track i { display: block; height: 100%; width: var(--w); border-radius: inherit; background: var(--t-silver); animation: t-grow 0.6s ease-out; }
+.wordbar.is-mine { color: var(--t-goldline); font-weight: 700; }
+.wordbar.is-mine .wordbar__track i { background: var(--t-goldline); }
+.wordbar__pct { text-align: right; font-family: var(--mono); }
+@keyframes t-grow { from { width: 0; } }
+@media (prefers-reduced-motion: reduce) { .wordbar__track i { animation: none; } }
+
+/* 달력 위 띠 — 올해의 카드 · 이달의 카드 */
+.calband { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
+.calband__item {
+  display: flex; align-items: center; gap: 10px; padding: 6px 10px;
+  border-radius: 10px; border: 1px solid var(--t-goldline); background: rgba(232, 196, 106, 0.06);
+  color: var(--text-sub); font: inherit; font-size: 12.5px; text-align: left; cursor: pointer;
+}
+.calband__item img { width: 28px; aspect-ratio: 2 / 3; border-radius: 3px; object-fit: cover; }
+.calband__item b { display: block; color: var(--t-goldline); font-size: 12px; }
+.calband__item--month { border-color: var(--t-line); background: var(--t-surface); }

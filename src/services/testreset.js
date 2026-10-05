@@ -38,6 +38,10 @@ const DAY_SCOPE = [
   ["tarot_coll", "user_id = ? AND first_day = ?"],
   ["mind_coll", "user_id = ? AND first_day = ?"],
   ["saju_stamp", "user_id = ? AND day = ?"],
+  // 타로 3단계 — 오늘 고른 한 마디 · 오늘 뽑은 올해/이달의 카드 (집계 tarot_word_agg 는
+  // daily_agg 와 같은 이유로 남긴다 — 남의 표다)
+  ["tarot_word_pick", "user_id = ? AND day = ?"],
+  ["tarot_special", "user_id = ? AND day = ?"],
 ];
 
 /** 계정을 갓 만든 상태로 — 도감·포인트·사주 프로필까지 */
@@ -51,6 +55,8 @@ const ALL_SCOPE = [
   ["mind_coll", "user_id = ?"],
   ["saju_stamp", "user_id = ?"],
   ["tarot_meta", "user_id = ?"],
+  ["tarot_word_pick", "user_id = ?"],
+  ["tarot_special", "user_id = ?"],
   // 마음 지도는 **월 누적**이라 하루 단위로는 되돌릴 수 없다. 그래서 전체 초기화에만
   // 들어간다 — 「축이 또렷해지는 과정」을 보려면 이쪽을 써야 한다.
   ["mind_axes", "user_id = ?"],

@@ -32,6 +32,8 @@
       <section class="screen is-active" data-screen="deck">
         <p class="hint center" id="deckHint">무엇이 궁금하세요?</p>
         <div class="focus-row" id="focusRow"></div>
+        <!-- 올해의 카드 · 이달의 카드 칩 (SPEC-04 §3·§4) — 일일 뽑기와 별개 · 광고 없음 -->
+        <div class="focus-row specialrow" id="specialRow"></div>
 
         <div class="deckwrap">
           <div class="deck breathe" id="deck" role="button" tabindex="0"
@@ -57,6 +59,22 @@
           <p class="complete__sub">이제 금빛으로 물들일 차례예요 — 다시 만난 카드가 금빛이 되고 숨은 이야기가 열려요</p>
           <p class="complete__tap" id="completeTap">화면을 누르면 넘어가요</p>
         </div>
+      </section>
+
+      <!-- 올해의 카드 · 이달의 카드 결과 (SPEC-04 §3·§4) — 적립 없음 -->
+      <section class="screen" data-screen="special">
+        <div class="card card--accent card--center card--hero">
+          <div class="card__label card__label--mono" id="spTitle">—</div>
+          <div class="tcard" id="spGlyph" aria-hidden="true"></div>
+          <div class="headline" id="spName">—</div>
+          <p class="story" id="spStory" hidden></p>
+          <p class="reading" id="spLine">—</p>
+          <p class="tierline" id="spCollect"></p>
+          <p class="footnote--dim mt-sm">달력에 남겨 둘게요</p>
+        </div>
+        <div class="card exchange" id="spExchange" hidden></div>
+        <button class="btn" id="spBack" type="button">확인</button>
+        <p class="legal center">카드 이미지는 생성형 AI를 활용해 제작했습니다.</p>
       </section>
 
       <!-- 부채꼴 -->
@@ -89,6 +107,14 @@
           <p class="advice" id="resAdvice">—</p>
           <!-- 「작년 오늘」 (SPEC-03 §5) — 1년 전 같은 날 기록이 있을 때만 -->
           <p class="lastyear" id="resLastYear" hidden></p>
+        </div>
+
+        <!-- 한 마디 (SPEC-04 §1) — 키워드 6개 중 하나. 보상 없음 · 자유 입력 없음 -->
+        <div class="card word" id="word" hidden>
+          <div class="card__label">이 카드가 오늘 나에게는…</div>
+          <div class="focus-row wordchips" id="wordChips"></div>
+          <div class="worddist" id="wordDist"></div>
+          <p class="footnote--dim" id="wordNote"></p>
         </div>
 
         <!-- 별가루 교환 (SPEC-02 T-08) — 두 번째 카드가 스스로 뒤집힌다. 누를 것이 없다 -->
@@ -143,6 +169,8 @@
             <span class="card__title" id="calTitle">—</span>
             <button type="button" class="cal__nav" id="calNext" aria-label="다음 달">›</button>
           </div>
+          <!-- 올해의 카드(그 해 고정 띠) · 이달의 카드(그달 위) (SPEC-04 §3·§4) -->
+          <div class="calband" id="calBand" hidden></div>
           <div class="cal__grid" id="calGrid"></div>
           <div class="detail" id="calDetail" hidden></div>
           <p class="footnote--dim mt-md" id="calEmpty" hidden>이 달에는 뽑은 카드가 없어요.</p>
