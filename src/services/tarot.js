@@ -47,10 +47,10 @@ async function loadDay(env, userId, day) {
 }
 
 async function loadMeta(env, userId) {
-  const row = await env.DB.prepare(`SELECT welcome_used FROM tarot_meta WHERE user_id = ?`)
+  const row = await env.DB.prepare(`SELECT welcome_used, gold_intro_seen FROM tarot_meta WHERE user_id = ?`)
     .bind(userId)
     .first();
-  return { welcomeUsed: Boolean(row?.welcome_used) };
+  return { welcomeUsed: Boolean(row?.welcome_used), goldIntroSeen: Boolean(row?.gold_intro_seen) };
 }
 
 async function collection(env, userId) {
@@ -269,6 +269,8 @@ export async function today({ env, userId }) {
     gold,
     gold_count: gold.length,
     gold_milestones: TAROT.GOLD_MILESTONES,
+    // 78장을 다 모았는데 완성 화면을 아직 끝까지 안 봤다 → 화면이 첫머리에 띄운다 (§1-1)
+    gold_intro_pending: coll.length >= TAROT.CARDS && !meta.goldIntroSeen,
     // 「작년 오늘」 — 1년 전 같은 날 기록이 있을 때만 (SPEC-03 §5)
     last_year: ly ? { day: yearAgo(day), ...ly } : null,
     shuffles: st.draws.length === 0 ? TAROT.SHUFFLES_FIRST : TAROT.SHUFFLES_EXTRA,
@@ -467,6 +469,30 @@ export async function collectionView({ env, userId }) {
     dust: await loadDust(env, userId),
     dust_max: TAROT.DUST_PER_EXCHANGE,
   };
+}
+
+// ══════════════════════════════════════════════════════════════
+// POST /api/tarot/gold-intro
+// ══════════════════════════════════════════════════════════════
+
+/**
+ * 완성 화면을 끝까지 봤다(탭으로 닫았다) — 다음부터 다시 띄우지 않는다 (SPEC-03 §1-1).
+ * 78장을 다 모으기 전에는 기록하지 않는다 — 미리 「봤음」이 되면 정작 완성 때 안 나온다.
+ */
+export async function goldIntroSeen({ env, userId }) {
+  const owned = await env.DB.prepare(`SELECT COUNT(*) AS n FROM tarot_coll WHERE user_id = ?`)
+    .bind(userId)
+    .first();
+  if ((owned?.n ?? 0) < TAROT.CARDS) {
+    throw new ApiError("NOT_COMPLETE", "도감을 다 모은 뒤에 볼 수 있는 화면이에요.", 400);
+  }
+  await env.DB.prepare(
+    `INSERT INTO tarot_meta (user_id, gold_intro_seen, updated_at) VALUES (?, 1, ?)
+     ON CONFLICT (user_id) DO UPDATE SET gold_intro_seen = 1, updated_at = excluded.updated_at`,
+  )
+    .bind(userId, now())
+    .run();
+  return { gold_intro_seen: true };
 }
 
 // ══════════════════════════════════════════════════════════════

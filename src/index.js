@@ -195,6 +195,7 @@ const ROUTES = {
   "GET /api/tarot/stats": tarot.stats,
   "GET /api/tarot/collection": tarot.collectionView,
   "GET /api/tarot/calendar": tarot.calendar,
+  "POST /api/tarot/gold-intro": tarot.goldIntroSeen,
   "GET /api/mind/state": mind.state,
   "POST /api/mind/submit": mind.submit,
   "GET /api/mind/stats": mind.stats,

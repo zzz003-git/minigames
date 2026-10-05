@@ -295,8 +295,6 @@
 .story--locked { color: var(--text-dim); cursor: default; }
 .exchange .story { font-size: 13px; margin-top: 8px; }
 .lastyear { margin-top: 12px; font-size: 12.5px; color: var(--text-sub); }
-.goldintro { font-size: 13px; line-height: 1.6; color: var(--text-sub); border-color: var(--t-goldline); }
-.goldintro b { display: block; color: var(--t-goldline); font-size: 14px; margin-bottom: 4px; }
 
 /* ── 도감: 금빛 진척 바 · 상세 ── */
 .collbar--gold .collbar__fill { background: linear-gradient(90deg, var(--t-silver), var(--t-goldline)); }
@@ -357,3 +355,53 @@ button.collcell { padding: 0; cursor: pointer; color: inherit; font: inherit; }
 .calsuit-key--cups::before { background: #6aa8e0; }
 .calsuit-key--swords::before { background: #b7bfcc; }
 .calsuit-key--pentacles::before { background: #7cc48a; }
+
+/* ══ 금빛 단계 진입 안내 (SPEC-03 §1-1 · REQ-41) ═════════════════════════════ */
+
+/* 덱 화면 진척 칩 */
+.deckchip { align-self: center; }
+.deckchip.is-goldround { border-color: var(--t-goldline); color: var(--t-goldline); }
+
+/* 결과 카드 바로 아래 한 줄 */
+.tierline { margin-top: 2px; font-size: 13px; color: var(--t-silver); }
+.tierline.is-new { color: var(--t-goldline); font-weight: 700; }
+
+/* ── 완성 화면 — 칸이 채워짐(0~1.6s) → 은색 물결(1.7s~) → 한 칸 금빛(2.6s~) → 글 ── */
+.complete {
+  flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 14px; padding: 24px 8px; text-align: center; cursor: pointer; outline: none;
+  touch-action: manipulation; user-select: none;
+}
+.complete__grid { display: grid; grid-template-columns: repeat(13, 1fr); gap: 4px; width: min(100%, 340px); }
+.complete__grid i {
+  aspect-ratio: 2 / 3; border-radius: 3px;
+  border: 1px solid var(--t-silver); background: rgba(201, 206, 216, 0.14);
+  opacity: 0; transform: scale(0.6);
+  animation:
+    t-fill 0.35s ease-out calc(var(--i) * 18ms) forwards,
+    t-wave 0.9s ease-in-out calc(1700ms + var(--i) * 9ms) 1;
+}
+.complete__grid i.is-shine {
+  animation:
+    t-fill 0.35s ease-out calc(var(--i) * 18ms) forwards,
+    t-goldcell 1.2s ease-out 2600ms forwards;
+}
+@keyframes t-fill { to { opacity: 1; transform: none; } }
+@keyframes t-wave { 50% { background: rgba(230, 236, 246, 0.6); transform: translateY(-3px); } }
+@keyframes t-goldcell {
+  0% { border-color: var(--t-silver); }
+  40% { box-shadow: 0 0 0 3px rgba(232, 196, 106, 0.6), 0 0 22px rgba(232, 196, 106, 0.9); }
+  100% { border-color: var(--t-goldline); background: rgba(232, 196, 106, 0.55); box-shadow: 0 0 10px rgba(232, 196, 106, 0.6); }
+}
+.complete__title, .complete__sub, .complete__tap { opacity: 0; animation: t-fade 0.6s ease-out forwards; }
+.complete__title { font-size: 24px; font-weight: 700; color: var(--text); margin-top: 10px; animation-delay: 3.1s; }
+.complete__sub { font-size: 16px; line-height: 1.6; color: var(--t-goldline); max-width: 300px; word-break: keep-all; animation-delay: 3.4s; }
+.complete__tap { font-size: 12px; color: var(--text-dim); margin-top: 12px; animation-delay: 3.9s; }
+@keyframes t-fade { to { opacity: 1; } }
+
+/* 움직임 줄이기 — 다 채워진 정지 화면 + 같은 글 (§1-1 ①) */
+@media (prefers-reduced-motion: reduce) {
+  .complete__grid i, .complete__grid i.is-shine,
+  .complete__title, .complete__sub, .complete__tap { animation: none; opacity: 1; transform: none; }
+  .complete__grid i.is-shine { border-color: var(--t-goldline); background: rgba(232, 196, 106, 0.55); }
+}

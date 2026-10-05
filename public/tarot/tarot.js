@@ -137,6 +137,9 @@ async function boot() {
     return;
   }
 
+  // 78장을 다 모았는데 완성 화면을 끝까지 못 봤다 — 이번 방문 첫 화면에 다시 (SPEC-03 §1-1 ②)
+  if (state.today.gold_intro_pending) await showComplete();
+
   // 이미 뽑았으면 덱을 건너뛰고 결과로 간다 — 「오늘의 카드」는 하루 한 장이고
   // 다시 들어왔을 때 또 뽑게 하면 그 전제가 깨진다(기획서 1절 엣지).
   if (state.today.draws.length > 0) {
@@ -161,6 +164,11 @@ function enterDeck() {
   $("#deck").classList.add("breathe");
   $("#deckHint").textContent = "무엇이 궁금하세요?";
   $("#deckSub").textContent = "고민을 고르면 덱이 열려요";
+  // 진척 칩 — 완성 뒤엔 금빛 바퀴라는 것을 덱 앞에서부터 알 수 있게 (SPEC-03 §1-1 ③)
+  const coll = state.today.collection_count ?? 0;
+  $("#deckChip").textContent =
+    coll >= TOTAL ? `✦ 금빛 ${state.today.gold_count ?? 0}/${TOTAL}` : `도감 ${coll}/${TOTAL}`;
+  $("#deckChip").classList.toggle("is-goldround", coll >= TOTAL);
   setHeaderBadge(`오늘 ${state.today.remaining}장`);
   showScreen("deck");
 }
@@ -443,10 +451,10 @@ async function choose(node) {
   // 그림을 다 받은 뒤에 뒤집는다 — 뒤집힌 앞면이 비어 있다가 늦게 차면 연출이 깨진다
   const hasImg = await preload(CARD_IMG(res.card_id), PRELOAD_MAX_MS);
   await flipTo(res.card_id, hasImg);
-  // 이번 뽑기로 78장이 완성됐는지 — 금빛 바퀴 안내는 그 한 번만 나온다(SPEC-03 §1)
-  const prevCount = state.today.collection_count ?? 0;
   state.today = await apiGet("/api/tarot/today");
-  renderResult(res.card_id, state.focus, { ...res, completed_now: prevCount < TOTAL && res.collection_count >= TOTAL });
+  // 이 뽑기로 78장이 됐으면(교환으로 채운 경우 포함) **결과보다 먼저** 완성 화면 (SPEC-03 §1-1 ①)
+  if (state.today.gold_intro_pending) await showComplete();
+  renderResult(res.card_id, state.focus, res);
   state.busy = false;
 }
 
@@ -547,8 +555,13 @@ function renderResult(cardId, focus, res) {
   $("#resLastYear").hidden = !ly;
   if (ly) $("#resLastYear").textContent = `작년 오늘의 카드 · ${TAROT_DB.cards[ly.card_id]?.name ?? "—"}`;
 
-  // 78장을 막 다 모았다 — 금빛 바퀴 안내 (1회)
-  $("#resGoldIntro").hidden = !res.completed_now;
+  // 금빛 단계 표기 — 적립 줄을 안 읽고 넘겨도 보이게 카드 바로 아래 (SPEC-03 §1-1 ④)
+  const tier = $("#resTier");
+  const alreadyGold = !res.replay && !res.is_new && !res.gold_new && state.today.gold?.includes(cardId);
+  tier.hidden = !(res.gold_new || alreadyGold) || res.replay;
+  tier.textContent = res.gold_new ? "✦ 금빛이 됐어요 · 숨은 이야기" : "✦ 이미 금빛 · 별가루 +1";
+  tier.classList.toggle("is-new", Boolean(res.gold_new));
+
   $("#resInterp").textContent = r.interp;
   $("#resAdvice").textContent = r.advice;
 
@@ -1047,3 +1060,52 @@ function showCalDay(rec) {
   box.hidden = false;
   box.scrollIntoView({ block: "nearest", behavior: reducedMotion() ? "auto" : "smooth" });
 }
+
+// ══════════════════════════════════════════════════════════════
+// 78장 완성 화면 (SPEC-03 §1-1 ①②)
+// ══════════════════════════════════════════════════════════════
+
+/** 이보다 이른 탭은 무시한다 — 결과를 넘기던 손가락이 그대로 이 화면을 닫지 않게 */
+const COMPLETE_TAP_GUARD_MS = 1000;
+
+/**
+ * 결과보다 먼저 띄우는 전체 화면. 도감 78칸이 채워짐 → 은색 물결 → 한 장이 금빛으로 반짝 →
+ * 큰 글씨 두 줄. **탭해야 넘어간다.** 탭으로 닫은 순간 서버에 「봤음」을 남긴다 — 그 전에
+ * 나가면 다음 방문 첫 화면에 다시 나온다.
+ *
+ * 칸은 그림이 아니라 코드로 그린 상자다(그림 추가 없음 · 썸네일 78장을 받으면 1MB 가깝다).
+ * 움직임 줄이기면 tarot.css 가 연출을 끄고 다 채워진 정지 화면만 남긴다.
+ */
+function showComplete() {
+  const grid = clear($("#completeGrid"));
+  const shine = randomShineCell();
+  for (let i = 0; i < TOTAL; i++) {
+    grid.append(el("i", { class: i === shine ? "is-shine" : "", style: `--i:${i}` }));
+  }
+  const box = $("#complete");
+  box.classList.remove("is-ready");
+  showScreen("complete");
+  box.focus?.({ preventScroll: true });
+
+  const shownAt = Date.now();
+  setTimeout(() => box.classList.add("is-ready"), COMPLETE_TAP_GUARD_MS);
+
+  return new Promise((resolve) => {
+    const done = (e) => {
+      if (e.type === "keydown" && e.key !== "Enter" && e.key !== " ") return;
+      if (Date.now() - shownAt < COMPLETE_TAP_GUARD_MS) return; // 1초 전 탭은 무시
+      e.preventDefault?.();
+      box.removeEventListener("click", done);
+      box.removeEventListener("keydown", done);
+      // 「봤음」 기록이 실패해도 막지 않는다 — 다음 방문에 한 번 더 보일 뿐이다
+      apiPost("/api/tarot/gold-intro", {}).catch(() => {});
+      state.today.gold_intro_pending = false;
+      resolve();
+    };
+    box.addEventListener("click", done);
+    box.addEventListener("keydown", done);
+  });
+}
+
+/** 금빛으로 반짝일 한 칸 — 배치 연출일 뿐이라 하루 단위로 고정한다 */
+const randomShineCell = () => seeded(`${state.today.day}|complete`) % TOTAL;

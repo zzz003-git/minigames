@@ -399,6 +399,38 @@ console.log("\n[13] 기록 달력 · 작년 오늘");
   check("기록 없으면 작년 오늘 없음", td2.data.last_year === null);
 }
 
+console.log("\n[14] 금빛 단계 진입 안내 — 완성 화면 1회 · 재노출 · 본 뒤 재노출 없음 (SPEC-03 §1-1)");
+{
+  // 완성 전에는 안 나오고, 「봤음」 기록도 받지 않는다
+  const { c: c0 } = await freshUser({ missing: [3, 4], dust: 0 });
+  const t0 = await c0.get("/api/tarot/today");
+  check("완성 전 → gold_intro_pending false", t0.data.gold_intro_pending === false);
+  const early = await c0.post("/api/tarot/gold-intro", {});
+  check("완성 전 「봤음」 기록 거절 (400)", early.status === 400, `status=${early.status}`);
+
+  // 교환으로 완성 — 미보유 1장 · 별가루 3 · 중복이면 교환으로 78장
+  let ran = false;
+  for (let k = 0; k < 5 && !ran; k++) {
+    const { c, uid } = await freshUser({ missing: [randomInt(0, 77)], dust: 3 });
+    const d = await c.post("/api/tarot/draw", { focus: "day" });
+    if (d.data.collection_count !== 78) continue;
+    ran = true;
+    const t1 = await c.get("/api/tarot/today");
+    check("완성 직후 → gold_intro_pending true (화면이 결과보다 먼저 띄움)", t1.data.gold_intro_pending === true);
+    // 화면을 끝까지 안 보고 나갔다 → 다음 방문에도 그대로
+    const t2 = await c.get("/api/tarot/today");
+    check("안 보고 나가면 다음 방문에도 pending (재노출)", t2.data.gold_intro_pending === true);
+    const seen = await c.post("/api/tarot/gold-intro", {});
+    check("탭으로 닫음 → 기록 200", seen.status === 200 && seen.data.gold_intro_seen === true);
+    const t3 = await c.get("/api/tarot/today");
+    check("본 뒤엔 다시 안 나옴", t3.data.gold_intro_pending === false);
+    const again = await c.post("/api/tarot/gold-intro", {});
+    check("두 번 기록해도 그대로 (멱등)", again.status === 200 &&
+      sql(`SELECT gold_intro_seen FROM tarot_meta WHERE user_id = ${q(uid)}`)[0].gold_intro_seen === 1);
+  }
+  check("시나리오가 돌았다", ran);
+}
+
 console.log(`\n${pass} 통과 · ${failures.length} 실패`);
 if (failures.length) {
   console.log("실패:\n  " + failures.join("\n  "));
