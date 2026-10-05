@@ -19,6 +19,7 @@ import { apiGet, apiPost, ApiFail } from "../shared/api.js";
 import { $, el, clear, showScreen, toast, renderHeader, setHeaderBadge } from "../shared/ui.js";
 import { watchAdForReward, renderRewardCard, clearRewardCard } from "../shared/ad.js";
 import { MIND_DB } from "./mind-db.js";
+import { expOfDay } from "./mind-pick.js";
 import { renderSiteNav } from "../shared/sitenav.js";
 
 const ARM_DELAY_MS = 400;
@@ -72,26 +73,14 @@ function judge(questions, answers) {
   return { typeIdx: best, gain };
 }
 
-/** 오늘의 실험 — 요일로 정한다. 같은 날이면 모두가 같은 실험을 한다(기획서 M-01) */
 /**
- * 그날의 실험.
+ * 그날의 실험 — 요일로 정한다. 같은 날이면 모두가 같은 실험을 한다(기획서 M-01).
  *
  * 같은 요일에 실험이 **여럿**이면 주 단위로 돌아가며 나온다. `find()` 로 첫 개만
  * 집으면 두 번째 실험은 **영원히 안 나온다** — 실험을 늘려도 이용자는 모른다.
- * 실험이 늘어날수록 이 회전이 유일한 노출 경로다.
- *
- * 주 번호는 날짜에서 결정적으로 뽑는다. 무작위로 하면 새로고침마다 실험이 바뀌어
- * 「오늘의 실험」이라는 말이 거짓이 된다.
+ * 계절 항목(`months`)은 그달에만, 그달의 같은 요일 앞자리부터 나온다 — 규칙은 mind-pick.js.
  */
-function expOfDow(dow, day) {
-  const pool = MIND_DB.experiments.filter((e) => e.dow === dow);
-  if (!pool.length) return MIND_DB.experiments[0];
-  if (pool.length === 1 || !day) return pool[0];
-
-  // 1970-01-01 기준 주차. 요일이 같으므로 주차만 세면 회전이 고르게 돈다
-  const week = Math.floor(Date.parse(`${day}T00:00:00Z`) / (7 * 24 * 60 * 60 * 1000));
-  return pool[((week % pool.length) + pool.length) % pool.length];
-}
+const expOfDow = (dow, day) => expOfDay(MIND_DB.experiments, dow, day);
 
 // ══════════════════════════════════════════════════════════════
 // 진입
@@ -106,12 +95,16 @@ async function boot() {
   }
 
   state.exp = expOfDow(state.st.dow, state.st.day);
+  // 이미 마쳤으면 **저장된 exp_id** 가 오늘의 실험이다. 실험 풀이 바뀐 날(배포 직후 등)엔
+  // 회전 결과가 아침에 한 실험과 다를 수 있어서, 봉투·결과 모두 저장된 쪽을 따른다 (REQ-43)
+  if (state.st.done && state.st.exp_id) {
+    state.exp = MIND_DB.experiments.find((e) => e.id === state.st.exp_id) ?? state.exp;
+  }
   renderHome();
 
   // 이미 마쳤으면 결과 재열람으로 (봉투 = 결과 다시 보기)
   if (state.st.done && state.st.type_idx != null) {
-    const exp = MIND_DB.experiments.find((e) => e.id === state.st.exp_id) ?? state.exp;
-    renderResult({ exp, typeIdx: state.st.type_idx, replay: true });
+    renderResult({ exp: state.exp, typeIdx: state.st.type_idx, replay: true });
   }
 }
 
@@ -414,11 +407,20 @@ function showMap() {
   showScreen("map");
 }
 
+/**
+ * 도감 — **만난 선택(1칸 이상)만** 행으로 보이고, 나머지는 맨 아래 한 줄로 센다 (REQ-43).
+ * 선택이 91개라 전부 그리면 364칸 대부분이 「?」라, 모은 것이 묻힌다.
+ */
 function showCollection() {
   const have = new Set(state.st.collection ?? []);
   const host = clear($("#collRows"));
+  let unmet = 0;
 
   for (const exp of MIND_DB.experiments) {
+    if (!exp.types.some((_, i) => have.has(`${exp.id}:${i}`))) {
+      unmet++;
+      continue;
+    }
     const cells = el("div", { class: "collrow__cells" });
     exp.types.forEach((t, i) => {
       const got = have.has(`${exp.id}:${i}`);
@@ -434,6 +436,8 @@ function showCollection() {
       el("div", { class: "collrow" }, el("span", { class: "collrow__title" }, exp.title), cells),
     );
   }
+
+  if (unmet > 0) host.append(el("p", { class: "footnote--dim collrow__rest" }, `아직 만나지 않은 선택 ${unmet}개`));
 
   const total = MIND_DB.experiments.length * 4;
   $("#collTitle").textContent = `도감 ${have.size} / ${total}`;

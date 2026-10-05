@@ -9,6 +9,7 @@
     "test:api": "node scripts/test-api.mjs",
     "test:abuse": "node scripts/test-abuse.mjs",
     "test:tarot": "node scripts/test-tarot.mjs",
+    "test:mind": "node scripts/test-mind.mjs",
     "deploy": "wrangler deploy",
     "db:create": "wrangler d1 create minigames-db",
     "db:migrate": "wrangler d1 migrations apply minigames-db --remote",
