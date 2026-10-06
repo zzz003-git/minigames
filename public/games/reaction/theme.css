@@ -1,0 +1,216 @@
+/* ==========================================================================
+   반응속도 테스트 — 게임별 디자인 「횡단보도 보행 신호등」 (REQ-56 · 2026-10-06)
+   시안: reward-minigame-research/plans/2026-10-06/게임별디자인/mock/reaction.html
+   ==========================================================================
+
+   연결: base.css → 이 파일 (어두운 바탕이라 theme-light.css 는 연결하지 않는다).
+   되돌리기: 이 게임의 커밋 revert.
+
+   ── 판정과 맞닿는 곳 (REQ-56 §3-3 · CSS·정적 장식만) ───────────────────────
+   · game.js 는 고치지 않았다. 신호 그림은 game.js 가 이미 바꾸는 #flash 의 상태 클래스
+     (.is-waiting · .is-go · .is-early · 없음)만 보고 CSS 로 갈아 끼운다.
+   · t0 는 game.js 가 클래스를 바꾸기 **전에** 잰다. 그림은 빨강·초록 두 장을
+     index.html 에서 preload 하고, 두 장 모두 가상 요소에 늘 깔아 둔 채 opacity 만
+     0 ↔ 1 로 즉시(전이 없음) 바꾼다 — 바뀌는 순간 내려받기·해독을 기다리지 않는다.
+   · 신호 그림은 #flash 의 ::before(빨강)·::after(초록)이라 탭 대상은 #flash 그대로다.
+
+   ── 색 (대비는 실제 면 기준) ───────────────────────────────────────────────
+   시안 danger #FF4D3D 는 바탕 3.63:1 · 면 2.84:1 이라 글자색(--coral)으로 못 쓴다.
+     --coral       #FFA093  오답 글자 (bg 6.09:1 · surface 4.76:1 · surface-2 5.32:1)
+     --theme-red   #FF4D3D  빨간 신호 면 전용
+     --accent      #2FD06A  시안 그대로 (bg 5.89:1 · surface 4.61:1 · surface-2 5.15:1 · 도로 6.80:1)
+     --text-faint  #B4B9C1  (surface 4.74:1)
+   ========================================================================== */
+
+body.game--reaction {
+  --bg: #34373C;
+  --void: #2B2D31;
+  --surface: #43474D;
+  --surface-2: #3C4045;
+
+  --text-main: #FFFFFF;   /* surface 9.35:1 */
+  --text-2: #F1F2F4;
+  --text-sub: #C9CDD3;    /* surface 5.85:1 · surface-2 6.54:1 */
+  --text-dim: #C9CDD3;
+  --text-faint: #B4B9C1;
+
+  --accent: #2FD06A;
+  --accent-ink: #0F1A12;  /* accent 위 8.80:1 */
+  --accent-08: rgba(47, 208, 106, 0.08);
+  --accent-10: rgba(47, 208, 106, 0.1);
+  --accent-14: rgba(47, 208, 106, 0.14);
+  --accent-20: rgba(47, 208, 106, 0.2);
+  --accent-45: rgba(47, 208, 106, 0.45);
+
+  --coral: #FFA093;
+  --danger: #FFA093;
+
+  --theme-red: #FF4D3D;
+  --theme-yellow: #F5C542;
+  --theme-road: #2B2D31;  /* 도로 — 흰 글자 13.79:1 */
+  --theme-stripe: #F1F1EE;
+  --theme-display: "Gasoek One", "Noto Sans KR", var(--sans);
+
+  background-color: var(--bg);
+}
+
+/* 제목 — 장식 서체는 큰 글자에만 (원칙 ④) */
+body.game--reaction .headline {
+  font-family: var(--theme-display);
+  font-size: 28px;
+  font-weight: 400;
+  line-height: 1.25;
+  word-break: keep-all;
+}
+body.game--reaction .footnote,
+body.game--reaction .footnote--dim { word-break: keep-all; }
+
+/* 공통 요소의 11px 이하 글자 → 12px (REQ-56 §1-4 · 12px 미만 금지). 박스 크기는 그대로 */
+body.game--reaction .topbar__badge {
+  font-size: 12px;
+  background: transparent;              /* accent-10 면 위에선 4.35:1 → 바탕 위 5.89:1 */
+  box-shadow: inset 0 0 0 1.5px var(--accent-45);
+}
+body.game--reaction .stat__label,
+body.game--reaction .chart__caption,
+body.game--reaction .reward__desc { font-size: 12px; }
+body.game--reaction .reward__note { font-size: 12px; opacity: 1; }
+
+/* ══════════════════════════════════════════════════════════════
+   플레이 — 기둥에 달린 흰 표지판(HUD) · 보행 신호등 · 횡단보도
+   ══════════════════════════════════════════════════════════════ */
+
+/* HUD — 흰 사각 표지판 2개 (검정 굵은 숫자) */
+body.game--reaction [data-screen="play"] .hud {
+  background: transparent;
+  border: 0;
+  padding: 3px 3px 0;
+}
+body.game--reaction [data-screen="play"] .hud__item {
+  min-width: 124px;
+  padding: 6px 12px;
+  background: #FFFFFF;
+  border: 3px solid #111111;
+  border-radius: 8px;
+  box-shadow: 0 0 0 3px #FFFFFF, 0 4px 0 3px #1B1C1F;
+}
+body.game--reaction [data-screen="play"] .hud__label {
+  font-family: var(--sans);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0;
+  color: #444444;         /* 흰 표지판 9.74:1 */
+}
+body.game--reaction [data-screen="play"] .hud__value,
+body.game--reaction [data-screen="play"] .hud__value--accent {
+  font-size: 22px;
+  color: #111111;
+}
+
+/* 신호등 상자 — #flash 전체가 탭 대상. 위쪽에 신호등 그림, 아래쪽에 안내 글자 */
+body.game--reaction .flash {
+  position: relative;
+  isolation: isolate;
+  place-items: end center;
+  min-height: clamp(300px, 50vh, 440px);
+  padding: 16px 16px 18px;
+  background: var(--theme-road);
+  color: var(--text-main);
+  border: 3px solid #5A5E65;
+  font-weight: 700;
+  line-height: 1.4;
+  transition: none;       /* 신호 전환은 페이드 없이 즉시 */
+}
+body.game--reaction .flash::before,
+body.game--reaction .flash::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  top: 10px;
+  left: 50%;
+  height: calc(100% - 78px);
+  aspect-ratio: 1;
+  transform: translateX(-50%);
+  background: center / 128% auto no-repeat;
+  pointer-events: none;
+}
+body.game--reaction .flash::before { background-image: url("/games/reaction/img/signal_red.v1.png"); opacity: 0.45; }
+body.game--reaction .flash::after  { background-image: url("/games/reaction/img/signal_green.v1.png"); opacity: 0; }
+
+/* 탭하면 하우징이 3px 눌린다 (전이 없음) */
+body.game--reaction .flash:active::before,
+body.game--reaction .flash:active::after { transform: translate(-50%, 3px); }
+
+/* 상태 규칙 — base.css 의 .flash.is-* 를 같은 범위로 다시 선언 (REQ-56 §1-3) */
+body.game--reaction .flash.is-waiting {
+  background: var(--theme-road);
+  color: var(--text-sub);
+}
+body.game--reaction .flash.is-waiting::before { opacity: 1; }
+
+body.game--reaction .flash.is-go {
+  background: var(--theme-road);
+  color: var(--accent);
+  font-size: 30px;
+  font-weight: 700;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-45), 0 0 36px rgba(47, 208, 106, 0.4);
+}
+body.game--reaction .flash.is-go::before { opacity: 0; }
+body.game--reaction .flash.is-go::after { opacity: 1; }
+
+/* 부정출발 — 빨간 사람 위에 노랑·검정 사선 테이프 띠 (그림 위에 얹으려고 ::before 의 첫 층) */
+body.game--reaction .flash.is-early {
+  background: var(--theme-road);
+  color: var(--coral);
+  border-color: var(--theme-yellow);
+}
+body.game--reaction .flash.is-early::before {
+  opacity: 1;
+  background-image:
+    repeating-linear-gradient(135deg, var(--theme-yellow) 0 14px, #111111 14px 28px),
+    url("/games/reaction/img/signal_red.v1.png");
+  background-size: 100% 13%, 128% auto;
+  background-position: center 47%, center;
+  background-repeat: no-repeat;
+}
+body.game--reaction .flash:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+
+/* 시행 칸 — 기둥 아래 잔여 칸 5개 (완료 흰색 · 부정출발 노랑) */
+body.game--reaction .trial-dots { gap: 8px; }
+body.game--reaction .trial-dot {
+  min-width: 48px;
+  padding: 8px 6px;
+  border-radius: 6px;
+  border: 3px solid #FFFFFF;
+  background: #222428;
+  color: #FFFFFF;
+  font-size: 13px;
+  font-weight: 700;
+}
+body.game--reaction .trial-dot.is-done { background: #FFFFFF; color: #111111; }
+body.game--reaction .trial-dot.is-bad {
+  background: var(--theme-yellow);
+  color: #111111;          /* 노랑 위 11.64:1 */
+  border-color: #111111;
+  box-shadow: 0 0 0 2px var(--theme-yellow);
+}
+
+/* 횡단보도 — 플레이 화면 맨 아래 장식. 탭 대상보다 아래, 누르기 통과 */
+body.game--reaction .rx-cross {
+  flex: none;
+  margin: auto calc(-1 * var(--pad-x)) -32px;
+  height: 52px;
+  background:
+    repeating-linear-gradient(98deg, transparent 0 22px, var(--theme-stripe) 22px 66px, transparent 66px 88px),
+    var(--theme-road);
+  opacity: 0.85;
+  pointer-events: none;
+  position: relative;
+  z-index: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body.game--reaction .flash:active::before,
+  body.game--reaction .flash:active::after { transform: translateX(-50%); }
+}

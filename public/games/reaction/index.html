@@ -13,13 +13,17 @@
   <link rel="manifest" href="/site.webmanifest">
   <title>반응속도 테스트</title>
   <meta name="color-scheme" content="dark">
-  <meta name="theme-color" content="#0F1420">
+  <meta name="theme-color" content="#34373C">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=JetBrains+Mono:wght@400;500;700&family=Gasoek+One&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../../shared/base.css">
+  <link rel="stylesheet" href="theme.css">
+  <!-- 신호가 바뀌는 순간 그림이 늦으면 안 됩니다. 빨강·초록 둘 다 첫 판 전에 받아 둡니다 -->
+  <link rel="preload" as="image" href="/games/reaction/img/signal_red.v1.png">
+  <link rel="preload" as="image" href="/games/reaction/img/signal_green.v1.png">
 </head>
-<body class="game game--accent-mint">
+<body class="game game--accent-mint game--reaction">
   <script src="../../shared/splash.js"></script>
   <div class="app">
     <header class="topbar" id="header"></header>
@@ -84,6 +88,9 @@
           <button class="btn btn--primary mt-md" id="confirmBtn">결과 확정하기</button>
           <div class="mt-sm" id="adbarBoost"></div>
         </div>
+
+        <!-- 장식: 신호등 앞 횡단보도 (탭 대상 아님) -->
+        <div class="rx-cross" aria-hidden="true"></div>
       </section>
 
       <!-- 결과 -->
