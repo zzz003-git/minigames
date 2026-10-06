@@ -89,9 +89,10 @@ body.game--toktok .bub__prize { filter: drop-shadow(0 2px 3px rgba(43, 29, 14, 0
 
 /* ── HUD — 연속은 크고 흰 테두리 숫자, 상품은 송장 칸, 소리는 동그란 스티커 ──── */
 body.game--toktok [data-screen="play"] .hud {
-  align-items: center;
+  align-items: flex-start;   /* 라벨(연속·상품)을 같은 높이에 — 값 크기가 달라 가운데 맞춤이면 어긋났다 */
   padding: 6px 4px;
 }
+body.game--toktok [data-screen="play"] .mutebtn { align-self: center; }
 body.game--toktok .popcount {
   color: var(--text-main);
   -webkit-text-stroke: 0;
