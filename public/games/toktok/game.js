@@ -195,8 +195,10 @@ function tok(n, prize = false) {
 function toggleMute() {
   muted = !muted;
   const btn = $("#muteBtn");
-  btn.textContent = muted ? "🔇 소리" : "🔊 소리";
+  // 내용(아이콘 SVG)은 그대로 두고 상태만 바꾼다 — textContent 로 바꾸면 아이콘이 지워진다.
+  // aria-pressed=true 가 「음소거 중」이고, 사선은 CSS 가 그 상태에 건다.
   btn.setAttribute("aria-pressed", String(muted));
+  btn.setAttribute("aria-label", muted ? "소리 켜기" : "소리 끄기");
 }
 
 // ══════════════════════════════════════════════════════════════

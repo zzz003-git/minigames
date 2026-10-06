@@ -1,0 +1,162 @@
+/* ==========================================================================
+   톡톡 — 게임별 디자인 「택배 상자 속 뽁뽁이」 (REQ-56 · 2026-10-06)
+   시안: reward-minigame-research/plans/2026-10-06/게임별디자인/mock/toktok.html
+   ==========================================================================
+
+   연결: base.css → theme-light.css → 이 파일.  되돌리기: 이 게임의 커밋 revert.
+
+   ── 색 ────────────────────────────────────────────────────────────────────
+   시안 accent #1F7A68 은 크라프트 바탕 대비 2.78:1 이라 글자색으로 못 쓴다.
+     --accent      #145246  글자·테두리용 (바탕 4.84:1)
+     --theme-fill  #1F7A68  면·테두리 전용 (판 테두리·소리 스티커)
+   뽁뽁이 색은 지금처럼 「오늘의 포장」(--pack)이 정한다. 여기서는 그 색을 18%로
+   옅게 깔아 투명한 비닐처럼 보이게만 한다(판정·포장 데이터 무관).
+   ========================================================================== */
+
+body.game--toktok {
+  --bg: #D8B98E;
+  --void: #CDAA7C;
+  --surface: #E9D4B2;
+  --surface-2: #E2C9A2;
+
+  --text-main: #2B1D0E;  /* bg 8.76:1 */
+  --text-2: #3A2815;
+  --text-sub: #4F381F;   /* bg 5.87:1 · surface 7.57:1 */
+  --text-dim: #4F381F;
+  --text-faint: #5C4326;
+
+  --accent: #145246;
+  --accent-ink: #FFFFFF;
+  --accent-08: rgba(31, 122, 104, 0.08);
+  --accent-10: rgba(31, 122, 104, 0.1);
+  --accent-14: rgba(31, 122, 104, 0.14);
+  --accent-20: rgba(31, 122, 104, 0.24);
+  --accent-45: rgba(31, 122, 104, 0.5);
+
+  --coral: #8E1B15;      /* bg 4.85:1 */
+  --danger: #8E1B15;
+
+  --theme-fill: #1F7A68;
+  --theme-paper: #F7F3EA;
+  --theme-display: "Single Day", "Noto Sans KR", var(--sans);
+
+  background:
+    repeating-linear-gradient(0deg, rgba(79, 56, 31, 0.04) 0 1px, transparent 1px 5px),
+    var(--bg);
+}
+
+/* ── 제목 서체 — 장식 서체라 큰 글자에만 (원칙 ④) ─────────────────────────── */
+body.game--toktok .headline {
+  font-family: var(--theme-display);
+  font-size: 28px;
+  font-weight: 400;
+  line-height: 1.2;
+  word-break: keep-all;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   플레이 — 크라프트 상자 안의 뽁뽁이 시트
+   ══════════════════════════════════════════════════════════════ */
+
+/* 판: 흰 비닐 시트 + 청록 테두리.
+   테두리 두께는 base 그대로(1px) 두고 굵기는 그림자로 낸다 — game.js 의 cellAt 이
+   판의 바깥 사각형으로 칸을 계산하므로 상자 크기를 바꾸지 않는다. */
+body.game--toktok .popboard {
+  background: rgba(255, 255, 255, 0.3);
+  border-color: var(--theme-fill);
+  border-radius: 16px;
+  box-shadow: 0 0 0 2px var(--theme-fill), 0 4px 0 rgba(43, 29, 14, 0.18);
+}
+body.game--toktok .popboard:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+
+/* 한 알 — 투명 비닐. 하이라이트 점 + 가장자리 테두리 + 포장색 18% */
+body.game--toktok .bub__cap {
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 34% 30%, rgba(255, 255, 255, 0.95) 0 9%, rgba(255, 255, 255, 0) 22%),
+    radial-gradient(circle at 50% 52%,
+      color-mix(in srgb, var(--pack, #7FD8C0) 18%, #F3F1EC) 0 62%,
+      color-mix(in srgb, var(--pack, #7FD8C0) 26%, #C9CFC8) 100%);
+  border: 2px solid color-mix(in srgb, var(--pack, #7FD8C0) 45%, #1F5F52);
+  box-shadow: inset 0 -2px 3px rgba(43, 29, 14, 0.14), 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+/* 파동은 포장색 대신 진한 테두리색으로 — 밝은 바탕에서 옅은 포장색이 안 보인다 */
+body.game--toktok .bub__ring {
+  border-color: color-mix(in srgb, var(--pack, #7FD8C0) 50%, #1F5F52);
+}
+body.game--toktok .bub__prize { filter: drop-shadow(0 2px 3px rgba(43, 29, 14, 0.35)); }
+
+/* ── HUD — 연속은 크고 흰 테두리 숫자, 상품은 송장 칸, 소리는 동그란 스티커 ──── */
+body.game--toktok [data-screen="play"] .hud {
+  align-items: center;
+  padding: 6px 4px;
+}
+body.game--toktok .popcount {
+  color: var(--text-main);
+  -webkit-text-stroke: 0;
+  text-shadow:
+    2px 0 0 #fff, -2px 0 0 #fff, 0 2px 0 #fff, 0 -2px 0 #fff,
+    2px 2px 0 #fff, -2px -2px 0 #fff, 2px -2px 0 #fff, -2px 2px 0 #fff,
+    0 4px 0 rgba(43, 29, 14, 0.25);
+}
+
+body.game--toktok #hudPrize {
+  display: inline-block;
+  min-width: 56px;
+  padding: 4px 10px;
+  background: var(--theme-paper);
+  border: 2px solid var(--text-main);
+  border-radius: 4px;
+  color: var(--text-main);
+}
+
+/* 소리 스티커 — 누르는 영역 48px · 음소거면 사선 */
+body.game--toktok .mutebtn {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  width: 56px;
+  height: 56px;
+  padding: 0;
+  border-radius: 50%;
+  background: var(--theme-paper);
+  border: 2px dashed var(--text-sub);
+  color: var(--text-main);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.1;
+  transform: rotate(-6deg);
+}
+body.game--toktok .mutebtn:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+.i-snd { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.i-snd__body { fill: currentColor; }
+.i-snd__slash { display: none; stroke: var(--coral); stroke-width: 2.6; }
+.mutebtn[aria-pressed="true"] .i-snd__slash { display: inline; }
+.mutebtn[aria-pressed="true"] .i-snd__wave { opacity: 0.25; }
+
+/* 안내 줄 — 「죽」을 키캡처럼 */
+body.game--toktok #playHint { color: var(--text-main); font-size: 14px; }
+body.game--toktok #playHint b {
+  display: inline-block;
+  padding: 0 7px;
+  margin: 0 2px;
+  border: 2px solid var(--text-main);
+  border-radius: 6px;
+  background: var(--theme-paper);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   시작 · 이어하기 · 결과 · 통계 — 토큰으로만
+   ══════════════════════════════════════════════════════════════ */
+
+body.game--toktok .card {
+  box-shadow: 0 2px 0 rgba(43, 29, 14, 0.12);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body.game--toktok .mutebtn { transform: none; }
+}
