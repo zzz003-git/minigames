@@ -28,13 +28,12 @@ const ORDER_CLASS = { WIN: "order-badge--win", LOSE: "order-badge--lose", DRAW: 
  * 그림이 나와야 하고, 문항 시작 시각(qt0)이 그림을 기다리면 안 되기 때문입니다.
  * 그림을 못 쓰면 지금처럼 이모지입니다.
  *
- * ⚠ HAND_ART 는 47px 시트 판정(REQ-60 §1) 전이라 비워 둡니다 — 비어 있으면 이모지로 돕니다.
- *   판정이 나면 아래 세 줄의 경로만 채우면 됩니다(img/hand_*.v1.png).
+ * 47px 시트 판정 통과(기획회신 REP-50·51 검토 · 2026-10-06). 한 장이라도 비우면 이모지로 돕니다.
  */
 const HAND_ART = {
-  // rock: "/games/rpsflash/img/hand_rock.v1.png",
-  // scissors: "/games/rpsflash/img/hand_scissors.v1.png",
-  // paper: "/games/rpsflash/img/hand_paper.v1.png",
+  rock: "/games/rpsflash/img/hand_rock.v1.png",
+  scissors: "/games/rpsflash/img/hand_scissors.v1.png",
+  paper: "/games/rpsflash/img/hand_paper.v1.png",
 };
 const art = { ready: false };
 
