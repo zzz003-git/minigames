@@ -13,11 +13,13 @@
   <link rel="manifest" href="/site.webmanifest">
   <title>숫자야구</title>
   <meta name="color-scheme" content="dark">
-  <meta name="theme-color" content="#0F1420">
+  <meta name="theme-color" content="#0F241A">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=JetBrains+Mono:wght@400;500;700&family=Black+Han+Sans&display=swap" rel="stylesheet">
+  <link rel="preload" as="image" href="/games/baseball/img/baseball_ball.v1.png">
   <link rel="stylesheet" href="../../shared/base.css">
+  <link rel="stylesheet" href="theme.css">
 </head>
 <body class="game game--baseball">
   <script src="../../shared/splash.js"></script>
@@ -28,11 +30,17 @@
 
       <!-- 화면① 메인 -->
       <section class="screen is-active" data-screen="main">
-        <div class="card card--accent card--center" style="gap:16px">
+        <div class="card card--accent card--center bb-board" style="gap:16px">
           <div class="stack stack--xs" style="align-items:center">
             <div class="card__title">정답 <span class="footnote--dim">(Blind Answer)</span></div>
           </div>
           <div class="slots" id="blindSlots"></div>
+          <!-- B·S·O 볼카운트 램프 — 가장 최근 판정의 볼·스트라이크 수로 켠다(game.js renderBso · 표시용) -->
+          <div class="bb-bso" id="bsoLamps" role="img" aria-label="아직 판정이 없습니다">
+            <span class="bb-bso__row bb-bso__row--b"><b aria-hidden="true">B</b><i class="bb-lamp"></i><i class="bb-lamp"></i><i class="bb-lamp"></i></span>
+            <span class="bb-bso__row bb-bso__row--s"><b aria-hidden="true">S</b><i class="bb-lamp"></i><i class="bb-lamp"></i><i class="bb-lamp"></i></span>
+            <span class="bb-bso__row bb-bso__row--o"><b aria-hidden="true">O</b><i class="bb-lamp"></i><i class="bb-lamp"></i><i class="bb-lamp"></i></span>
+          </div>
         </div>
 
         <div class="card card--info">

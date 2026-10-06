@@ -1,0 +1,312 @@
+/* ==========================================================================
+   숫자야구 — 게임별 디자인 「야구장 전광판」 (REQ-56 · 2026-10-06)
+   시안: reward-minigame-research/plans/2026-10-06/게임별디자인/mock/baseball.html
+   ==========================================================================
+
+   연결: base.css → 이 파일 (어두운 바탕이라 theme-light.css 는 연결하지 않는다).
+   되돌리기: 이 게임의 커밋 revert.
+
+   ── 우선순위 (REQ-56 §1-1 기존 4종) ────────────────────────────────────────
+   base.css 의 `.game--baseball` (0,1,0) 이 accent 를 코랄로 정해 둔다. 이 파일의
+   `body.game--baseball` (0,1,1) 이 더 강하고 뒤에 오므로 accent 묶음 전체를 이 파일이 덮는다.
+   base 규칙은 지우지 않는다(이 파일을 빼면 지금 화면 그대로).
+
+   ── REQ-56 §3-3 ───────────────────────────────────────────────────────────
+   · B·S·O 램프(#bsoLamps)는 index.html 에 정적으로 두고, game.js renderBso 가 가장 최근
+     판정의 strike/ball 수만큼 .is-on 을 켠다. OUT 이면 O 3개. 표시용이다.
+   · 생략: 「연장 +3」 번호 칸(이닝 칸으로 바꾼 남은 기회 표시), 시도 기록 행의 전구 표시,
+     3S 깜빡임·정답 칸 뒤집기 연출.
+   · 그림 baseball_ball.v1.png → 헤더 아이콘 · 「숫자 입력하기」 버튼 · 성공 화면 배지 (CSS 배경).
+     헤더 아이콘의 이모지 ⚾ 는 글자 크기 0 으로 숨긴다(aria-hidden 요소 · splash 는 글자를 복사하므로 영향 없음).
+
+   ── 색 (bg #0F241A · surface #183528) ────────────────────────────────────
+     --text-main #F4F1E6   bg 15:1
+     --text-sub  #B9C9BD   bg 9.4:1 · surface 7.7:1
+     --accent    #F5C518   bg 10:1 · surface 8.2:1  (시안 accent 그대로)
+     --coral     #FF7A6B   bg 6.4:1 · surface 5.2:1 (시안 danger #FF5A4A 는 surface 4.3:1 이라 한 단계 밝게)
+     볼 램프 초록 #3DDC84  bg 9.1:1
+     흰 공 키(#F6F1E4) 위 글자 #0F241A 14.5:1
+   ========================================================================== */
+
+body.game--baseball {
+  --bg: #0F241A;
+  --void: #0A1A12;
+  --surface: #183528;
+  --surface-2: #142D21;
+
+  --text-main: #F4F1E6;
+  --text-2: #E2E6DD;
+  --text-sub: #B9C9BD;
+  --text-dim: #B9C9BD;
+  --text-faint: #9FB0A4;
+
+  --accent: #F5C518;
+  --accent-ink: #0F241A;
+  --accent-08: rgba(245, 197, 24, 0.08);
+  --accent-10: rgba(245, 197, 24, 0.1);
+  --accent-14: rgba(245, 197, 24, 0.14);
+  --accent-20: rgba(245, 197, 24, 0.2);
+  --accent-45: rgba(245, 197, 24, 0.45);
+
+  --coral: #FF7A6B;
+  --danger: #FF7A6B;
+  --mint: #3DDC84;
+
+  --theme-green: #3DDC84;
+  --theme-red: #FF5A4A;
+  --theme-led: #050C08;
+  --theme-steel: #5D6B63;
+  --theme-ball: url("/games/baseball/img/baseball_ball.v1.png");
+  --theme-display: "Black Han Sans", "Noto Sans KR", var(--sans);
+
+  /* 아래쪽 잔디 깎은 줄무늬 (6%) */
+  background:
+    linear-gradient(to bottom, var(--bg) 0 68%, rgba(15, 36, 26, 0) 88%),
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.05) 0 36px, transparent 36px 72px),
+    var(--bg);
+  background-attachment: fixed;
+  background-color: var(--bg);
+}
+
+/* 제목 서체 — 큰 글자에만 */
+body.game--baseball .headline,
+body.game--baseball .headline--sm {
+  font-family: var(--theme-display);
+  font-weight: 400;
+  line-height: 1.25;
+  word-break: keep-all;
+}
+body.game--baseball .headline { font-size: 32px; }
+body.game--baseball .headline--sm { font-size: 24px; }
+body.game--baseball .footnote,
+body.game--baseball .footnote--dim { word-break: keep-all; }
+
+/* 헤더 아이콘 — 야구공 그림 */
+body.game--baseball .topbar__icon {
+  font-size: 0;
+  background: var(--theme-ball) center / 84% no-repeat, var(--accent-14);
+}
+body.game--baseball .topbar__badge { font-size: 12px; }
+
+/* ══════════════════════════════════════════════════════════════
+   메인 — 전광판 (가려진 정답 + B·S·O 램프)
+   ══════════════════════════════════════════════════════════════ */
+
+body.game--baseball .bb-board {
+  background: var(--theme-led);
+  border: 4px solid #6D7B73;
+  border-radius: 16px;
+  box-shadow: 0 0 0 2px #000, 0 6px 0 #0A1810;
+}
+
+/* 가려진 정답 칸 — 철제 테 검정 LED 칸 + 노란 '?' */
+body.game--baseball #blindSlots .slot {
+  background: #111;
+  border: 3px solid #55625B;
+  border-radius: 8px;
+  box-shadow: inset 0 0 18px rgba(245, 197, 24, 0.25);
+}
+body.game--baseball #blindSlots .slot--blind {
+  font-family: var(--theme-display);
+  font-size: 52px;
+  color: var(--accent);
+}
+
+/* B·S·O 램프 */
+body.game--baseball .bb-bso {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  max-width: 300px;
+}
+body.game--baseball .bb-bso__row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+body.game--baseball .bb-bso__row b {
+  margin-right: 2px;
+  font-family: var(--theme-display);
+  font-size: 20px;
+  font-weight: 400;
+  color: var(--text-main);
+}
+body.game--baseball .bb-bso__row--b { --c: var(--theme-green); }
+body.game--baseball .bb-bso__row--s { --c: var(--accent); }
+body.game--baseball .bb-bso__row--o { --c: var(--theme-red); }
+body.game--baseball .bb-lamp {
+  display: block;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #26302B;
+  border: 2px solid #3B4741;
+  pointer-events: none;
+}
+/* 켜진 램프 — 한 줄 안에서 0.15초 간격으로 차례로 (OUT 은 한꺼번에) */
+body.game--baseball .bb-lamp.is-on {
+  background: var(--c);
+  border-color: var(--c);
+  box-shadow: 0 0 8px var(--c);
+  animation: bb-lamp-on 220ms ease-out both;
+}
+body.game--baseball .bb-bso__row--b .bb-lamp.is-on:nth-of-type(2),
+body.game--baseball .bb-bso__row--s .bb-lamp.is-on:nth-of-type(2) { animation-delay: 150ms; }
+body.game--baseball .bb-bso__row--b .bb-lamp.is-on:nth-of-type(3),
+body.game--baseball .bb-bso__row--s .bb-lamp.is-on:nth-of-type(3) { animation-delay: 300ms; }
+@keyframes bb-lamp-on {
+  from { background: #26302B; border-color: #3B4741; box-shadow: none; }
+}
+
+/* 남은 기회 · 시도 기록 — 이닝 스코어보드 */
+body.game--baseball [data-screen="main"] .card--info,
+body.game--baseball [data-screen="input"] .card--info {
+  border: 3px solid var(--theme-steel);
+  border-radius: 14px;
+}
+body.game--baseball .history { gap: 0; }
+body.game--baseball .history__row {
+  padding: 10px 12px;
+  border-radius: 0;
+  background: transparent;
+  border-top: 1px solid #2B4A39;
+}
+body.game--baseball .history__row:first-child { border-top: 0; }
+body.game--baseball .history__guess {
+  font-size: 24px;
+  color: var(--accent);
+  text-shadow: 0 0 6px rgba(245, 197, 24, 0.35);
+}
+/* 판정 태그 — 볼 초록 · 스트라이크 노랑 · 아웃 빨강 (글자 + 색) */
+body.game--baseball .tag {
+  background: rgba(255, 90, 74, 0.14);
+  color: var(--coral);
+  font-size: 13px;
+  font-weight: 700;
+  border: 1px solid rgba(255, 122, 107, 0.45);
+}
+body.game--baseball .tag--strike {
+  background: rgba(245, 197, 24, 0.12);
+  color: var(--accent);
+  border-color: rgba(245, 197, 24, 0.45);
+}
+body.game--baseball .tag--ball {
+  background: rgba(61, 220, 132, 0.1);
+  color: var(--theme-green);
+  border-color: rgba(61, 220, 132, 0.45);
+}
+
+/* 「숫자 입력하기」 — 흰 야구공 버튼 */
+body.game--baseball #inputBtn {
+  font-family: var(--theme-display);
+  font-size: 20px;
+  font-weight: 400;
+  gap: 10px;
+  background: #F6F1E4;
+  color: var(--accent-ink);
+  border: 3px solid #FFFFFF;
+  box-shadow: 0 4px 0 #8C8576;
+}
+body.game--baseball #inputBtn::before {
+  content: "";
+  width: 30px;
+  height: 30px;
+  flex: none;
+  background: var(--theme-ball) center / contain no-repeat;
+  pointer-events: none;
+}
+/* 상태 규칙을 같은 범위로 다시 선언 (REQ-56 §1-3) */
+body.game--baseball #inputBtn:hover:not(:disabled) { background: #FFFFFF; }
+body.game--baseball #inputBtn:disabled {
+  background: rgba(246, 241, 228, 0.18);
+  color: var(--text-sub);
+  border-color: transparent;
+  box-shadow: none;
+}
+body.game--baseball #inputBtn:disabled::before { opacity: 0.4; }
+
+/* ══════════════════════════════════════════════════════════════
+   입력 — 투구판 (흰 야구공 키)
+   ══════════════════════════════════════════════════════════════ */
+body.game--baseball .sheet {
+  background:
+    radial-gradient(120% 60% at 50% 0%, rgba(176, 120, 72, 0.18), transparent 70%),
+    var(--surface);
+  border-top: 3px solid var(--theme-steel);
+}
+body.game--baseball .sheet__grip { background: rgba(244, 241, 230, 0.3); }
+body.game--baseball .numpad__key {
+  /* 흰 야구공 — 양옆 빨간 바늘땀 호 */
+  --bb-stitch:
+    radial-gradient(circle 60px at -42px 50%, transparent 52px, rgba(208, 56, 43, 0.75) 52.5px 54.5px, transparent 55px),
+    radial-gradient(circle 60px at calc(100% + 42px) 50%, transparent 52px, rgba(208, 56, 43, 0.75) 52.5px 54.5px, transparent 55px);
+  background: var(--bb-stitch), #F6F1E4;
+  color: var(--accent-ink);
+  font-weight: 700;
+  box-shadow: 0 3px 0 #8C8576;
+}
+body.game--baseball .numpad__key--util {
+  background: #2A4A3A;
+  color: var(--text-main);
+  box-shadow: 0 3px 0 #0A1810;
+}
+body.game--baseball .numpad__key--ok {
+  background: var(--accent);
+  color: var(--accent-ink);
+  box-shadow: 0 3px 0 #8F730E;
+}
+/* 상태 규칙을 같은 범위로 다시 선언 (REQ-56 §1-3) */
+body.game--baseball .numpad__key:hover:not(:disabled) { background: var(--bb-stitch), #FFFFFF; }
+body.game--baseball .numpad__key--util:hover:not(:disabled) { background: #335A47; }
+body.game--baseball .numpad__key:disabled { color: rgba(15, 36, 26, 0.45); cursor: not-allowed; }
+body.game--baseball .numpad__key--util:disabled { color: rgba(244, 241, 230, 0.45); }
+body.game--baseball .numpad__key--ok:hover:not(:disabled) { background: var(--accent); filter: brightness(1.06); }
+body.game--baseball .numpad__key--ok:disabled {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-sub);
+  box-shadow: none;
+  filter: none;
+}
+
+/* 입력 칸 — LED 칸 */
+body.game--baseball #inputSlots .slot {
+  background: var(--theme-led);
+  border: 2px solid #55625B;
+}
+body.game--baseball #inputSlots .slot.is-filled {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--theme-led);
+}
+body.game--baseball #inputSlots .slot.is-active { border-color: var(--text-sub); }
+
+/* 결과 칸 — 상태 규칙 같은 범위로 (색 + ✓/✕) */
+body.game--baseball .slot.is-correct {
+  background: rgba(61, 220, 132, 0.12);
+  border-color: rgba(61, 220, 132, 0.5);
+  color: var(--theme-green);
+}
+body.game--baseball .slot.is-wrong {
+  background: rgba(255, 90, 74, 0.12);
+  border-color: rgba(255, 122, 107, 0.5);
+  color: var(--coral);
+}
+body.game--baseball .slot__mark { font-size: 12px; }
+
+/* 성공 화면 배지 — 야구공 그림 */
+body.game--baseball [data-screen="success"] .badge-round {
+  font-size: 0;
+  background: var(--theme-ball) center / 78% no-repeat, var(--accent-14);
+}
+
+/* ── 12px 미만 글자 올리기 (REQ-56 §1-4 · §1-5) — 광고 박스 크기는 그대로, 줄바꿈만 허용 ── */
+body.game--baseball .reward__desc,
+body.game--baseball .reward__note,
+body.game--baseball .stat__label,
+body.game--baseball .chart__caption { font-size: 12px; }
+body.game--baseball .reward__note { opacity: 1; color: var(--text-sub); }
+
+@media (prefers-reduced-motion: reduce) {
+  body.game--baseball .bb-lamp.is-on { animation: none; }
+}

@@ -113,6 +113,30 @@ function renderMain() {
   setHeaderBadge(`${state.attemptsLeft}회`);
 
   $("#inputBtn").disabled = state.attemptsLeft <= 0;
+  renderBso();
+}
+
+/**
+ * 전광판 B·S·O 램프 — 가장 최근 판정(이미 받은 history 의 마지막 행)을 그대로 켭니다.
+ * 표시용입니다(REQ-56 §3-3). OUT(0S 0B)이면 O 램프 3개를 한꺼번에 켭니다.
+ */
+function renderBso() {
+  const host = $("#bsoLamps");
+  if (!host) return;
+  const last = state.history[state.history.length - 1];
+  const s = last?.strikes ?? 0;
+  const b = last?.balls ?? 0;
+  const out = Boolean(last) && s === 0 && b === 0;
+  const light = (sel, n) => {
+    host.querySelectorAll(`${sel} .bb-lamp`).forEach((lamp, i) => lamp.classList.toggle("is-on", i < n));
+  };
+  light(".bb-bso__row--b", b);
+  light(".bb-bso__row--s", s);
+  light(".bb-bso__row--o", out ? 3 : 0);
+  host.setAttribute(
+    "aria-label",
+    !last ? "아직 판정이 없습니다" : out ? `최근 판정: ${last.guess} 아웃` : `최근 판정: ${last.guess} ${s} 스트라이크 ${b} 볼`,
+  );
 }
 
 function renderHistoryInto(host) {
