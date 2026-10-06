@@ -1,0 +1,318 @@
+/* ==========================================================================
+   밸런스 드롭 — 게임별 디자인 「약방 황동 천칭」 (REQ-56 · 2026-10-06)
+   시안: reward-minigame-research/plans/2026-10-06/게임별디자인/mock/balance.html
+   ==========================================================================
+
+   연결: base.css → theme-light.css → 이 파일.  되돌리기: 이 게임의 커밋 revert.
+
+   ── 구조 (REQ-56 §3-3 — game.js 없이 CSS·정적 장식만) ─────────────────────
+   · 받침(기둥 + 나무 받침)은 그림 scale_stand.v1.png 한 장. index.html 의 정적
+     .bl-stand 가 #scaleBeam 바로 아래에서 그 그림과 대리석 진열대 띠를 그린다.
+   · 저울대·접시는 기존 #scaleBeam 이 그린다 — 막대는 배경 그라디언트, 접시 두 개는
+     ::before/::after. 접시는 game.js 가 쓰는 --tilt 를 거꾸로 돌려 늘 아래로 매달린다.
+   · 저울대 회전축을 막대 가운데(아래에서 6px)로 옮겨 기둥 꼭대기 축과 맞춘다.
+     기울기 값·판정·서버 응답은 그대로다(보이는 축만 바뀜).
+   · 손에 든 추(.scale__w)와 접시 위 추(.scale__item)는 종 모양 놋쇠 분동.
+   · 생략: 「수평」 법랑 표지·빨간 화살표(성공·실패 상태 클래스가 없음 — 지금처럼 토스트).
+
+   ── 색 ────────────────────────────────────────────────────────────────────
+   시안 accent #8A6420 은 세이지 바탕 대비 4.19:1 이라 글자색으로 못 쓴다.
+     --accent      #7A5614  글자·테두리용 (bg 5.19:1 · surface 6.31:1)
+     --theme-fill  #8A6420  면·막대·테두리 전용
+   시안 danger #C0392B 는 bg 4.26:1 → --coral #A93226 (bg 5.19:1 · 흰 면 6.62:1)
+   본문 #1B2A24 (bg 11.7:1) · 보조 #475A52 (bg 5.77:1 · surface 7.0:1)
+   분동 숫자 #3C2A08 on #E3C27A 8.0:1 · 떨어뜨리기 글자 #2A1D05 on #C79A3D 6.4:1
+   ========================================================================== */
+
+body.game--balance {
+  --bg: #DCE6E1;
+  --void: #D2DED8;
+  --surface: #F7FAF8;
+  --surface-2: #F0F5F2;
+
+  --text-main: #1B2A24;
+  --text-2: #22332C;
+  --text-sub: #475A52;
+  --text-dim: #475A52;
+  --text-faint: #4F6259;
+
+  --accent: #7A5614;
+  --accent-ink: #FFFFFF;
+  --accent-08: rgba(138, 100, 32, 0.08);
+  --accent-10: rgba(138, 100, 32, 0.1);
+  --accent-14: rgba(138, 100, 32, 0.14);
+  --accent-20: rgba(138, 100, 32, 0.24);
+  --accent-45: rgba(138, 100, 32, 0.5);
+
+  --coral: #A93226;
+  --danger: #A93226;
+
+  --theme-fill: #8A6420;
+  --theme-green: #2E9E6A;
+  --theme-brass: linear-gradient(#E3C27A, #B0832B 55%, #8A6420);
+  --theme-display: "Gowun Batang", "Noto Sans KR", var(--sans);
+  /* 종 모양 놋쇠 분동 (시안 #bell) */
+  --bl-bell: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 62 66'%3E%3Cpath d='M31 3C38 3 41 9 38 14C50 20 60 36 60 62H2C2 36 12 20 24 14C21 9 24 3 31 3Z' fill='%23C79A3D' stroke='%236B4B14' stroke-width='3'/%3E%3Cpath d='M17 26C13 34 11 44 11 56' stroke='%23F4DE9C' stroke-width='4' stroke-linecap='round' fill='none'/%3E%3Cellipse cx='32' cy='41' rx='16' ry='12' fill='%23E3C27A'/%3E%3C/svg%3E");
+  /* 체인 + 반원 접시 */
+  --bl-pan: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 56 50'%3E%3Cpath d='M28 4L5 31M28 4L51 31' stroke='%236B4B14' stroke-width='1.6' stroke-dasharray='3 1.5' fill='none'/%3E%3Ccircle cx='28' cy='4' r='3.2' fill='%238A6420'/%3E%3Cpath d='M2 31H54A26 17 0 0 1 2 31Z' fill='%23C79A3D' stroke='%236B4B14' stroke-width='2'/%3E%3Cpath d='M9 34H47' stroke='%23F4DE9C' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E");
+
+  /* 세이지 회녹 바탕 — 위쪽이 조금 밝은 진열장 빛 */
+  background:
+    radial-gradient(120% 45% at 50% 0%, #E8EFEB 0%, rgba(232, 239, 235, 0) 70%),
+    var(--bg);
+  background-color: var(--bg);
+}
+
+/* 제목·설명 — 장식 서체는 큰 글자에만 (원칙 ④) */
+body.game--balance .headline {
+  font-family: var(--theme-display);
+  font-size: 27px;
+  font-weight: 700;
+  line-height: 1.25;
+  word-break: keep-all;
+}
+body.game--balance .footnote { word-break: keep-all; }
+
+/* 시작 화면 대표 그림 — 받침 그림 위에 플레이 화면과 같은 막대·접시를 얹은 작은 천칭.
+   상자 132×100 · 받침 그림은 높이 100 이라 기둥 축이 위에서 14px */
+body.game--balance [data-screen="ready"] .card--hero::before {
+  content: "";
+  display: block;
+  width: 132px;
+  height: 100px;
+  background:
+    var(--bl-pan) 0 13px / 36px 32px no-repeat,
+    var(--bl-pan) 96px 13px / 36px 32px no-repeat,
+    linear-gradient(#E3C27A, #B0832B 55%, #8A6420) 18px 11px / 96px 6px no-repeat,
+    url("/games/balance/img/scale_stand.v1.png") center top / auto 100% no-repeat;
+  pointer-events: none;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   플레이 — 대리석 진열대 위 황동 천칭
+   ══════════════════════════════════════════════════════════════ */
+
+/* HUD — 약방 서랍 이름표(흰 법랑 판 + 황동 테) */
+body.game--balance [data-screen="play"] .hud {
+  background: #FFFFFF;
+  border: 2px solid #B0832B;
+  box-shadow: 0 2px 0 var(--theme-fill), inset 0 0 0 2px #FFFFFF;
+}
+body.game--balance [data-screen="play"] .hud__value { color: var(--text-main); }
+body.game--balance [data-screen="play"] .hud__value--accent { color: var(--accent); }
+
+/* 무대 — 카드 면을 걷고 진열장 바탕 그대로 */
+body.game--balance #scaleStage {
+  background: transparent;
+  border-color: transparent;
+  gap: 10px;
+}
+
+/* 손에 든 추 + 아래 화살표. 위치(--at)는 game.js 그대로 */
+body.game--balance .scale__hand,
+body.game--balance .scale__beam { margin-inline: 30px; }
+body.game--balance .scale__hand { height: 52px; }
+body.game--balance .scale__w {
+  width: 38px;
+  height: 40px;
+  padding-top: 11px;
+  border-radius: 0;
+  background: var(--bl-bell) center / 100% 100% no-repeat;
+  color: #3C2A08;
+  font-family: var(--mono);
+  font-size: 15px;
+  line-height: 1;
+}
+body.game--balance .scale__w::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -11px;
+  margin-left: -6px;
+  border: 6px solid transparent;
+  border-bottom: 0;
+  border-top: 8px solid var(--theme-fill);
+  pointer-events: none;
+}
+
+/* 저울대 — 황동 막대(아래 12px) + 눈금. 회전축은 막대 가운데 */
+body.game--balance .scale__beam {
+  z-index: 2;
+  height: 58px;
+  border-bottom: 0;
+  transform-origin: 50% calc(100% - 6px);
+  background:
+    repeating-linear-gradient(90deg, transparent 0 calc(10% - 1.5px), rgba(60, 40, 8, 0.5) calc(10% - 1.5px) 10%) left bottom 2px / 100% 6px no-repeat,
+    var(--theme-brass) left bottom / 100% 12px no-repeat;
+  /* 그림자는 filter 로 주지 않는다 — is-swing 이 filter 를 애니메이션한다 */
+}
+/* 접시 두 개 — 막대 양 끝에서 늘 아래로 매달린다(--tilt 를 거꾸로) */
+body.game--balance .scale__beam::before,
+body.game--balance .scale__beam::after {
+  content: "";
+  position: absolute;
+  top: calc(100% - 9px);
+  width: 56px;
+  height: 50px;
+  background: var(--bl-pan) center top / 100% 100% no-repeat;
+  transform-origin: 50% 4px;
+  transform: rotate(calc(var(--tilt, 0deg) * -1));
+  transition: transform 700ms cubic-bezier(0.3, 1.6, 0.5, 1);
+  pointer-events: none;
+}
+body.game--balance .scale__beam::before { left: -28px; }
+body.game--balance .scale__beam::after { right: -28px; }
+
+/* 접시 위 추 — 종 모양 분동, 무게 숫자 각인 */
+body.game--balance .scale__item {
+  bottom: 11px;
+  width: 30px;
+  height: 32px;
+  padding-top: 9px;
+  border: 0;
+  border-radius: 0;
+  background: var(--bl-bell) center / 100% 100% no-repeat;
+  color: #3C2A08;
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: 1;
+}
+
+/* 받침 그림 + 대리석 진열대 띠. 높이는 화면 높이에 맞춰 줄고 늘어난다.
+   그림 안 기둥 꼭대기 축은 위에서 13.9%(71/512), 받침 바닥은 87.5%(448/512) */
+body.game--balance .bl-stand {
+  --st-h: clamp(118px, 23vh, 196px);
+  position: relative;
+  z-index: 1;
+  flex: 0 0 auto;
+  height: var(--st-h);
+  margin-top: calc(-16px - var(--st-h) * 0.139);
+  /* 아래 여백은 진열대 띠(위 0.8 + 띠 20px + 그림자 6px)까지만 남긴다 */
+  margin-bottom: calc(26px - var(--st-h) * 0.2);
+  pointer-events: none;
+}
+/* 낮은 화면(360×640 등) — 손·저울대·받침을 줄여 첫 화면 안에 넣는다 */
+@media (max-height: 700px) {
+  body.game--balance .scale__hand { height: 46px; }
+  body.game--balance .scale__beam { height: 50px; }
+  body.game--balance .bl-stand { --st-h: 92px; }
+  body.game--balance #scaleStage { gap: 6px; }
+}
+body.game--balance .bl-stand::before {
+  content: "";
+  position: absolute;
+  left: -12px;
+  right: -12px;
+  top: calc(var(--st-h) * 0.8);
+  height: 18px;
+  background:
+    linear-gradient(-2deg, transparent 0 46%, rgba(160, 172, 166, 0.55) 46% 50%, transparent 50%) 8% 0 / 34% 100% no-repeat,
+    linear-gradient(1deg, transparent 0 58%, rgba(160, 172, 166, 0.5) 58% 62%, transparent 62%) 88% 0 / 30% 100% no-repeat,
+    linear-gradient(#FFFFFF, #E6EAE8);
+  border-top: 2px solid #FFFFFF;
+  box-shadow: 0 6px 0 #C7D1CC;
+}
+body.game--balance .bl-stand::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: url("/games/balance/img/scale_stand.v1.png") center top / auto 100% no-repeat;
+}
+
+/* 기둥 위 황동 눈금자 — 초록 목표 구간 + 검정 바늘 (위치로만 보여 준다) */
+body.game--balance .scale__zone {
+  height: 24px;
+  border-radius: 6px;
+  background:
+    repeating-linear-gradient(90deg, transparent 0 calc(10% - 1.5px), rgba(60, 40, 8, 0.6) calc(10% - 1.5px) 10%) left top / 100% 7px no-repeat,
+    var(--theme-brass);
+  box-shadow: 0 2px 0 #6B4B14;
+}
+body.game--balance .scale__zone::before {
+  top: 4px;
+  bottom: 4px;
+  border-radius: 3px;
+  background: var(--theme-green);
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.55);
+}
+body.game--balance .scale__needle {
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  margin-left: -2px;
+  background: #1B2A24;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.6);
+}
+
+/* 위치 슬라이더 — 흰 법랑 레일 + 작은 분동 손잡이 (터치 높이 44px) */
+body.game--balance .scale__slider {
+  padding: 0 14px;
+  background: #FFFFFF;
+  border: 3px solid #B0832B;
+  border-radius: 22px;
+}
+body.game--balance .scale__slider input {
+  -webkit-appearance: none;
+  appearance: none;
+  display: block;
+  height: 44px;
+  margin: 0;
+  background: transparent;
+  cursor: pointer;
+}
+body.game--balance .scale__slider input:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+body.game--balance .scale__slider input::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 3px;
+  background: #C7B58A;
+}
+body.game--balance .scale__slider input::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 32px;
+  height: 34px;
+  margin-top: -16px;
+  border: 0;
+  background: var(--bl-bell) center / 100% 100% no-repeat;
+}
+body.game--balance .scale__slider input::-moz-range-track {
+  height: 6px;
+  border-radius: 3px;
+  background: #C7B58A;
+}
+body.game--balance .scale__slider input::-moz-range-thumb {
+  width: 32px;
+  height: 34px;
+  border: 0;
+  border-radius: 0;
+  background: var(--bl-bell) center / 100% 100% no-repeat;
+}
+
+/* 떨어뜨리기 — 황동 버튼. 상태 규칙을 같은 범위로 다시 선언 (REQ-56 §1-3) */
+body.game--balance #dropBtn {
+  background: linear-gradient(#E3C27A, #C79A3D);
+  color: #2A1D05;
+  box-shadow: 0 4px 0 #6B4B14;
+}
+body.game--balance #dropBtn:hover:not(:disabled) {
+  background: linear-gradient(#E3C27A, #C79A3D);
+  color: #2A1D05;
+  filter: brightness(1.05);
+}
+body.game--balance #dropBtn:active:not(:disabled) {
+  transform: translateY(2px);
+  box-shadow: 0 2px 0 #6B4B14;
+}
+body.game--balance #dropBtn:disabled {
+  background: rgba(0, 0, 0, 0.08);
+  color: var(--text-dim);
+  box-shadow: none;
+  filter: none;
+}
+
+body.game--balance #playHint { color: var(--text-sub); }
+
+@media (prefers-reduced-motion: reduce) {
+  body.game--balance .scale__beam::before,
+  body.game--balance .scale__beam::after { transition: none; }
+}
