@@ -177,6 +177,7 @@ function renderRound(round) {
 
   $("#hudScore").textContent = comma(round.score ?? 0);
   $("#hudStreak").textContent = `${round.streak ?? 1}일`;
+  renderCal(round.streak ?? 1);
   $("#hudLeft").textContent = String(state.left);
   setHeaderBadge(`${round.streak ?? 1}일 연속`);
 
@@ -197,6 +198,20 @@ function renderRound(round) {
 
   buildGrid(round.cells ?? []);
   if (round.matched) markMatch(round.match_icon);
+}
+
+/**
+ * 연속 일수 7칸 달력 (REQ-56 §3-1 · 표시만). 7일째가 완전 공개 힌트라 7칸 단위로 돈다
+ * — 8일째는 다시 1칸. 숫자(#hudStreak)와 aria-label 이 실제 일수를 그대로 말한다.
+ */
+function renderCal(streak) {
+  const host = $("#hudCal");
+  if (!host) return;
+  const days = Math.max(1, streak);
+  const filled = ((days - 1) % 7) + 1;
+  host.setAttribute("aria-label", `연속 ${days}일`);
+  clear(host);
+  for (let i = 0; i < 7; i++) host.append(el("i", { class: i < filled ? "is-on" : "" }));
 }
 
 /** 9칸을 그립니다. 이미 긁은 칸은 은박 없이, 나머지는 은박을 덮어 둡니다. */
