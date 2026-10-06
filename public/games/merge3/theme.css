@@ -1,0 +1,289 @@
+/* ==========================================================================
+   세 칸 쌓기 — 게임별 디자인 「호두나무 쟁반 메달 튜브」 (REQ-56 · 2026-10-06)
+   시안: reward-minigame-research/plans/2026-10-06/게임별디자인/mock/merge3.html
+   ==========================================================================
+
+   연결: base.css → 이 파일 (어두운 바탕이라 theme-light.css 는 연결하지 않는다).
+   되돌리기: 이 게임의 커밋 revert.
+
+   ── REQ-56 §3-2 ───────────────────────────────────────────────────────────
+   · game.js 가 .tile 에 단계 클래스 t1~t7 (서버 tier 0~6 + 1) 을 붙인다. 표시용.
+   · 테 색(--rim · --rim2)은 .tN 에, **지름(--d)은 .tile.tN 에만** 둔다.
+     #mergeNext 는 54px 그대로 두고 테 색만 받는다(game.js 가 이전 t* 를 지운다).
+   · 메달 안 그림은 서버 이모지 그대로. 시안의 메달 그림 4종(밤·꿀단지·레몬·배)은 생략.
+   · 시안은 t1~t4 만 있다. t5~t7 의 테 색은 같은 계열로 이어 붙였다(장미·청자·백금).
+   · 기둥 상한이 최대 7칸이라 메달을 그대로 쌓으면 작은 화면에서 넘친다. 그래서
+     지름은 화면 높이에 비례(clamp)하고, 칸 수가 늘면 메달을 동전 더미처럼 겹친다
+     (:has 로 칸 수를 센다 — :has 가 없는 웹뷰는 겹침이 덜할 뿐 동작은 같다).
+
+   ── 색 (bg #2E2017 · surface #3E2C20) ────────────────────────────────────
+     --text-main #FFF6E5   bg 14.7:1
+     --text-sub  #D9C3A5   bg 9.2:1 · surface 7.8:1
+     --accent    #E8B64A   bg 8.4:1 · surface 7.1:1  (시안 accent 그대로 — 글자에 써도 됨)
+     --coral     #FF7D66   bg 6.3:1 · surface 5.3:1
+     놋쇠 명판(#E3C473 계열) 위 글자 #2B1D0E  9.9:1
+   ========================================================================== */
+
+body.game--merge3 {
+  --bg: #2E2017;
+  --void: #241811;
+  --surface: #3E2C20;
+  --surface-2: #362619;
+
+  --text-main: #FFF6E5;
+  --text-2: #F2E4CC;
+  --text-sub: #D9C3A5;
+  --text-dim: #D9C3A5;
+  --text-faint: #C2AA8A;
+
+  --accent: #E8B64A;
+  --accent-ink: #2B1D0E;
+  --accent-08: rgba(232, 182, 74, 0.08);
+  --accent-10: rgba(232, 182, 74, 0.1);
+  --accent-14: rgba(232, 182, 74, 0.14);
+  --accent-20: rgba(232, 182, 74, 0.2);
+  --accent-45: rgba(232, 182, 74, 0.45);
+
+  --coral: #FF7D66;
+  --danger: #FF7D66;
+
+  --theme-teal: #9FD3C7;
+  --theme-brass: linear-gradient(#EBCF80, #C9A24A 55%, #A8832F) #D2AE5A;
+  --theme-brass-ink: #2B1D0E;
+  --theme-display: "Sunflower", "Noto Sans KR", var(--sans);
+
+  /* 호두나무 세로 나뭇결 (3%) */
+  background:
+    repeating-linear-gradient(90deg,
+      rgba(255, 255, 255, 0.03) 0 2px, transparent 2px 9px,
+      rgba(0, 0, 0, 0.05) 9px 11px, transparent 11px 23px),
+    var(--bg);
+  background-color: var(--bg);
+}
+
+body.game--merge3 .headline {
+  font-family: var(--theme-display);
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.25;
+  word-break: keep-all;
+}
+body.game--merge3 .footnote,
+body.game--merge3 .footnote--dim { word-break: keep-all; }
+
+/* ══════════════════════════════════════════════════════════════
+   메달 테 색 — 단계별 (지름은 아래 .tile.tN 에만)
+   동(#B87333) → 은(#C9CED6) → 금(accent) → 청록(accent2) → 장미 → 청자 → 백금
+   ══════════════════════════════════════════════════════════════ */
+body.game--merge3 .t1 { --rim: #B87333; --rim2: #6D3F17; }
+body.game--merge3 .t2 { --rim: #C9CED6; --rim2: #7B828D; }
+body.game--merge3 .t3 { --rim: #E8B64A; --rim2: #9A6C14; }
+body.game--merge3 .t4 { --rim: #9FD3C7; --rim2: #3F867A; }
+body.game--merge3 .t5 { --rim: #E59AAE; --rim2: #94485D; }
+body.game--merge3 .t6 { --rim: #8FB8E8; --rim2: #3E6496; }
+body.game--merge3 .t7 { --rim: #F4E3A1; --rim2: #B08A2A; }
+
+/* ══════════════════════════════════════════════════════════════
+   플레이 — 쟁반 · 유리 튜브 · 메달
+   ══════════════════════════════════════════════════════════════ */
+
+/* 쟁반 */
+body.game--merge3 [data-screen="play"] .stage.merge {
+  position: relative;
+  gap: 6px;
+  padding-top: 12px;
+  border-radius: 26px;
+  border: 3px solid #5B4430;
+  background: linear-gradient(#4B3524, #3A291D);
+  box-shadow: inset 0 6px 14px rgba(0, 0, 0, 0.45), 0 4px 0 #1A100A;
+}
+
+/* 다음 메달 — 크기는 base 54px 그대로, 테 색만 단계에 맞춘다 */
+body.game--merge3 #mergeNext {
+  position: relative;
+  isolation: isolate;
+  border-radius: 50%;
+  border: 0;
+  background: radial-gradient(circle at 35% 28%, color-mix(in srgb, var(--rim, #B87333) 70%, #fff), var(--rim, #B87333) 55%, var(--rim2, #6D3F17));
+  box-shadow: 0 3px 0 rgba(0, 0, 0, 0.45);
+}
+body.game--merge3 #mergeNext::before {
+  content: "";
+  position: absolute;
+  inset: 5px;
+  z-index: -1;
+  border-radius: 50%;
+  background: radial-gradient(circle at 40% 30%, #FFF8E8, #E9D6B0);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* 낙하 안내 점선 */
+body.game--merge3 .m3-drop {
+  position: relative;
+  width: 0;
+  height: 20px;
+  border-left: 3px dashed rgba(255, 246, 229, 0.55);
+  pointer-events: none;
+}
+body.game--merge3 .m3-drop::after {
+  content: "";
+  position: absolute;
+  left: -8px;
+  bottom: -6px;
+  border: 6.5px solid transparent;
+  border-top: 8px solid rgba(255, 246, 229, 0.7);
+  border-bottom: 0;
+}
+
+/* 기둥 = 유리 튜브 (버튼 영역은 base 그대로 — 기둥 전체가 탭 대상) */
+body.game--merge3 .merge__cols {
+  /* 메달 기준 지름 — 화면 높이에 비례. t7 은 이 값의 1.6배 */
+  --m3-d: clamp(34px, 6vh, 50px);
+}
+body.game--merge3 .pillar {
+  position: relative;
+  isolation: isolate;
+  justify-content: flex-end;
+  gap: 6px;
+  min-height: calc(var(--m3-d) * 4.6 + 40px);
+  padding: 22px 4px 6px;
+  border: 0;
+  border-radius: 0 0 18px 18px;
+  background: none;
+  color: inherit;
+}
+/* 유리 몸통 */
+body.game--merge3 .pillar::before {
+  content: "";
+  position: absolute;
+  inset: 10px 0 32px;
+  z-index: -1;
+  border: 3px solid rgba(255, 255, 255, 0.5);
+  border-top: 0;
+  border-radius: 0 0 18px 18px;
+  background: linear-gradient(90deg,
+    rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.04) 22%,
+    rgba(255, 255, 255, 0.02) 70%, rgba(255, 255, 255, 0.14));
+  pointer-events: none;
+}
+/* 위쪽 타원 입구 */
+body.game--merge3 .pillar::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 20px;
+  border-radius: 50%;
+  border: 3px solid rgba(255, 255, 255, 0.6);
+  background: rgba(255, 255, 255, 0.07);
+  pointer-events: none;
+}
+body.game--merge3 .pillar:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+
+/* 상태 규칙을 같은 범위로 다시 선언 (REQ-56 §1-3) — 꽉 찬 튜브는 입구 띠가 빨개진다 */
+body.game--merge3 .pillar:active { background: rgba(255, 246, 229, 0.06); }
+body.game--merge3 .pillar.is-full::after {
+  border-color: #E5392A;
+  background: rgba(229, 57, 42, 0.4);
+  box-shadow: 0 0 0 3px rgba(229, 57, 42, 0.4);
+}
+body.game--merge3 .pillar.is-full::before { border-color: rgba(255, 125, 102, 0.75); }
+
+/* 놋쇠 명판 n/상한 (10px → 13px) */
+body.game--merge3 .pillar__cap {
+  position: relative;
+  z-index: 1;
+  align-self: stretch;
+  margin: 4px 8px 0;
+  padding: 3px 0;
+  border-radius: 5px;
+  border: 2px solid #7D5F1C;
+  background: var(--theme-brass);
+  color: var(--theme-brass-ink);
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+}
+body.game--merge3 .pillar.is-full .pillar__cap {
+  background: linear-gradient(#FFB0A3, #E5584A) #F07F70;
+  border-color: #8A1F15;
+  color: #2B0A06;
+}
+
+body.game--merge3 .pillar__stack {
+  align-items: center;
+  gap: 0;
+}
+
+/* 메달 */
+body.game--merge3 .tile {
+  --d: var(--m3-d);
+  position: relative;
+  isolation: isolate;
+  width: var(--d);
+  height: var(--d);
+  flex: none;
+  border: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 28%, color-mix(in srgb, var(--rim, #B87333) 70%, #fff), var(--rim, #B87333) 55%, var(--rim2, #6D3F17));
+  box-shadow: 0 3px 0 rgba(0, 0, 0, 0.45);
+  font-size: calc(var(--d) * 0.44);
+  line-height: 1;
+}
+body.game--merge3 .tile::before {
+  content: "";
+  position: absolute;
+  inset: 11%;
+  z-index: -1;
+  border-radius: 50%;
+  background: radial-gradient(circle at 40% 30%, #FFF8E8, #E9D6B0);
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+/* 지름 — 단계마다 10%씩 (시안 56→62→68→74px 의 비율) */
+body.game--merge3 .tile.t1 { --d: var(--m3-d); }
+body.game--merge3 .tile.t2 { --d: calc(var(--m3-d) * 1.1); }
+body.game--merge3 .tile.t3 { --d: calc(var(--m3-d) * 1.2); }
+body.game--merge3 .tile.t4 { --d: calc(var(--m3-d) * 1.3); }
+body.game--merge3 .tile.t5 { --d: calc(var(--m3-d) * 1.4); }
+body.game--merge3 .tile.t6 { --d: calc(var(--m3-d) * 1.5); }
+body.game--merge3 .tile.t7 { --d: calc(var(--m3-d) * 1.6); }
+
+/* 칸이 늘면 동전 더미처럼 겹친다 (위 메달이 아래 메달의 윗부분을 덮는다) */
+body.game--merge3 .pillar__stack > .tile + .tile { margin-bottom: calc(var(--d) * -0.12); }
+body.game--merge3 .pillar__stack:has(> .tile:nth-child(5)) > .tile + .tile { margin-bottom: calc(var(--d) * -0.3); }
+body.game--merge3 .pillar__stack:has(> .tile:nth-child(6)) > .tile + .tile { margin-bottom: calc(var(--d) * -0.34); }
+
+/* ── HUD — 최고 등급 + 놋쇠 명판 두 개 ──────────────────────────── */
+body.game--merge3 [data-screen="play"] .hud { gap: 8px; }
+body.game--merge3 [data-screen="play"] .hud__label { font-size: 12px; }
+body.game--merge3 [data-screen="play"] .hud__item:not(:first-child) {
+  padding: 4px 10px;
+  border-radius: 8px;
+  border: 2px solid #7D5F1C;
+  background: var(--theme-brass);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5), 0 2px 0 rgba(0, 0, 0, 0.4);
+}
+body.game--merge3 [data-screen="play"] .hud__item:not(:first-child) .hud__label {
+  color: #4A3510;
+  font-weight: 700;
+}
+body.game--merge3 [data-screen="play"] .hud__item:not(:first-child) .hud__value { color: var(--theme-brass-ink); }
+body.game--merge3 [data-screen="play"] .hud__item:first-child .hud__value {
+  font-family: var(--theme-display);
+  font-weight: 700;
+}
+
+body.game--merge3 #playHint { color: var(--text-sub); }
+
+/* ── 12px 미만 글자 올리기 (REQ-56 §1-4 · §1-5) — 광고 박스 크기는 그대로, 줄바꿈만 허용 ── */
+body.game--merge3 .reward__desc,
+body.game--merge3 .reward__note,
+body.game--merge3 .stat__label,
+body.game--merge3 .chart__caption { font-size: 12px; }
+body.game--merge3 .reward__note { opacity: 1; color: var(--text-sub); }
+
+@media (prefers-reduced-motion: reduce) {
+  body.game--merge3 #mergeNext,
+  body.game--merge3 .tile { animation: none; }
+}

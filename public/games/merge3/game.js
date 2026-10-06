@@ -86,9 +86,19 @@ function renderRound(round) {
 
   $("#mergeNext").textContent = round.next.icon;
   $("#mergeNext").setAttribute("aria-label", `다음: ${round.next.name}`);
+  // 메달 테 색만 단계에 맞춥니다(표시용 · REQ-56 §3-2). 크기는 54px 그대로 — 이전 t* 는 지웁니다
+  const nextEl = $("#mergeNext");
+  [...nextEl.classList].filter((c) => /^t\d+$/.test(c)).forEach((c) => nextEl.classList.remove(c));
+  nextEl.classList.add(tierClass(round.next.tier));
   $("#playHint").textContent = `${round.next.name} — 같은 것 위에 놓으면 커집니다 (상한 ${round.height})`;
 
   drawCols(round);
+}
+
+/** 메달 단계 클래스 t1~t7 (서버 tier 0~6 → 표시용. 판정과 무관) */
+function tierClass(tier) {
+  const n = Number.isFinite(tier) ? Math.min(Math.max(tier, 0), 6) + 1 : 1;
+  return `t${n}`;
 }
 
 function drawCols(round) {
@@ -97,7 +107,7 @@ function drawCols(round) {
     const stack = el("span", { class: "pillar__stack" });
     // 아래에서 위로 쌓이므로 역순으로 그립니다
     [...col].reverse().forEach((t) => {
-      stack.append(el("span", { class: "tile", title: t.name }, t.icon));
+      stack.append(el("span", { class: `tile ${tierClass(t.tier)}`, title: t.name }, t.icon));
     });
 
     const full = col.length >= round.height;
