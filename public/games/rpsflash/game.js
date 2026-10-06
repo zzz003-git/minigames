@@ -21,6 +21,36 @@ const HAND_NAME = { rock: "바위", scissors: "가위", paper: "보" };
 const ORDER_TEXT = { WIN: "이겨라", LOSE: "져라", DRAW: "비겨라" };
 const ORDER_CLASS = { WIN: "order-badge--win", LOSE: "order-badge--lose", DRAW: "order-badge--draw" };
 
+/**
+ * 손 그림 (REQ-56 §3-1).
+ * 페이지를 열 때 3장을 decode 까지 끝내 두고, **그림을 쓸지는 런 시작 때 한 번만** 정합니다.
+ * 문항마다 src 를 바꾸지 않고 미리 만든 <img> 를 보임/숨김으로만 바꿉니다 — 첫 문항부터
+ * 그림이 나와야 하고, 문항 시작 시각(qt0)이 그림을 기다리면 안 되기 때문입니다.
+ * 그림을 못 쓰면 지금처럼 이모지입니다.
+ *
+ * ⚠ HAND_ART 는 47px 시트 판정(REQ-60 §1) 전이라 비워 둡니다 — 비어 있으면 이모지로 돕니다.
+ *   판정이 나면 아래 세 줄의 경로만 채우면 됩니다(img/hand_*.v1.png).
+ */
+const HAND_ART = {
+  // rock: "/games/rpsflash/img/hand_rock.v1.png",
+  // scissors: "/games/rpsflash/img/hand_scissors.v1.png",
+  // paper: "/games/rpsflash/img/hand_paper.v1.png",
+};
+const art = { ready: false };
+
+async function prepareHandArt() {
+  const imgs = [...document.querySelectorAll(".rps-hand-art")];
+  if (!imgs.length || imgs.some((img) => !HAND_ART[img.dataset.hand])) return;
+  try {
+    for (const img of imgs) img.src = HAND_ART[img.dataset.hand];
+    await Promise.all(imgs.map((img) => img.decode()));
+    art.ready = true;
+  } catch {
+    art.ready = false; // 하나라도 못 불러오면 이번 페이지는 이모지
+  }
+}
+prepareHandArt();
+
 /** 상대 손 기준: 이기는 손 / 지는 손 */
 const BEATS = { rock: "scissors", scissors: "paper", paper: "rock" };
 const LOSES_TO = { rock: "paper", scissors: "rock", paper: "scissors" };
@@ -45,6 +75,7 @@ const state = {
   qt0: 0,
   itemTimer: 0,
   locked: true,
+  useArt: false,
 };
 
 let lastResult = null;
@@ -100,8 +131,10 @@ async function startRun() {
       boosts: 0,
       maxBoosts: res.max_boosts,
       t0: performance.now(),
+      useArt: art.ready, // 런 도중에는 바꾸지 않습니다
     });
 
+    $("#handBox").classList.toggle("is-art", state.useArt);
     buildChoices();
     clearRewards();
     showScreen("play");
@@ -145,6 +178,10 @@ function renderItem() {
   order.className = `order-badge ${ORDER_CLASS[item.order]}`;
 
   $("#hand").textContent = EMOJI[item.hand];
+  $("#handBox").setAttribute("aria-label", `상대 손: ${HAND_NAME[item.hand]}`);
+  if (state.useArt) {
+    for (const img of document.querySelectorAll(".rps-hand-art")) img.hidden = img.dataset.hand !== item.hand;
+  }
   $("#hudStreak").textContent = String(state.streak);
   $("#hudLimit").textContent = `${(item.limit_ms / 1000).toFixed(1)}s`;
   setHeaderBadge(String(state.streak));

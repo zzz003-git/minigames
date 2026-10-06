@@ -12,14 +12,16 @@
   <link rel="mask-icon" href="/safari-pinned-tab.svg" color="#E07A1F">
   <link rel="manifest" href="/site.webmanifest">
   <title>이겨라 / 져라</title>
-  <meta name="color-scheme" content="dark">
-  <meta name="theme-color" content="#0F1420">
+  <meta name="color-scheme" content="light">
+  <meta name="theme-color" content="#FFC92E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=JetBrains+Mono:wght@400;500;700&family=Bagel+Fat+One&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../../shared/base.css">
+  <link rel="stylesheet" href="../../shared/theme-light.css">
+  <link rel="stylesheet" href="theme.css">
 </head>
-<body class="game game--accent-mint">
+<body class="game game--accent-mint game--rpsflash theme-light">
   <script src="../../shared/splash.js"></script>
   <div class="app">
     <header class="topbar" id="header"></header>
@@ -75,7 +77,14 @@
 
         <div class="card card--center card--hero">
           <span class="order-badge" id="order">—</span>
-          <div class="rps-hand" id="hand">✊</div>
+          <!-- 상대 손. 읽어 주는 이름은 #handBox 의 aria-label(문항마다 갱신)이 맡습니다.
+               그림을 쓰는 런이면 .is-art — 미리 decode 한 <img> 3장을 보임/숨김으로만 바꿉니다(REQ-56 §3-1) -->
+          <div class="rps-handbox" id="handBox" role="img" aria-label="상대 손">
+            <div class="rps-hand" id="hand" aria-hidden="true">✊</div>
+            <img class="rps-hand-art" data-hand="rock" alt="" aria-hidden="true" hidden>
+            <img class="rps-hand-art" data-hand="scissors" alt="" aria-hidden="true" hidden>
+            <img class="rps-hand-art" data-hand="paper" alt="" aria-hidden="true" hidden>
+          </div>
         </div>
 
         <div class="timebar"><div class="timebar__fill" id="itembar"></div></div>
