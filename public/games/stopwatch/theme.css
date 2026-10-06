@@ -1,0 +1,209 @@
+/* ==========================================================================
+   ① 스탑워치 챌린지 — 게임별 디자인 「육상 기록원의 스톱워치」 (REQ-56 · 2026-10-06)
+   시안: reward-minigame-research/plans/2026-10-06/게임별디자인/mock/stopwatch.html
+   ==========================================================================
+
+   연결: base.css → theme-light.css → 이 파일.  되돌리기: 이 게임의 커밋 revert.
+
+   ── 색 ────────────────────────────────────────────────────────────────────
+   시안 accent #D9480F 는 바탕 대비 3.85:1 이라 글자색(--accent)으로 못 쓴다
+   (base.css 가 --accent 를 글자색으로 22곳에 쓴다). 그래서 둘로 나눈다.
+     --accent      #B83A0A  글자·테두리용 (바탕 5.16:1)
+     --theme-fill  #D9480F  면·발광 전용 (트랙 바닥·STOP 버튼·지금 지점)
+   ========================================================================== */
+
+body.game--stopwatch {
+  --bg: #FFF0E3;
+  --void: #F6E2D0;
+  --surface: #FFFFFF;
+  --surface-2: #FFF8F1;
+
+  --text-main: #241A12;
+  --text-2: #3A2B1F;
+  --text-sub: #6B5444;   /* bg 6.32:1 · surface 7.05:1 */
+  --text-dim: #6B5444;
+  --text-faint: #7A6352; /* bg 5.0:1 */
+
+  --accent: #B83A0A;
+  --accent-ink: #FFFFFF; /* accent 위 흰 글자 5.6:1 */
+  --accent-08: rgba(217, 72, 15, 0.08);
+  --accent-10: rgba(217, 72, 15, 0.1);
+  --accent-14: rgba(217, 72, 15, 0.14);
+  --accent-20: rgba(217, 72, 15, 0.22);
+  --accent-45: rgba(217, 72, 15, 0.45);
+
+  --coral: #C62828;      /* 오답·경고색 (bg 5.04:1) */
+  --danger: #C62828;
+
+  --theme-fill: #D9480F;
+  --theme-target: #1F5FBF; /* 목표 지점 파랑 (bg 5.46:1) */
+  --theme-display: "Orbit", "Noto Sans KR", var(--sans);
+
+  background: var(--bg);
+}
+
+/* ── 제목 서체 ──────────────────────────────────────────────────────────── */
+body.game--stopwatch .topbar__title,
+body.game--stopwatch .headline {
+  font-family: var(--theme-display);
+  word-break: keep-all;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   플레이 화면 — 트랙 위의 스톱워치
+   ══════════════════════════════════════════════════════════════ */
+
+body.game--stopwatch [data-screen="running"] {
+  position: relative;
+  isolation: isolate;
+  gap: 14px;
+  padding-bottom: 18px;
+}
+
+/* 트랙 바닥 — 화면 아래 1/4. 장식이라 누를 수 없고 내용 뒤에 깔린다 */
+.sw-track {
+  position: absolute;
+  left: calc(var(--pad-x) * -1);
+  right: calc(var(--pad-x) * -1);
+  bottom: 0;
+  height: 26%;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.05) 0 2px, transparent 2px 6px),
+    var(--theme-fill);
+  border-radius: 18px 18px 0 0;
+  overflow: hidden;
+}
+.sw-track i {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.92);
+}
+.sw-track i:nth-child(1) { top: 25%; }
+.sw-track i:nth-child(2) { top: 50%; }
+.sw-track i:nth-child(3) { top: 75%; }
+.sw-track::before {        /* 출발선 */
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 9%;
+  width: 6px;
+  background: #fff;
+}
+
+/* 목표 표지 — 왼쪽 주황 띠가 붙은 흰 팻말 */
+body.game--stopwatch #runningTarget {
+  align-self: flex-start;
+  padding: 7px 16px 7px 12px;
+  background: var(--surface);
+  border-left: 8px solid var(--theme-fill);
+  border-radius: 4px 10px 10px 4px;
+  box-shadow: 0 2px 0 rgba(36, 26, 18, 0.18);
+  font-family: var(--theme-display);
+  font-size: 18px;
+  letter-spacing: 0.02em;
+  color: var(--text-main);
+}
+
+/* 본체 — 화면 폭 72% · 높이가 낮은 화면에서는 높이 기준으로 줄인다 */
+.sw-watch {
+  --sw: min(72vw, 300px, 40vh);
+  position: relative;
+  width: var(--sw);
+  aspect-ratio: 300 / 340;
+  flex: none;
+}
+.sw-watch__svg { display: block; width: 100%; height: 100%; }
+
+.sw-tick { stroke: #241A12; stroke-width: 1.2; }
+.sw-tick--major { stroke-width: 2.4; }
+.sw-num { font-family: var(--mono); font-weight: 700; font-size: 15px; fill: #6B5444; }
+.sw-arc { stroke: var(--theme-fill); }
+.sw-now { fill: var(--theme-fill); }
+.sw-target { fill: var(--theme-target); }
+
+/* LCD 창 안의 숫자 — 창(85,165 · 130×52)의 위치를 비율로 맞춘다 */
+body.game--stopwatch #timerMain {
+  position: absolute;
+  left: 28.33%;
+  top: 48.53%;
+  width: 43.33%;
+  height: 15.29%;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  font-size: calc(var(--sw) * 0.125);
+  line-height: 1;
+  letter-spacing: 0.02em;
+  color: var(--text-main);
+}
+
+.sw-legend {
+  display: flex;
+  justify-content: center;
+  gap: 18px;
+  font-size: 13px;
+  color: var(--text-sub);
+}
+.sw-legend span { display: inline-flex; align-items: center; gap: 5px; }
+.sw-legend__target {
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 11px solid var(--theme-target);
+}
+.sw-legend__now {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: var(--theme-fill);
+}
+
+/* STOP — 주황 큰 버튼. 글자는 진한 먹색(큰 글자 3.97:1) */
+body.game--stopwatch .stop-circle {
+  width: min(118px, 30vw, 15vh);
+  min-width: 88px;
+  background: var(--theme-fill);
+  border: 4px solid var(--text-main);
+  box-shadow: 0 6px 0 var(--text-main);
+  color: var(--text-main);
+  font-family: var(--theme-display);
+  font-size: clamp(20px, 6.4vw, 26px);
+  letter-spacing: 0.04em;
+}
+body.game--stopwatch .stop-circle:hover:not(:disabled) { background: #E2541C; }
+body.game--stopwatch .stop-circle:active:not(:disabled) {
+  transform: translateY(4px);
+  box-shadow: 0 2px 0 var(--text-main);
+}
+
+/* 안내 — 트랙 위 흰 알약 */
+body.game--stopwatch #stopHint {
+  padding: 8px 18px;
+  background: var(--surface);
+  border-radius: 22px;
+  color: var(--text-main);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   시작 · 결과 · 통계 — 토큰으로만 바꾼다
+   ══════════════════════════════════════════════════════════════ */
+
+body.game--stopwatch .card--target {
+  border-left: 8px solid var(--theme-fill);
+}
+body.game--stopwatch #targetDisplay,
+body.game--stopwatch #resultElapsed {
+  color: var(--text-main);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body.game--stopwatch .stop-circle:active:not(:disabled) { transform: none; }
+}

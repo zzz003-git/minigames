@@ -12,14 +12,16 @@
   <link rel="mask-icon" href="/safari-pinned-tab.svg" color="#E07A1F">
   <link rel="manifest" href="/site.webmanifest">
   <title>스탑워치 챌린지</title>
-  <meta name="color-scheme" content="dark">
-  <meta name="theme-color" content="#0F1420">
+  <meta name="color-scheme" content="light">
+  <meta name="theme-color" content="#FFF0E3">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=JetBrains+Mono:wght@400;500;700&family=Orbit&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../../shared/base.css">
+  <link rel="stylesheet" href="../../shared/theme-light.css">
+  <link rel="stylesheet" href="theme.css">
 </head>
-<body class="game game--stopwatch">
+<body class="game game--stopwatch theme-light">
   <script src="../../shared/splash.js"></script>
   <div class="app">
     <header class="topbar" id="header"></header>
@@ -51,8 +53,43 @@
 
       <!-- 화면② 플레이 -->
       <section class="screen screen--center" data-screen="running">
+        <!-- 트랙 바닥 · 레인 — 장식(REQ-56 §3-3) -->
+        <div class="sw-track" aria-hidden="true"><i></i><i></i><i></i></div>
+
         <div class="mono-note" id="runningTarget">목표 —</div>
-        <div class="figure figure--play" id="timerMain">0.00</div>
+
+        <!-- 본체 다이얼: 한 바퀴 = 10초. 목표(▲)와 지금(●)은 game.js 가 그린다 -->
+        <div class="sw-watch">
+          <svg class="sw-watch__svg" viewBox="0 0 300 340" aria-hidden="true">
+            <defs>
+              <linearGradient id="swChrome" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stop-color="#F4F6F8"/><stop offset=".35" stop-color="#B9C0C8"/>
+                <stop offset=".6" stop-color="#E9EDF1"/><stop offset="1" stop-color="#8E979F"/>
+              </linearGradient>
+              <linearGradient id="swChrome2" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0" stop-color="#8E979F"/><stop offset=".5" stop-color="#F2F4F6"/><stop offset="1" stop-color="#8E979F"/>
+              </linearGradient>
+            </defs>
+            <rect x="128" y="8" width="44" height="40" rx="6" fill="url(#swChrome2)" stroke="#6F7880" stroke-width="2"/>
+            <rect x="136" y="2" width="28" height="12" rx="4" fill="url(#swChrome2)" stroke="#6F7880" stroke-width="2"/>
+            <rect x="140" y="44" width="20" height="22" fill="#9AA2AA"/>
+            <rect x="140" y="26" width="20" height="26" rx="4" fill="url(#swChrome2)" stroke="#6F7880" stroke-width="2" transform="rotate(42 150 190)"/>
+            <circle cx="150" cy="190" r="140" fill="url(#swChrome)" stroke="#6F7880" stroke-width="3"/>
+            <circle cx="150" cy="190" r="126" fill="#fff" stroke="#6F7880" stroke-width="2"/>
+            <g id="swTicks"></g>
+            <path id="swArc" class="sw-arc" d="" fill="none" stroke-width="8" stroke-linecap="round"/>
+            <polygon id="swTarget" class="sw-target" points="0,-9 8,6 -8,6" stroke="#fff" stroke-width="2"/>
+            <circle id="swNow" class="sw-now" cx="150" cy="88" r="7" stroke="#fff" stroke-width="2"/>
+            <rect x="85" y="165" width="130" height="52" rx="8" fill="#E8EFE0" stroke="#241A12" stroke-width="2.5"/>
+          </svg>
+          <div class="figure figure--play" id="timerMain">0.00</div>
+        </div>
+
+        <div class="sw-legend" aria-hidden="true">
+          <span><i class="sw-legend__target"></i>목표 지점</span>
+          <span><i class="sw-legend__now"></i>지금 지점</span>
+        </div>
+
         <button class="stop-circle" id="stopBtn">STOP</button>
         <div class="footnote--dim center" id="stopHint">버튼을 누르면 즉시 정지합니다</div>
       </section>

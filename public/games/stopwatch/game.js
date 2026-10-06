@@ -22,9 +22,14 @@ const state = {
   lastResult: null,
 };
 
+/** 다이얼 기하 — 본체 SVG(viewBox 300×340)의 좌표. 한 바퀴 = 10초 */
+const DIAL = { cx: 150, cy: 190, lap: 10000, arcR: 102, markR: 119 };
+const SVG_NS = "http://www.w3.org/2000/svg";
+
 // ── 초기화 ───────────────────────────────────────────────────
 
 renderHeader($("#header"), { icon: "⏱", title: "스탑워치 챌린지" });
+buildDial();
 
 $("#startBtn").addEventListener("click", onStart);
 $("#stopBtn").addEventListener("click", onStop);
@@ -62,6 +67,7 @@ async function loadChallenge() {
     setFigure($("#targetDisplay"), ms2(res.target_ms), "초");
     $("#startBtn").disabled = false;
     $("#runningTarget").textContent = `목표 ${ms2(res.target_ms)}초`;
+    placeTarget(res.target_ms);
     renderAttempts();
     renderRewards("ready");
   } catch (err) {
@@ -111,6 +117,7 @@ function onStart() {
     // arm 이 실패해도 게임은 진행됩니다. 서버는 세션 생성 시각 기준으로 느슨하게 검증합니다.
   });
 
+  drawNow(0);
   showScreen("running");
   tick();
 }
@@ -118,7 +125,74 @@ function onStart() {
 function tick() {
   const elapsed = performance.now() - state.t0;
   $("#timerMain").textContent = (elapsed / 1000).toFixed(2);
+  drawNow(elapsed);
   state.raf = requestAnimationFrame(tick);
+}
+
+// ── 다이얼 (표시만 — 측정·판정과 무관) ─────────────────────────
+//
+// 한 바퀴 = 10초. 목표 타임이 1.00~9.99초라 목표 지점이 늘 첫 바퀴 안에 있다.
+// 10초를 넘기면 호는 한 바퀴로 멈추고 점만 계속 돈다.
+// (DIAL·SVG_NS 는 초기화에서 buildDial() 이 바로 쓰므로 파일 위쪽 state 옆에 둔다)
+
+/** 12시 기준 시계 방향 비율(0~1)의 원 위 점 */
+function dialPoint(frac, r) {
+  const a = frac * 2 * Math.PI;
+  return [DIAL.cx + r * Math.sin(a), DIAL.cy - r * Math.cos(a)];
+}
+
+function buildDial() {
+  const host = $("#swTicks");
+  if (!host) return;
+  // 0.2초 간격 50눈금 · 1초마다 굵게 · 0/2.5/5/7.5 숫자
+  for (let i = 0; i < 50; i++) {
+    const major = i % 5 === 0;
+    const [x1, y1] = dialPoint(i / 50, 112);
+    const [x2, y2] = dialPoint(i / 50, major ? 100 : 106);
+    const line = document.createElementNS(SVG_NS, "line");
+    line.setAttribute("x1", x1.toFixed(1));
+    line.setAttribute("y1", y1.toFixed(1));
+    line.setAttribute("x2", x2.toFixed(1));
+    line.setAttribute("y2", y2.toFixed(1));
+    line.setAttribute("class", major ? "sw-tick sw-tick--major" : "sw-tick");
+    host.append(line);
+  }
+  for (const [frac, label] of [[0, "0"], [0.25, "2.5"], [0.5, "5"], [0.75, "7.5"]]) {
+    const [x, y] = dialPoint(frac, 84);
+    const t = document.createElementNS(SVG_NS, "text");
+    t.setAttribute("x", x.toFixed(1));
+    t.setAttribute("y", (y + 5).toFixed(1));
+    t.setAttribute("text-anchor", "middle");
+    t.setAttribute("class", "sw-num");
+    t.textContent = label;
+    host.append(t);
+  }
+  drawNow(0);
+}
+
+function placeTarget(targetMs) {
+  const mark = $("#swTarget");
+  if (!mark) return;
+  const frac = (targetMs % DIAL.lap) / DIAL.lap;
+  const [x, y] = dialPoint(frac, DIAL.markR);
+  // 삼각형 꼭짓점이 다이얼 중심을 향하도록 돌린다
+  mark.setAttribute("transform", `translate(${x.toFixed(1)} ${y.toFixed(1)}) rotate(${(frac * 360 + 180).toFixed(1)})`);
+}
+
+function drawNow(elapsedMs) {
+  const arc = $("#swArc");
+  const dot = $("#swNow");
+  if (!arc || !dot) return;
+  const lapFrac = Math.min(elapsedMs / DIAL.lap, 0.9999);
+  const [sx, sy] = dialPoint(0, DIAL.arcR);
+  const [ex, ey] = dialPoint(lapFrac, DIAL.arcR);
+  arc.setAttribute(
+    "d",
+    `M${sx.toFixed(1)} ${sy.toFixed(1)} A${DIAL.arcR} ${DIAL.arcR} 0 ${lapFrac > 0.5 ? 1 : 0} 1 ${ex.toFixed(1)} ${ey.toFixed(1)}`,
+  );
+  const [dx, dy] = dialPoint((elapsedMs % DIAL.lap) / DIAL.lap, DIAL.arcR);
+  dot.setAttribute("cx", dx.toFixed(1));
+  dot.setAttribute("cy", dy.toFixed(1));
 }
 
 async function onStop() {
