@@ -96,12 +96,18 @@ export function startRitual({ stage, node, hint, reduced }) {
   // 고른 카드 자리에서 시작해 가운데로 떠오른다
   const sr = stage.getBoundingClientRect();
   const nr = node.getBoundingClientRect();
-  card.style.transition = "none";
-  card.style.left = `${nr.left - sr.left + nr.width / 2}px`;
-  card.style.top = `${nr.top - sr.top + nr.height / 2}px`;
-  card.style.transform = `translate(-50%, -50%) scale(${(nr.width / 96).toFixed(3)})`;
-  void card.offsetWidth;
-  card.style.transition = "";
+  // 화면이 숨은 채(탭 전환 · 의식 도중 뒤로가기) 여기 오면 둘 다 0×0 입니다. 그 값으로 출발점을
+  // 잡으면 카드가 무대 왼쪽 위에서 scale(0) 으로 시작합니다 — 떠오르는 연출만 건너뛰고
+  // 가운데에서 바로 시작합니다. 의식과 카드 공개는 그대로 이어집니다(REQ-61)
+  const skipRise = !sr.width || !nr.width;
+  if (!skipRise) {
+    card.style.transition = "none";
+    card.style.left = `${nr.left - sr.left + nr.width / 2}px`;
+    card.style.top = `${nr.top - sr.top + nr.height / 2}px`;
+    card.style.transform = `translate(-50%, -50%) scale(${(nr.width / 96).toFixed(3)})`;
+    void card.offsetWidth;
+    card.style.transition = "";
+  }
   card.style.left = "50%";
   card.style.top = "50%";
   card.style.transform = "translate(-50%, -50%) scale(1.45)";
