@@ -1,0 +1,219 @@
+/* ==========================================================================
+   행운의 클로버 — 게임별 디자인 「이른 아침 클로버 들판」 (REQ-56 · REQ-57 ⑤ · 2026-10-06)
+   시안: reward-minigame-research/plans/2026-10-06/게임별디자인/mock/clover.html
+   ==========================================================================
+
+   연결: base.css → theme-light.css → 이 파일.  되돌리기: 이 게임의 커밋 revert.
+
+   ── 칸 크기를 건드리지 않는다 (REQ-11 · REQ-57 ⑤) ──────────────────────────
+   game.js 는 #cvStage 의 바깥 사각형으로 칸 크기(--cv-tile)를 정한다. 그래서
+   판이 도는 동안의 덩어리(플레이바·판·배너)에는 **높이·여백·테두리 두께를 바꾸는
+   규칙을 하나도 두지 않는다.** 색·그림자·장식(의사 요소)만 바꾼다.
+   작은 화면 규칙(body.cv-playing … max-height:700px)의 글자 크기도 덮지 않는다.
+
+   ── 색 ────────────────────────────────────────────────────────────────────
+   시안 accent #F2C230(햇빛 노랑)은 글자색으로 못 쓴다. 점수 숫자는 진한 황토
+   #6E4B00(바탕 5.86:1), 면·발광에만 노랑을 쓴다.
+   ========================================================================== */
+
+body.game--clover {
+  --bg: #CFE7A6;
+  --void: #BFDC90;
+  --surface: #FFFBEF;
+  --surface-2: #FFFBEF;
+
+  --text-main: #1E3311;  /* bg 10.17:1 */
+  --text-2: #2B4419;
+  --text-sub: #4A5A33;   /* bg 5.58:1 · surface 7.25:1 */
+  --text-dim: #4A5A33;
+  --text-faint: #4A5A33;
+
+  --accent: #2F6B1E;     /* 글자·테두리용 진초록 (bg 4.82:1) */
+  --accent-ink: #FFFFFF; /* 6.48:1 */
+  --accent-08: rgba(94, 154, 58, 0.08);
+  --accent-10: rgba(94, 154, 58, 0.12);
+  --accent-14: rgba(94, 154, 58, 0.16);
+  --accent-20: rgba(94, 154, 58, 0.26);
+  --accent-45: rgba(94, 154, 58, 0.5);
+
+  --coral: #B3261E;
+  --danger: #B3261E;
+  --mint: #5E9A3A;       /* base.css 가 클로버 강조에 --mint 를 직접 쓰는 곳(꽉 찬 통 등) */
+
+  --theme-fill: #F2C230;
+  --theme-field: #E9F4D2;
+  --theme-leaf: #5E9A3A;
+  --theme-wood: #7A5A2E;
+  --theme-score: #6E4B00;
+
+  background:
+    radial-gradient(120% 40% at 50% 0%, #F6FAE9 0%, rgba(246, 250, 233, 0) 70%),
+    linear-gradient(#DDEEBE 0%, var(--bg) 38%, #B9DA8A 100%) fixed;
+}
+
+/* ── 연쇄 잔광 · 합쳐진 「10」 — 민트 → 햇빛 노랑 (README_clover 남은 과제) ──── */
+body.game--clover #cvGlow {
+  background: radial-gradient(ellipse at center, transparent 45%, rgba(255, 226, 110, 0.42) 100%);
+}
+body.game--clover .cv-merge__head {
+  filter: drop-shadow(0 0 16px rgba(255, 226, 110, 0.75)) drop-shadow(0 6px 12px rgba(30, 51, 17, 0.35));
+}
+body.game--clover .cv-merge__gain {
+  background: var(--theme-fill);
+  color: var(--text-main);
+  box-shadow: 0 0.02em 0.05em rgba(30, 51, 17, 0.35);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   판이 도는 동안 — 나무 팻말 · 햇빛 시간 길 · 바구니 · 클로버 밭
+   ══════════════════════════════════════════════════════════════ */
+
+/* 나무 팻말. 두께는 base 그대로(1px) 두고 굵기는 그림자로 낸다 */
+body.game--clover .cv-playbar {
+  position: relative;
+  background: var(--surface);
+  border-color: var(--theme-wood);
+  box-shadow: 0 0 0 1.5px var(--theme-wood), 0 4px 0 rgba(122, 90, 46, 0.35);
+}
+body.game--clover .cv-playbar::before,
+body.game--clover .cv-playbar::after {   /* 못 두 개 */
+  content: "";
+  position: absolute;
+  top: -5px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #A07A45;
+  box-shadow: 0 0 0 1.5px var(--theme-wood);
+  pointer-events: none;
+}
+body.game--clover .cv-playbar::before { left: 22px; }
+body.game--clover .cv-playbar::after { right: 22px; }
+
+/* 나가기 ✕ — 보이는 크기는 그대로, 누르는 영역만 44px 이상 (REQ-57 ⑤).
+   28px(작은 화면 25px) 버튼의 사방으로 10px 씩 넓힌다 → 48px(45px). */
+body.game--clover .cv-playbar__x {
+  position: relative;
+  background: #F3E7C9;
+  color: var(--text-main);
+  box-shadow: 0 0 0 1.5px var(--theme-wood);
+}
+body.game--clover .cv-playbar__x::before {
+  content: "";
+  position: absolute;
+  inset: -10px;
+  border-radius: 50%;
+}
+
+body.game--clover .cv-playbar .hud__value--accent { color: var(--theme-score); }
+
+/* 해가 지나가는 시간 길 — 해는 채움 끝점을 따라간다 */
+body.game--clover .cv-playbar .timebar {
+  background: #EADFC2;
+  overflow: visible;
+}
+body.game--clover .cv-playbar .timebar__fill {
+  position: relative;
+  background: linear-gradient(90deg, #F7D766, var(--theme-fill));
+}
+body.game--clover .cv-playbar .timebar__fill::after {
+  content: "";
+  position: absolute;
+  right: -6px;
+  top: 50%;
+  width: 12px;
+  height: 12px;
+  transform: translateY(-50%);
+  border-radius: 50%;
+  background: radial-gradient(circle at 40% 38%, #FFFBE0, #FBE27A 75%);
+  box-shadow: 0 0 0 2px rgba(255, 236, 150, 0.75), 0 0 6px 2px rgba(255, 226, 110, 0.6);
+  pointer-events: none;
+}
+body.game--clover .cv-playbar .timebar__fill.is-urgent {
+  background: linear-gradient(90deg, #E58A6E, var(--danger));
+}
+
+/* 바구니 점 — 빈 칸은 엮은 갈색 구멍, 담긴 칸은 연두 잎 */
+body.game--clover .cv-tray__dot { background: #C9A46C; box-shadow: inset 0 1px 2px rgba(60, 40, 15, 0.45); }
+body.game--clover .cv-tray__dot.is-on {
+  background: radial-gradient(circle at 35% 28%, #DDF2BF 0%, #6FAE45 52%, #2F6B1E 100%);
+  box-shadow: 0 0 0 1px var(--theme-wood);
+}
+body.game--clover .cv-tray.is-full .cv-tray__num { color: var(--accent); }
+body.game--clover .cv-tray__num { color: var(--text-main); }
+
+/* 클로버 밭 한 뙈기 — 배경과 바깥 그림자만(테두리 두께 0 유지) */
+body.game--clover .cv-stage {
+  overflow: visible;
+  border-radius: 20px;
+  background:
+    radial-gradient(circle at 20% 30%, rgba(255, 255, 255, 0.55) 0 1.5px, transparent 2px) 0 0 / 23px 23px,
+    radial-gradient(circle at 70% 60%, rgba(94, 154, 58, 0.12) 0 2px, transparent 2.5px) 0 0 / 31px 29px,
+    var(--theme-field);
+  box-shadow: 0 0 0 3px var(--theme-leaf), 0 5px 0 3px rgba(62, 105, 35, 0.3);
+}
+body.game--clover.cv-playing .cv-stage {
+  background:
+    radial-gradient(circle at 20% 30%, rgba(255, 255, 255, 0.55) 0 1.5px, transparent 2px) 0 0 / 23px 23px,
+    radial-gradient(circle at 70% 60%, rgba(94, 154, 58, 0.12) 0 2px, transparent 2.5px) 0 0 / 31px 29px,
+    var(--theme-field);
+  border-radius: 20px;
+}
+/* 풀 테두리 — 판 위쪽 가장자리. 판 위 여백(8px) 안에 들어가게 낮게 */
+body.game--clover .cv-stage::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -9px;
+  height: 10px;
+  z-index: 2;
+  pointer-events: none;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 20' preserveAspectRatio='none'%3E%3Cpath d='M0 20 L5 8 L9 20 L14 3 L20 20 L25 10 L30 20 L36 4 L42 20 L47 9 L52 20 L57 5 L60 14 L60 20Z' fill='%235E9A3A'/%3E%3C/svg%3E") 0 0 / 40px 10px repeat-x;
+}
+
+/* 클로버 그림자 — 어두운 바탕용 진한 그림자를 들판 톤으로 */
+body.game--clover .cv-face { filter: drop-shadow(0 2px 2px rgba(30, 51, 17, 0.35)); }
+
+/* 담김 — 햇빛 동그라미 + 나무 테 (색 + 모양 + 크기 세 가지로 구별) */
+body.game--clover .cv-cell.is-sel::before {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #FFF0A8 0 60%, #F7D766 61% 68%, rgba(242, 194, 48, 0) 70%);
+  box-shadow: 0 0 0 2px var(--theme-wood);
+  pointer-events: none;
+}
+body.game--clover .cv-cell.is-sel .cv-face {
+  filter: drop-shadow(0 0 1px #2F5E18) drop-shadow(0 2px 2px rgba(30, 51, 17, 0.45));
+}
+
+/* 네잎 — 진초록 원판 + 크림 테 */
+body.game--clover .cv-cell.is-lucky::before {
+  content: "";
+  position: absolute;
+  inset: -5px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #2F6B1E 0 64%, #FFFBEF 65% 74%, #2F6B1E 75% 77%, rgba(255, 244, 190, 0) 79%);
+  box-shadow: 0 0 12px 4px rgba(255, 236, 150, 0.9);
+  pointer-events: none;
+}
+body.game--clover .cv-cell.is-lucky .cv-face { filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.35)); }
+body.game--clover .cv-cell.is-hint .cv-face { filter: drop-shadow(0 0 4px #fff) drop-shadow(0 0 2px var(--theme-fill)); }
+
+/* 배너 자리 — 크림 바탕 · 나무색 점선 (두께 그대로) */
+body.game--clover .cv-banner {
+  background: rgba(255, 251, 239, 0.96);
+  border-color: rgba(122, 90, 46, 0.5);
+}
+body.game--clover .cv-banner__ico { background: #EFE4C6; color: var(--text-sub); }
+body.game--clover .cv-banner__tag { color: var(--text-sub); }
+body.game--clover .cv-banner__law { color: var(--text-sub); }
+
+/* 나가기 확인 시트 뒤 막 — 남색 → 먹색 반투명 */
+body.game--clover #cvExitAsk { background: rgba(30, 51, 17, 0.55); }
+
+@media (prefers-reduced-motion: reduce) {
+  body.game--clover .cv-cell.is-lucky::before { box-shadow: none; }
+}
