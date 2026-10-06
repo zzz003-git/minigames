@@ -13,14 +13,16 @@
   <link rel="manifest" href="/site.webmanifest">
   <title>소등</title>
   <meta name="color-scheme" content="dark">
-  <meta name="theme-color" content="#0F1420">
+  <meta name="theme-color" content="#0E0B10">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=JetBrains+Mono:wght@400;500;700&family=Nanum+Myeongjo:wght@800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../../shared/base.css">
+  <link rel="stylesheet" href="theme.css">
+  <link rel="preload" as="image" href="/games/lightout/img/bedside_lamp.v1.png">
 </head>
 <!-- game--nightmode: 화면 전체가 밝아지는 연출을 전부 끕니다 (기획서 10장 · 취침 맥락) -->
-<body class="game game--accent-gold game--nightmode">
+<body class="game game--accent-gold game--nightmode game--lightout">
   <script src="../../shared/splash.js"></script>
   <div class="app">
     <header class="topbar" id="header"></header>
@@ -30,6 +32,7 @@
       <!-- 시작 -->
       <section class="screen is-active" data-screen="ready">
         <div class="card card--accent card--center card--hero">
+          <img class="lo-hero-lamp" src="/games/lightout/img/bedside_lamp.v1.png" alt="" aria-hidden="true" width="88" height="88">
           <div class="card__label card__label--mono">LIGHTS OUT</div>
           <div class="headline">불빛을 하나씩 꺼요</div>
           <p class="footnote">불빛에 손가락을 대고 <b>누르고 있으면</b> 사그라들어 꺼집니다.<br>
@@ -76,8 +79,21 @@
           </div>
         </div>
 
-        <div class="darkroom" id="room" role="application" tabindex="0"
-             aria-label="불빛을 하나씩 누르고 있어 끄세요. 키보드는 Tab 으로 옮기고 Enter 를 누르고 있으면 꺼집니다."></div>
+        <!-- 방 장식은 #room 밖 형제 레이어에 둡니다 — renderRoom 의 clear(room) 이 #room 의
+             자식을 지우기 때문입니다 (REQ-56 §3-2). --dark 는 game.js 가 이 감싸개에도 씁니다. -->
+        <div class="lo-roomwrap">
+          <div class="darkroom" id="room" role="application" tabindex="0"
+               aria-label="불빛을 하나씩 누르고 있어 끄세요. 키보드는 Tab 으로 옮기고 Enter 를 누르고 있으면 꺼집니다."></div>
+          <div class="lo-decor" aria-hidden="true">
+            <span class="lo-frame"></span>
+            <span class="lo-shelf"><i></i><i></i><i></i><i></i></span>
+            <span class="lo-beam"></span>
+            <span class="lo-win"><span class="lo-moon"></span></span>
+            <span class="lo-floor"></span>
+            <span class="lo-bed"></span>
+            <span class="lo-table"></span>
+          </div>
+        </div>
 
         <p class="footnote center" id="playHint">불빛 하나를 <b>꾹</b> 눌러 보세요</p>
       </section>

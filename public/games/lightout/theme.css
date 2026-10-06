@@ -1,0 +1,288 @@
+/* ==========================================================================
+   소등 — 게임별 디자인 「잠들기 전의 방」 (REQ-56 · 2026-10-06)
+   시안: reward-minigame-research/plans/2026-10-06/게임별디자인/mock/lightout.html
+   ==========================================================================
+
+   연결: base.css → 이 파일 (어두운 바탕이라 theme-light.css 는 연결하지 않는다).
+   되돌리기: 이 게임의 커밋 revert.
+
+   ── 그리기만 바뀌는 곳 (REQ-56 §3-2) ───────────────────────────────────────
+   · 방 장식(창·달·달빛·액자·선반·바닥선·침대·협탁)은 #room **밖** 형제 레이어
+     .lo-decor 에 정적으로 둔다. renderRoom 의 clear(room) 이 #room 자식을 지우기 때문이다.
+     감싸개 .lo-roomwrap 이 장식과 #room 을 겹쳐 담고, #room 은 배경을 비워 장식이 비친다.
+   · 창밖 밝기는 --dark (game.js 가 #room 과 감싸개 두 곳에 같은 값을 쓴다).
+       창   opacity: .35 + .65 × (1 − dark)
+       달빛 opacity: 1 − dark          둘 다 400ms 전이
+   · 장식은 pointer-events:none · z-index 0, #room(불빛 버튼)은 z-index 1 — 불빛보다 아래.
+   · .is-blackout 이면 #room 을 다시 완전 검정으로 칠하고 창·달빛도 0 — 완전한 검정.
+   · 불빛(button.lamp)의 크기·위치·탭 영역(--x --y --s)은 base 그대로. 가운데 전구 점과
+     누르는 동안의 테만 가상 요소로 더한다.
+   · game--nightmode 유지 — 번쩍임·celebrate·색종이 없음.
+   · 무대 비율(3:4)은 바꾸지 않는다 → base 의 max-height(62vh / 380px 이하 56vh) 그대로.
+
+   ── 색 ────────────────────────────────────────────────────────────────────
+     --accent      #FFC46B  (bg 12.4:1 · surface 11.3:1) — 시안 그대로 글자에 쓸 수 있다
+     --text-sub    #ABA0B0  (bg 7.8:1 · surface 7.1:1)
+     --text-faint  #9A8FA0  (surface 5.8:1)
+     --coral       #E8806E  (bg 7.2:1)
+     --theme-moon  #7A86C9  창·달빛 면 전용
+   ========================================================================== */
+
+body.game--lightout {
+  --bg: #0E0B10;
+  --void: #08060A;
+  --surface: #1B1620;
+  --surface-2: #17121B;
+
+  --text-main: #F3E9DA;
+  --text-2: #E2D7C8;
+  --text-sub: #ABA0B0;
+  --text-dim: #ABA0B0;
+  --text-faint: #9A8FA0;
+
+  --accent: #FFC46B;
+  --accent-ink: #0E0B10;
+  --accent-08: rgba(255, 196, 107, 0.08);
+  --accent-10: rgba(255, 196, 107, 0.1);
+  --accent-14: rgba(255, 196, 107, 0.14);
+  --accent-20: rgba(255, 196, 107, 0.2);
+  --accent-45: rgba(255, 196, 107, 0.45);
+
+  --coral: #E8806E;
+  --danger: #E8806E;
+  --gold: #FFC46B;
+
+  --theme-moon: #7A86C9;
+  --theme-line: #2E2638;
+  --theme-display: "Nanum Myeongjo", "Noto Sans KR", var(--sans);
+
+  background: var(--bg);
+}
+
+body.game--lightout .headline {
+  font-family: var(--theme-display);
+  font-size: 28px;
+  font-weight: 800;
+  line-height: 1.3;
+  word-break: keep-all;
+}
+body.game--lightout .footnote,
+body.game--lightout .footnote--dim { word-break: keep-all; }
+
+/* 카드 — 공통 남색 카드 대신 방 톤 surface, 테두리 없음 */
+body.game--lightout .card { border-color: transparent; }
+
+/* 시작 화면 대표 그림 — 켜진 침대 맡 램프 */
+body.game--lightout .lo-hero-lamp {
+  display: block;
+  width: 88px;
+  height: 88px;
+  margin: 0 auto -4px;
+  filter: drop-shadow(0 0 18px rgba(255, 196, 107, 0.45));
+  pointer-events: none;
+}
+
+/* 작은 글자 12px (REQ-56 §1-4) */
+body.game--lightout .hud__label { font-size: 12px; }
+body.game--lightout .reward__desc,
+body.game--lightout .reward__note { font-size: 12px; }
+
+/* ══════════════════════════════════════════════════════════════
+   플레이 — 달빛이 비치는 어두운 침실
+   ══════════════════════════════════════════════════════════════ */
+
+body.game--lightout [data-screen="play"] .hud {
+  background: var(--surface);
+  border-color: transparent;
+}
+
+/* 감싸개 — #room 과 같은 상자. #room 의 크기 규칙(base)은 그대로 둔다 */
+body.game--lightout .lo-roomwrap {
+  position: relative;
+  --dark: 0;
+}
+
+/* #room 은 배경을 비워 아래 장식이 비치게 하고, 불빛을 장식 위에 둔다 */
+body.game--lightout .darkroom {
+  z-index: 1;
+  background: transparent;
+}
+/* base 상태 규칙을 같은 범위로 다시 선언 (REQ-56 §1-3) — 완전한 검정 */
+body.game--lightout .darkroom.is-blackout { background: #000; border-color: #000; }
+body.game--lightout .darkroom.is-locked { pointer-events: none; }
+body.game--lightout .darkroom:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* 장식 레이어 — 방 바탕(base 의 #05070C) + 가구 실루엣 */
+body.game--lightout .lo-decor {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-radius: 16px;
+  overflow: hidden;
+  background: #05070C;
+  pointer-events: none;
+}
+body.game--lightout .lo-decor > * { position: absolute; pointer-events: none; }
+
+body.game--lightout .lo-frame {
+  left: 9%;
+  top: 5%;
+  width: 17%;
+  height: 7.5%;
+  border: 2px solid var(--theme-line);
+  border-radius: 3px;
+}
+body.game--lightout .lo-shelf {
+  left: 6%;
+  top: 18.5%;
+  width: 32%;
+  height: 4px;
+  background: var(--theme-line);
+  border-radius: 2px;
+}
+body.game--lightout .lo-shelf i {
+  position: absolute;
+  bottom: 4px;
+  width: 10%;
+  border: 1.5px solid var(--theme-line);
+  border-bottom: 0;
+  background: #120F16;
+  border-radius: 2px 2px 0 0;
+}
+body.game--lightout .lo-shelf i:nth-child(1) { left: 7%; height: 26px; }
+body.game--lightout .lo-shelf i:nth-child(2) { left: 19%; height: 32px; }
+body.game--lightout .lo-shelf i:nth-child(3) { left: 31%; height: 22px; transform: rotate(-12deg); transform-origin: bottom left; }
+body.game--lightout .lo-shelf i:nth-child(4) { left: 66%; width: 19%; height: 16px; border-radius: 8px 8px 0 0; }
+
+/* 창 — --dark 가 오를수록 흐려진다 */
+body.game--lightout .lo-win {
+  right: 8%;
+  top: 5.5%;
+  width: 34%;
+  height: 24.5%;
+  background:
+    linear-gradient(90deg, transparent calc(50% - 2.5px), #2C3566 calc(50% - 2.5px) calc(50% + 2.5px), transparent calc(50% + 2.5px)),
+    linear-gradient(0deg, transparent calc(50% - 2.5px), #2C3566 calc(50% - 2.5px) calc(50% + 2.5px), transparent calc(50% + 2.5px)),
+    #1B2342;
+  border: 5px solid #2C3566;
+  border-radius: 4px;
+  box-shadow: 0 0 40px rgba(122, 134, 201, 0.28);
+  opacity: calc(0.35 + 0.65 * (1 - var(--dark)));
+  transition: opacity 400ms linear;
+}
+body.game--lightout .lo-moon {
+  position: absolute;
+  left: 10%;
+  top: 8%;
+  width: 26%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  box-shadow: inset -10px 4px 0 0 #D7DCF5;
+}
+/* 달빛 — --dark 가 1 이면 사라진다 */
+body.game--lightout .lo-beam {
+  right: 0;
+  top: 28%;
+  width: 70%;
+  height: 66%;
+  background: linear-gradient(200deg, rgba(122, 134, 201, 0.16), transparent 70%);
+  clip-path: polygon(60% 0, 100% 0, 100% 100%, 0 100%);
+  opacity: calc(1 - var(--dark));
+  transition: opacity 400ms linear;
+}
+body.game--lightout .lo-floor {
+  left: 0;
+  right: 0;
+  bottom: 30%;
+  height: 1.5px;
+  background: linear-gradient(90deg, var(--theme-line), transparent 70%);
+}
+body.game--lightout .lo-bed {
+  left: 21%;
+  right: 6%;
+  bottom: 0;
+  height: 30%;
+  border: 2px solid #3A3142;
+  border-bottom: 0;
+  border-radius: 26px 26px 0 0;
+  background: linear-gradient(#120F16, #0A080D);
+}
+body.game--lightout .lo-bed::before {
+  content: "";
+  position: absolute;
+  left: 7%;
+  right: 7%;
+  top: 12%;
+  height: 30%;
+  border-radius: 14px;
+  background: #171220;
+  border: 1.5px solid var(--theme-line);
+}
+body.game--lightout .lo-bed::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 2px;
+  background: var(--theme-line);
+}
+body.game--lightout .lo-table {
+  left: 0;
+  bottom: 0;
+  width: 19%;
+  height: 18.5%;
+  background: #110E15;
+  border-top: 2px solid var(--theme-line);
+  border-right: 2px solid var(--theme-line);
+  border-radius: 0 10px 0 0;
+}
+
+/* 블랙아웃 — 창·달빛 0 (REQ-56 §3-2 · #room 이 #000 으로 덮지만 한 번 더 선언) */
+body.game--lightout .darkroom.is-blackout + .lo-decor .lo-win,
+body.game--lightout .darkroom.is-blackout + .lo-decor .lo-beam { opacity: 0; }
+
+/* 불빛 — 가운데 작은 전구 점. 꺼지면 회색 점으로 남는다(탭 영역은 base 그대로) */
+body.game--lightout .lamp::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 6px;
+  height: 6px;
+  margin: -3px 0 0 -3px;
+  border-radius: 50%;
+  background: #FFF1D0;
+  pointer-events: none;
+  transition: background 180ms ease-in;
+}
+body.game--lightout .lamp.is-out::after { background: #6B6270; }
+/* 누르는 동안 — 호박색 테 */
+body.game--lightout .lamp.is-fading::before {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  border: 2px solid rgba(255, 196, 107, 0.55);
+  box-shadow: 0 0 18px rgba(255, 196, 107, 0.35);
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body.game--lightout .lo-win,
+  body.game--lightout .lo-beam,
+  body.game--lightout .lamp::after { transition: none; }
+}
+
+/* 12px 미만 글자 올리기 (REQ-56 §1-5 · base 11px) */
+body.game--lightout .stat__label,
+body.game--lightout .chart__caption { font-size: 12px; }
+
+/* 블랙아웃은 즉시 — #room 바탕이 투명이라 base 의 400ms 바탕 전이를 두면 0.6초 블랙아웃의
+   절반 넘게 반투명으로 지나간다. 창·달빛도 블랙아웃 순간에는 전이 없이 0. */
+body.game--lightout .darkroom { transition: none; }
+body.game--lightout .darkroom.is-blackout + .lo-decor .lo-win,
+body.game--lightout .darkroom.is-blackout + .lo-decor .lo-beam { transition: none; }
+/* 전구 점은 이 테마가 더한 것이라 블랙아웃 순간 바로 지운다(불빛 잔광의 300ms 페이드는 base 그대로) */
+body.game--lightout .darkroom.is-blackout .lamp::after,
+body.game--lightout .darkroom.is-blackout .lamp::before { content: none; }

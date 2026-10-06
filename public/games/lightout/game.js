@@ -150,6 +150,8 @@ function renderRoom(round) {
 
   clear(room);
   room.style.setProperty("--dark", "0");
+  // 방 장식(창·달빛)은 #room 밖 형제라 감싸개에도 같은 값을 씁니다 — 표시 전용 (REQ-56 §3-2)
+  room.parentElement?.style.setProperty("--dark", "0");
 
   for (const l of round.lights ?? []) {
     // 오래 눌러야 하는 불빛일수록 큽니다 — 「크기에 따라 0.4~0.8초」(기획서 4장 2번)를
@@ -274,6 +276,7 @@ function extinguish() {
   // (기획서 4장 5번). 화면이 밝아지는 것이 아니라 남은 것이 도드라지는 것입니다.
   const done = 1 - state.left / Math.max(1, state.lights.length);
   room.style.setProperty("--dark", done.toFixed(3));
+  room.parentElement?.style.setProperty("--dark", done.toFixed(3)); // 방 장식용 (REQ-56 §3-2)
 
   if (state.left > 0) {
     $("#playHint").textContent = state.left <= 3 ? "거의 다 꺼졌어요" : "다음 불빛";
