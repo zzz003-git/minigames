@@ -77,6 +77,14 @@ body.theme-light .splash {
 :where(body.theme-light) .stat__label,
 :where(body.theme-light) .topbar__badge,
 :where(body.theme-light) .chart__caption { font-size: 12px; }
+:where(body.theme-light) .chart__caption { margin-bottom: 10px; } /* 아래 타일 줄에 붙어 보였다 */
+
+/* 낱말 중간 줄바꿈 막기 — 「찾은 네잎 클로 / 버」 · 「이어서 터뜨리 / 기」(2026-10-06 캡처).
+   게임 theme.css 가 각자 넣던 것을 밝은 바탕 공통으로 */
+:where(body.theme-light) .headline,
+:where(body.theme-light) .footnote,
+:where(body.theme-light) .card__title,
+:where(body.theme-light) .stat__label { word-break: keep-all; }
 
 /* ── 숫자패드 시트 ───────────────────────────────────────────────────────── */
 :where(body.theme-light) .sheet { box-shadow: 0 -12px 32px rgba(0, 0, 0, 0.16); }
