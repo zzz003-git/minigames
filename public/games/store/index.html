@@ -12,14 +12,17 @@
   <link rel="mask-icon" href="/safari-pinned-tab.svg" color="#E07A1F">
   <link rel="manifest" href="/site.webmanifest">
   <title>내 가게 채우기</title>
-  <meta name="color-scheme" content="dark">
-  <meta name="theme-color" content="#0F1420">
+  <meta name="color-scheme" content="light">
+  <meta name="theme-color" content="#FFF6E6">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=JetBrains+Mono:wght@400;500;700&family=Yeon+Sung&display=swap" rel="stylesheet">
+  <link rel="preload" as="image" href="/games/store/img/open_box.v1.png">
   <link rel="stylesheet" href="../../shared/base.css">
+  <link rel="stylesheet" href="../../shared/theme-light.css">
+  <link rel="stylesheet" href="theme.css">
 </head>
-<body class="game game--accent-gold">
+<body class="game game--accent-gold game--store theme-light">
   <script src="../../shared/splash.js"></script>
   <div class="app">
     <header class="topbar" id="header"></header>
@@ -29,6 +32,7 @@
       <!-- 시작 -->
       <section class="screen is-active" data-screen="ready">
         <div class="card card--accent card--center card--hero">
+          <img class="st-herobox" src="/games/store/img/open_box.v1.png" alt="" aria-hidden="true" width="88" height="88">
           <div class="card__label card__label--mono">TODAY'S BOX</div>
           <div class="headline">오늘 상자가 도착했어요</div>
           <p class="footnote">상품을 코너에 맞는 빈 칸에 넣으세요.<br>선반 한 줄이 다 차면 완성됩니다.</p>
@@ -62,6 +66,14 @@
 
       <!-- 플레이 -->
       <section class="screen" data-screen="play">
+        <!-- 가게 차양 — 장식 -->
+        <svg class="st-awning" viewBox="0 0 396 40" preserveAspectRatio="none" aria-hidden="true" focusable="false" width="100%" height="40">
+          <g fill="#0F7A6E"><rect x="0" y="0" width="33" height="26"/><rect x="66" y="0" width="33" height="26"/><rect x="132" y="0" width="33" height="26"/><rect x="198" y="0" width="33" height="26"/><rect x="264" y="0" width="33" height="26"/><rect x="330" y="0" width="33" height="26"/>
+            <circle cx="16.5" cy="25" r="15"/><circle cx="82.5" cy="25" r="15"/><circle cx="148.5" cy="25" r="15"/><circle cx="214.5" cy="25" r="15"/><circle cx="280.5" cy="25" r="15"/><circle cx="346.5" cy="25" r="15"/></g>
+          <g fill="#FFFFFF"><rect x="33" y="0" width="33" height="26"/><rect x="99" y="0" width="33" height="26"/><rect x="165" y="0" width="33" height="26"/><rect x="231" y="0" width="33" height="26"/><rect x="297" y="0" width="33" height="26"/><rect x="363" y="0" width="33" height="26"/>
+            <circle cx="49.5" cy="25" r="15"/><circle cx="115.5" cy="25" r="15"/><circle cx="181.5" cy="25" r="15"/><circle cx="247.5" cy="25" r="15"/><circle cx="313.5" cy="25" r="15"/><circle cx="379.5" cy="25" r="15"/></g>
+          <rect x="0" y="0" width="396" height="5" fill="#0B5C53"/>
+        </svg>
         <div class="hud">
           <div class="hud__item">
             <span class="hud__label">오늘 진열</span>
@@ -79,9 +91,15 @@
 
         <!-- 지금 놓을 상품 -->
         <div class="card card--center handitem" id="handCard">
-          <div class="handitem__icon" id="handIcon">📦</div>
-          <div class="handitem__name" id="handName">—</div>
-          <div class="handitem__where" id="handWhere">—</div>
+          <!-- 열린 상자 그림 위로 상품이 솟는다. #handIcon 은 그대로(game.js 가 이모지를 넣는다) -->
+          <div class="st-boxwrap">
+            <img class="st-box" src="/games/store/img/open_box.v1.png" alt="" aria-hidden="true" width="88" height="88">
+            <div class="handitem__icon" id="handIcon">📦</div>
+          </div>
+          <div class="st-handtxt">
+            <div class="handitem__name" id="handName">—</div>
+            <div class="handitem__where" id="handWhere">—</div>
+          </div>
         </div>
 
         <!-- 선반 -->
