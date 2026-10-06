@@ -1,0 +1,167 @@
+/* ==========================================================================
+   순간 개수 세기 — 게임별 디자인 「접시 위 콩과 은색 덮개」 (REQ-56 · REQ-60 · 2026-10-06)
+   시안: reward-minigame-research/plans/2026-10-06/게임별디자인/mock/countdot.html
+   ==========================================================================
+
+   연결: base.css → theme-light.css → 이 파일.  되돌리기: 이 게임의 커밋 revert.
+
+   ── 판정과 맞닿는 곳 (REQ-56 §3-1) ─────────────────────────────────────────
+   · 콩은 game.js 가 clear(field) 로 **지워서** 숨긴다. 덮개(.cd-cloche)는 빈 접시 위에
+     내려앉는 장식일 뿐이라, 이 파일이 없어도 정답은 화면에 남지 않는다.
+   · 접시(.dot-field)는 **정사각 그대로** 둔다. 둥근 접시는 배경 그림으로만 그리고
+     border-radius:50% + overflow 로 자르지 않는다 — 서버 좌표(x 7~93 · y 9~91)는 원 밖으로 나간다.
+   · 콩 크기·중심 보정(15px · margin -7.5px)은 base 그대로, 색은 한 가지.
+
+   ── 색 ────────────────────────────────────────────────────────────────────
+   시안 accent #2F5F7E 는 식탁보 대비 3.6:1 이라 글자색으로 못 쓴다.
+     --accent      #1F4560  글자·테두리용 (bg 5.0:1 · 흰 면 10:1)
+     --theme-fill  #2F5F7E  면 전용 (확인 키)
+   ========================================================================== */
+
+body.game--countdot {
+  --bg: #F4A57C;
+  --void: #EE9868;
+  --surface: #FFFFFF;
+  --surface-2: #FFF6EE;
+
+  --text-main: #2B1408;
+  --text-2: #3A1C0C;
+  --text-sub: #4E2512;
+  --text-dim: #4E2512;
+  --text-faint: #5E3018;
+
+  --accent: #1F4560;
+  --accent-ink: #FFFFFF;
+  --accent-08: rgba(47, 95, 126, 0.08);
+  --accent-10: rgba(47, 95, 126, 0.1);
+  --accent-14: rgba(47, 95, 126, 0.14);
+  --accent-20: rgba(47, 95, 126, 0.22);
+  --accent-45: rgba(47, 95, 126, 0.5);
+
+  --coral: #8A1414;
+  --danger: #8A1414;
+
+  --theme-fill: #2F5F7E;
+  --theme-bean: #6B3A12;
+  --theme-tray: #E7C9A0;
+  --theme-display: "Poor Story", "Noto Sans KR", var(--sans);
+
+  /* 주황 식탁보 + 흰 체크 선 */
+  background:
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.12) 0 3px, transparent 3px 44px),
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.12) 0 3px, transparent 3px 44px),
+    var(--bg);
+  background-color: var(--bg);
+}
+
+/* 제목·설명 — 장식 서체는 큰 글자에만 (원칙 ④) */
+body.game--countdot .headline {
+  font-family: var(--theme-display);
+  font-size: 30px;
+  font-weight: 400;
+  line-height: 1.2;
+  word-break: keep-all;
+}
+body.game--countdot .footnote { word-break: keep-all; }
+
+/* ══════════════════════════════════════════════════════════════
+   플레이 — 식탁 위 흰 접시와 은색 덮개
+   ══════════════════════════════════════════════════════════════ */
+
+body.game--countdot .cd-stage {
+  position: relative;
+  background: transparent;
+  border-color: transparent;
+}
+
+/* 접시: 정사각 영역은 그대로, 둥근 접시는 배경 그림으로만 */
+body.game--countdot .dot-field {
+  background:
+    radial-gradient(circle at 50% 50%,
+      #FFFFFF 0 55%, #F1EEE9 55.5% 59%, #FFFFFF 59.5% 66%, #D9D3CC 66.5% 68.5%,
+      rgba(217, 211, 204, 0) 69%);
+  border-radius: 24px;
+}
+
+/* 콩 — 한 가지 색. 크기·중심 보정은 base 그대로 */
+body.game--countdot .dot-field__dot {
+  background: var(--theme-bean);
+  box-shadow: inset -2px -2px 0 rgba(0, 0, 0, 0.22), inset 2px 2px 0 rgba(255, 255, 255, 0.2);
+}
+/* 오답 공개 — 콩마다 1, 2, 3… (12px 글자를 담으려고 이때만 원을 키운다. 중심은 그대로) */
+body.game--countdot .dot-field__dot.is-numbered {
+  width: 22px;
+  height: 22px;
+  margin: -11px 0 0 -11px;
+  display: grid;
+  place-items: center;
+  font: 700 12px/1 var(--mono);
+  color: #FFFFFF;
+  box-shadow: 0 0 0 2px #FFFFFF;
+}
+
+/* 물음 — 덮개가 내려오면 덮개 아래쪽으로 비킨다 */
+body.game--countdot .dot-field__msg {
+  font-family: var(--theme-display);
+  font-size: 22px;
+  color: var(--text-main);
+}
+body.game--countdot .cd-stage.is-covered .dot-field__msg {
+  place-items: end center;
+  padding-bottom: 9%;
+  z-index: 3;
+}
+
+/* 은색 덮개 — 장식. 평소엔 숨고, 덮일 때 위에서 내려앉는다 */
+body.game--countdot .cd-cloche {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: min(62%, 220px);
+  height: auto;
+  z-index: 2;
+  pointer-events: none;
+  opacity: 0;
+  transform: translate(-50%, -78%);
+  filter: drop-shadow(0 10px 0 rgba(43, 20, 8, 0.2));
+  transition: transform 120ms cubic-bezier(.3, 1.3, .6, 1), opacity 120ms ease-out;
+}
+body.game--countdot .cd-stage.is-covered .cd-cloche {
+  opacity: 1;
+  transform: translate(-50%, -62%);
+}
+body.game--countdot .cd-stage.is-lifted .cd-cloche {
+  opacity: 0;
+  transform: translate(-50%, -96%);
+  transition-duration: 220ms;
+}
+
+/* ── HUD — 컵받침 칩 ───────────────────────────────────────────── */
+body.game--countdot [data-screen="play"] .hud__value { color: var(--text-main); }
+body.game--countdot [data-screen="play"] .hud__value--accent { color: var(--accent); }
+
+/* ── 숫자패드 — 나무 쟁반 위 흰 키 ─────────────────────────────── */
+body.game--countdot .sheet {
+  background:
+    repeating-linear-gradient(0deg, rgba(122, 74, 30, 0.07) 0 2px, transparent 2px 11px),
+    var(--theme-tray);
+  border-top: 4px solid #C79F6B;
+}
+body.game--countdot .sheet__grip { background: #A97B45; }
+body.game--countdot .sheet .card__label { color: var(--text-main); }
+body.game--countdot .numpad__key {
+  background: #FFFFFF;
+  color: var(--text-main);
+  box-shadow: 0 0 0 2px var(--text-main), 0 4px 0 #A97B45;
+}
+body.game--countdot .numpad__key--util { background: #F6E8D0; color: var(--text-main); }
+body.game--countdot .numpad__key--ok { background: var(--theme-fill); color: #FFFFFF; }
+/* 상태 규칙을 같은 범위로 다시 선언 (REQ-56 §1-3) */
+body.game--countdot .numpad__key:hover:not(:disabled) { background: #FFF6EE; }
+body.game--countdot .numpad__key--ok:hover:not(:disabled) { background: var(--theme-fill); filter: brightness(1.08); }
+body.game--countdot .numpad__key:disabled { color: rgba(43, 20, 8, 0.45); }
+body.game--countdot .numpad__key--ok:disabled { background: #D9C3A2; color: #4E2512; filter: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  body.game--countdot .cd-cloche { transition: none; }
+}

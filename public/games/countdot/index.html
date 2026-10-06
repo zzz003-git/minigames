@@ -12,14 +12,16 @@
   <link rel="mask-icon" href="/safari-pinned-tab.svg" color="#E07A1F">
   <link rel="manifest" href="/site.webmanifest">
   <title>순간 개수 세기</title>
-  <meta name="color-scheme" content="dark">
-  <meta name="theme-color" content="#0F1420">
+  <meta name="color-scheme" content="light">
+  <meta name="theme-color" content="#F4A57C">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=JetBrains+Mono:wght@400;500;700&family=Poor+Story&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../../shared/base.css">
+  <link rel="stylesheet" href="../../shared/theme-light.css">
+  <link rel="stylesheet" href="theme.css">
 </head>
-<body class="game game--accent-coral">
+<body class="game game--accent-coral game--countdot theme-light">
   <script src="../../shared/splash.js"></script>
   <div class="app">
     <header class="topbar" id="header"></header>
@@ -30,8 +32,8 @@
       <section class="screen is-active" data-screen="ready">
         <div class="card card--accent card--center card--hero">
           <div class="card__label card__label--mono">SUBITIZE</div>
-          <div class="headline">점이 몇 개였나요?</div>
-          <p class="footnote">0.4초만 보여줍니다. 라운드가 올라갈수록 점이 늘고 더 짧아져요. 목숨 3개.</p>
+          <div class="headline">콩이 몇 알이었나요?</div>
+          <p class="footnote">0.4초만 보여줍니다. 라운드가 올라갈수록 콩이 늘고 더 짧아져요. 목숨 3개.</p>
         </div>
 
         <div class="stats">
@@ -69,21 +71,31 @@
           </div>
           <div class="lives" id="hudLives"></div>
           <div class="hud__item hud__item--right">
-            <span class="hud__label">노출</span>
+            <span class="hud__label">공개</span>
             <span class="hud__value hud__value--accent" id="hudExpose">—</span>
           </div>
         </div>
 
-        <div class="stage stage--tight">
+        <div class="stage stage--tight cd-stage" id="cdStage">
           <div class="dot-field" id="field">
             <div class="dot-field__msg" id="fieldMsg">준비…</div>
           </div>
+          <!-- 은색 덮개 — 장식입니다. 점(콩)은 덮개가 아니라 clear(field) 로 지웁니다(REQ-56 §3-1).
+               테마 CSS 가 없으면 이 그림은 숨은 채로 있고, 게임은 지금과 똑같이 돕니다 -->
+          <svg class="cd-cloche" viewBox="0 0 240 200" aria-hidden="true" focusable="false">
+            <defs><linearGradient id="cdSilver" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#8E959C"/><stop offset=".25" stop-color="#EEF1F3"/><stop offset=".5" stop-color="#C5CBD1"/><stop offset=".8" stop-color="#9AA1A8"/><stop offset="1" stop-color="#6F767D"/></linearGradient></defs>
+            <path d="M14 168 C14 70 62 30 120 30 C178 30 226 70 226 168Z" fill="url(#cdSilver)" stroke="#3D434A" stroke-width="4"/>
+            <path d="M46 150 C48 96 74 62 108 52" fill="none" stroke="#fff" stroke-width="9" stroke-linecap="round" opacity=".75"/>
+            <rect x="6" y="164" width="228" height="20" rx="10" fill="#B9C0C7" stroke="#3D434A" stroke-width="4"/>
+            <rect x="100" y="12" width="40" height="22" rx="8" fill="#9AA1A8" stroke="#3D434A" stroke-width="4"/>
+            <circle cx="120" cy="12" r="10" fill="url(#cdSilver)" stroke="#3D434A" stroke-width="4"/>
+          </svg>
         </div>
 
         <div class="sheet">
           <div class="sheet__grip" aria-hidden="true"></div>
           <div class="sheet__head">
-            <span class="card__label" id="inputLabel">본 개수를 입력하세요</span>
+            <span class="card__label" id="inputLabel">본 콩알 개수를 눌러 주세요</span>
             <span class="figure figure--sm" id="inputValue">—</span>
           </div>
           <div class="numpad" id="numpad"></div>

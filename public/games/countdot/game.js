@@ -26,6 +26,7 @@ let lastResult = null;
 let input = "";
 let accepting = false;
 let numpad = null;
+let lastDots = []; // 이번 라운드의 콩 좌표 — 판정 뒤 다시 보여 줄 때만 씁니다
 
 renderHeader($("#header"), { icon: "👁", title: "순간 개수 세기", badge: "R1" });
 
@@ -105,25 +106,49 @@ async function onRound(round, state) {
 
   setHeaderBadge(`R${round.round}`);
   $("#hudRound").textContent = String(round.round);
-  $("#hudExpose").textContent = `${round.expose_ms}ms`;
+  $("#hudExpose").textContent = `${(round.expose_ms / 1000).toFixed(2)}초`;
   renderLives($("#hudLives"), { lives: state.lives, max: state.maxLives });
+
+  // 덮개는 장식입니다 — 라운드가 시작되면 **반드시** 걷습니다(REQ-56 §3-1).
+  // 걷지 않으면 2라운드부터 덮개 아래에서 콩이 보이지 않습니다
+  setCover("");
+  lastDots = round.dots;
 
   const field = clear($("#field"));
   field.append(el("div", { class: "dot-field__msg", id: "fieldMsg" }, "준비…"));
   await sleep(700);
 
   // 노출
-  clear(field);
-  for (const d of round.dots) {
-    field.append(
-      el("span", { class: "dot-field__dot", style: `left:${d.x}%; top:${d.y}%` }),
-    );
-  }
+  drawDots(field, round.dots, false);
   await sleep(round.expose_ms);
 
-  clear(field).append(el("div", { class: "dot-field__msg" }, "몇 개였나요?"));
+  // 콩은 지워서 숨깁니다. 덮개는 빈 접시 위에 내려앉는 그림일 뿐입니다
+  clear(field).append(el("div", { class: "dot-field__msg" }, "몇 알이었나요?"));
+  setCover("is-covered");
   accepting = true;
-  $("#inputLabel").textContent = "본 개수를 입력하세요";
+  $("#inputLabel").textContent = "본 콩알 개수를 눌러 주세요";
+}
+
+/** 덮개 상태 — "" 걷힘 · is-covered 덮임 · is-lifted 들림(정답 확인) */
+function setCover(state) {
+  const stage = $("#cdStage");
+  if (!stage) return;
+  stage.classList.remove("is-covered", "is-lifted");
+  if (state) stage.classList.add(state);
+}
+
+/** 콩을 그립니다. numbered 면 1, 2, 3… 번호를 붙여 실제 개수를 보여 줍니다 */
+function drawDots(field, dots, numbered) {
+  clear(field);
+  dots.forEach((d, i) => {
+    field.append(
+      el(
+        "span",
+        { class: numbered ? "dot-field__dot is-numbered" : "dot-field__dot", style: `left:${d.x}%; top:${d.y}%` },
+        numbered ? String(i + 1) : "",
+      ),
+    );
+  });
 }
 
 function pushDigit(d) {
@@ -153,13 +178,19 @@ function submitCount() {
 
 /** 틀렸으면 실제 개수를 알려 줍니다. */
 async function onJudged(res) {
+  // 덮개를 들어 방금 그 콩을 다시 보여 줍니다(좌표는 onRound 에서 받아 둔 것 — 화면 표시만)
+  const field = $("#field");
+  setCover("is-lifted");
+
   if (res.correct) {
+    if (field && lastDots.length) drawDots(field, lastDots, false);
     $("#inputLabel").textContent = "정답!";
     await sleep(350);
     return;
   }
 
-  $("#inputLabel").textContent = `정답은 ${res.data?.count}개였어요`;
+  if (field && lastDots.length) drawDots(field, lastDots, true);
+  $("#inputLabel").textContent = `정답은 ${res.data?.count}알이었어요`;
   await sleep(900);
 }
 
