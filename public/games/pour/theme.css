@@ -1,0 +1,278 @@
+/* ==========================================================================
+   오늘의 한 잔 — 게임별 디자인 「카페 대리석 바 층층 음료」 (REQ-56 · 2026-10-06)
+   시안: reward-minigame-research/plans/2026-10-06/게임별디자인/mock/pour.html
+   ==========================================================================
+
+   연결: base.css → theme-light.css → 이 파일.  되돌리기: 이 게임의 커밋 revert.
+
+   ── 구조 (REQ-56 §3-3 — game.js 없이 CSS 만) ──────────────────────────────
+   · 시안의 고정 좌표(잔 left:96px · 병 rotate(100deg) 등)는 옮기지 않는다. 지금의
+     flex 구조(잔 → 병 줄) 그대로 두고 모양만 바꾼다.
+   · 잔(.cup)의 두꺼운 유리 바닥은 border-bottom 12px 로 그린다. 액체(.cup__liquid)와
+     목표선(.cup__target)은 둘 다 .cup 의 padding box 기준이라, 바닥을 두껍게 해도
+     「액면 % = 목표선 %」 관계가 그대로다(판정 화면과 보이는 선이 어긋나지 않음).
+   · 잔은 overflow:visible 로 바꿔 목표선 꼬리표를 잔 밖에 둔다. 넘친 층은
+     .cup__liquid 가 대신 자른다.
+   · 병(.bottle)은 누르는 자리다. **버튼 상자는 움직이지 않는다** — base 의
+     is-pouring rotate(-18deg) 를 끄고, 병 그림(::before/::after)과 이름표만 기울인다.
+     누르고 있는 동안 상자가 손가락 밑에서 빠져나가 pointerleave 로 붓기가 끊기는 일을 막는다.
+   · 생략: 레몬 장식, 병이 잔 위로 날아가 붓는 연출, 「딱!」 태그 문구(상태 클래스 없음),
+     앨범 점(=game.js 필요).
+
+   ── 색 ────────────────────────────────────────────────────────────────────
+   시안 accent #C4553F 는 바탕 대비 4.03:1 이라 글자색으로 못 쓴다.
+     --accent      #A8432F  글자·테두리용 (bg 5.42:1 · 흰 면 5.98:1)
+     --theme-fill  #C4553F  면 전용
+   시안 danger #C2410C (bg 4.69:1, 바 띠 #EFE9E2 4.30:1) → --coral #A6370A (bg 5.99:1)
+   금색 #C99A2E 은 선·테두리 전용(--theme-gold). 글자 금색은 #7A5C14 (#FFF8E1 꼬리표 5.87:1).
+   base 가 --gold 를 글자에 쓰는 곳이 있어 --gold 도 #8C6A1E (bg 4.53:1) 로 낮춘다.
+   본문 #2A1E18 (bg 14.7:1) · 보조 #6B5A50 (bg 5.93:1 · 바 띠 5.44:1)
+   ========================================================================== */
+
+body.game--pour {
+  --bg: #F7F3EE;
+  --void: #EFE9E2;
+  --surface: #FFFFFF;
+  --surface-2: #FBF8F4;
+
+  --text-main: #2A1E18;
+  --text-2: #33261F;
+  --text-sub: #6B5A50;
+  --text-dim: #6B5A50;
+  --text-faint: #6B5A50;
+
+  --accent: #A8432F;
+  --accent-ink: #FFFFFF;
+  --accent-08: rgba(196, 85, 63, 0.08);
+  --accent-10: rgba(196, 85, 63, 0.1);
+  --accent-14: rgba(196, 85, 63, 0.14);
+  --accent-20: rgba(196, 85, 63, 0.24);
+  --accent-45: rgba(196, 85, 63, 0.5);
+
+  --coral: #A6370A;
+  --danger: #A6370A;
+  --gold: #8C6A1E;
+
+  --theme-fill: #C4553F;
+  --theme-gold: #C99A2E;
+  --theme-display: "Diphylleia", "Noto Sans KR", var(--sans);
+  /* 대리석 결 — 연회색 곡선 3줄 */
+  --pr-veins: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 393 650' preserveAspectRatio='none'%3E%3Cpath d='M-10 90C80 60 140 130 230 95S350 40 410 80' fill='none' stroke='%23D9D3CC' stroke-width='1.6' opacity='.7'/%3E%3Cpath d='M-10 330C60 360 150 280 240 320S360 370 410 330' fill='none' stroke='%23DCD6CF' stroke-width='1.3' opacity='.7'/%3E%3Cpath d='M40 -10C70 60 20 130 70 200' fill='none' stroke='%23DED8D1' stroke-width='1.2' opacity='.6'/%3E%3C/svg%3E");
+  /* 병 실루엣(시안 #bt) — 채움은 mask, 테두리·마개·윤기는 그림 */
+  --pr-bottle-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 84 140'%3E%3Cpath d='M33 9H51V40C51 52 76 54 76 78V126Q76 138 64 138H20Q8 138 8 126V78C8 54 33 52 33 40Z'/%3E%3C/svg%3E");
+  --pr-bottle-line: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 84 140'%3E%3Crect x='31' y='0' width='22' height='9' rx='2' fill='%238A6A4A'/%3E%3Cpath d='M33 9H51V40C51 52 76 54 76 78V126Q76 138 64 138H20Q8 138 8 126V78C8 54 33 52 33 40Z' fill='none' stroke='rgba(42,30,24,.5)' stroke-width='2.5'/%3E%3Cpath d='M17 78V122' stroke='rgba(255,255,255,.75)' stroke-width='5' stroke-linecap='round'/%3E%3C/svg%3E");
+
+  background: var(--pr-veins) center top / 100% 650px no-repeat, var(--bg);
+  background-color: var(--bg);
+}
+
+/* 제목·설명 — 장식 서체는 큰 글자에만 (원칙 ④) */
+body.game--pour .headline {
+  font-family: var(--theme-display);
+  font-size: 28px;
+  font-weight: 400;
+  line-height: 1.25;
+  word-break: keep-all;
+}
+body.game--pour .footnote { word-break: keep-all; }
+
+/* ══════════════════════════════════════════════════════════════
+   플레이 — 대리석 바 위 유리잔과 병 세 개
+   ══════════════════════════════════════════════════════════════ */
+
+/* HUD — 카페 메뉴 보드 한 줄(흰 판 + 얇은 금색 테) */
+body.game--pour [data-screen="play"] .hud {
+  background: #FFFFFF;
+  border: 2px solid var(--theme-gold);
+  box-shadow: 0 2px 0 #E4D3A8, inset 0 0 0 2px #FFFFFF;
+}
+body.game--pour [data-screen="play"] .hud__value { color: var(--text-main); }
+body.game--pour [data-screen="play"] .hud__value--accent { color: var(--accent); }
+
+/* 무대 — 대리석 바탕 + 아래쪽 바(병이 놓이는 띠) */
+body.game--pour #cupStage {
+  background:
+    linear-gradient(to bottom,
+      transparent calc(100% - 124px),
+      #FFFFFF calc(100% - 124px), #FFFFFF calc(100% - 121px),
+      #EFE9E2 calc(100% - 96px), #E6DED5) ,
+    var(--pr-veins) center / 100% 100% no-repeat,
+    var(--bg);
+  border-color: rgba(42, 30, 24, 0.08);
+  overflow: hidden;
+}
+
+/* 유리잔 — 얇은 테두리 · 두꺼운 반투명 바닥 · 왼쪽 세로 윤기 */
+body.game--pour .cup {
+  overflow: visible;
+  margin-top: 6px;
+  border: 2px solid rgba(42, 30, 24, 0.35);
+  border-top: none;
+  border-bottom: 12px solid rgba(190, 205, 210, 0.7);
+  border-radius: 4px 4px 30px 30px;
+  background: linear-gradient(90deg, rgba(214, 228, 232, 0.6), rgba(255, 255, 255, 0.25) 30%, rgba(255, 255, 255, 0.2) 70%, rgba(200, 216, 222, 0.55));
+  box-shadow: 0 14px 10px -8px rgba(42, 30, 24, 0.28);
+}
+/* 액체 — 잔이 overflow:visible 이 됐으니 넘친 층·물결은 여기서 자른다 */
+body.game--pour .cup__liquid {
+  overflow: hidden;
+  border-radius: 0 0 20px 20px;
+}
+body.game--pour .cup::before {
+  content: "";
+  position: absolute;
+  left: 10px;
+  top: 10px;
+  bottom: 12px;
+  width: 10px;
+  border-radius: 5px;
+  background: linear-gradient(rgba(255, 255, 255, 0.9), rgba(255, 255, 255, 0.35));
+  z-index: 3;
+  pointer-events: none;
+}
+
+/* 층 — 위 경계를 살짝 물결지게. 붓는 층에는 잔 위에서 떨어지는 줄기 */
+body.game--pour .cup__layer {
+  position: relative;
+  box-shadow: inset 0 -1px 0 rgba(42, 30, 24, 0.15);
+}
+body.game--pour .cup__layer::before {
+  content: "";
+  position: absolute;
+  left: -6px;
+  right: -6px;
+  top: -5px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--c);
+  border-top: 1px solid rgba(255, 255, 255, 0.6);
+  pointer-events: none;
+}
+body.game--pour .cup__layer.is-pouring::before { animation: pr-slosh 900ms ease-in-out infinite alternate; }
+body.game--pour .cup__layer.is-pouring::after {
+  content: "";
+  position: absolute;
+  left: 46%;
+  bottom: 100%;
+  width: 8px;
+  height: 400px;
+  border-radius: 4px 4px 0 0;
+  background: var(--c);
+  box-shadow: inset 0 0 0 1px rgba(42, 30, 24, 0.18);
+  pointer-events: none;
+}
+@keyframes pr-slosh {
+  from { transform: translateY(0) rotate(-1.4deg); }
+  to { transform: translateY(-2px) rotate(1.4deg); }
+}
+
+/* 목표선 — 잔 밖까지 이어지는 금색 점선 + 종이 꼬리표 */
+body.game--pour .cup__target {
+  left: -8px;
+  right: -8px;
+  border-top: 3px dashed var(--theme-gold);
+  z-index: 4;
+}
+body.game--pour .cup__target span {
+  left: 100%;
+  right: auto;
+  top: -15px;
+  padding: 3px 7px 3px 8px;
+  background: #FFF8E1;
+  border: 2px solid var(--theme-gold);
+  border-radius: 4px 8px 8px 4px;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.2;
+  color: #7A5C14;
+  white-space: nowrap;
+}
+
+/* 넘침 — 잔 위가 뿌옇게 + 잔 밖으로 흘러내린 방울 */
+body.game--pour .cup.is-over::after {
+  top: -4px;
+  left: -10px;
+  right: -10px;
+  height: 46%;
+  z-index: 3;   /* 목표선(4) 아래 — 넘쳐도 목표선은 또렷하게 */
+  background:
+    radial-gradient(circle at 5% 22%, rgba(196, 85, 63, 0.75) 0 4px, transparent 5px),
+    radial-gradient(ellipse at 3% 48%, rgba(196, 85, 63, 0.7) 0 3px, transparent 4px),
+    radial-gradient(circle at 96% 34%, rgba(196, 85, 63, 0.75) 0 5px, transparent 6px),
+    radial-gradient(ellipse at 97% 66%, rgba(196, 85, 63, 0.6) 0 3px, transparent 4px),
+    linear-gradient(rgba(255, 255, 255, 0.45), rgba(255, 255, 255, 0.15)) 10px 4px / calc(100% - 20px) 100% no-repeat;
+  backdrop-filter: none;
+  pointer-events: none;
+}
+
+/* 병 — 상자(누르는 자리)는 고정, 그림만 들리고 기운다 */
+body.game--pour .bottles { gap: 14px; }
+body.game--pour .bottle {
+  position: relative;
+  width: 64px;
+  height: 100px;
+  padding: 0 0 12px;
+  border: 0;
+  border-radius: 0;
+  background: none;
+  opacity: 1;
+  transform: none;
+}
+body.game--pour .bottle::before,
+body.game--pour .bottle::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform-origin: 50% 100%;
+  transition: transform 160ms ease-out, filter 160ms ease-out;
+  pointer-events: none;
+}
+body.game--pour .bottle::before {
+  background: var(--c);
+  -webkit-mask: var(--pr-bottle-mask) center / 100% 100% no-repeat;
+  mask: var(--pr-bottle-mask) center / 100% 100% no-repeat;
+}
+body.game--pour .bottle::after {
+  background: var(--pr-bottle-line) center / 100% 100% no-repeat;
+}
+body.game--pour .bottle__name {
+  position: relative;
+  z-index: 1;
+  max-width: 54px;
+  padding: 2px 3px;
+  background: #FBF6EA;
+  border: 1px solid rgba(42, 30, 24, 0.3);
+  border-radius: 3px;
+  font-size: 12px;
+  line-height: 1.15;
+  color: var(--text-main);
+  text-align: center;
+  word-break: keep-all;
+  transform-origin: 50% calc(100% + 12px);
+  transition: transform 160ms ease-out;
+}
+/* 상태 규칙을 같은 범위로 다시 선언 (REQ-56 §1-3) */
+body.game--pour .bottle.is-active { opacity: 1; cursor: pointer; border-color: transparent; }
+body.game--pour .bottle.is-active::before,
+body.game--pour .bottle.is-active::after { transform: translateY(-8px); }
+body.game--pour .bottle.is-active::after {
+  filter: drop-shadow(0 0 3px var(--theme-gold)) drop-shadow(0 6px 4px rgba(42, 30, 24, 0.2));
+}
+body.game--pour .bottle.is-active .bottle__name { transform: translateY(-8px); }
+body.game--pour .bottle.is-used { opacity: 1; }
+body.game--pour .bottle.is-used::before { background: rgba(255, 255, 255, 0.55); }
+body.game--pour .bottle.is-used .bottle__name { color: var(--text-sub); background: #F4EFE7; }
+body.game--pour .bottle.is-pouring { transform: none; }
+body.game--pour .bottle.is-pouring::before,
+body.game--pour .bottle.is-pouring::after,
+body.game--pour .bottle.is-pouring .bottle__name { transform: translateY(-8px) rotate(-30deg); }
+body.game--pour .bottle:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: 8px; }
+
+body.game--pour #playHint { color: var(--text-main); }
+
+@media (prefers-reduced-motion: reduce) {
+  body.game--pour .cup__layer.is-pouring::before { animation: none; }
+  body.game--pour .bottle::before,
+  body.game--pour .bottle::after,
+  body.game--pour .bottle__name { transition: none; }
+}
