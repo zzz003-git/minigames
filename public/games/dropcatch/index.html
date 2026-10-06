@@ -12,14 +12,16 @@
   <link rel="mask-icon" href="/safari-pinned-tab.svg" color="#E07A1F">
   <link rel="manifest" href="/site.webmanifest">
   <title>와르르 받기</title>
-  <meta name="color-scheme" content="dark">
-  <meta name="theme-color" content="#0F1420">
+  <meta name="color-scheme" content="light">
+  <meta name="theme-color" content="#BEE3F8">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=JetBrains+Mono:wght@400;500;700&family=Dongle:wght@700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../../shared/base.css">
+  <link rel="stylesheet" href="../../shared/theme-light.css">
+  <link rel="stylesheet" href="theme.css">
 </head>
-<body class="game game--accent-coral">
+<body class="game game--accent-coral game--dropcatch theme-light">
   <script src="../../shared/splash.js"></script>
   <div class="app">
     <header class="topbar" id="header"></header>
@@ -84,7 +86,20 @@
           <div class="fallfield__combo" id="comboTag" hidden></div>
           <div class="fallfield__items" id="items"></div>
           <div class="fallfield__line" aria-hidden="true"></div>
-          <div class="basket" id="basket" aria-hidden="true">🛒</div>
+          <!-- 카트 — 장식. 폭은 theme.css 가 무대의 20%(= 판정 폭 CATCH_HALF×2)로 둔다.
+               viewBox 는 카트 실루엣 경계에 딱 맞춰 그림 폭 = 요소 폭이 되게 했다(REQ-56 §3-3) -->
+          <div class="basket" id="basket" aria-hidden="true"><svg viewBox="-1 9 148 116" focusable="false">
+            <path d="M4 14 H26 L44 88 H128" fill="none" stroke="#D9481F" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M4 14 H22" stroke="#B83A15" stroke-width="9" stroke-linecap="round"/>
+            <path d="M30 28 H140 L126 78 H44 Z" fill="#F4F8FB" fill-opacity=".92" stroke="#8C99A6" stroke-width="3" stroke-linejoin="round"/>
+            <path d="M62 28 L56 78M82 28 L78 78M102 28 L100 78M122 28 L120 78M34 44 H136M40 62 H131" stroke="#9AA6B2" stroke-width="2.5"/>
+            <path d="M30 28 H140" stroke="#D9481F" stroke-width="6" stroke-linecap="round"/>
+            <path d="M44 88 L50 98 H122" fill="none" stroke="#8C99A6" stroke-width="4" stroke-linecap="round"/>
+            <circle cx="30" cy="28" r="6" fill="#D9481F"/><circle cx="140" cy="28" r="6" fill="#D9481F"/>
+            <circle cx="44" cy="80" r="5" fill="#D9481F"/><circle cx="127" cy="80" r="5" fill="#D9481F"/>
+            <circle cx="58" cy="112" r="12" fill="#2B3944"/><circle cx="58" cy="112" r="5" fill="#C8D0D8"/>
+            <circle cx="118" cy="112" r="12" fill="#2B3944"/><circle cx="118" cy="112" r="5" fill="#C8D0D8"/>
+          </svg></div>
         </div>
 
         <p class="footnote center" id="playHint">화면을 누른 채 좌우로 움직이세요</p>
