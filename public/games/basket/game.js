@@ -108,6 +108,7 @@ function paint() {
   $("#sumText").textContent = gap === 0
     ? `담은 합계 ${won(sum)} · 정확히 맞았습니다`
     : `담은 합계 ${won(sum)} · ${won(Math.abs(gap))} ${gap > 0 ? "모자랍니다" : "넘었습니다"}`;
+  paintTally(picked.size, gap);
   $("#tolText").textContent = round.tolerance === 0
     ? "오차 0원 — 정확히 맞아야 합니다"
     : `허용 오차 ±${won(round.tolerance)}`;
@@ -132,6 +133,23 @@ function paint() {
   });
 
   $("#submitBtn").textContent = `담기 완료 (남은 시도 ${round.tries_left}회)`;
+}
+
+/**
+ * 담은 개수 배지와 차액 꼬리표 — 표시 전용 (REQ-56 §3-3).
+ * 위 #sumText 문장은 그대로 두고, 이미 계산한 값(담은 개수 · gap)으로 따로 그립니다.
+ * 요소가 없으면(테마 이전 html) 아무것도 하지 않습니다.
+ */
+function paintTally(count, gap) {
+  const badge = $("#basketCount");
+  if (badge) badge.textContent = String(count);
+
+  const tag = $("#gapTag");
+  if (!tag) return;
+  tag.dataset.dir = gap === 0 ? "exact" : gap > 0 ? "short" : "over";
+  tag.textContent = gap === 0
+    ? "딱 맞음"
+    : `${gap > 0 ? "▼" : "▲"} ${won(Math.abs(gap))} ${gap > 0 ? "모자람" : "넘침"}`;
 }
 
 function submit() {

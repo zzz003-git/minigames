@@ -13,13 +13,15 @@
   <link rel="manifest" href="/site.webmanifest">
   <title>딱 맞게 담기</title>
   <meta name="color-scheme" content="dark">
-  <meta name="theme-color" content="#0F1420">
+  <meta name="theme-color" content="#B5302A">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=JetBrains+Mono:wght@400;500;700&family=Do+Hyeon&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../../shared/base.css">
+  <link rel="stylesheet" href="theme.css">
+  <link rel="preload" as="image" href="/games/basket/img/market_basket.v1.png">
 </head>
-<body class="game game--accent-mint">
+<body class="game game--accent-mint game--basket">
   <script src="../../shared/splash.js"></script>
   <div class="app">
     <header class="topbar" id="header"></header>
@@ -29,6 +31,7 @@
       <!-- 시작 -->
       <section class="screen is-active" data-screen="ready">
         <div class="card card--accent card--center card--hero">
+          <img class="bk-hero" src="/games/basket/img/market_basket.v1.png" alt="" aria-hidden="true" width="84" height="84">
           <div class="card__label card__label--mono">EXACT BASKET</div>
           <div class="headline">세 번 안에 딱 맞추기</div>
           <p class="footnote">
@@ -81,6 +84,11 @@
           <div class="card__label">목표 금액 · 시간 제한 없음</div>
           <div class="figure figure--result" id="targetValue">—</div>
           <div class="footnote" id="sumText">—</div>
+          <!-- 담은 개수 · 차액 꼬리표 — 표시 전용(REQ-56 §3-3). 같은 내용을 #sumText 가 읽어 준다 -->
+          <div class="bk-tally" aria-hidden="true">
+            <span class="bk-cart"><img src="/games/basket/img/market_basket.v1.png" alt="" width="64" height="64"><b id="basketCount">0</b></span>
+            <span id="gapTag"></span>
+          </div>
           <div class="footnote--dim" id="tolText">—</div>
         </div>
 
