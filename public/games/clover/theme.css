@@ -52,8 +52,10 @@ body.game--clover {
   background-color: var(--bg); /* 그라디언트를 못 그리는 경우의 바탕 · 대비 측정 기준 */
 }
 
-/* 제목은 낱말 단위로만 줄을 바꾼다 — 「…찾아주세 / 요」 한 글자 줄바꿈 (기획회신 REP-47 검토 2-A) */
-body.game--clover .headline { word-break: keep-all; }
+/* 제목·설명은 낱말 단위로만 줄을 바꾼다 — 「…찾아주세 / 요」 · 「길게 이을 / 수록」
+   (기획회신 REP-47 검토 2-A · REP-49 검토 추가분) */
+body.game--clover .headline,
+body.game--clover .footnote { word-break: keep-all; }
 
 /* ── 연쇄 잔광 · 합쳐진 「10」 — 햇살 노랑 네잎 (REQ-59 · 2026-10-06) ─────────
    네잎 그림은 game.js 의 IMG_LUCKY(lucky_gold.v1.png). 진초록 세잎 판과 반대색이라
@@ -215,9 +217,11 @@ body.game--clover .cv-tray__dot.is-on {
 body.game--clover .cv-tray.is-full .cv-tray__num { color: var(--accent); }
 body.game--clover .cv-tray__num { color: var(--text-main); }
 
-/* 클로버 밭 한 뙈기 — 배경과 바깥 그림자만(테두리 두께 0 유지) */
+/* 클로버 밭 한 뙈기 — 배경과 바깥 그림자만(테두리 두께 0 유지)
+   ⚠ overflow 는 base.css 의 hidden 을 그대로 둔다. 새로 떨어지는 칸은 판 위에서 출발하는데,
+   그것을 가리는 것이 이 hidden 이다 — visible 로 바꾸면 낙하 칸이 플레이바 아래로 샌다
+   (기획회신 REP-48 검토 A · 2026-10-06). 바깥 그림자(box-shadow)는 hidden 이어도 그려진다. */
 body.game--clover .cv-stage {
-  overflow: visible;
   border-radius: 20px;
   background:
     radial-gradient(circle at 20% 30%, rgba(255, 255, 255, 0.55) 0 1.5px, transparent 2px) 0 0 / 23px 23px,
@@ -232,15 +236,15 @@ body.game--clover.cv-playing .cv-stage {
     var(--theme-field);
   border-radius: 20px;
 }
-/* 풀 테두리 — 판 위쪽 가장자리. 판 위 여백(8px) 안에 들어가게 낮게 */
+/* 풀 테두리 — 판 **안쪽** 위 가장자리. 판(.cv-grid · z 1) 뒤에 깔려 칸을 가리지 않는다 */
 body.game--clover .cv-stage::before {
   content: "";
   position: absolute;
   left: 0;
   right: 0;
-  top: -9px;
+  top: 0;
   height: 10px;
-  z-index: 2;
+  z-index: 0;
   pointer-events: none;
   background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 60 20' preserveAspectRatio='none'%3E%3Cpath d='M0 20 L5 8 L9 20 L14 3 L20 20 L25 10 L30 20 L36 4 L42 20 L47 9 L52 20 L57 5 L60 14 L60 20Z' fill='%235E9A3A'/%3E%3C/svg%3E") 0 0 / 40px 10px repeat-x;
 }

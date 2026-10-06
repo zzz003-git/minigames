@@ -308,7 +308,8 @@ function drawFx() {
     const a = (now - r.t) / 300;
     if (a >= 1) { play.rings.splice(i, 1); continue; }
     if (a < 0) continue;
-    fctx.strokeStyle = `rgba(160,232,210,${(1 - a) * 0.75})`;
+    // 들판 테마의 햇살 노랑 — 민트는 연두 바탕에 묻혔습니다(기획회신 REP-48 검토 C)
+    fctx.strokeStyle = `rgba(255,214,90,${(1 - a) * 0.75})`;
     fctx.lineWidth = 4 * (1 - a) + 1;
     fctx.beginPath();
     fctx.arc(r.x, r.y, r.s * 0.42 + a * r.s * 1.3, 0, Math.PI * 2);
@@ -549,6 +550,10 @@ function clearMergeFx() {
 /** 합쳐진 「10」 — 판 밖으로 나가야 해서 body 에 붙입니다 */
 function flyMerged(cx, cy, cs, gain) {
   const size = Math.max(cs * 2.2, 78);
+  // 맨 왼쪽·오른쪽 열에서 맞추면 칸의 2.2배인 네잎이 화면 밖으로 잘립니다 — 시작점만 안으로
+  // 들입니다. 표시 위치일 뿐 판정과는 무관합니다(기획회신 REP-48 검토 B)
+  const edge = size / 2 + 8;
+  cx = Math.min(Math.max(cx, edge), Math.max(edge, innerWidth - edge));
   const tgt = $("#cvScore").getBoundingClientRect();
   // 점수 자리를 못 재면(화면이 바뀌는 중) 날려 보낼 목적지가 없습니다 — 그리지 않습니다
   if (!tgt.width) return;
