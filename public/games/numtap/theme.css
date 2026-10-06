@@ -1,0 +1,197 @@
+/* ==========================================================================
+   숫자 순서 터치 — 게임별 디자인 「엘리베이터 버튼판」 (REQ-56 §3-3 · 2026-10-06)
+   시안: reward-minigame-research/plans/2026-10-06/게임별디자인/mock/numtap.html
+   ==========================================================================
+
+   연결: base.css → theme-light.css → 이 파일.  되돌리기: 이 게임의 커밋 revert.
+
+   ── 다음 숫자 표시 (REQ-56 §3-3) ────────────────────────────────────────────
+   · #hudNext 를 검정 「층 표시창」 + 빨간 7세그 풍 **서체**(Orbit)로 그린다. SVG 아님.
+     (Orbitron 은 「7」이 한글 「ㄱ」처럼 보여 버렸다 — 2026-10-06 실측 캡처)
+     값은 game.js 가 지금처럼 textContent 로 쓴다 — game.js 는 그대로다.
+   · 오탭 「+0.5」 각인은 생략(기획 확정). 오탭은 버튼이 붉어지고 흔들리는 것으로 보인다.
+   · 버튼(.tap-cell)은 원형 금속 버튼. 판정·순서·시간 기록은 손대지 않는다.
+
+   ── 상태 우선순위 (REQ-56 §1-3) ─────────────────────────────────────────────
+   .tap-cell 의 배경·테두리·그림자를 바꾸므로 .is-done / .is-miss / :active / :focus-visible /
+   :disabled 를 같은 범위로 다시 선언한다.
+
+   ── 색 (bg #DFE3E8 · surface #F5F7F9 기준 대비) ──────────────────────────────
+   시안 accent #F2A20C 는 bg 1.6:1 이라 글자에 못 쓴다.
+     --accent      #7A5000  글자용 (bg 5.5 · surface 6.6)
+     --theme-fill  #F2A20C  면·링·발광 전용 (눌린 버튼 링)
+     --text-main   #1C2128  bg 12.6 · surface 15.1
+     --text-sub    #4F5966  bg 5.5  · surface 6.6
+     --coral       #B42318  bg 5.1  · surface 6.1
+     층 표시창 숫자 #FF4A33 · 라벨 #FF8A78  — 창 #0B0606 대비 6.0 · 8.8
+   ========================================================================== */
+
+body.game--numtap {
+  --bg: #DFE3E8;
+  --void: #D3D8DE;
+  --surface: #F5F7F9;
+  --surface-2: #ECEFF2;
+
+  --text-main: #1C2128;
+  --text-2: #262C35;
+  --text-sub: #4F5966;
+  --text-dim: #4F5966;
+  --text-faint: #4F5966;
+
+  --accent: #7A5000;
+  --accent-ink: #FFFFFF;
+  --accent-08: rgba(242, 162, 12, 0.08);
+  --accent-10: rgba(242, 162, 12, 0.1);
+  --accent-14: rgba(242, 162, 12, 0.14);
+  --accent-20: rgba(242, 162, 12, 0.22);
+  --accent-45: rgba(242, 162, 12, 0.5);
+
+  --coral: #B42318;
+  --danger: #B42318;
+
+  --theme-fill: #F2A20C;
+  --theme-seg: #FF4A33;
+  --theme-display: "Do Hyeon", "Noto Sans KR", var(--sans);
+  --theme-seg-font: "Orbit", var(--mono);
+
+  /* 스틸 회색 + 가로 헤어라인 */
+  background:
+    repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.04) 0 1px, transparent 1px 4px),
+    var(--bg);
+  background-color: var(--bg);
+}
+
+body.game--numtap .headline {
+  font-family: var(--theme-display);
+  font-size: 30px;
+  font-weight: 400;
+  line-height: 1.2;
+  word-break: keep-all;
+}
+body.game--numtap .footnote,
+body.game--numtap .footnote--dim { word-break: keep-all; }
+
+/* 주 버튼 hover — theme-light.css 의 `.btn:hover:not(:disabled)`(0,3,0)가 base 의
+   `.btn--primary:hover:not(:disabled)`(0,3,0)와 같은 우선순위로 뒤에 와서 이긴다 →
+   마우스를 올리면(모바일은 탭 뒤 hover 가 남음) 면이 거의 투명해지고 흰 글자가 사라진다.
+   공통 파일은 고치지 않고 이 게임 범위에서 되돌린다. */
+/* 주 버튼은 호박색 면 + 검정 글자(#1C2128 on #F2A20C 7.7:1) — 엘리베이터 「열림」 버튼 */
+body.game--numtap .btn--primary { background: var(--theme-fill); color: var(--text-main); }
+body.game--numtap .btn--primary:hover:not(:disabled) { background: var(--theme-fill); color: var(--text-main); }
+
+/* ══════════════════════════════════════════════════════════════
+   플레이 — 스테인리스 패널과 층 표시창
+   ══════════════════════════════════════════════════════════════ */
+
+/* 스테인리스 패널 (HUD · 버튼판 공통) — 네 모서리 나사는 배경 그림으로 */
+body.game--numtap [data-screen="play"] .hud,
+body.game--numtap [data-screen="play"] .stage {
+  position: relative;
+  border: 0;
+  background:
+    radial-gradient(circle at 12px 12px, #8E97A3 0 3.5px, transparent 4.5px),
+    radial-gradient(circle at calc(100% - 12px) 12px, #8E97A3 0 3.5px, transparent 4.5px),
+    radial-gradient(circle at 12px calc(100% - 12px), #8E97A3 0 3.5px, transparent 4.5px),
+    radial-gradient(circle at calc(100% - 12px) calc(100% - 12px), #8E97A3 0 3.5px, transparent 4.5px),
+    linear-gradient(135deg, #FAFBFC, #D5DAE0 45%, #F1F3F6 70%, #CDD3DA);
+  background-color: #E6E9ED;
+  box-shadow: 0 0 0 2px #AAB1BA, 0 8px 20px rgba(30, 40, 55, 0.22), inset 0 2px 0 #FFFFFF;
+}
+body.game--numtap [data-screen="play"] .hud { padding: 12px 22px; align-items: center; }
+body.game--numtap [data-screen="play"] .hud__label { color: #3D4653; font-weight: 700; }
+body.game--numtap [data-screen="play"] .hud__value { color: var(--text-main); }
+
+/* 층 표시창 — 첫 칸(NEXT) */
+body.game--numtap [data-screen="play"] .hud__item:first-child {
+  align-items: center;
+  min-width: 84px;
+  padding: 6px 12px 4px;
+  border-radius: 8px;
+  background: #0B0606;
+  box-shadow: inset 0 3px 8px #000, 0 0 0 3px #B3BAC3, 0 1px 0 4px #FFFFFF;
+}
+body.game--numtap [data-screen="play"] .hud__item:first-child .hud__label {
+  color: #FF8A78;
+  letter-spacing: 0.2em;
+}
+body.game--numtap #hudNext {
+  font-family: var(--theme-seg-font);
+  font-size: 38px;
+  font-weight: 400;
+  line-height: 1.05;
+  letter-spacing: 0.02em;
+  color: var(--theme-seg);
+  text-shadow: 0 0 6px rgba(255, 59, 36, 0.65);
+  font-variant-numeric: tabular-nums;
+}
+
+/* 버튼판 */
+body.game--numtap [data-screen="play"] .stage { padding: 20px 18px; }
+body.game--numtap .tap-grid { gap: 10px; }
+
+/* 원형 금속 버튼 */
+body.game--numtap .tap-cell {
+  border: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle at 36% 28%, #FFFFFF 0, #E8ECF0 34%, #AEB5BE 100%);
+  background-color: #E3E7EB;
+  color: var(--text-main);
+  font-weight: 800;
+  text-shadow: 0 1px 0 #FFFFFF;
+  box-shadow:
+    0 0 0 2px #8F98A3,
+    0 3px 0 2px #6F7884,
+    0 5px 6px 2px rgba(0, 0, 0, 0.2),
+    inset 0 -3px 5px rgba(0, 0, 0, 0.12);
+  transition: box-shadow 90ms linear, transform 90ms ease, background 90ms linear;
+}
+
+/* ── 상태 — base 의 is-* 를 같은 범위로 다시 선언 (REQ-56 §1-3) ── */
+body.game--numtap .tap-cell:active:not(:disabled) {
+  transform: translateY(1.5px);
+  box-shadow: 0 0 0 2px #8F98A3, 0 1px 0 2px #6F7884, inset 0 2px 5px rgba(0, 0, 0, 0.25);
+}
+body.game--numtap .tap-cell:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+
+/* 눌린 층 — 호박색 링이 켜지고 숫자가 한 톤 흐려진다(대비 6:1 이상 유지) */
+body.game--numtap .tap-cell.is-done {
+  background: radial-gradient(circle at 50% 60%, #FFF2C9, #E6CB8C 80%);
+  background-color: #F3E2B0;
+  color: #6B4A00;
+  text-shadow: none;
+  transform: translateY(1.5px);
+  box-shadow:
+    0 0 0 3px var(--theme-fill),
+    0 0 0 5px #7A5400,
+    0 0 12px 3px rgba(242, 162, 12, 0.6),
+    inset 0 2px 4px rgba(0, 0, 0, 0.22);
+}
+
+/* 오탭 — 버튼 안쪽이 붉게 + 흔들림 (260ms 뒤 game.js 가 클래스를 뗀다) */
+body.game--numtap .tap-cell.is-miss {
+  background: radial-gradient(circle at 50% 50%, #FBE0DC, #F4C9C2 90%);
+  background-color: #F4C9C2;
+  color: #8E1B12;
+  text-shadow: none;
+  box-shadow: 0 0 0 3px var(--coral), 0 3px 0 3px #7E1A10;
+  animation: nt-shake 130ms ease-in-out 2;
+}
+
+@keyframes nt-shake {
+  25% { transform: translateX(-3px); }
+  75% { transform: translateX(3px); }
+}
+
+/* 그만두기 — 금속 버튼 줄 */
+body.game--numtap #giveUpBtn {
+  background: var(--surface);
+  color: var(--text-main);
+  border: 0;
+  box-shadow: 0 0 0 2px #8F98A3, 0 3px 0 2px #6F7884;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body.game--numtap .tap-cell.is-miss { animation: none; }
+  body.game--numtap .tap-cell:active:not(:disabled),
+  body.game--numtap .tap-cell.is-done { transform: none; }
+}
