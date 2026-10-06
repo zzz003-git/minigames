@@ -122,3 +122,10 @@ body.game--ringstop [data-screen="play"] .hud {
   background: rgba(53, 33, 76, 0.8);
 }
 body.game--ringstop .hud__label { font-size: 12px; }
+/* 11px 공통 글자 → 12px (어두운 바탕이라 theme-light.css 가 덮지 않는다 · REQ-56 §1-4·§1-5) */
+body.game--ringstop .stat__label,
+body.game--ringstop .topbar__badge,
+body.game--ringstop .chart__caption,
+body.game--ringstop .reward__desc,
+body.game--ringstop .reward__note { font-size: 12px; }
+body.game--ringstop .reward__note { opacity: 1; }
