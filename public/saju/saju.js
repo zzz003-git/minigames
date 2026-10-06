@@ -1,5 +1,5 @@
 /**
- * 🌤️ 오늘의 기운 — 화면
+ * 🌤️ 오늘의 사주 — 화면
  *
  * 기획: SAJU-SPEC-01 · 만세력: docs/saju-calendar.md
  *
@@ -31,7 +31,7 @@ const state = { st: null, last: null };
 // 원안의 `activeView = inSuite ? 'hub' : v` — 서비스 화면에서도 「오늘의 나」 탭이
 // 켜진 채 남는다. 게임 화면과 달리 여기는 판 중이 아니라 결과를 보는 자리다.
 renderSiteNav($("#siteNav"), "hub");
-renderHeader($("#header"), { icon: "🌤️", title: "오늘의 기운", back: "/today/" });
+renderHeader($("#header"), { icon: "🌤️", title: "오늘의 사주", back: "/today/" });
 
 // 시간 선택 — 12지시 + 「몰라요」 (기획서 1절)
 {

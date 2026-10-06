@@ -824,7 +824,7 @@ function renderCrossChips() {
   const host = clear($("#crossChips"));
   const s = state.today.suite ?? {};
   const chips = [
-    { key: "saju", href: "/saju/", icon: "🌤️", name: "오늘의 기운" },
+    { key: "saju", href: "/saju/", icon: "🌤️", name: "오늘의 사주" },
     { key: "mind", href: "/mind/", icon: "🔬", name: "오늘의 선택" },
   ];
 

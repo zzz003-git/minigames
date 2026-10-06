@@ -88,7 +88,7 @@ const TABS = [
 /**
  * @param {HTMLElement} host
  * @param {'home'|'games'|'hub'} active
- *   서비스 화면(타로·기운·마음·페어)에서는 'hub' 를 넘긴다 —
+ *   서비스 화면(타로·사주·마음·페어)에서는 'hub' 를 넘긴다 —
  *   원안의 `activeView = inSuite ? 'hub' : v` 와 같다.
  */
 export function renderSiteNav(host, active) {

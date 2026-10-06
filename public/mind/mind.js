@@ -392,7 +392,7 @@ function renderCrossChips() {
   const s = state.st.suite ?? {};
   const chips = [
     { key: "tarot", href: "/tarot/", icon: "🔮", name: "오늘의 타로" },
-    { key: "saju", href: "/saju/", icon: "🌤️", name: "오늘의 기운" },
+    { key: "saju", href: "/saju/", icon: "🌤️", name: "오늘의 사주" },
   ];
   for (const c of chips) {
     const done = s[c.key]?.done;

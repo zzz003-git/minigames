@@ -34,7 +34,7 @@ import { collectionState, dailyState, pointState, touchUser } from "../lib/suite
  */
 const SERVICE_META = {
   tarot: { key: "tarot", icon: "🔮", name: "오늘의 타로", href: "/tarot/", ready: true },
-  saju: { key: "saju", icon: "🌤️", name: "오늘의 기운", href: "/saju/", ready: true },
+  saju: { key: "saju", icon: "🌤️", name: "오늘의 사주", href: "/saju/", ready: true },
   mind: { key: "mind", icon: "🔬", name: "오늘의 선택", href: "/mind/", ready: true },
 };
 

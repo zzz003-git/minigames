@@ -319,7 +319,7 @@ function dayLine(d) {
     const c = HUB_INDEX.tarot[Number(d.key.tarot)];
     bits.push(c ? `${c.g} ${c.n}` : "타로");
   }
-  if (d.done.saju) bits.push("🌤️ 기운");
+  if (d.done.saju) bits.push("🌤️ 사주");
   if (d.done.mind) {
     const [expId, ti] = String(d.key.mind ?? "").split(":");
     const t = HUB_INDEX.mind[expId]?.[Number(ti)];
