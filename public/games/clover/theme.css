@@ -52,18 +52,87 @@ body.game--clover {
   background-color: var(--bg); /* 그라디언트를 못 그리는 경우의 바탕 · 대비 측정 기준 */
 }
 
-/* ── 연쇄 잔광 · 합쳐진 「10」 — 민트 → 햇빛 노랑 (README_clover 남은 과제) ──── */
+/* ── 연쇄 잔광 · 합쳐진 「10」 — 햇살 노랑 네잎 (REQ-59 · 2026-10-06) ─────────
+   네잎 그림은 game.js 의 IMG_LUCKY(lucky_gold.v1.png). 진초록 세잎 판과 반대색이라
+   생기는 순간부터 점수에 닿을 때까지 들판에 묻히지 않는다.
+   금화처럼 보이지 않게 금속 광택·금테는 쓰지 않는다(principles ⑤) — 노랑은 「햇살」로만.
+   효과 요소(.cv-burst · .cv-spark · .cv-trail · .cv-land)는 game.js 가 body 에 붙였다
+   떼며, 날아가는 네잎(.cv-merge · z 7)보다 한 칸 아래(z 6)에 깐다. */
 body.game--clover #cvGlow {
-  background: radial-gradient(ellipse at center, transparent 45%, rgba(255, 226, 110, 0.42) 100%);
+  background: radial-gradient(ellipse at center, transparent 45%, rgba(255, 214, 90, 0.35) 100%);
 }
+
+/* 떠 있는 동안 뒤에서 천천히 도는 햇살 */
+body.game--clover .cv-merge__b::before {
+  content: "";
+  position: absolute;
+  inset: -45%;
+  border-radius: 50%;
+  pointer-events: none;
+  background:
+    repeating-conic-gradient(from 0deg, rgba(255, 214, 90, 0.85) 0 7deg, rgba(255, 214, 90, 0) 7deg 30deg),
+    radial-gradient(circle, rgba(255, 246, 200, 0.95) 0 28%, rgba(255, 246, 200, 0) 55%);
+  -webkit-mask: radial-gradient(circle, #000 30%, transparent 70%);
+  mask: radial-gradient(circle, #000 30%, transparent 70%);
+  animation: cvrays 1.2s linear infinite;
+}
+@keyframes cvrays { to { transform: rotate(30deg); } }
+
+/* 그림에 줄기가 있다 — 코드 줄기는 숨긴다 */
+body.game--clover .cv-merge__b .cv-stem { display: none; }
+
+/* 크림 테 + 갈색 가는 외곽선 */
 body.game--clover .cv-merge__head {
-  filter: drop-shadow(0 0 16px rgba(255, 226, 110, 0.75)) drop-shadow(0 6px 12px rgba(30, 51, 17, 0.35));
+  filter:
+    drop-shadow(0 0 2px #FFFBEF) drop-shadow(0 0 2px #FFFBEF)
+    drop-shadow(0 0 2px #8A4A00) drop-shadow(0 4px 6px rgba(80, 40, 0, 0.45));
+}
+body.game--clover .cv-merge b {
+  text-shadow:
+    0.03em 0 0 #7A3A00, -0.03em 0 0 #7A3A00, 0 0.03em 0 #7A3A00, 0 -0.03em 0 #7A3A00,
+    0.02em 0.02em 0 #7A3A00, -0.02em 0.02em 0 #7A3A00, 0.02em -0.02em 0 #7A3A00, -0.02em -0.02em 0 #7A3A00;
 }
 body.game--clover .cv-merge__gain {
-  background: var(--theme-fill);
-  color: var(--text-main);
-  box-shadow: 0 0.02em 0.05em rgba(30, 51, 17, 0.35);
+  top: 78%;
+  background: #FFFBEF;
+  border: 2px solid #C25A00;
+  color: #5A2A00;
+  box-shadow: none;
 }
+
+/* 생기는 순간의 고리 · 반짝이, 날아가는 꼬리, 점수 자리 고리 */
+body.game--clover .cv-burst,
+body.game--clover .cv-spark,
+body.game--clover .cv-trail,
+body.game--clover .cv-land {
+  position: fixed;
+  z-index: 6;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+}
+body.game--clover .cv-burst { border-radius: 50%; border: 4px solid #FFD84A; }
+body.game--clover .cv-spark {
+  width: 10px;
+  height: 10px;
+  transform: translate(-50%, -50%) rotate(45deg);
+  border-radius: 2px;
+  background: #FFE27A;
+  box-shadow: 0 0 6px #FFD84A;
+}
+body.game--clover .cv-trail {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #FFF6C8, #FFB21E 60%, rgba(255, 178, 30, 0) 72%);
+}
+body.game--clover .cv-land { border-radius: 50%; border: 3px solid #FFB21E; }
+
+/* 점수에 닿을 때 — 튀면서 주황으로 한 번 물들고 제자리로 */
+body.game--clover #cvScore.is-pop {
+  transform: none;
+  animation: cvscorepop 350ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes cvscorepop { 40% { transform: scale(1.5); color: #C25A00; } }
 
 /* ══════════════════════════════════════════════════════════════
    판이 도는 동안 — 나무 팻말 · 햇빛 시간 길 · 바구니 · 클로버 밭
@@ -217,4 +286,7 @@ body.game--clover #cvExitAsk { background: rgba(30, 51, 17, 0.55); }
 
 @media (prefers-reduced-motion: reduce) {
   body.game--clover .cv-cell.is-lucky::before { box-shadow: none; }
+  /* 햇살은 남기되 돌리지 않는다 · 효과 요소는 game.js 가 아예 만들지 않는다 */
+  body.game--clover .cv-merge__b::before { animation: none; }
+  body.game--clover #cvScore.is-pop { animation: none; }
 }

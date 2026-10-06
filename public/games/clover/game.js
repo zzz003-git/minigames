@@ -34,7 +34,10 @@ const COMBO_MS = 2000;
 const GAP = 4;
 const MIN_TILE = 30;
 const MERGE_MS = 90; // 고른 것이 모여 판이 메워지기까지 — 짧을수록 다음 조합을 빨리 찾습니다
-const MERGE_VIEW = 620; // 합쳐진 「10」이 화면에 있는 시간
+// 합쳐진 「10」이 화면에 있는 시간. flyMerged 의 두 애니메이션에만 씁니다 — 판 정리(MERGE_MS)와
+// 다음 입력은 이걸 기다리지 않으므로 늘려도 템포는 그대로입니다(REQ-59 · 620 → 900).
+const MERGE_VIEW = 900;
+const TRAIL_EVERY = 40; // 날아가는 동안 반짝 꼬리를 떨구는 간격
 const FALL_BASE = 110;
 const FALL_STEP = 12;
 const FALL_CAP = 4;
@@ -57,7 +60,9 @@ const STEM =
 
 // 성공(네잎+꼬리) 렌더가 들어왔습니다(REQ-09/A-8 · 2026-09-08). 코드로 그리던 자리표시자는
 // 지웠습니다 — 판 위 클로버는 렌더 PNG 인데 **성공 순간만 그림체가 갈리던** 자리입니다.
-const IMG_LUCKY = "/games/clover/img/lucky.v1.png";
+// 들판 테마(연두) 위에서 연민트 네잎이 묻혀 햇살 노랑으로 바꿨습니다(REQ-59 · 2026-10-06).
+// 모양·알파는 lucky.v1.png 그대로이고 색만 다릅니다 — 되돌릴 때는 이 줄만 lucky.v1.png 로.
+const IMG_LUCKY = "/games/clover/img/lucky_gold.v1.png";
 // ⚠ **절대 경로여야 합니다.** 커스텀 속성 안의 상대 URL 은 그 값을 **쓰는 스타일시트**
 //    (`shared/base.css`)를 기준으로 풀립니다 — 화면 파일이 아닙니다.
 //    `img/base.v1.png` 로 두면 `/shared/img/base.v1.png` 를 찾아가 조용히 404 가 나고,
@@ -510,35 +515,101 @@ function resolve() {
   }, MERGE_MS);
 }
 
+// ── 네잎이 생겨 날아가는 것을 보이게 하는 효과 (REQ-59) ─────────────────
+// 고리·반짝이·꼬리·도착 고리. 전부 body 에 붙는 고정 요소라 판이 끝나면 한꺼번에 치웁니다.
+const REDUCED_MOTION = matchMedia("(prefers-reduced-motion: reduce)");
+const fxTimers = new Set();
+
+function fxAt(cls, x, y, s) {
+  const e = document.createElement("div");
+  e.className = cls;
+  e.style.left = `${x}px`;
+  e.style.top = `${y}px`;
+  if (s) { e.style.width = `${s}px`; e.style.height = `${s}px`; }
+  document.body.append(e);
+  return e;
+}
+
+/** 한 번 재생하고 스스로 지워지는 효과 */
+function fxPlay(e, frames, opts) {
+  e.animate(frames, { fill: "forwards", ...opts }).onfinish = () => e.remove();
+}
+
+/** 판이 끝나거나 화면이 바뀔 때 — 남은 꼬리 타이머와 날고 있는 것을 모두 걷습니다 */
+function clearMergeFx() {
+  fxTimers.forEach(clearInterval);
+  fxTimers.clear();
+  document.querySelectorAll(".cv-merge,.cv-burst,.cv-spark,.cv-trail,.cv-land").forEach((n) => {
+    // 취소하면 onfinish 가 불리지 않습니다 — 끝난 판에서 점수가 튀고 소리가 나는 것을 막습니다
+    n.getAnimations({ subtree: true }).forEach((a) => a.cancel());
+    n.remove();
+  });
+}
+
 /** 합쳐진 「10」 — 판 밖으로 나가야 해서 body 에 붙입니다 */
 function flyMerged(cx, cy, cs, gain) {
   const size = Math.max(cs * 2.2, 78);
+  const tgt = $("#cvScore").getBoundingClientRect();
+  // 점수 자리를 못 재면(화면이 바뀌는 중) 날려 보낼 목적지가 없습니다 — 그리지 않습니다
+  if (!tgt.width) return;
+  const fx = !REDUCED_MOTION.matches;
+  const ease = "cubic-bezier(.2,.8,.3,1)";
+
+  // ① 생기는 순간 — 노란 고리가 퍼지고 반짝이 8개가 사방으로 튑니다
+  if (fx) {
+    fxPlay(fxAt("cv-burst", cx, cy, 40), [
+      { width: "40px", height: "40px", opacity: 1 },
+      { width: "190px", height: "190px", opacity: 0 },
+    ], { duration: 420, easing: ease });
+    for (let k = 0; k < 8; k++) {
+      const a = (k * Math.PI) / 4;
+      fxPlay(fxAt("cv-spark", cx, cy), [
+        { transform: "translate(-50%,-50%) rotate(45deg) scale(.4)", opacity: 1 },
+        { transform: `translate(calc(-50% + ${Math.cos(a) * 90}px),calc(-50% + ${Math.sin(a) * 90}px)) rotate(45deg) scale(1)`, opacity: 0 },
+      ], { duration: 460, easing: ease });
+    }
+  }
+
   const node = document.createElement("div");
   node.className = "cv-merge";
   node.style.cssText = `left:${cx}px;top:${cy}px;width:${size}px;height:${size}px;font-size:${size}px`;
   node.innerHTML = `<div class="cv-merge__b">${STEM}<img class="cv-merge__head" src="${IMG_LUCKY}" alt=""><b>10</b><i class="cv-merge__gain">+${gain}</i></div>`;
   document.body.append(node);
 
-  const tgt = $("#cvScore").getBoundingClientRect();
-  // 점수 자리를 못 재면(화면이 바뀌는 중) 날려 보낼 목적지가 없습니다 — 그리지 않습니다
-  if (!tgt.width) { node.remove(); return; }
   // 손가락은 **아래**에 있고 다음 조합을 찾는 눈은 **위**에 있습니다.
   // 손을 피해 크게 띄우면 그 자리가 바로 찾는 자리라 시야를 막습니다 — 조금만 띄웁니다.
   const lift = Math.max(size * 0.55, 46);
-  const dx = tgt.left + tgt.width / 2 - cx;
-  const dy = tgt.top + tgt.height / 2 - cy;
+  const tx = tgt.left + tgt.width / 2;
+  const ty = tgt.top + tgt.height / 2;
+  const dx = tx - cx;
+  const dy = ty - cy;
 
+  // 점수에 닿을 때까지 사라지지 않습니다 — 날아가는 끝까지 보여야 「점수로 갔다」가 읽힙니다(REQ-59)
   node.firstChild.animate(
     [
       { transform: "scale(.34)", opacity: 0 },
-      { transform: "scale(1.16)", opacity: 1, offset: 0.16 },
-      { transform: "scale(1)", opacity: 1, offset: 0.26 },
-      { transform: "scale(1)", opacity: 1, offset: 0.5 }, // 멈춰 서 있는 구간 — 약 0.15초
-      { transform: "scale(.60)", opacity: 1, offset: 0.86 },
-      { transform: "scale(.32)", opacity: 0 },
+      { transform: "scale(1.22)", opacity: 1, offset: 0.14 },
+      { transform: "scale(1)", opacity: 1, offset: 0.24 },
+      { transform: "scale(1)", opacity: 1, offset: 0.5 }, // 멈춰 서 있는 구간 — 약 0.23초
+      { transform: "scale(.55)", opacity: 1, offset: 0.88 },
+      { transform: "scale(.3)", opacity: 0.6 },
     ],
     { duration: MERGE_VIEW, easing: "linear", fill: "forwards" },
   );
+
+  // ③ 날아가는 동안 — 지나간 자리에 반짝 꼬리를 떨굽니다
+  let trail = 0;
+  if (fx) {
+    trail = setInterval(() => {
+      const r = node.getBoundingClientRect();
+      if (!r.width) return;
+      fxPlay(fxAt("cv-trail", r.left + r.width / 2, r.top + r.height / 2), [
+        { opacity: 1, transform: "translate(-50%,-50%) scale(1.2)" },
+        { opacity: 0, transform: "translate(-50%,-50%) scale(.3)" },
+      ], { duration: 380 });
+    }, TRAIL_EVERY);
+    fxTimers.add(trail);
+  }
 
   const flight = node.animate(
     [
@@ -551,12 +622,21 @@ function flyMerged(cx, cy, cs, gain) {
     { duration: MERGE_VIEW, fill: "forwards" },
   );
   flight.onfinish = () => {
+    clearInterval(trail);
+    fxTimers.delete(trail);
     node.remove();
     const e = $("#cvScore");
     e.classList.remove("is-pop");
     void e.offsetWidth;
     e.classList.add("is-pop");
     beep(760, 0.09, "triangle", 0.07);
+    // ④ 점수 자리에 고리 한 번
+    if (fx) {
+      fxPlay(fxAt("cv-land", tx, ty, 20), [
+        { width: "20px", height: "20px", opacity: 1 },
+        { width: "70px", height: "70px", opacity: 0 },
+      ], { duration: 380 });
+    }
   };
 }
 
@@ -874,7 +954,7 @@ function stopPlay() {
   play.rings = [];
   play.clock?.stop();
   play.clock = null;
-  document.querySelectorAll(".cv-merge").forEach((n) => n.remove());
+  clearMergeFx();
 }
 
 /**
@@ -890,6 +970,8 @@ async function endSegment() {
   play.ptr = null;
   syncTray();
   paint();
+  // 마지막 순간에 맞춘 네잎이 다음 화면 위로 날아가지 않게 — 점수는 이미 올라가 있습니다
+  clearMergeFx();
   armScreen("pause", LOCK_MS);
   armScreen("over", LOCK_MS);
 
