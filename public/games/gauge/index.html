@@ -12,14 +12,16 @@
   <link rel="mask-icon" href="/safari-pinned-tab.svg" color="#E07A1F">
   <link rel="manifest" href="/site.webmanifest">
   <title>오늘의 전국 게이지</title>
-  <meta name="color-scheme" content="dark">
-  <meta name="theme-color" content="#0F1420">
+  <meta name="color-scheme" content="light">
+  <meta name="theme-color" content="#EAF2FB">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=JetBrains+Mono:wght@400;500;700&family=Gowun+Dodum&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../../shared/base.css">
+  <link rel="stylesheet" href="../../shared/theme-light.css">
+  <link rel="stylesheet" href="theme.css">
 </head>
-<body class="game game--accent-mint">
+<body class="game game--accent-mint game--gauge theme-light">
   <script src="../../shared/splash.js"></script>
   <div class="app">
     <header class="topbar" id="header"></header>
@@ -90,6 +92,9 @@
         <!-- 「기여 2배」는 남은 토큰이 있을 때 제안합니다.
              boostReward 는 항상 #adbarBoost 에 그리므로 그 자리가 여기 있어야 합니다. -->
         <div id="adbarBoost"></div>
+
+        <!-- 장식: 광장의 사람들 실루엣 (탭 대상 아님) -->
+        <div class="gg-crowd" aria-hidden="true"></div>
       </section>
 
       <!-- 결과 -->

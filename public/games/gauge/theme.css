@@ -1,0 +1,287 @@
+/* ==========================================================================
+   오늘의 전국 게이지 — 게임별 디자인 「모두의 온도계」 (REQ-56 · 2026-10-06)
+   시안: reward-minigame-research/plans/2026-10-06/게임별디자인/mock/gauge.html
+   ==========================================================================
+
+   연결: base.css → theme-light.css → 이 파일.  되돌리기: 이 게임의 커밋 revert.
+
+   ── 넣은 것 / 생략한 것 (REQ-56 §3-3) ──────────────────────────────────────
+   · 넣음: 선물 눈금(.natgauge__mark — 눈금선 + 상자, .is-open 이면 뚜껑이 열린 상자)
+     · 토큰(◆ → 빨간 물방울, .is-used 는 빈 물방울) · 수은 온도계(유리관 + 왼쪽 빨간 구)
+     · 광장 사람 실루엣(.gg-crowd, index.html 정적 장식). 모두 CSS 로만 그렸다.
+   · 생략: 상시 「단계 해금」 띠(지금은 토스트뿐 — 시안 확정대로).
+   · game.js 는 고치지 않았다. 눈금(--at)·수은(--pct)·토큰 개수는 game.js 가 그리는 그대로.
+   · 「특정 단체의 모금 상징물」은 흉내 내지 않는다(빨간 구 + 가로 관 + 선물 상자만).
+
+   ── 색 ────────────────────────────────────────────────────────────────────
+   시안 accent #D62828 은 얼음 하늘 바탕 대비 4.43:1 이라 글자색으로 못 쓴다.
+     --accent      #B91C1C  글자·버튼 면 (bg 5.73:1 · 흰 면 6.47:1 · 흰 글자 6.47:1)
+     --theme-fill  #D62828  수은·구·물방울·밀어 넣기 버튼 면 (흰 글자 5.01:1)
+     --coral       #A61E1E  시안 danger 그대로 (bg 6.58:1 · 흰 면 7.43:1)
+     --text-sub    #475569  (bg 6.71:1) · --text-faint #55657A (bg 5.27:1)
+   ========================================================================== */
+
+body.game--gauge {
+  --bg: #EAF2FB;
+  --void: #DDE8F5;
+  --surface: #FFFFFF;
+  --surface-2: #F4F8FD;
+
+  --text-main: #172235;   /* bg 14.12:1 */
+  --text-2: #22304A;
+  --text-sub: #475569;
+  --text-dim: #475569;
+  --text-faint: #55657A;
+
+  --accent: #B91C1C;
+  --accent-ink: #FFFFFF;
+  --accent-08: rgba(214, 40, 40, 0.08);
+  --accent-10: rgba(214, 40, 40, 0.1);
+  --accent-14: rgba(214, 40, 40, 0.14);
+  --accent-20: rgba(214, 40, 40, 0.22);
+  --accent-45: rgba(214, 40, 40, 0.5);
+
+  --coral: #A61E1E;
+  --danger: #A61E1E;
+
+  --theme-fill: #D62828;
+  --theme-gold: #F59F00;
+  --theme-line: #C5D5E8;
+  --theme-display: "Gowun Dodum", "Noto Sans KR", var(--sans);
+
+  background:
+    linear-gradient(180deg, #F3F8FD 0%, var(--bg) 40%),
+    var(--bg);
+  background-color: var(--bg);
+}
+
+/* 제목 — 장식 서체는 큰 글자에만 (원칙 ④) */
+body.game--gauge .headline {
+  font-family: var(--theme-display);
+  font-size: 28px;
+  font-weight: 400;
+  line-height: 1.25;
+  word-break: keep-all;
+}
+body.game--gauge .footnote,
+body.game--gauge .footnote--dim { word-break: keep-all; }
+
+/* 공통 요소의 11px 글자 → 12px (12px 미만 금지). reward 글자는 theme-light 가 맡는다 */
+body.game--gauge .topbar__badge { font-size: 12px; }
+body.game--gauge .stat__label,
+body.game--gauge .chart__caption { font-size: 12px; }
+
+/* ══════════════════════════════════════════════════════════════
+   플레이 — 흰 알약 칩(HUD) · 가로 수은 온도계 · 선물 눈금 · 물방울 토큰
+   ══════════════════════════════════════════════════════════════ */
+
+/* HUD — 흰 알약 칩 3개. 「전국」 칩만 빨간 테 */
+body.game--gauge [data-screen="play"] .hud {
+  gap: 8px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+}
+body.game--gauge [data-screen="play"] .hud__item {
+  flex: 1;
+  align-items: center;
+  padding: 6px 4px;
+  background: #FFFFFF;
+  border: 2px solid var(--theme-line);
+  border-radius: 999px;
+}
+body.game--gauge [data-screen="play"] .hud__item:first-child { border-color: var(--theme-fill); }
+body.game--gauge [data-screen="play"] .hud__label { font-family: var(--sans); font-weight: 700; letter-spacing: 0; color: var(--text-sub); }
+body.game--gauge [data-screen="play"] .hud__value,
+body.game--gauge [data-screen="play"] .hud__value--accent { color: var(--text-main); }
+
+/* 무대 — 면을 걷는다 */
+body.game--gauge .natgauge {
+  background: transparent;
+  border-color: transparent;
+  padding: 4px 0 0;
+  gap: 12px;
+}
+
+/* 큰 숫자 */
+body.game--gauge .natgauge__pct {
+  font-size: 56px;
+  line-height: 1;
+  color: var(--text-main);
+}
+
+/* 유리관 — 흰 관 + 굵은 먹 테. 왼쪽 빨간 구(::before)를 위해 관을 오른쪽으로 민다 */
+body.game--gauge .natgauge__bar {
+  width: calc(100% - 52px);
+  margin: 46px 0 18px 44px;
+  height: 28px;
+  border-radius: 14px;
+  background: #FFFFFF;
+  border: 3px solid var(--text-main);
+  overflow: visible;
+  box-shadow: inset 0 5px 0 rgba(23, 34, 53, 0.06);
+}
+body.game--gauge .natgauge__bar::before {
+  content: "";
+  position: absolute;
+  left: -48px;              /* 구는 관 왼쪽 끝에 6px 만 걸친다 — 낮은 % 에서도 수은이 보이게 */
+  top: 50%;
+  width: 56px;
+  height: 56px;
+  translate: 0 -50%;
+  z-index: 2;
+  border-radius: 50%;
+  background: var(--theme-fill);
+  border: 3px solid var(--text-main);
+  box-shadow: inset -8px -8px 0 rgba(0, 0, 0, 0.14), inset 9px 9px 0 rgba(255, 255, 255, 0.28), 0 0 0 6px rgba(214, 40, 40, 0.12);
+  pointer-events: none;
+}
+/* 수은 — 관 안쪽만 (관이 overflow 를 풀었으므로 끝을 직접 둥글린다) */
+body.game--gauge .natgauge__fill {
+  border-radius: 11px;
+  background: var(--theme-fill);
+  box-shadow: inset 0 5px 0 rgba(255, 255, 255, 0.28), inset 0 -4px 0 rgba(0, 0, 0, 0.14);
+}
+/* 상태 규칙 — 같은 범위로 다시 선언 (REQ-56 §1-3) */
+body.game--gauge .natgauge__fill.is-bump { filter: brightness(1.2) saturate(1.1); }
+
+/* 선물 눈금 — 관 위로 올라간 눈금선 + 상자(::before 몸통 · ::after 뚜껑) */
+body.game--gauge .natgauge__mark {
+  top: -24px;
+  bottom: 0;
+  border-left: 2px solid rgba(23, 34, 53, 0.7);
+}
+body.game--gauge .natgauge__mark::before,
+body.game--gauge .natgauge__mark::after {
+  content: "";
+  position: absolute;
+  left: -11px;
+  pointer-events: none;
+}
+/* 몸통: 흰 상자 + 금 리본 */
+body.game--gauge .natgauge__mark::before {
+  top: -20px;
+  width: 20px;
+  height: 16px;
+  border: 2px solid var(--text-main);
+  border-radius: 3px;
+  background:
+    linear-gradient(90deg, transparent 0 7px, var(--theme-gold) 7px 11px, transparent 11px),
+    #FFFFFF;
+  box-sizing: border-box;
+}
+/* 뚜껑 */
+body.game--gauge .natgauge__mark::after {
+  top: -26px;
+  left: -13px;
+  width: 24px;
+  height: 7px;
+  border: 2px solid var(--text-main);
+  border-radius: 2px;
+  background:
+    linear-gradient(90deg, transparent 0 8px, var(--theme-gold) 8px 12px, transparent 12px),
+    #FFFFFF;
+  box-sizing: border-box;
+  transform-origin: 0 100%;
+}
+body.game--gauge .natgauge__mark b {
+  top: calc(100% + 6px);
+  left: -16px;
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-sub);
+}
+/* 열린 단계 — 뚜껑이 젖혀지고 상자 안이 노랗다. 글자는 진하게 (base 의 금색 글자 대신) */
+body.game--gauge .natgauge__mark.is-open { border-color: var(--text-main); }
+body.game--gauge .natgauge__mark.is-open::before {
+  background:
+    linear-gradient(90deg, transparent 0 7px, var(--theme-gold) 7px 11px, transparent 11px),
+    #FFE7A8;
+}
+body.game--gauge .natgauge__mark.is-open::after { transform: translate(-2px, 1px) rotate(-26deg); }
+body.game--gauge .natgauge__mark.is-open b { color: var(--text-main); }
+
+/* 전국 합계 — 흰 알약 */
+body.game--gauge .natgauge__num {
+  margin-top: 4px;
+  padding: 3px 14px;
+  border: 2px solid var(--theme-line);
+  border-radius: 999px;
+  background: #FFFFFF;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-main);
+}
+
+/* 밀어 넣기 — 둥근 빨간 큰 버튼 */
+body.game--gauge .natgauge__push {
+  min-height: 64px;
+  border: 3px solid var(--text-main);
+  border-radius: 999px;
+  background: var(--theme-fill);
+  color: #FFFFFF;
+  font-size: 19px;
+  box-shadow: 0 5px 0 var(--coral);
+}
+body.game--gauge .natgauge__push::before { content: "↑"; font-size: 24px; line-height: 1; }
+body.game--gauge .natgauge__push:hover:not(:disabled) { background: var(--theme-fill); color: #FFFFFF; filter: brightness(1.06); }
+body.game--gauge .natgauge__push:active:not(:disabled) { transform: translateY(3px); box-shadow: 0 2px 0 var(--coral); }
+body.game--gauge .natgauge__push:disabled {
+  background: #D5DEE9;
+  color: #3B4A5E;           /* 6.64:1 */
+  border-color: #9AA8BA;
+  box-shadow: none;
+  filter: none;
+}
+body.game--gauge .natgauge__push:focus-visible { outline: 3px solid var(--text-main); outline-offset: 3px; }
+
+/* 토큰 ◆ → 빨간 물방울. 글자는 상자 밖으로 밀어 숨기고 모양은 ::before 로 그린다 */
+body.game--gauge .natgauge__tokens { gap: 12px; padding-top: 4px; }
+body.game--gauge .token {
+  position: relative;
+  display: block;
+  width: 22px;
+  height: 26px;
+  overflow: hidden;
+  text-indent: 40px;
+  white-space: nowrap;
+  color: var(--text-main);
+}
+body.game--gauge .token::before {
+  content: "";
+  position: absolute;
+  left: 3px;
+  top: 7px;
+  width: 16px;
+  height: 16px;
+  border-radius: 0 50% 50% 50%;
+  rotate: 45deg;
+  background: var(--theme-fill);
+  border: 2px solid var(--text-main);
+  box-sizing: border-box;
+}
+/* 상태 규칙 — base 의 .token.is-used(opacity .25)를 빈 물방울로 다시 선언 */
+body.game--gauge .token.is-used { opacity: 1; }
+body.game--gauge .token.is-used::before {
+  background: transparent;
+  border: 2px dashed var(--text-sub);
+}
+
+/* 광장 사람 실루엣 — 플레이 화면 맨 아래 장식. 누르기 통과 */
+body.game--gauge .gg-crowd {
+  flex: none;
+  margin: auto calc(-1 * var(--pad-x)) -32px;
+  height: 84px;
+  background:
+    radial-gradient(circle at 22px 12px, rgba(23, 34, 53, 0.12) 0 10px, transparent 10.5px) 0 0 / 44px 84px repeat-x,
+    radial-gradient(ellipse 17px 22px at 22px 46px, rgba(23, 34, 53, 0.12) 0 98%, transparent 100%) 0 0 / 44px 84px repeat-x,
+    radial-gradient(circle at 22px 46px, rgba(23, 34, 53, 0.12) 0 11px, transparent 11.5px) 22px 0 / 44px 84px repeat-x,
+    radial-gradient(ellipse 18px 24px at 22px 84px, rgba(23, 34, 53, 0.12) 0 98%, transparent 100%) 22px 0 / 44px 84px repeat-x;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body.game--gauge .natgauge__fill { transition: none; }
+  body.game--gauge .natgauge__mark::after { transition: none; }
+}
