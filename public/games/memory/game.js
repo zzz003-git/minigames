@@ -153,6 +153,13 @@ function runMemorize(session) {
     digits.append(el("span", { class: "digit-grid__d" }, d));
   }
 
+  // 레벨 칸 10개 — 지금 레벨까지 칠합니다(표시용 · REQ-56 §3-3)
+  const dots = $("#memLevelDots");
+  if (dots) {
+    [...dots.children].forEach((d, i) => d.classList.toggle("is-on", i < session.level));
+    dots.setAttribute("aria-label", `레벨 ${session.level} / ${dots.children.length}`);
+  }
+
   showScreen("memorize");
   clearAllRewards();
 
