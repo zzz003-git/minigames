@@ -53,7 +53,10 @@ body.theme-light .splash {
 :where(body.theme-light) .topbar__back:hover,
 :where(body.theme-light) .topbar__back:focus-visible { background: rgba(0, 0, 0, 0.12); }
 
-:where(body.theme-light) .btn:hover:not(:disabled),
+/* ⚠ 주 버튼(.btn--primary)은 빼야 한다. 이 규칙이 base 의 `.btn--primary:hover` 와 같은
+   우선순위이고 뒤에 와서, 마우스를 올리거나(폰은 탭 뒤 hover 가 남는다) 하면 주 버튼 면이
+   지워지고 흰 글자만 남았다(1.09:1 · 2026-10-06 stroop·stack 실측) */
+:where(body.theme-light) .btn:not(.btn--primary):hover:not(:disabled),
 :where(body.theme-light) .btn--ghost:hover:not(:disabled) { background: rgba(0, 0, 0, 0.04); }
 :where(body.theme-light) .btn--primary:disabled { background: rgba(0, 0, 0, 0.06); }
 
@@ -70,6 +73,10 @@ body.theme-light .splash {
    clover 의 판 진행 중 작은 화면 규칙(body.cv-playing … 9px)은 그쪽 선택자가 더
    강해 이 규칙이 덮지 않는다 — REQ-57 ⑤ 예외 그대로. */
 :where(body.theme-light) .hud__label { font-size: 12px; color: var(--text-sub); }
+/* 같은 이유로 11px 공통 글자 셋도 12px — 통계 타일 라벨 · 상단바 배지 · 그래프 설명 (REQ-56 §1-5) */
+:where(body.theme-light) .stat__label,
+:where(body.theme-light) .topbar__badge,
+:where(body.theme-light) .chart__caption { font-size: 12px; }
 
 /* ── 숫자패드 시트 ───────────────────────────────────────────────────────── */
 :where(body.theme-light) .sheet { box-shadow: 0 -12px 32px rgba(0, 0, 0, 0.16); }
