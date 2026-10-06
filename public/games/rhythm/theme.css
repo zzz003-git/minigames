@@ -1,0 +1,223 @@
+/* ==========================================================================
+   리듬 에코 — 게임별 디자인 「무대 위 작은 북」 (REQ-56 · 2026-10-06)
+   시안: reward-minigame-research/plans/2026-10-06/게임별디자인/mock/rhythm.html
+   ==========================================================================
+
+   연결: base.css → 이 파일 (어두운 바탕이라 theme-light.css 는 연결하지 않는다).
+   되돌리기: 이 게임의 커밋 revert.
+
+   ── 넣은 것 / 생략한 것 (REQ-56 §3-3) ──────────────────────────────────────
+   · 넣음: 양옆 무대 막(바탕 그라디언트) · 북 윗면 그림(#echoPad 배경) · 오선 음표(#echoBeats)
+     · 무대 바닥과 북채 그림(.rh-floor, index.html 정적 장식).
+   · 「○ms 느렸어요」: 응답에 값(worst_off · tol_ms)이 있고, 지금 game.js 가 이미 토스트로
+     「120ms 느렸어요 (허용 ±80ms)」를 띄운다. 그래서 game.js 는 고치지 않았다.
+   · 생략: 틀린 음표를 앞뒤로 밀린 위치에 찍기(박마다 오차 위치 표시는 game.js 필요).
+
+   ── 판정과 맞닿는 곳 ──────────────────────────────────────────────────────
+   · #echoPad 는 원형(border-radius 50%) 탭 대상 그대로. 그림은 배경일 뿐이다.
+   · 제시 빛(.is-lit)·입력 대기(.is-armed)·두드림(.is-hit)·판정(.is-good/.is-bad)은
+     base.css 규칙을 같은 범위로 다시 선언했다(REQ-56 §1-3). 타이머·판정은 game.js 그대로.
+
+   ── 색 ────────────────────────────────────────────────────────────────────
+     --accent   #FFB23F  시안 그대로 (bg 9.13:1 · surface 7.86:1 · surface-2 8.46:1)
+     --coral    #FF8577  시안 danger 그대로 (bg 6.93:1 · surface 5.96:1)
+     --text-sub #E3BFC0  (surface-2 9.03:1) · --text-faint #D9AFB0 (surface 7.20:1)
+   ========================================================================== */
+
+body.game--rhythm {
+  --bg: #3A1219;
+  --void: #2A0C11;
+  --surface: #4D1A23;
+  --surface-2: #441620;
+
+  --text-main: #FFF3E8;   /* surface 12.93:1 */
+  --text-2: #F8E6DA;
+  --text-sub: #E3BFC0;
+  --text-dim: #E3BFC0;
+  --text-faint: #D9AFB0;
+
+  --accent: #FFB23F;
+  --accent-ink: #3A1219;
+  --accent-08: rgba(255, 178, 63, 0.08);
+  --accent-10: rgba(255, 178, 63, 0.1);
+  --accent-14: rgba(255, 178, 63, 0.14);
+  --accent-20: rgba(255, 178, 63, 0.2);
+  --accent-45: rgba(255, 178, 63, 0.45);
+
+  --coral: #FF8577;
+  --danger: #FF8577;
+
+  --theme-cream: #F2E6D0;
+  --theme-curtain: #6E1724;
+  --theme-curtain-dark: #4A0E18;
+  --theme-wood: #4A2A1A;
+  --theme-display: "Dokdo", "Noto Sans KR", var(--sans);
+
+  /* 양옆 세로 주름 막 + 가운데 위쪽 조명 */
+  background:
+    radial-gradient(ellipse 70% 40% at 50% 0%, rgba(255, 178, 63, 0.1), rgba(255, 178, 63, 0) 70%),
+    repeating-linear-gradient(90deg, var(--theme-curtain) 0 7px, var(--theme-curtain-dark) 7px 12px) left top / 7% 100% no-repeat,
+    repeating-linear-gradient(90deg, var(--theme-curtain-dark) 0 5px, var(--theme-curtain) 5px 12px) right top / 7% 100% no-repeat,
+    var(--bg);
+  background-color: var(--bg);
+}
+
+/* 제목 — 장식 서체는 큰 글자에만 (원칙 ④). Dokdo 는 획이 가늘어 크게 둔다 */
+body.game--rhythm .headline {
+  font-family: var(--theme-display);
+  font-size: 36px;
+  font-weight: 400;
+  line-height: 1.15;
+  word-break: keep-all;
+}
+body.game--rhythm .footnote,
+body.game--rhythm .footnote--dim { word-break: keep-all; }
+
+/* 공통 요소의 11px 글자 → 12px (REQ-56 §1-4 · 12px 미만 금지). 박스 크기는 그대로 */
+body.game--rhythm .topbar__badge { font-size: 12px; }
+body.game--rhythm .stat__label,
+body.game--rhythm .chart__caption,
+body.game--rhythm .reward__desc { font-size: 12px; }
+body.game--rhythm .reward__note { font-size: 12px; opacity: 1; }
+
+/* ══════════════════════════════════════════════════════════════
+   플레이 — 무대 앞 조명 박스(HUD) · 북 · 오선 · 바닥
+   ══════════════════════════════════════════════════════════════ */
+
+/* HUD — 검붉은 상자 3개 + 금색 숫자 */
+body.game--rhythm [data-screen="play"] .hud {
+  gap: 8px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+}
+body.game--rhythm [data-screen="play"] .hud__item {
+  flex: 1;
+  align-items: center;
+  padding: 6px 4px;
+  background: var(--void);
+  border: 2px solid #C98A2E;
+  border-radius: 12px;
+  box-shadow: 0 0 14px rgba(255, 178, 63, 0.18);
+}
+body.game--rhythm [data-screen="play"] .hud__label { font-family: var(--sans); font-size: 12px; font-weight: 700; letter-spacing: 0; color: var(--text-sub); }
+body.game--rhythm [data-screen="play"] .hud__value,
+body.game--rhythm [data-screen="play"] .hud__value--accent { color: var(--accent); font-size: 20px; }
+
+/* 무대 — 면을 걷고 북만 남긴다 */
+body.game--rhythm .echo {
+  background: transparent;
+  border-color: transparent;
+  gap: 16px;
+}
+
+/* 북 윗면 — 원형 탭 대상 그대로, 그림은 배경 */
+body.game--rhythm .echo__pad {
+  position: relative;
+  width: min(64vw, 240px);
+  border: 4px solid transparent;
+  background:
+    url("/games/rhythm/img/drum_top.v1.png") center / 123% auto no-repeat,
+    radial-gradient(circle, #EDE3CC 0 60%, #9AA0A8 61%);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.45);
+}
+/* 파문 링 2개 — 장식. 누르기 통과 */
+body.game--rhythm .echo__pad::before,
+body.game--rhythm .echo__pad::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  border: 3px solid var(--accent);
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* 상태 규칙 — base.css 의 .echo__pad.is-* 를 같은 범위로 다시 선언 (REQ-56 §1-3) */
+/* 제시 빛 — 가죽 가운데 금빛 + 테 빛 + 파문 */
+body.game--rhythm .echo__pad.is-lit {
+  border-color: var(--accent);
+  background:
+    radial-gradient(circle, rgba(255, 178, 63, 0.55) 0 22%, rgba(255, 178, 63, 0) 52%),
+    url("/games/rhythm/img/drum_top.v1.png") center / 123% auto no-repeat,
+    radial-gradient(circle, #EDE3CC 0 60%, #9AA0A8 61%);
+  box-shadow: 0 0 0 10px rgba(255, 178, 63, 0.18), 0 0 44px rgba(255, 178, 63, 0.55);
+}
+body.game--rhythm .echo__pad.is-lit::before { animation: rh-ripple 400ms ease-out; }
+body.game--rhythm .echo__pad.is-lit::after { animation: rh-ripple 400ms ease-out 90ms; }
+/* 입력 대기 — 테가 은은하게 빛난다 */
+body.game--rhythm .echo__pad.is-armed {
+  border-color: var(--accent-45);
+  box-shadow: 0 0 0 4px rgba(255, 178, 63, 0.22), 0 10px 24px rgba(0, 0, 0, 0.45);
+}
+/* 두드림 — 0.97배로 눌리고 파문 한 줄 */
+body.game--rhythm .echo__pad.is-hit { transform: scale(0.97); }
+body.game--rhythm .echo__pad.is-hit::before { animation: rh-ripple 320ms ease-out; }
+/* 판정 — 맞음: 금색 테 빛 / 틀림: 회색 테 + 좌우 흔들림 */
+body.game--rhythm .echo__pad.is-good {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 8px rgba(255, 178, 63, 0.3), 0 0 36px rgba(255, 178, 63, 0.45);
+}
+body.game--rhythm .echo__pad.is-bad {
+  border-color: #8A8088;
+  box-shadow: 0 0 0 8px rgba(138, 128, 136, 0.28);
+  animation: nope 320ms cubic-bezier(0.36, 0.07, 0.19, 0.97);
+}
+body.game--rhythm .echo__pad:focus-visible { outline: 3px solid var(--accent); outline-offset: 6px; }
+
+@keyframes rh-ripple {
+  from { transform: scale(1); opacity: 0.9; }
+  to { transform: scale(1.35); opacity: 0; }
+}
+
+/* 오선 5줄 위 4분음표 — 빈 머리(아직) / 금색으로 채움(.is-on) */
+body.game--rhythm .echo__beats {
+  gap: 14px;
+  min-height: 46px;
+  align-items: center;
+  padding: 6px 16px 0;
+  background:
+    repeating-linear-gradient(180deg, rgba(227, 191, 192, 0.5) 0 1px, transparent 1px 7px)
+      left center / 100% 29px no-repeat;
+}
+body.game--rhythm .beat {
+  position: relative;
+  width: 15px;
+  height: 11px;
+  border-radius: 50%;
+  border: 2px solid var(--theme-cream);
+  background: transparent;
+  rotate: -20deg;
+}
+body.game--rhythm .beat::after {
+  content: "";
+  position: absolute;
+  right: -2px;
+  bottom: 50%;
+  width: 2px;
+  height: 22px;
+  background: var(--theme-cream);
+  rotate: 20deg;
+  transform-origin: bottom;
+}
+body.game--rhythm .beat.is-on { background: var(--accent); border-color: var(--accent); }
+body.game--rhythm .beat.is-on::after { background: var(--accent); }
+
+/* 무대 바닥 + 엇갈린 북채 — 화면 맨 아래 장식. 누르기 통과 */
+body.game--rhythm .rh-floor {
+  flex: none;
+  margin: auto calc(-1 * var(--pad-x)) -32px;
+  height: 92px;
+  background:
+    url("/games/rhythm/img/drumsticks.v1.png") center 45% / auto 118% no-repeat,
+    repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.18) 0 2px, transparent 2px 72px),
+    linear-gradient(#C98A2E 0 4px, var(--theme-wood) 4px);
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body.game--rhythm .echo__pad.is-lit::before,
+  body.game--rhythm .echo__pad.is-lit::after,
+  body.game--rhythm .echo__pad.is-hit::before,
+  body.game--rhythm .echo__pad.is-bad { animation: none; }
+}

@@ -13,13 +13,16 @@
   <link rel="manifest" href="/site.webmanifest">
   <title>리듬 에코</title>
   <meta name="color-scheme" content="dark">
-  <meta name="theme-color" content="#0F1420">
+  <meta name="theme-color" content="#3A1219">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=JetBrains+Mono:wght@400;500;700&family=Dokdo&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../../shared/base.css">
+  <link rel="stylesheet" href="theme.css">
+  <!-- 첫 판에 북 윗면이 바로 보여야 합니다 -->
+  <link rel="preload" as="image" href="/games/rhythm/img/drum_top.v1.png">
 </head>
-<body class="game game--accent-mint">
+<body class="game game--accent-mint game--rhythm">
   <script src="../../shared/splash.js"></script>
   <div class="app">
     <header class="topbar" id="header"></header>
@@ -84,6 +87,9 @@
 
         <p class="footnote center" id="playHint">빛을 보고 기다리세요</p>
         <div id="adbarPlay"></div>
+
+        <!-- 장식: 무대 바닥과 엇갈린 북채 (탭 대상 아님) -->
+        <div class="rh-floor" aria-hidden="true"></div>
       </section>
 
       <!-- 소진 - 이어하기 -->
