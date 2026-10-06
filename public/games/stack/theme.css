@@ -1,0 +1,132 @@
+/* ==========================================================================
+   퍼펙트 스택 — 게임별 디자인 「노을 창가 원목 블록 탑」 (REQ-56 §3-2 · 2026-10-06)
+   시안: reward-minigame-research/plans/2026-10-06/게임별디자인/mock/stack.html
+   ==========================================================================
+
+   연결: base.css → theme-light.css → 이 파일.  되돌리기: 이 게임의 커밋 revert.
+
+   ── 그리기 (REQ-56 §3-2) ───────────────────────────────────────────────────
+   · 블록은 canvas 다. game.js 가 아래 --stack-* 를 **런 시작 때 한 번** 읽는다
+     (trim 후 비면 game.js 의 대체값). 층 색은 cols[(층번호+7)%5], 바닥판은 --stack-base.
+   · LAYER_H 는 26 그대로(보이는 층 수 유지). 판정·좌표는 손대지 않았다.
+   · 장식(.stack-deco · 해)은 #tower 안 canvas **앞**에 두고 pointer-events:none.
+     줄자 눈금 · 「딱!」 리본 · 연속 블록 3칸 · 마루 띠는 생략(§3-2 · 3-3 범위 밖).
+
+   ── 색 ────────────────────────────────────────────────────────────────────
+   시안 accent #C2511F 는 bg #FFE2C6 대비 3.77:1 이라 글자색으로 못 쓴다.
+     --accent      #A3431A  글자·테두리용 (bg 5.02:1 · surface #FFF4E8 5.74:1 · surface-2 5.37:1)
+     --accent-ink  #FFFFFF  accent 면 위 글자 (6.22:1)
+     --theme-fill  #C2511F  면 전용
+     --coral       #B42318  오답색 (bg 5.31:1 · surface 6.06:1)
+     본문 #2D1A0C (bg 13.4:1) · 보조 #644329 (bg 7.13:1 · surface 8.14:1)
+     점수 명패 #CD9A5F 위 글자 #2D1A0C (6.63:1)
+   ========================================================================== */
+
+body.game--stack {
+  --bg: #FFE2C6;
+  --void: #FFD3B0;
+  --surface: #FFF4E8;
+  --surface-2: #FFEBD8;
+
+  --text-main: #2D1A0C;
+  --text-2: #3A2412;
+  --text-sub: #644329;
+  --text-dim: #644329;
+  --text-faint: #6E4A2E;
+
+  --accent: #A3431A;
+  --accent-ink: #FFFFFF;
+  --accent-08: rgba(194, 81, 31, 0.08);
+  --accent-10: rgba(194, 81, 31, 0.1);
+  --accent-14: rgba(194, 81, 31, 0.14);
+  --accent-20: rgba(194, 81, 31, 0.22);
+  --accent-45: rgba(194, 81, 31, 0.5);
+
+  --coral: #B42318;
+  --danger: #B42318;
+
+  --theme-fill: #C2511F;
+  --theme-wood: #B07A4A;
+  --theme-wood-dark: #8A5A34;
+  --theme-display: "Jua", "Noto Sans KR", var(--sans);
+
+  /* canvas 가 런 시작 때 읽는 블록 색 (REQ-56 §3-2) */
+  --stack-c1: #E0662F;
+  --stack-c2: #F2B134;
+  --stack-c3: #3F8FD2;
+  --stack-c4: #4BAF7A;
+  --stack-c5: #D9577A;
+  --stack-base: #9A6A3E;
+  --stack-edge: rgba(45, 26, 12, 0.35);
+  --stack-guide: rgba(100, 67, 41, 0.6);
+
+  background-color: var(--bg);
+}
+
+/* 제목·설명 — 장식 서체는 큰 글자에만 (원칙 ④) */
+body.game--stack .headline {
+  font-family: var(--theme-display);
+  font-size: 28px;
+  font-weight: 400;
+  line-height: 1.25;
+  word-break: keep-all;
+}
+body.game--stack .footnote { word-break: keep-all; }
+
+/* 주 버튼 hover — theme-light.css 의 `.btn:hover` 웰 색이 뒤에 와서 주 버튼 면을 지운다
+   (흰 글자가 연한 면 위). 터치 기기에선 탭 뒤 hover 가 남으므로 같은 범위로 되돌린다 */
+body.game--stack .btn--primary:hover:not(:disabled) { background: var(--accent); color: var(--accent-ink); }
+
+/* ══════════════════════════════════════════════════════════════
+   플레이 — 노을 창가
+   ══════════════════════════════════════════════════════════════ */
+
+/* 무대 = 창틀. 바깥 나무 테 + 안쪽 짙은 선, 안은 노을 그라디언트 */
+body.game--stack #tower {
+  position: relative;
+  border: 6px solid var(--theme-wood);
+  border-radius: 18px;
+  box-shadow: inset 0 0 0 2px var(--theme-wood-dark), 0 3px 0 rgba(138, 90, 52, 0.35);
+  background: linear-gradient(180deg, #FFC9A0 0%, #FFD3B0 40%, #FFE9D4 100%);
+}
+/* 상태 규칙을 같은 범위로 다시 선언 (REQ-56 §1-3) */
+body.game--stack #tower:active { border-color: var(--theme-wood-dark); }
+body.game--stack #tower:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* 장식 — canvas 아래, 탭은 무대 버튼이 받는다 */
+body.game--stack .stack-deco {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+  border-radius: inherit;
+}
+body.game--stack .stack-deco__sun {
+  position: absolute;
+  right: 9%;
+  top: 9%;
+  width: 24%;
+  aspect-ratio: 1 / 1;
+  border-radius: 50%;
+  background: radial-gradient(circle, #FFF6DC 30%, #FFC98F 68%, rgba(255, 201, 143, 0) 71%);
+}
+body.game--stack .stacktower__canvas {
+  position: relative;
+  z-index: 1;
+}
+
+/* HUD — 점수는 원목 명패 */
+body.game--stack [data-screen="play"] .hud__item:nth-child(2) {
+  align-items: center;
+  padding: 3px 14px 4px;
+  border: 2px solid var(--theme-wood-dark);
+  border-radius: 8px;
+  background: linear-gradient(#D9A56A, #C28E54);
+  box-shadow: 0 3px 0 var(--theme-wood-dark);
+}
+body.game--stack [data-screen="play"] .hud__item:nth-child(2) .hud__label,
+body.game--stack [data-screen="play"] .hud__item:nth-child(2) .hud__value { color: #2D1A0C; }
+body.game--stack [data-screen="play"] .hud__value { color: var(--text-main); }
+body.game--stack [data-screen="play"] .hud__value--accent { color: var(--accent); }
+body.game--stack [data-screen="play"] .hud__value.is-urgent { color: var(--coral); }

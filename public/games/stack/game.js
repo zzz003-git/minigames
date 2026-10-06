@@ -35,7 +35,34 @@ const H = 360;
 /** 한 층의 높이(px). 탑이 화면을 넘으면 아래로 밀어 그립니다 */
 const LAYER_H = 26;
 
-const state = { round: null, t0: 0, raf: 0, busy: false, cut: null };
+/** 잘린 조각이 떨어지는 시간(ms) */
+const CUT_MS = 420;
+
+const state = { round: null, t0: 0, raf: 0, busy: false, cut: null, pal: null, still: false };
+
+/**
+ * 원목 블록 색 (REQ-56 §3-2) — 테마의 `--stack-*` 를 **런 시작 때 한 번** 읽습니다.
+ * 값이 비면(테마 파일이 없으면) 대체값을 씁니다. 판정과는 무관합니다.
+ */
+function readPalette() {
+  const cs = getComputedStyle(document.body);
+  const v = (name, fallback) => cs.getPropertyValue(name).trim() || fallback;
+  return {
+    cols: [
+      v("--stack-c1", "#E0662F"),
+      v("--stack-c2", "#F2B134"),
+      v("--stack-c3", "#3F8FD2"),
+      v("--stack-c4", "#4BAF7A"),
+      v("--stack-c5", "#D9577A"),
+    ],
+    base: v("--stack-base", "#9A6A3E"),
+    edge: v("--stack-edge", "rgba(45, 26, 12, 0.35)"),
+    guide: v("--stack-guide", "rgba(100, 67, 41, 0.6)"),
+  };
+}
+
+/** 층 색 — 층 번호(바닥판 0)로 정합니다. 서버가 탑을 최근 40층만 주므로 배열 순번을 쓰지 않습니다 */
+const colorOf = (level) => state.pal.cols[(level + 7) % 5];
 let lastResult = null;
 let lastData = null;
 
@@ -90,6 +117,10 @@ async function loadReady() {
 
 async function startRun() {
   $("#startBtn").disabled = true;
+  // 그리기 설정은 런 시작 때 한 번만 정합니다 — 런 도중에 바뀌지 않습니다
+  state.pal = readPalette();
+  state.still = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  state.cut = null;
   try {
     await run.begin();
   } catch (err) {
@@ -158,38 +189,34 @@ function draw(g) {
   if (!round) return;
 
   g.clearRect(0, 0, W, H);
+  if (!state.pal) state.pal = readPalette();
 
   const tower = round.tower ?? [];
   // 맨 위 층이 항상 같은 높이(TOP_Y)에 오도록 카메라를 올립니다
   const TOP_Y = H - LAYER_H * 4;
-  const shift = Math.max(0, (tower.length - 1) * LAYER_H - (H - LAYER_H * 5));
+  const shift = shiftFor(tower.length);
+  // 배열 첫 칸의 층 번호 — 서버는 최근 40층만 주므로 levels 로 되찾습니다(바닥판 = 0)
+  const first = Math.max(0, (round.levels ?? tower.length - 1) + 1 - tower.length);
 
   tower.forEach(([l, r], i) => {
     const y = H - LAYER_H * (i + 1) + shift;
     if (y < -LAYER_H || y > H) return;
-    const base = i === 0;
-    g.fillStyle = base ? "rgba(233,146,127,.28)" : `hsl(14 62% ${34 + ((i * 5) % 26)}%)`;
-    g.strokeStyle = "rgba(255,255,255,.14)";
-    roundRect(g, l * W, y, (r - l) * W, LAYER_H - 3, 4);
-    g.fill();
-    g.stroke();
+    const level = first + i;
+    block(g, l * W, y, (r - l) * W, level === 0 ? state.pal.base : colorOf(level));
   });
 
-  // 흐르는 블록
+  // 흐르는 블록 — 다음 층의 색
   if (!state.busy) {
     const x = blockX(performance.now() - state.t0, round.sweep_ms, round.phase0, round.width);
     const y = Math.min(TOP_Y, H - LAYER_H * (tower.length + 1) + shift);
-    g.fillStyle = "#E9927F";
-    g.strokeStyle = "rgba(255,255,255,.35)";
-    roundRect(g, x * W, y, round.width * W, LAYER_H - 3, 4);
-    g.fill();
-    g.stroke();
+    block(g, x * W, y, round.width * W, colorOf(first + tower.length));
 
     // 받침 중앙 안내선 — 조준점이 보이지 않으면 조준 게임이 되지 않습니다
     const [sl, sr] = round.support ?? [0, 1];
     const mid = ((sl + sr) / 2) * W;
-    g.strokeStyle = "rgba(255,255,255,.18)";
-    g.setLineDash([4, 6]);
+    g.strokeStyle = state.pal.guide;
+    g.lineWidth = 1;
+    g.setLineDash([4, 5]);
     g.beginPath();
     g.moveTo(mid, y + LAYER_H);
     g.lineTo(mid, H);
@@ -197,26 +224,49 @@ function draw(g) {
     g.setLineDash([]);
   }
 
-  // 잘려 떨어지는 조각 (판정 직후 짧게)
-  if (state.cut && performance.now() - state.cut.at < 420) {
-    const p = (performance.now() - state.cut.at) / 420;
-    g.globalAlpha = 1 - p;
-    g.fillStyle = "#E9927F";
-    roundRect(g, state.cut.x * W, state.cut.y + p * 90, state.cut.w * W, LAYER_H - 3, 4);
-    g.fill();
-    g.globalAlpha = 1;
+  // 잘려 떨어지는 조각 (판정 직후 짧게). y 는 탑 기준 좌표라 지금 카메라 shift 를 더합니다 —
+  // 더하지 않으면 탑이 화면을 넘은 뒤(10층~)부터 조각이 화면 밖에서 떨어집니다
+  const cut = state.cut;
+  if (cut && performance.now() - cut.at < CUT_MS) {
+    const p = (performance.now() - cut.at) / CUT_MS;
+    for (const pc of cut.pieces) {
+      const x = pc.x * W;
+      const w = pc.w * W;
+      const y = cut.wy + shift + p * 90;
+      g.save();
+      g.globalAlpha = 1 - p;
+      if (state.still) {
+        block(g, x, y, w, cut.color);
+      } else {
+        // 바깥쪽으로 기울며 떨어집니다
+        g.translate(x + w / 2, y + LAYER_H / 2);
+        g.rotate(pc.dir * p * 0.9);
+        block(g, -w / 2, -LAYER_H / 2, w, cut.color);
+      }
+      g.restore();
+    }
   }
 }
 
-function roundRect(g, x, y, w, h, r) {
-  const rr = Math.min(r, Math.abs(w) / 2, h / 2);
-  g.beginPath();
-  g.moveTo(x + rr, y);
-  g.arcTo(x + w, y, x + w, y + h, rr);
-  g.arcTo(x + w, y + h, x, y + h, rr);
-  g.arcTo(x, y + h, x, y, rr);
-  g.arcTo(x, y, x + w, y, rr);
-  g.closePath();
+/** 탑 길이(바닥판 포함)에 맞춘 카메라 이동량 */
+function shiftFor(len) {
+  return Math.max(0, (len - 1) * LAYER_H - (H - LAYER_H * 5));
+}
+
+/** 원목 블록 하나 — 각진 몸통 → 윗면 흰 띠 → 나뭇결 2줄 → 테두리 */
+function block(g, x, y, w, color) {
+  if (!(w > 0.5)) return;
+  const h = LAYER_H - 3;
+  g.fillStyle = color;
+  g.fillRect(x, y, w, h);
+  g.fillStyle = "rgba(255, 255, 255, 0.55)";
+  g.fillRect(x, y, w, 3);
+  g.fillStyle = "rgba(0, 0, 0, 0.08)";
+  g.fillRect(x, y + 9, w, 1);
+  g.fillRect(x, y + 16, w, 1);
+  g.strokeStyle = state.pal.edge;
+  g.lineWidth = 1;
+  g.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -245,15 +295,24 @@ async function showVerdict(res) {
     return;
   }
 
-  // 잘려 떨어지는 조각 — 어긋난 만큼만
-  if (d.cut > 0.004) {
+  // 잘려 떨어지는 조각 — 어긋난 만큼만. 서버가 준 블록 왼쪽(x)·폭과 남은 구간(span)의
+  // 차이로 왼쪽·오른쪽 조각을 구합니다(첫 3층처럼 잘리지 않은 층은 조각이 없습니다)
+  const width = state.round?.width ?? 0;
+  if (d.cut > 0.004 && Array.isArray(d.span) && width > 0) {
     const tower = d.tower ?? [];
-    state.cut = {
-      x: d.x,
-      w: d.cut,
-      y: H - LAYER_H * (tower.length + 1),
-      at: performance.now(),
-    };
+    const [a, b] = d.span;
+    const pieces = [];
+    if (a - d.x > 0.004) pieces.push({ x: d.x, w: a - d.x, dir: -1 });
+    if (d.x + width - b > 0.004) pieces.push({ x: b, w: d.x + width - b, dir: 1 });
+    if (pieces.length) {
+      state.cut = {
+        pieces,
+        // 방금 얹은 층과 같은 높이(탑 기준 좌표). 화면 y 는 draw 가 shift 를 더해 구합니다
+        wy: H - LAYER_H * tower.length,
+        color: colorOf(d.levels ?? 0),
+        at: performance.now(),
+      };
+    }
   }
 
   $("#hudLevel").textContent = String(d.levels ?? 0);
