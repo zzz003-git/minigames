@@ -256,7 +256,7 @@ export const ARCADE = {
     label: "순간 개수 세기",
     icon: "👁",
     accent: "coral",
-    tagline: "점이 몇 개였나요?",
+    tagline: "콩이 몇 알이었나요?",
     baseAttempts: 5,
     adAttemptsPerDay: 5,
     boostsPerRun: 2,
@@ -578,7 +578,7 @@ export const ARCADE = {
     mode: "ENDLESS",
     category: "puzzle", // 반응속도 완전 비의존 (docs/scratch-game.md §7)
     label: "슥슥 긁기",
-    icon: "🎟",
+    icon: "🎀",
     accent: "gold", // 은박·금박 — base.css 에 있는 값만 유효합니다 (coral · gold · mint)
     tagline: "은박을 긁어 같은 그림 3개",
 
