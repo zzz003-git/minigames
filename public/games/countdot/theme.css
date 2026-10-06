@@ -68,19 +68,33 @@ body.game--countdot .footnote { word-break: keep-all; }
    플레이 — 식탁 위 흰 접시와 은색 덮개
    ══════════════════════════════════════════════════════════════ */
 
+/* 무대 — base 의 min-height 320px 를 풀어, 「확인」이 스크롤 없이 첫 화면에 들어오게 한다
+   (기획회신 REP-50·51 검토 B · 393×852 · 375×667). 접시가 화면 높이에 맞춰 줄어든다 */
 body.game--countdot .cd-stage {
   position: relative;
+  min-height: 0;
+  flex: none;
+  padding: 6px;
+  /* 접시 한 변 — 덮개도 이 값에 맞춰 줄어든다 */
+  --cd-plate: min(100%, 320px, max(170px, calc(100dvh - 495px)));
   background: transparent;
   border-color: transparent;
 }
 
-/* 접시: 정사각 영역은 그대로, 둥근 접시는 배경 그림으로만 */
+/* 접시: 둥근 사각 쟁반(모서리 18%). 콩 좌표(x 7~93 · y 9~91)가 전부 접시 **안**에 놓인다
+   (원형 접시는 네 모서리 콩이 원 밖으로 나갔다 — 같은 검토 A). 좌표·콩 크기는 그대로.
+   크기: 최대 320px · 화면 높이에서 나머지(머리줄·HUD·패드 ≈ 495px)를 뺀 만큼 · 최소 170px */
 body.game--countdot .dot-field {
-  background:
-    radial-gradient(circle at 50% 50%,
-      #FFFFFF 0 55%, #F1EEE9 55.5% 59%, #FFFFFF 59.5% 66%, #D9D3CC 66.5% 68.5%,
-      rgba(217, 211, 204, 0) 69%);
-  border-radius: 24px;
+  width: var(--cd-plate);
+  max-width: none;
+  overflow: visible;
+  border-radius: 18%;
+  background: #FFFFFF;
+  box-shadow:
+    0 0 0 4px #D9D3CC,
+    0 8px 0 2px rgba(43, 20, 8, 0.22),
+    inset 0 0 0 9px #FFFFFF,
+    inset 0 0 0 12px #EAE4DC;
 }
 
 /* 콩 — 한 가지 색. 크기·중심 보정은 base 그대로 */
@@ -117,7 +131,7 @@ body.game--countdot .cd-cloche {
   position: absolute;
   left: 50%;
   top: 50%;
-  width: min(62%, 220px);
+  width: calc(var(--cd-plate) * 0.6);   /* 접시의 60% — 아래 「몇 알이었나요?」를 덮지 않는 크기 */
   height: auto;
   z-index: 2;
   pointer-events: none;
@@ -130,11 +144,8 @@ body.game--countdot .cd-stage.is-covered .cd-cloche {
   opacity: 1;
   transform: translate(-50%, -62%);
 }
-body.game--countdot .cd-stage.is-lifted .cd-cloche {
-  opacity: 0;
-  transform: translate(-50%, -96%);
-  transition-duration: 220ms;
-}
+/* 판정 뒤 — 덮개를 **완전히** 걷는다. 투명도만 내리면 콩 위로 윤곽이 희미하게 남았다(같은 검토 C) */
+body.game--countdot .cd-stage.is-lifted .cd-cloche { display: none; }
 
 /* ── HUD — 컵받침 칩 ───────────────────────────────────────────── */
 body.game--countdot [data-screen="play"] .hud__value { color: var(--text-main); }
@@ -149,6 +160,12 @@ body.game--countdot .sheet {
   box-shadow: inset 0 4px 0 #C79F6B, 0 -12px 32px rgba(0, 0, 0, 0.16);
 }
 body.game--countdot .sheet__grip { background: #A97B45; }
+/* 패드를 낮게 — 키 높이 48px(터치 44px 이상 유지) · 간격 8px · 머리줄 여백 축소 */
+body.game--countdot [data-screen="play"] .sheet { padding-top: 8px; padding-bottom: 14px; }
+body.game--countdot [data-screen="play"] .sheet__grip { margin-bottom: 6px; }
+body.game--countdot [data-screen="play"] .sheet__head { margin-bottom: 6px; }
+body.game--countdot .numpad { gap: 8px; }
+body.game--countdot .numpad__key { min-height: 48px; padding: 8px 0; }
 body.game--countdot .sheet .card__label { color: var(--text-main); }
 body.game--countdot .numpad__key {
   background: #FFFFFF;
