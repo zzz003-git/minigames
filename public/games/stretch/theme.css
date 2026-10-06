@@ -1,0 +1,190 @@
+/* ==========================================================================
+   쭉 — 게임별 디자인 「쭉 늘어나는 떡 반죽」 (REQ-56 · 2026-10-06)
+   시안: reward-minigame-research/plans/2026-10-06/게임별디자인/mock/stretch.html
+   ==========================================================================
+
+   연결: base.css → theme-light.css → 이 파일.  되돌리기: 이 게임의 커밋 revert.
+
+   ── 그리기만 바뀌는 곳 (REQ-56 §3-2) ───────────────────────────────────────
+   · 덩어리 모양은 game.js draw() 가 그린다(뿌리 구근 · 목 · 끝 구근, 세 반지름 모두 zoom).
+     여기서는 칠만 한다 — #doughGrad(index.html <defs>) 의 정지점을 var(--c) 로 칠한다.
+   · 윤곽선 알파는 base 의 --tension 식(0.08 + tension × 0.22)을 그대로 쓴다. 색만 밝은
+     쟁반 위에서 보이게 흰색 → 갈색으로 바꿨다.
+   · 움직이는 path 에 filter(블러)를 쓰지 않는다 — 저사양에서 드래그가 끊긴다.
+   · 윤기 path(#doughShine)는 fill:none · animation:none — 숨쉬기·끊김 애니메이션에서 뺀다.
+   · 끊길 때 말리는 연출 · 「팽팽해요」 말풍선 · 줄자 위 상품 미리보기는 생략(REQ-56 §3-2).
+   · 무대 비율(3:4)은 바꾸지 않는다 → base 의 max-height(62vh / 380px 이하 56vh) 그대로.
+
+   ── 색 ────────────────────────────────────────────────────────────────────
+   시안 accent #E8C25C(반죽 노랑)는 분홍 바탕 대비 1.4:1, accent2 #F27A9B 는 2.1:1 이라
+   글자색으로 못 쓴다.
+     --accent        #9E2A4F  글자·버튼 (bg 5.9:1 · surface 6.7:1 · 흰 글자 7.3:1)
+     --theme-fill    #E8C25C  면 전용 (상품 꼬리표)
+     --theme-pink    #F27A9B  테두리·줄자 눈금 전용
+     --coral         #B42318  오답·경고 (bg 5.4:1 · surface 6.1:1)
+     --text-sub      #6A3D4E  (bg 7.2:1)
+   ========================================================================== */
+
+body.game--stretch {
+  --bg: #FFE1E8;
+  --void: #FFD3DE;
+  --surface: #FFF4F6;
+  --surface-2: #FFEAF0;
+
+  --text-main: #2E1620;
+  --text-2: #3E2030;
+  --text-sub: #6A3D4E;
+  --text-dim: #6A3D4E;
+  --text-faint: #6A3D4E;
+
+  --accent: #9E2A4F;
+  --accent-ink: #FFFFFF;
+  --accent-08: rgba(158, 42, 79, 0.08);
+  --accent-10: rgba(158, 42, 79, 0.1);
+  --accent-14: rgba(158, 42, 79, 0.14);
+  --accent-20: rgba(158, 42, 79, 0.22);
+  --accent-45: rgba(158, 42, 79, 0.5);
+
+  --coral: #B42318;
+  --danger: #B42318;
+  --gold: #9E2A4F; /* base 가 .lencount · 포커스 테두리에 --gold 를 쓴다 */
+
+  --theme-fill: #E8C25C;
+  --theme-fill-edge: #A07F1C;
+  --theme-pink: #F27A9B;
+  --theme-pink-soft: #E7A2B6;
+  --theme-display: "Bagel Fat One", "Noto Sans KR", var(--sans);
+
+  background: var(--bg);
+}
+
+/* 제목·설명 — 장식 서체는 큰 글자에만 (원칙 ④) */
+body.game--stretch .headline {
+  font-family: var(--theme-display);
+  font-size: 30px;
+  font-weight: 400;
+  line-height: 1.2;
+  word-break: keep-all;
+}
+body.game--stretch .footnote,
+body.game--stretch .footnote--dim { word-break: keep-all; }
+
+/* ══════════════════════════════════════════════════════════════
+   플레이 — 분홍 줄자 HUD · 밀가루 쟁반 · 노란 반죽
+   ══════════════════════════════════════════════════════════════ */
+
+/* HUD: 분홍 줄자 (아래 눈금) */
+body.game--stretch [data-screen="play"] .hud {
+  position: relative;
+  overflow: hidden;
+  padding: 10px 14px 20px;
+  background: var(--surface);
+  border: 2.5px solid var(--theme-pink);
+  border-radius: 14px;
+  box-shadow: 0 3px 0 var(--theme-pink-soft);
+}
+body.game--stretch [data-screen="play"] .hud::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 10px;
+  background: repeating-linear-gradient(90deg, var(--theme-pink) 0 2px, transparent 2px 10px);
+  pointer-events: none;
+}
+body.game--stretch [data-screen="play"] .hud__label { font-size: 13px; font-weight: 700; color: var(--text-sub); }
+body.game--stretch .lencount { color: var(--text-main); }
+
+/* 상품 — 줄자 끝에 매단 노란 꼬리표 */
+body.game--stretch [data-screen="play"] .hud__item--right {
+  position: relative;
+  align-items: center;
+  padding: 4px 14px 4px 20px;
+  background: var(--theme-fill);
+  border: 2px solid var(--theme-fill-edge);
+  border-radius: 4px 14px 14px 4px;
+  box-shadow: 0 2px 0 var(--theme-fill-edge);
+}
+body.game--stretch [data-screen="play"] .hud__item--right::before {
+  content: "";
+  position: absolute;
+  left: 5px;
+  top: 50%;
+  width: 6px;
+  height: 6px;
+  margin-top: -3px;
+  border-radius: 50%;
+  background: var(--surface);
+  border: 1.5px solid var(--theme-fill-edge);
+}
+body.game--stretch [data-screen="play"] .hud__item--right .hud__label,
+body.game--stretch [data-screen="play"] .hud__item--right .hud__value { color: var(--text-main); }
+
+/* 쟁반 — 연분홍 면 + 밀가루 점. 무대 비율·max-height 는 base 그대로 */
+body.game--stretch .doughstage {
+  background:
+    radial-gradient(circle, #FFFFFF 0 2px, transparent 2.5px) 0 0 / 37px 41px,
+    radial-gradient(circle, #FFFFFF 0 1.5px, transparent 2px) 18px 22px / 53px 47px,
+    radial-gradient(circle, #FFE9EE 0 3px, transparent 3.5px) 30px 9px / 71px 63px,
+    var(--surface);
+  border: 3px solid #FFFFFF;
+  border-radius: 32px;
+  box-shadow: 0 0 0 3px #F6B9C9, 0 6px 0 3px var(--theme-pink-soft);
+}
+/* base 상태 규칙을 같은 범위로 다시 선언 (REQ-56 §1-3) */
+body.game--stretch .doughstage.is-locked { pointer-events: none; }
+body.game--stretch .doughstage:focus-visible { outline: 3px solid var(--accent); outline-offset: 5px; }
+
+/* 반죽 결 — 정지점 색. color-mix 를 못 읽는 웹뷰는 앞 줄(재료색 단색)로 남는다 */
+body.game--stretch .dg-hi { stop-color: var(--c); stop-color: color-mix(in srgb, var(--c) 30%, #FFFFFF); }
+body.game--stretch .dg-lt { stop-color: var(--c); stop-color: color-mix(in srgb, var(--c) 72%, #FFFFFF); }
+body.game--stretch .dg-c  { stop-color: var(--c); }
+body.game--stretch .dg-dk { stop-color: var(--c); stop-color: color-mix(in srgb, var(--c) 80%, #5A3A10); }
+
+body.game--stretch .dough #doughBody {
+  fill: url(#doughGrad);
+  /* 알파는 base 의 --tension 식 그대로 — 장력이 오를수록 윤곽이 또렷해진다 */
+  stroke: rgba(122, 72, 20, calc(0.08 + var(--tension) * 0.22));
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+
+/* 윤기 — 칠 없음 · 애니메이션 없음 · 블러 없음 (REQ-56 §3-2)
+   base 의 숨쉬기 규칙 (0,4,1) 을 이기려고 (0,4,2) 로 쓴다 */
+body.game--stretch .doughstage .dough path.dough__shine {
+  fill: none;
+  stroke: #FFFFFF;
+  stroke-opacity: 0.8;
+  stroke-linecap: round;
+  animation: none;
+  transform: none;
+  pointer-events: none;
+}
+body.game--stretch .doughstage.is-snap .dough path.dough__shine { opacity: 0; }
+
+/* 덩어리 안에서 드러나는 상품 — 흰 알약 */
+body.game--stretch .dough__prize {
+  padding: 5px 14px;
+  font-size: 16px;
+  color: var(--text-main);
+  background: rgba(255, 255, 255, 0.92);
+  border: 2px solid #FFFFFF;
+  box-shadow: 0 2px 6px rgba(120, 60, 20, 0.25);
+}
+
+/* 안내 — 「천천히」에 분홍 형광펜 */
+body.game--stretch #playHint b {
+  color: var(--text-main);
+  background: linear-gradient(transparent 62%, #F9C5D3 62%);
+}
+
+/* 끊어짐 화면 — 「0.41 화면」이 큰 숫자 크기로 두 줄로 꺾이지 않게 */
+body.game--stretch #pauseFigure {
+  font-size: clamp(40px, 12vw, 52px);
+  white-space: nowrap;
+}
+
+/* 12px 미만 글자 올리기 (REQ-56 §1-5 · base 11px) */
+body.game--stretch .stat__label,
+body.game--stretch .chart__caption { font-size: 12px; }

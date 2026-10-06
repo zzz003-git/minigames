@@ -85,6 +85,7 @@ renderHeader($("#header"), { icon: "🫓", title: "쭉" });
 const stage = $("#stage");
 const svg = $("#dough");
 const body = $("#doughBody");
+const shine = $("#doughShine"); // 윤기 — 표시 전용 (REQ-56 §3-2)
 const prizeHost = $("#doughPrize");
 
 const run = createEndlessRun({
@@ -214,7 +215,7 @@ function armAfter(ms = ARM_DELAY_MS) {
 }
 
 // ══════════════════════════════════════════════════════════════
-// 그리기 — 베지어 2개 + 두께 함수
+// 그리기 — 뿌리 구근 · 목 · 끝 구근 (C 베지어 4개 + 반원 2개)
 // ══════════════════════════════════════════════════════════════
 
 function draw() {
@@ -242,17 +243,19 @@ function draw() {
   const rx = tip.x - dx * drawLen;
   const ry = tip.y - dy * drawLen;
 
-  // 두께 — 길수록 전체가 가늘어지고, 가운데가 가장 먼저 가늘어집니다(넥킹)
+  // 두께 — 뿌리 구근 · 끝 구근 · 목을 따로 둡니다 (REQ-56 §3-2 · 표시 전용).
+  // 길수록 끝 구근이 작아지고, 목(가운데)이 가장 먼저 가늘어집니다(넥킹).
+  // 세 반지름 모두 zoom 을 곱합니다 — 화면 끝까지 늘어나 시야가 줄면 덩어리도 같이 작아집니다.
   //
-  // `t` 는 「얼마나 늘어난 상태인가」입니다. 0 이면 세 두께가 모두 같아져 두 호가
-  // 정확히 원 하나를 이룹니다 — 쉬는 덩어리는 **동그란 덩어리**여야 합니다.
-  // (t 를 두지 않았더니 시작 화면의 덩어리가 반원으로 잘려 보였습니다)
+  // `t` 는 「얼마나 늘어난 상태인가」입니다. 쉬는 덩어리는 **동그란 덩어리**여야 합니다
+  // (아래 「원 하나」 갈래).
   const t = Math.min(1, state.len / 0.5);
   const base = 0.16 * m.short * zoom;
   const neck = Math.max(0.08, 1 / (1 + state.len * 1.9));
-  const hRoot = base * 0.95;
-  const hTip = base * (0.95 - 0.35 * t);
-  const hMid = base * (0.95 + (neck - 0.95) * t);
+  const bulbR = base * (0.95 + 0.08 * t); // 뿌리 — 남은 반죽이 조금 부푼다
+  const tipR = base * (0.95 - 0.3 * t); // 끝 — 손가락에 붙어 딸려 온 만큼만
+  // 목은 끝 구근보다 굵어지지 않게 — 굵으면 허리가 바깥으로 불룩해집니다
+  const neckH = Math.min(base * (0.95 + (neck - 0.95) * t), tipR * 0.92);
 
   // 장력이 높을수록 미세하게 떱니다 (기획서 0-3 「가운데가 가늘어지면서 미세하게 떨린다」)
   const tension = state.model ? Math.min(1, state.dmg / state.model.capacity) : 0;
@@ -260,26 +263,57 @@ function draw() {
 
   const nx = -dy;
   const ny = dx;
-  const mx = (rx + tip.x) / 2 + nx * shake;
-  const my = (ry + tip.y) / 2 + ny * shake;
-
-  // 양쪽 윤곽선을 베지어 하나씩, 뿌리와 끝은 반원으로 닫습니다.
-  //
-  // sweep-flag 는 **0** 입니다. 1 로 두면 두 반원이 몸통 안쪽으로 돌아 양끝에 초승달
-  // 조각이 삐져나옵니다(브라우저 확인에서 그렇게 보였습니다). SVG 는 y 가 아래로
-  // 커지므로 각도가 시계 방향으로 늘고, 「바깥으로 볼록한」 쪽은 반시계 = 0 입니다.
   const p = (x, y) => `${x.toFixed(1)} ${y.toFixed(1)}`;
-  body.setAttribute(
-    "d",
-    [
-      `M ${p(rx + nx * hRoot, ry + ny * hRoot)}`,
-      `Q ${p(mx + nx * hMid, my + ny * hMid)} ${p(tip.x + nx * hTip, tip.y + ny * hTip)}`,
-      `A ${hTip.toFixed(1)} ${hTip.toFixed(1)} 0 0 0 ${p(tip.x - nx * hTip, tip.y - ny * hTip)}`,
-      `Q ${p(mx - nx * hMid, my - ny * hMid)} ${p(rx - nx * hRoot, ry - ny * hRoot)}`,
-      `A ${hRoot.toFixed(1)} ${hRoot.toFixed(1)} 0 0 0 ${p(rx + nx * hRoot, ry + ny * hRoot)}`,
-      "Z",
-    ].join(" "),
-  );
+  // 뿌리 기준 국소 좌표 (u: 뿌리→끝 축, v: 축의 수직) → 화면 좌표
+  const P = (u, v) => p(rx + dx * u + nx * v, ry + dy * u + ny * v);
+  // 윤기 — 빛은 화면 왼쪽 위에서 옵니다. 구근마다 왼쪽 위 호 하나 (205°→255°)
+  const gloss = (x, y, r) => {
+    const a1 = (205 * Math.PI) / 180;
+    const a2 = (255 * Math.PI) / 180;
+    const g = r * 0.68;
+    return `M ${p(x + Math.cos(a1) * g, y + Math.sin(a1) * g)} A ${g.toFixed(1)} ${g.toFixed(1)} 0 0 1 ${p(x + Math.cos(a2) * g, y + Math.sin(a2) * g)}`;
+  };
+
+  const L = drawLen;
+  if (state.len <= 0 || L < bulbR + tipR) {
+    // 원 하나 — 두 구근이 아직 겹쳐 있으면 덩어리는 하나입니다.
+    // 끄는 동안에도 손을 따라오게 가운데는 뿌리·끝의 중점, 반지름은 끈 만큼 조금 커집니다.
+    const ccx = (rx + tip.x) / 2;
+    const ccy = (ry + tip.y) / 2;
+    const r = bulbR + L * 0.3;
+    body.setAttribute(
+      "d",
+      `M ${p(ccx - r, ccy)} A ${r.toFixed(1)} ${r.toFixed(1)} 0 1 0 ${p(ccx + r, ccy)} A ${r.toFixed(1)} ${r.toFixed(1)} 0 1 0 ${p(ccx - r, ccy)} Z`,
+    );
+    shine?.setAttribute("d", gloss(ccx, ccy, r));
+    shine?.style.setProperty("stroke-width", Math.max(2, r * 0.14).toFixed(1));
+  } else {
+    // 뿌리 구근 꼭대기 → (C) 목 → (C) 끝 구근 꼭대기 → 끝 반원 → 반대쪽 → 뿌리 반원.
+    // 구근 꼭대기에서 접선이 축과 나란해 원호와 매끄럽게 이어집니다.
+    //
+    // sweep-flag 는 **0** 입니다. 1 로 두면 두 반원이 몸통 안쪽으로 돌아 양끝에 초승달
+    // 조각이 삐져나옵니다(브라우저 확인에서 그렇게 보였습니다). SVG 는 y 가 아래로
+    // 커지므로 각도가 시계 방향으로 늘고, 「바깥으로 볼록한」 쪽은 반시계 = 0 입니다.
+    const k1 = L * 0.32;
+    const k2 = L * 0.16;
+    const half = L / 2;
+    const h = neckH;
+    body.setAttribute(
+      "d",
+      [
+        `M ${P(0, bulbR)}`,
+        `C ${P(k1, bulbR)} ${P(half - k2, h + shake)} ${P(half, h + shake)}`,
+        `C ${P(half + k2, h + shake)} ${P(L - k1, tipR)} ${P(L, tipR)}`,
+        `A ${tipR.toFixed(1)} ${tipR.toFixed(1)} 0 0 0 ${P(L, -tipR)}`,
+        `C ${P(L - k1, -tipR)} ${P(half + k2, -h + shake)} ${P(half, -h + shake)}`,
+        `C ${P(half - k2, -h + shake)} ${P(k1, -bulbR)} ${P(0, -bulbR)}`,
+        `A ${bulbR.toFixed(1)} ${bulbR.toFixed(1)} 0 0 0 ${P(0, bulbR)}`,
+        "Z",
+      ].join(" "),
+    );
+    shine?.setAttribute("d", `${gloss(rx, ry, bulbR)} ${gloss(tip.x, tip.y, tipR)}`);
+    shine?.style.setProperty("stroke-width", Math.max(2, tipR * 0.14).toFixed(1));
+  }
 
   // 늘어난 만큼 색이 옅어집니다 (기획서 0-3)
   stage.style.setProperty("--fade", (1 - Math.min(0.42, state.len * 0.17)).toFixed(3));
