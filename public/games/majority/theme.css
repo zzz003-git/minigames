@@ -1,0 +1,263 @@
+/* ==========================================================================
+   다들 뭐 골랐을까 — 게임별 디자인 「어제의 손 들기 투표」 (REQ-56 · 2026-10-06)
+   시안: reward-minigame-research/plans/2026-10-06/게임별디자인/mock/majority.html
+   ==========================================================================
+
+   연결: base.css → theme-light.css → 이 파일.  되돌리기: 이 게임의 커밋 revert.
+   game.js 는 고치지 않는다 (REQ-56 §3-3 — CSS·정적 장식만).
+
+   ── 그림 ──────────────────────────────────────────────────────────────────
+   투표함은 생성 그림(ballot_box.png)을 쓰지 않는다(기획 판정: 실패). index.html 의
+   인라인 SVG(.mj-ballot, 시안 그대로)를 #voteTopic 옆에 둔다 — aria-hidden ·
+   pointer-events:none. 사람 실루엣 막대는 SVG data URI 패턴.
+
+   ── 판정과 맞닿는 곳 ──────────────────────────────────────────────────────
+   · 비율·다수·내 선택은 game.js 가 주는 is-revealed · is-major · is-mine 과
+     .vote-opt__fill 의 width 그대로. 상태 규칙을 같은 범위로 다시 선언한다(§1-3).
+   · 베팅·배당 숫자 표현은 넣지 않는다(시안 지시).
+
+   ── 색 ────────────────────────────────────────────────────────────────────
+     --accent       #4453C9  첫 보기 · 글자 (bg 5.15:1 · 흰 면 6.31:1 · 파랑 막대 5.51:1)
+     --theme-orange #F08A24  둘째 보기 면·테두리 전용 (흰 면 2.51:1 — 글자 금지)
+     --theme-orange-ink #9A5410  둘째 보기 비율 글자 (주황 막대 #FDF1E4 위 5.17:1)
+     --coral        #AD3326  시안 #C0392B 는 bg 4.44:1 이라 어둡게 (bg 5.23:1)
+   ========================================================================== */
+
+body.game--majority {
+  --bg: #E6E7F7;
+  --void: #DCDEF2;
+  --surface: #FFFFFF;
+  --surface-2: #F4F4FC;
+
+  --text-main: #1E2040;
+  --text-2: #2A2C50;
+  --text-sub: #4D5075;
+  --text-dim: #4D5075;
+  --text-faint: #5A5D84;
+
+  --accent: #4453C9;
+  --accent-ink: #FFFFFF;
+  --accent-08: rgba(68, 83, 201, 0.08);
+  --accent-10: rgba(68, 83, 201, 0.1);
+  --accent-14: rgba(68, 83, 201, 0.14);
+  --accent-20: rgba(68, 83, 201, 0.22);
+  --accent-45: rgba(68, 83, 201, 0.5);
+
+  --coral: #AD3326;
+  --danger: #AD3326;
+  /* 결과 기록의 적중 표시(base: --mint)가 밝은 바탕에서 1.7:1 이라 파랑으로 */
+  --mint: #4453C9;
+
+  --theme-orange: #F08A24;
+  --theme-orange-ink: #9A5410;
+  --theme-display: "IBM Plex Sans KR", "Noto Sans KR", var(--sans);
+  /* 사람 실루엣 — 24×62 칸에 한 사람 */
+  --theme-ppl-blue: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%2224%22%20height%3D%2262%22%20viewBox%3D%220%200%2024%2062%22%3E%3Cg%20fill%3D%22%23C3C8F0%22%20transform%3D%22translate%281%2022%29%22%3E%3Ccircle%20cx%3D%2211%22%20cy%3D%228%22%20r%3D%226.5%22/%3E%3Cpath%20d%3D%22M1%2040%20V24%20C1%2017%205%2015%2011%2015%20C17%2015%2021%2017%2021%2024%20V40Z%22/%3E%3C/g%3E%3C/svg%3E");
+  --theme-ppl-orange: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20width%3D%2224%22%20height%3D%2262%22%20viewBox%3D%220%200%2024%2062%22%3E%3Cg%20fill%3D%22%23F8CFA6%22%20transform%3D%22translate%281%2022%29%22%3E%3Ccircle%20cx%3D%2211%22%20cy%3D%228%22%20r%3D%226.5%22/%3E%3Cpath%20d%3D%22M1%2040%20V24%20C1%2017%205%2015%2011%2015%20C17%2015%2021%2017%2021%2024%20V40Z%22/%3E%3C/g%3E%3C/svg%3E");
+
+  background-color: var(--bg);
+}
+
+/* 제목 */
+body.game--majority .headline {
+  font-family: var(--theme-display);
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: -0.3px;
+  word-break: keep-all;
+}
+body.game--majority .footnote,
+body.game--majority .footnote--dim { word-break: keep-all; }
+
+/* ══════════════════════════════════════════════════════════════
+   플레이 — 질문 쪽지 · 투표함 · 사람이 차오르는 두 막대
+   ══════════════════════════════════════════════════════════════ */
+
+/* 목숨 — 손바닥 (♥ 글자는 숨기고 그림 글자로) */
+body.game--majority [data-screen="play"] .life { font-size: 0; }
+body.game--majority [data-screen="play"] .life::before {
+  content: "✋";
+  font-size: 18px;
+  line-height: 1;
+}
+body.game--majority [data-screen="play"] .life:not(.is-on)::before { filter: grayscale(1); opacity: 0.35; }
+
+/* 문항 — 투표 용지 3장 */
+body.game--majority #stepDots .trial-dot {
+  min-width: 34px;
+  height: 40px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border: 2px solid var(--text-main);
+  border-radius: 4px;
+  background: #FFFFFF;
+  color: var(--text-sub);
+  font: 700 16px/1 var(--sans);
+  box-shadow: 0 2px 0 rgba(30, 32, 64, 0.25);
+}
+body.game--majority #stepDots .trial-dot.is-done {
+  background: var(--accent);
+  color: #FFFFFF;
+  border-color: var(--text-main);
+}
+body.game--majority #stepDots .trial-dot.is-bad { background: #FBE9E6; color: var(--coral); }
+
+/* 질문 쪽지 — 오른쪽 위 접힌 모서리 */
+body.game--majority .vote-card {
+  position: relative;
+  background: #FFFFFF;
+  border: 3px solid var(--text-main);
+  border-radius: 14px 30px 14px 14px;
+  box-shadow: 0 5px 0 rgba(30, 32, 64, 0.2);
+}
+body.game--majority .vote-card::after {
+  content: "";
+  position: absolute;
+  right: -3px;
+  top: -3px;
+  width: 30px;
+  height: 30px;
+  background: linear-gradient(225deg, var(--bg) 50%, #CFD2F0 50%);
+  border-radius: 0 0 0 10px;
+  border-left: 3px solid var(--text-main);
+  border-bottom: 3px solid var(--text-main);
+  pointer-events: none;
+}
+body.game--majority .mj-topic {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+body.game--majority .mj-ballot {
+  display: block;
+  width: 44px;
+  height: 44px;
+  flex: none;
+  pointer-events: none;
+}
+body.game--majority #voteTopic {
+  font-family: var(--theme-display);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: var(--accent);
+}
+body.game--majority .vote-q { font-family: var(--theme-display); }
+
+/* 보기 막대 — 첫째 파랑 · 둘째 주황 */
+body.game--majority .vote-list { gap: 18px; }
+body.game--majority .vote-opt {
+  overflow: visible;
+  background: #FFFFFF;
+  border: 3px solid var(--text-sub);
+  box-shadow: 0 4px 0 rgba(30, 32, 64, 0.18);
+}
+/* 보기 색 띠 (왼쪽) — 장식. 막대(.vote-opt__fill)가 차오르면 그 아래로 숨는다 */
+body.game--majority .vote-opt::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 8px;
+  border-radius: calc(var(--r-btn2) - 3px) 0 0 calc(var(--r-btn2) - 3px);
+  background: var(--accent);
+  pointer-events: none;
+}
+body.game--majority .vote-opt:nth-child(2)::before { background: var(--theme-orange); }
+body.game--majority .vote-opt__label { font-family: var(--theme-display); }
+
+body.game--majority .vote-opt__fill {
+  border-radius: calc(var(--r-btn2) - 3px) 4px 4px calc(var(--r-btn2) - 3px);
+  /* 실루엣은 아래 60% 에만 — 보기 글자와 덜 겹치게 */
+  background: var(--theme-ppl-blue) repeat-x 0 100% / auto 60%, #EDEFFB;
+  border-right: 3px solid var(--accent);
+}
+body.game--majority .vote-opt:nth-child(2) .vote-opt__fill {
+  background: var(--theme-ppl-orange) repeat-x 0 100% / auto 60%, #FDF1E4;
+  border-right-color: var(--theme-orange);
+}
+body.game--majority .vote-opt__pct { color: var(--text-main); }
+
+/* 상태 (REQ-56 §1-3 같은 범위로 다시 선언) */
+body.game--majority .vote-opt:disabled { cursor: default; opacity: 1; }
+body.game--majority .vote-opt:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+body.game--majority .vote-opt.is-revealed .vote-opt__pct { opacity: 1; }
+
+/* 다수 = 굵은 테 + 「다수」 리본 */
+body.game--majority .vote-opt.is-major {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent), 0 5px 0 rgba(30, 32, 64, 0.25);
+}
+body.game--majority .vote-opt.is-major:nth-child(2) {
+  border-color: var(--theme-orange);
+  box-shadow: 0 0 0 2px var(--theme-orange), 0 5px 0 rgba(30, 32, 64, 0.25);
+}
+body.game--majority .vote-opt.is-major .vote-opt__fill {
+  background: var(--theme-ppl-blue) repeat-x 0 100% / auto 60%, #EDEFFB;
+}
+body.game--majority .vote-opt.is-major:nth-child(2) .vote-opt__fill {
+  background: var(--theme-ppl-orange) repeat-x 0 100% / auto 60%, #FDF1E4;
+}
+body.game--majority .vote-opt.is-major .vote-opt__pct { color: var(--accent); }
+body.game--majority .vote-opt.is-major:nth-child(2) .vote-opt__pct { color: var(--theme-orange-ink); }
+body.game--majority .vote-opt.is-major::after {
+  content: "다수";
+  position: absolute;
+  left: 14px;
+  top: -14px;
+  z-index: 2;
+  padding: 2px 14px 2px 10px;
+  background: var(--text-main);
+  color: #FFFFFF;
+  font: 700 13px/1.4 var(--sans);
+  letter-spacing: 1px;
+  clip-path: polygon(0 0, 100% 0, 90% 50%, 100% 100%, 0 100%);
+  pointer-events: none;
+}
+
+/* 내가 고른 쪽이 소수 */
+body.game--majority .vote-opt.is-mine:not(.is-major) { border-color: var(--coral); }
+body.game--majority .vote-opt.is-mine:not(.is-major) .vote-opt__fill { background-color: #FBE9E6; }
+
+/* 내 선택 — 손바닥 표시 (base 11px → 13px) */
+body.game--majority .vote-opt__mine {
+  margin-top: 6px;
+  padding: 1px 10px 1px 6px;
+  border: 2px solid var(--text-main);
+  border-radius: 20px;
+  background: #FFFFFF;
+  color: var(--text-main);
+  font-size: 13px;
+  font-weight: 700;
+}
+body.game--majority .vote-opt__mine::before { content: "✋ "; }
+
+/* 안내 쪽지 */
+body.game--majority #voteNote {
+  padding: 8px 12px;
+  border: 2px solid var(--accent);
+  border-radius: 20px;
+  background: #FFFFFF;
+  color: var(--text-main);
+  font-size: 14px;
+  font-weight: 700;
+  text-wrap: balance;
+}
+
+/* 결과 기록 */
+body.game--majority .vote-log__mark.is-hit { color: var(--accent); }
+body.game--majority .vote-log__mark.is-miss { color: var(--coral); }
+
+/* ── 공통 요소 ───────────────────────────────────────────────────────────── */
+/* 11px 글자 → 12px (REQ-56 §1-4 · 12px 미만 금지). 박스 크기는 그대로 */
+body.game--majority .topbar__badge,
+body.game--majority .stat__label,
+body.game--majority .chart__caption { font-size: 12px; }
+
+/* 주 버튼 hover — theme-light.css 의 `.btn:hover:not(:disabled)` 가 면을 덮어 흰 글자가
+   사라진다(모바일은 탭 뒤 :hover 가 남음). 공통 파일 수정 전까지 여기서 되돌린다 */
+body.game--majority .btn--primary:hover:not(:disabled) { background: var(--accent); }
