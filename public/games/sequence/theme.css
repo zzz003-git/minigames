@@ -1,0 +1,239 @@
+/* ==========================================================================
+   순서 기억 — 게임별 디자인 「아홉 색 핸드벨」 (REQ-56 §3-3 · 2026-10-06)
+   시안: reward-minigame-research/plans/2026-10-06/게임별디자인/mock/sequence.html
+   ==========================================================================
+
+   연결: base.css → 이 파일 (어두운 바탕이라 theme-light.css 는 연결하지 않는다).
+   되돌리기: 이 게임의 커밋 revert.
+
+   ── 패드 (REQ-56 §3-3) ──────────────────────────────────────────────────────
+   · 패드 9개는 game.js 가 빈 <button class="pad"> 로 만든다. 색·점·종은 전부 CSS
+     (nth-child) 로만 붙인다 — game.js 는 그대로다.
+   · 이중 부호화: 고유색 9가지 + 왼쪽 위 흰 점 1~9개. 색을 못 가려도 점 개수로 구분된다.
+   · 종 글리프는 생성 그림 handbell.v1.png (::after, 장식 · 눌림 대상은 버튼 그대로).
+   · 「♪♪♪♪」 길이 표기는 생략(기획 확정).
+
+   ── 상태 우선순위 (REQ-56 §1-3) ─────────────────────────────────────────────
+   여기서 .pad 의 배경·테두리·그림자를 바꾸므로 base 의 .pad.is-lit / .is-tapped /
+   .is-miss 를 같은 범위(body.game--sequence)로 다시 선언한다. nth-child 규칙은
+   --pc(고유색) 변수만 정하고 배경을 직접 칠하지 않는다 — 상태 규칙과 다투지 않게.
+
+   ── 색 (bg #0D2C33 · surface #15404A 기준 대비) ──────────────────────────────
+     --text-main #F2FBFA   bg 14.0 · surface 10.7
+     --text-sub  #A9C9CC   bg 8.4  · surface 6.4
+     --accent    #FFC857   bg 9.6  · surface 7.3   (시안 그대로 — 글자에 쓸 수 있다)
+     --coral     #FF8A7D   bg 6.4  · surface 4.9   (시안 #FF6B5B 는 surface 4.0 이라 밝힘)
+     --text-faint #8FB5B9  bg 6.7  · surface 5.1
+   ========================================================================== */
+
+body.game--sequence {
+  --bg: #0D2C33;
+  --void: #0A2329;
+  --surface: #15404A;
+  --surface-2: #123841;
+
+  --text-main: #F2FBFA;
+  --text-2: #DDEEEE;
+  --text-sub: #A9C9CC;
+  --text-dim: #A9C9CC;
+  --text-faint: #8FB5B9;
+
+  --accent: #FFC857;
+  --accent-ink: #0D2C33;
+  --accent-08: rgba(255, 200, 87, 0.08);
+  --accent-10: rgba(255, 200, 87, 0.1);
+  --accent-14: rgba(255, 200, 87, 0.14);
+  --accent-20: rgba(255, 200, 87, 0.2);
+  --accent-45: rgba(255, 200, 87, 0.45);
+
+  --coral: #FF8A7D;
+  --danger: #FF8A7D;
+
+  --border: rgba(169, 201, 204, 0.12);
+  --border-soft: rgba(169, 201, 204, 0.1);
+  --border-mid: rgba(169, 201, 204, 0.16);
+  --border-strong: rgba(169, 201, 204, 0.24);
+
+  --theme-display: "Hi Melody", "Noto Sans KR", var(--sans);
+  --theme-bell: url("/games/sequence/img/handbell.v1.png");
+  --theme-felt: #15404A;
+
+  /* 어두운 음악실 — 아래쪽이 살짝 밝은 청록 */
+  background:
+    radial-gradient(120% 60% at 50% 100%, #123A43 0%, rgba(18, 58, 67, 0) 70%),
+    var(--bg);
+  background-color: var(--bg);
+}
+
+/* 제목 — 장식 서체는 큰 글자에만 (원칙 ④) */
+body.game--sequence .headline {
+  font-family: var(--theme-display);
+  font-size: 34px;
+  font-weight: 400;
+  line-height: 1.15;
+  word-break: keep-all;
+}
+body.game--sequence .footnote,
+body.game--sequence .footnote--dim { word-break: keep-all; }
+
+/* 시작 화면 대표 그림 — 장식 */
+body.game--sequence .sq-hero {
+  display: block;
+  width: 76px;
+  height: 76px;
+  margin: -6px auto 0;
+  pointer-events: none;
+  filter: drop-shadow(0 0 12px rgba(255, 200, 87, 0.35));
+  transform: rotate(-8deg);
+}
+
+/* 글자 크기 하한 (REQ-56 §1-4) */
+body.game--sequence .hud__label { font-size: 12px; }
+/* 11px 공통 글자 셋도 12px — theme-light.css 와 같은 처리(어두운 바탕이라 여기서) */
+body.game--sequence .stat__label,
+body.game--sequence .topbar__badge,
+body.game--sequence .chart__caption { font-size: 12px; }
+body.game--sequence .stat__label,
+body.game--sequence .card__title { word-break: keep-all; }
+body.game--sequence .reward__desc { font-size: 12px; color: var(--text-sub); }
+body.game--sequence .reward__note { font-size: 12px; color: var(--text-sub); opacity: 1; }
+
+/* ══════════════════════════════════════════════════════════════
+   플레이 — 청록 펠트 판 위 아홉 색 핸드벨 패드
+   ══════════════════════════════════════════════════════════════ */
+
+body.game--sequence [data-screen="play"] .stage {
+  background: var(--theme-felt);
+  border: 0;
+  box-shadow: inset 0 0 0 3px #0A2228, inset 0 6px 14px rgba(0, 0, 0, 0.35), 0 1px 0 #2A6270;
+}
+
+body.game--sequence .pad-grid { gap: 12px; max-width: 320px; }
+
+/* 고유색 — 변수만 정한다 */
+body.game--sequence .pad:nth-child(1) { --pc: #E5484D; }
+body.game--sequence .pad:nth-child(2) { --pc: #F0883E; }
+body.game--sequence .pad:nth-child(3) { --pc: #F5C542; }
+body.game--sequence .pad:nth-child(4) { --pc: #8BC34A; }
+body.game--sequence .pad:nth-child(5) { --pc: #26B5A5; }
+body.game--sequence .pad:nth-child(6) { --pc: #3EA6E8; }
+body.game--sequence .pad:nth-child(7) { --pc: #5B6CE0; }
+body.game--sequence .pad:nth-child(8) { --pc: #A066D3; }
+body.game--sequence .pad:nth-child(9) { --pc: #EC6FA9; }
+
+/* 점 1~9개 — 6px 점 하나 + box-shadow 복제. 3열, 9px 간격 */
+body.game--sequence .pad:nth-child(1) { --dots: none; }
+body.game--sequence .pad:nth-child(2) { --dots: 9px 0 0 #fff; }
+body.game--sequence .pad:nth-child(3) { --dots: 9px 0 0 #fff, 18px 0 0 #fff; }
+body.game--sequence .pad:nth-child(4) { --dots: 9px 0 0 #fff, 18px 0 0 #fff, 0 9px 0 #fff; }
+body.game--sequence .pad:nth-child(5) { --dots: 9px 0 0 #fff, 18px 0 0 #fff, 0 9px 0 #fff, 9px 9px 0 #fff; }
+body.game--sequence .pad:nth-child(6) { --dots: 9px 0 0 #fff, 18px 0 0 #fff, 0 9px 0 #fff, 9px 9px 0 #fff, 18px 9px 0 #fff; }
+body.game--sequence .pad:nth-child(7) { --dots: 9px 0 0 #fff, 18px 0 0 #fff, 0 9px 0 #fff, 9px 9px 0 #fff, 18px 9px 0 #fff, 0 18px 0 #fff; }
+body.game--sequence .pad:nth-child(8) { --dots: 9px 0 0 #fff, 18px 0 0 #fff, 0 9px 0 #fff, 9px 9px 0 #fff, 18px 9px 0 #fff, 0 18px 0 #fff, 9px 18px 0 #fff; }
+body.game--sequence .pad:nth-child(9) { --dots: 9px 0 0 #fff, 18px 0 0 #fff, 0 9px 0 #fff, 9px 9px 0 #fff, 18px 9px 0 #fff, 0 18px 0 #fff, 9px 18px 0 #fff, 18px 18px 0 #fff; }
+
+/* 평상시 — 고유색 위에 펠트색 막을 덮어 40%쯤 밝기로 */
+body.game--sequence .pad {
+  position: relative;
+  border: 2px solid rgba(255, 255, 255, 0.08);
+  border-radius: 28%;
+  background:
+    linear-gradient(rgba(13, 44, 51, 0.55), rgba(13, 44, 51, 0.55)),
+    var(--pc, #26B5A5);
+  box-shadow: inset 0 -6px 0 rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+}
+body.game--sequence .pad::before {
+  content: "";
+  position: absolute;
+  left: 12%;
+  top: 12%;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: var(--dots);
+  filter: drop-shadow(0 0 1px rgba(0, 0, 0, 0.7));
+  pointer-events: none;
+}
+body.game--sequence .pad::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 54%;
+  width: 52%;
+  aspect-ratio: 1;
+  translate: -50% -50%;
+  background: var(--theme-bell) center / contain no-repeat;
+  opacity: 0.85;
+  transform-origin: 50% 15%;
+  pointer-events: none;
+}
+
+/* ── 상태 — base 의 is-* 를 같은 범위로 다시 선언 (REQ-56 §1-3) ── */
+body.game--sequence .pad:active:not(:disabled) { transform: scale(0.96); }
+body.game--sequence .pad:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+/* 켜짐: 100% 밝기 + 흰 테 + 같은 색 후광 + 종 흔들림 */
+body.game--sequence .pad.is-lit {
+  background: var(--pc, var(--accent));
+  border-color: #fff;
+  box-shadow: 0 0 0 3px #fff, 0 0 30px 8px var(--pc, var(--accent-45)), inset 0 -6px 0 rgba(0, 0, 0, 0.18);
+  overflow: visible;
+  z-index: 2;
+}
+body.game--sequence .pad.is-lit::after {
+  opacity: 1;
+  animation: sq-sway 220ms ease-in-out infinite alternate;
+}
+
+/* 누름: 70% 밝기 + 노란 테 */
+body.game--sequence .pad.is-tapped {
+  background:
+    linear-gradient(rgba(13, 44, 51, 0.28), rgba(13, 44, 51, 0.28)),
+    var(--pc, var(--accent-20));
+  border-color: var(--accent);
+}
+
+/* 틀린 자리: 붉은 테 + X 무늬 (색이 아니어도 모양으로 보인다) */
+body.game--sequence .pad.is-miss {
+  background:
+    linear-gradient(45deg, transparent 44%, var(--coral) 44% 56%, transparent 56%),
+    linear-gradient(-45deg, transparent 44%, var(--coral) 44% 56%, transparent 56%),
+    linear-gradient(rgba(13, 44, 51, 0.45), rgba(13, 44, 51, 0.45)),
+    var(--pc, rgba(233, 146, 127, 0.25));
+  border-color: var(--coral);
+  box-shadow: 0 0 0 3px var(--coral);
+}
+body.game--sequence .pad.is-miss::after { opacity: 0.35; }
+
+@keyframes sq-sway {
+  from { transform: rotate(-10deg); }
+  to { transform: rotate(10deg); }
+}
+
+/* 안내 줄 — 교탁 아래 종 하나 + 손글씨 */
+body.game--sequence #playHint {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 40px;
+  font-family: var(--theme-display);
+  font-size: 26px;
+  line-height: 1.2;
+  color: var(--text-main);
+}
+body.game--sequence #playHint::before {
+  content: "";
+  flex: none;
+  width: 34px;
+  height: 34px;
+  background: var(--theme-bell) center / contain no-repeat;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body.game--sequence .pad.is-lit::after { animation: none; }
+  body.game--sequence .pad:active:not(:disabled) { transform: none; }
+}
