@@ -1,0 +1,124 @@
+/* ==========================================================================
+   링 스톱 — 게임별 디자인 「밤 관람차 탑승」 (REQ-56 · REQ-60 · 2026-10-06)
+   시안: reward-minigame-research/plans/2026-10-06/게임별디자인/mock/ringstop.html
+   ==========================================================================
+
+   연결: base.css → 이 파일 (어두운 바탕이라 theme-light.css 는 연결하지 않는다).
+   되돌리기: 이 게임의 커밋 revert.
+
+   ── 판정과 맞닿는 곳 (REQ-56 §3-1) ─────────────────────────────────────────
+   · 바퀴(#wheel)는 game.js 가 목표 호의 가운데를 6시에 맞춰 **즉시** 돌린다.
+     여기서 #wheel 에 transition 을 주지 않는다 — 고속 라운드에서 점이 전이 도중에 호에 닿는다.
+   · #ringTarget · #ringBulbs · #ringDot 에는 CSS transform/animation 을 주지 않는다.
+     위치를 정하는 SVG transform 속성(rotate · cx/cy)이 CSS 에 덮인다.
+   · 링 크기 min(280px, 74vw) 와 R=80 · viewBox 200 은 base 그대로.
+   ========================================================================== */
+
+body.game--ringstop {
+  --bg: #261638;
+  --void: #1E1030;
+  --surface: #35214C;
+  --surface-2: #2E1C43;
+
+  --text-main: #FFF6EC;
+  --text-2: #F3E6DA;
+  --text-sub: #CDB9D9;
+  --text-dim: #CDB9D9;
+  --text-faint: #B7A2C6;
+
+  --accent: #FFB547;
+  --accent-ink: #261638;
+  --accent-08: rgba(255, 181, 71, 0.08);
+  --accent-10: rgba(255, 181, 71, 0.1);
+  --accent-14: rgba(255, 181, 71, 0.14);
+  --accent-20: rgba(255, 181, 71, 0.2);
+  --accent-45: rgba(255, 181, 71, 0.45);
+
+  --coral: #FF6B6B;
+  --danger: #FF6B6B;
+
+  --theme-pink: #FF6FA5;
+  --theme-rim: #F7C6DC;
+  --theme-display: "Jua", "Noto Sans KR", var(--sans);
+
+  /* 밤 자주 하늘 + 아래쪽 어두운 언덕 */
+  background:
+    radial-gradient(140% 40% at 50% 108%, #1A0D28 0 55%, rgba(26, 13, 40, 0) 56%),
+    radial-gradient(1.5px 1.5px at 18% 12%, rgba(255, 246, 236, 0.7) 50%, transparent 51%),
+    radial-gradient(1.5px 1.5px at 72% 8%, rgba(255, 246, 236, 0.6) 50%, transparent 51%),
+    radial-gradient(1px 1px at 86% 22%, rgba(255, 246, 236, 0.6) 50%, transparent 51%),
+    radial-gradient(1px 1px at 34% 26%, rgba(255, 246, 236, 0.5) 50%, transparent 51%),
+    linear-gradient(#2C1942, var(--bg) 60%);
+  background-color: var(--bg);
+}
+
+body.game--ringstop .headline {
+  font-family: var(--theme-display);
+  font-size: 30px;
+  font-weight: 400;
+  line-height: 1.2;
+  word-break: keep-all;
+}
+body.game--ringstop .footnote,
+body.game--ringstop .footnote--dim { word-break: keep-all; }
+
+/* ══════════════════════════════════════════════════════════════
+   플레이 — 관람차 바퀴와 전구 탑승장
+   ══════════════════════════════════════════════════════════════ */
+
+body.game--ringstop [data-screen="play"] .stage {
+  background: transparent;
+  border-color: transparent;
+}
+body.game--ringstop .ring-stage { background: transparent; border: 0; padding: 0; color: inherit; }
+body.game--ringstop .ring-stage:focus-visible { outline: 3px solid var(--accent); outline-offset: 4px; border-radius: 50%; }
+body.game--ringstop .ring-stage svg { overflow: visible; }
+
+/* 바퀴 — 회전 기준은 viewBox 중심. 전이 없음(위 주석) */
+body.game--ringstop #wheel {
+  transform-box: view-box;
+  transform-origin: 100px 100px;
+  transition: none;
+}
+body.game--ringstop .rs-spokes line {
+  stroke: rgba(247, 198, 220, 0.35);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+}
+body.game--ringstop .ring-track { stroke: var(--theme-rim); stroke-width: 10; opacity: 0.9; }
+body.game--ringstop .ring-target { stroke: var(--accent); stroke-width: 16; opacity: 1; }
+body.game--ringstop .rs-bulbs {
+  fill: none;
+  stroke: #FFF6D0;
+  stroke-width: 5;
+  stroke-linecap: round;
+  pointer-events: none;
+}
+/* 곤돌라 — 흰 원 + 분홍 테 */
+body.game--ringstop .ring-dot {
+  fill: #FFFFFF;
+  stroke: var(--theme-pink);
+  stroke-width: 3;
+}
+body.game--ringstop .rs-platform { fill: var(--accent); opacity: 0.9; }
+
+/* 가운데 허브 */
+body.game--ringstop .ring-stage__center {
+  width: 30%;
+  aspect-ratio: 1;
+  justify-content: center;
+  border-radius: 50%;
+  background: radial-gradient(circle, #4A2D66 0 60%, #35214C 61%);
+  box-shadow: 0 0 0 3px var(--theme-rim);
+}
+body.game--ringstop .ring-stage__label { font-size: 12px; color: var(--text-sub); }
+body.game--ringstop .ring-stage__value { font-family: var(--theme-display); font-size: 32px; font-weight: 400; color: var(--accent); }
+
+/* HUD — 매표소 전구 간판 */
+body.game--ringstop [data-screen="play"] .hud {
+  border: 2px dotted rgba(255, 181, 71, 0.7);
+  border-radius: 16px;
+  padding: 8px 12px;
+  background: rgba(53, 33, 76, 0.8);
+}
+body.game--ringstop .hud__label { font-size: 12px; }

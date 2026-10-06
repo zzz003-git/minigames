@@ -120,6 +120,20 @@ function drawTarget(startDeg, arcDeg) {
   target.setAttribute("stroke-dasharray", `${len} ${CIRC - len}`);
   // SVG 원은 3시 방향에서 시작하므로 −90° 만큼 돌려 12시 기준으로 맞춥니다.
   target.setAttribute("transform", `rotate(${startDeg - 90} 100 100)`);
+
+  // ── 관람차 그림 (표시만 · 판정 무관 · REQ-56 §3-1) ──
+  // 탑승장 전구 — 호 길이 안에만 2·6 점선
+  const bulbs = $("#ringBulbs");
+  if (bulbs) {
+    const n = Math.floor(len / 8);
+    bulbs.setAttribute("stroke-dasharray", `${"2 6 ".repeat(n)}0 ${(CIRC - n * 8).toFixed(2)}`);
+    bulbs.setAttribute("transform", `rotate(${startDeg - 90} 100 100)`);
+  }
+  // 호의 가운데가 6시(탑승장)에 오도록 바퀴째 돌린다. **즉시** — 전이를 넣으면 고속 라운드에서
+  // 점이 전이 도중에 호에 닿고, -170°→170° 처럼 먼 쪽으로 도는 연출이 나온다.
+  // t0 는 onRound 가 이 함수 **뒤에 바로** 잡는다 — 그림을 기다리지 않는다(서버 허용 700ms)
+  const wheel = $("#wheel");
+  if (wheel) wheel.style.transform = `rotate(${180 - (startDeg + arcDeg / 2)}deg)`;
 }
 
 function angleNow() {

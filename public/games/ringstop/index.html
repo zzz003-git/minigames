@@ -13,13 +13,14 @@
   <link rel="manifest" href="/site.webmanifest">
   <title>링 스톱</title>
   <meta name="color-scheme" content="dark">
-  <meta name="theme-color" content="#0F1420">
+  <meta name="theme-color" content="#261638">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=JetBrains+Mono:wght@400;500;700&family=Jua&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../../shared/base.css">
+  <link rel="stylesheet" href="theme.css">
 </head>
-<body class="game game--accent-mint">
+<body class="game game--accent-mint game--ringstop">
   <script src="../../shared/splash.js"></script>
   <div class="app">
     <header class="topbar" id="header"></header>
@@ -77,9 +78,21 @@
         <div class="stage stage--flat">
           <button class="ring-stage" id="ring" type="button" aria-label="지금 멈추기">
             <svg viewBox="0 0 200 200" aria-hidden="true">
-              <circle class="ring-track" cx="100" cy="100" r="80"></circle>
-              <circle class="ring-target" id="ringTarget" cx="100" cy="100" r="80"></circle>
-              <circle class="ring-dot" id="ringDot" cx="100" cy="20" r="9"></circle>
+              <!-- 관람차 바퀴 — 목표 호가 늘 아래 탑승장에 오도록 바퀴째 돌립니다(REQ-56 §3-1).
+                   돌리는 것은 #wheel 의 CSS transform 하나뿐이고 **즉시** 적용합니다.
+                   #ringTarget·#ringDot 에는 CSS transform 을 주지 않습니다(위치를 정하는 속성이 덮입니다) -->
+              <g id="wheel">
+                <g class="rs-spokes">
+                  <line x1="100" y1="20" x2="100" y2="180"/><line x1="20" y1="100" x2="180" y2="100"/>
+                  <line x1="43.4" y1="43.4" x2="156.6" y2="156.6"/><line x1="156.6" y1="43.4" x2="43.4" y2="156.6"/>
+                </g>
+                <circle class="ring-track" cx="100" cy="100" r="80"></circle>
+                <circle class="ring-target" id="ringTarget" cx="100" cy="100" r="80"></circle>
+                <circle class="rs-bulbs" id="ringBulbs" cx="100" cy="100" r="80"></circle>
+                <circle class="ring-dot" id="ringDot" cx="100" cy="20" r="9"></circle>
+              </g>
+              <!-- 탑승장 — 바퀴 밖, 늘 6시 자리에 고정 -->
+              <path class="rs-platform" d="M78 194 H122 L118 199 H82 Z"/>
             </svg>
             <span class="ring-stage__center">
               <span class="ring-stage__label">TAP</span>
