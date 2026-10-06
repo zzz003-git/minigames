@@ -1,0 +1,275 @@
+/* ==========================================================================
+   타이핑 챌린지 — 게임별 디자인 「원고지 타자기」 (REQ-56 · 2026-10-06)
+   시안: reward-minigame-research/plans/2026-10-06/게임별디자인/mock/typing.html
+   ==========================================================================
+
+   연결: base.css → theme-light.css → 이 파일.  되돌리기: 이 게임의 커밋 revert.
+
+   ── 기존 base.css `.game--typing` 규칙과의 우선순위 (REQ-56 §1-1 기존 4종) ──
+   base 의 `.game--typing`(0,1,0)은 --accent 를 금색(#d6b166)·--accent-ink 를 남색으로
+   둔다. 여기 `body.game--typing`(0,1,1)이 더 강하고 뒤에 와서 둘 다 덮는다.
+   theme-light.css 의 `body.theme-light`(0,1,1)와는 같은 강도라 뒤에 오는 이 파일이 이긴다.
+
+   ── 구조 (REQ-56 §3-3 — game.js 없이 CSS·정적 장식만) ─────────────────────
+   · #targetText 의 글자 span(game.js 가 한 글자씩 만든다)을 격자로 세워 원고지 칸으로 만든다.
+     칸 수는 화면 폭에 맞춰 자동(최소 28px) — 문장 최장 91자(영어 어려움)도 9~10줄 안.
+   · 타자기 그림(typewriter.v1.png)은 플레이 화면 빈 칸(.spacer)의 배경. 화면이 낮거나
+     키보드가 올라와 빈 칸이 줄면 그림도 같이 줄어 입력란을 밀어내지 않는다.
+     시작 화면에는 예시 문장 카드(.ty-sample) 오른쪽 위에 작게 둔다.
+   · 생략: 캐리지 이동·키캡 눌림·「완」 도장·종 흔들림(입력 순간 상태 클래스가 없어 game.js 필요).
+     오타 칸 흔들림은 .ch--bad 가 새로 그려질 때마다 CSS 애니메이션으로 한 번 돈다.
+   · 원고지 글자는 제목 서체(Nanum Gothic Coding)가 아니라 본문 서체 — 칸 글자가 18px 라
+     장식 서체 24px 규칙(원칙 ④) 밖이다. 제목 서체는 .headline·카운트다운 숫자에만.
+
+   ── 색 ────────────────────────────────────────────────────────────────────
+   시안 accent #B3361F 는 bg 5.14:1 이지만 .chip--accent(옅은 accent 면) 위에서 4.45:1 로
+   미달이었다(실측) → --accent #A8321C (bg 5.68:1 · 원고지 6.58:1 · chip 면 4.9:1).
+   시안색 #B3361F 는 --theme-fill(진행 막대·커서 칸 면) 전용.
+   accent 글자 쓰는 곳 점검: .typing-target .ch--ok 는 base 가 accent 를 쓰지만 시안대로
+   먹색 #2B2620 (원고지 14.7:1) 으로 바꾼다. .ch--cursor 는 #B3361F 면 + 흰 글자(6.06:1).
+   아직 안 친 글자 #6A5F51 (원고지 6.13:1). 오타 #9B1C1C on #F5CFC7 칸 (5.4:1).
+   --coral #9B1C1C (bg 6.92:1). 키캡 숫자 #FFFDF6 on #1C1A18 (16:1).
+   ========================================================================== */
+
+body.game--typing {
+  --bg: #F3ECDA;
+  --void: #EBE2CB;
+  --surface: #FFFDF6;
+  --surface-2: #FAF5E8;
+
+  --text-main: #2B2620;
+  --text-2: #3A332B;
+  --text-sub: #6A5F51;
+  --text-dim: #6A5F51;
+  --text-faint: #6A5F51;
+
+  --accent: #A8321C;
+  --accent-ink: #FFFFFF;
+  --accent-08: rgba(179, 54, 31, 0.08);
+  --accent-10: rgba(179, 54, 31, 0.1);
+  --accent-14: rgba(179, 54, 31, 0.14);
+  --accent-20: rgba(179, 54, 31, 0.24);
+  --accent-45: rgba(179, 54, 31, 0.5);
+
+  --coral: #9B1C1C;
+  --danger: #9B1C1C;
+
+  --theme-fill: #B3361F;
+  --theme-grid: rgba(179, 54, 31, 0.42);
+  --theme-key: #1C1A18;
+  --theme-key-rim: #8A8478;
+  --theme-display: "Nanum Gothic Coding", "Noto Sans KR", var(--sans);
+
+  background: var(--bg);
+  background-color: var(--bg);
+}
+
+/* 제목·설명 — 장식 서체는 큰 글자에만 (원칙 ④) */
+body.game--typing .headline {
+  font-family: var(--theme-display);
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.25;
+  word-break: keep-all;
+}
+body.game--typing .footnote { word-break: keep-all; }
+
+/* 시작 화면 — 예시 문장 카드 오른쪽 위 작은 타자기 */
+body.game--typing .ty-sample::before {
+  content: "";
+  float: right;
+  width: 68px;
+  height: 60px;
+  margin: -10px -6px 4px 10px;
+  background: url("/games/typing/img/typewriter.v1.png") center / contain no-repeat;
+  pointer-events: none;
+}
+
+/* 카운트다운 — 원고지 칸 하나에 크게 */
+body.game--typing #countdownNum {
+  display: grid;
+  place-items: center;
+  width: 1.5em;
+  height: 1.5em;
+  background: var(--surface);
+  border: 3px solid var(--theme-grid);
+  font-family: var(--theme-display);
+  line-height: 1;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   플레이 — 원고지 + 타자기
+   ══════════════════════════════════════════════════════════════ */
+
+/* 남은 시간 — 롤러 손잡이 옆 숫자 */
+body.game--typing .timer-row__time {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-main);
+}
+body.game--typing .timer-row__time::before {
+  content: "";
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--theme-key);
+  border: 3px solid var(--theme-key-rim);
+  flex: none;
+}
+
+/* 진행률 — 캐리지 레일. 채움 끝에 검정 캐리지, 레일 끝에 종 */
+body.game--typing [data-screen="play"] .progress {
+  position: relative;
+  overflow: visible;
+  margin: 8px 34px 8px 0;
+  background: #CFC6B0;
+}
+body.game--typing [data-screen="play"] .progress__fill {
+  position: relative;
+  background: var(--theme-fill);
+}
+body.game--typing [data-screen="play"] .progress__fill::after {
+  content: "";
+  position: absolute;
+  right: -7px;
+  top: -8px;
+  width: 14px;
+  height: 22px;
+  border-radius: 3px;
+  background: var(--theme-key);
+}
+body.game--typing [data-screen="play"] .progress::after {
+  content: "";
+  position: absolute;
+  right: -32px;
+  top: -9px;
+  width: 24px;
+  height: 18px;
+  border-radius: 12px 12px 3px 3px;
+  background: #B08A2E;
+  border: 2px solid #6B5416;
+}
+
+/* 원고지 카드 */
+body.game--typing [data-screen="play"] .card {
+  background: var(--surface);
+  border: 2px solid #D9CFB6;
+  border-radius: 4px;
+  box-shadow: 0 5px 0 #D9CFB6, inset 0 0 0 3px #FFFFFF;
+}
+
+/* 원고지 격자 — 글자 span 하나가 칸 하나 */
+body.game--typing .typing-target {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(28px, 1fr));
+  min-height: 0;
+  border-top: 2px solid var(--theme-grid);
+  border-left: 2px solid var(--theme-grid);
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--text-faint);
+}
+body.game--typing .typing-target > span {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  min-width: 0;
+  border-right: 2px solid var(--theme-grid);
+  border-bottom: 2px solid var(--theme-grid);
+  white-space: pre;
+}
+/* 상태 규칙 — base 의 .typing-target .ch--* 를 같은 범위로 다시 선언 (REQ-56 §1-3) */
+body.game--typing .typing-target .ch--ok { color: var(--text-main); }
+body.game--typing .typing-target .ch--bad {
+  background: #F5CFC7;
+  color: var(--coral);
+  text-decoration: none;
+  box-shadow: inset 0 -4px 0 var(--coral);
+}
+/* 방금 친 칸(커서 바로 앞)이 오타일 때만 한 번 흔든다 — 칸은 입력마다 새로 그려진다 */
+body.game--typing .typing-target .ch--bad:has(+ .ch--cursor) { animation: ty-shake 220ms ease-in-out 1; }
+body.game--typing .typing-target .ch--cursor {
+  background: var(--theme-fill);
+  color: #FFFFFF;
+  box-shadow: none;
+  animation: ty-blink 1s steps(2, jump-none) infinite;
+}
+@keyframes ty-blink {
+  0% { background-color: #B3361F; }
+  100% { background-color: #8E2A18; }
+}
+@keyframes ty-shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-2px); }
+  75% { transform: translateX(2px); }
+}
+
+/* 정확도·속도·오타 — 타자기 둥근 키캡(검정 원 + 아래 라벨) */
+body.game--typing [data-screen="play"] .stat {
+  flex-direction: column-reverse;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+}
+body.game--typing [data-screen="play"] .stat__value {
+  display: grid;
+  place-items: center;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background-color: var(--theme-key);
+  border: 4px solid var(--theme-key-rim);
+  box-shadow: 0 4px 0 var(--theme-key-rim);
+  color: #FFFDF6;
+  font-size: 16px;
+  overflow: visible;
+}
+body.game--typing [data-screen="play"] #liveTypos { background-color: #7A1D1D; }
+body.game--typing [data-screen="play"] .stat__label {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-sub);
+}
+
+/* 타자기 몸체 — 빈 칸을 채우는 그림 (장식) */
+body.game--typing [data-screen="play"] .spacer {
+  min-height: 0;
+  background: url("/games/typing/img/typewriter.v1.png") center bottom / contain no-repeat;
+  pointer-events: none;
+}
+
+/* 낮은 화면(375×667·360×640)에서는 빈 칸이 20~40px 밖에 안 남아 그림이 점처럼 보인다 — 뺀다 */
+@media (max-height: 720px) {
+  body.game--typing [data-screen="play"] .spacer { background: none; }
+}
+
+/* 입력란 — 롤러 앞 가로 종이 띠 */
+body.game--typing .typing-input {
+  background: var(--surface);
+  border: 2px solid #CFC6B0;
+  border-radius: 4px;
+  box-shadow: 0 3px 0 rgba(43, 38, 32, 0.12);
+}
+body.game--typing .typing-input:focus { border-color: var(--accent); }
+
+/* 입력 완료 — 테두리 알약 */
+body.game--typing #finishBtn {
+  align-self: center;
+  min-height: 44px;
+  padding: 10px 22px;
+  border: 2px solid var(--text-main);
+  border-radius: 22px;
+  background: var(--surface);
+  color: var(--text-main);
+}
+body.game--typing #finishBtn:hover:not(:disabled) { background: var(--surface-2); color: var(--text-main); }
+body.game--typing #finishBtn:disabled { color: var(--text-dim); border-color: var(--border-strong); }
+
+@media (prefers-reduced-motion: reduce) {
+  body.game--typing .typing-target .ch--cursor,
+  body.game--typing .typing-target .ch--bad:has(+ .ch--cursor) { animation: none; }
+}
