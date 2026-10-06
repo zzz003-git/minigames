@@ -36,8 +36,28 @@ const N = 140;
 const BRUSH = 21;
 /** 진행률을 재는 격자 — getImageData 재조회 없이 벗겨진 면적을 셉니다 */
 const OCC = 8;
-/** 키보드 한 번 누름당 벗겨지는 비율 (4번 = COMMIT_AT) */
-const KEY_STEP = 0.14;
+/**
+ * 진행률을 세는 격자 칸 — **원 안의 칸만** 셉니다(REQ-56 §3-1).
+ * 은박은 테마에서 원형 스티커(border-radius 50%)라, 원 밖 네 모서리는 보이지 않는 곳입니다.
+ * 그곳까지 세면 보이는 은박을 덜 긁고도 확정됩니다. 8×8 중 중심이 원 안인 칸 = 52칸.
+ */
+const IN_CIRCLE = (() => {
+  const s = N / OCC;
+  const r = N / 2;
+  const set = new Set();
+  for (let k = 0; k < OCC * OCC; k++) {
+    const x = ((k % OCC) + 0.5) * s - r;
+    const y = (Math.floor(k / OCC) + 0.5) * s - r;
+    if (x * x + y * y <= r * r) set.add(k);
+  }
+  return set;
+})();
+/**
+ * 키보드 한 번 누름당 벗기는 칸 수 — **Enter 4번째에 열리고 3번째에는 열리지 않는** 값입니다.
+ * 서버 MIN_STROKES 가 4 라 3번에 열리면 키보드 이용자가 이상치로 찍힙니다.
+ * 52칸 × 0.45 = 23.4 → 6칸: 3번 18칸(34.6%) · 4번 24칸(46.2%)
+ */
+const KEY_CELLS = Math.ceil((COMMIT_AT * IN_CIRCLE.size) / 4);
 
 /**
  * rank_metric = -(연속 일수)
@@ -56,7 +76,7 @@ const state = { cells: [], busy: false, left: 0 };
 let lastResult = null;
 let lastData = null;
 
-renderHeader($("#header"), { icon: "🎟", title: "슥슥 긁기", badge: "1" });
+renderHeader($("#header"), { icon: "🎀", title: "슥슥 긁기", badge: "1" });
 
 const run = createEndlessRun({
   game: GAME,
@@ -176,6 +196,7 @@ function renderRound(round) {
       : "긁기를 다 썼어요";
 
   buildGrid(round.cells ?? []);
+  if (round.matched) markMatch(round.match_icon);
 }
 
 /** 9칸을 그립니다. 이미 긁은 칸은 은박 없이, 나머지는 은박을 덮어 둡니다. */
@@ -191,7 +212,7 @@ function buildGrid(cells) {
       el("span", { class: "scell__pt" }, c.open ? `+${c.points}` : ""),
     );
 
-    const node = el("div", { class: `scell ${c.open ? "is-open" : ""}` }, face);
+    const node = el("div", { class: `scell ${c.open ? "is-open" : ""}`, "data-icon": c.open ? c.icon : "" }, face);
     const cell = {
       i: c.i,
       open: Boolean(c.open),
@@ -254,20 +275,27 @@ function paintFoil(cv, peekHex, seed = 0) {
   g.fillStyle = grad;
   g.fillRect(0, 0, N, N);
 
-  // 은박 결
-  g.strokeStyle = "rgba(255,255,255,.16)";
+  // 은박 결 — 원형 스티커라 결은 성기게, 광택은 한 줄만(REQ-56 §3-1)
+  g.strokeStyle = "rgba(255,255,255,.10)";
   g.lineWidth = 1;
-  for (let i = -N; i < N; i += 8) {
+  for (let i = -N; i < N; i += 22) {
     g.beginPath();
     g.moveTo(i, 0);
     g.lineTo(i + N, N);
     g.stroke();
   }
+  g.strokeStyle = "rgba(255,255,255,.55)";
+  g.lineWidth = 7;
+  g.lineCap = "round";
+  g.beginPath();
+  g.moveTo(N * 0.28, N * 0.62);
+  g.lineTo(N * 0.62, N * 0.28);
+  g.stroke();
 
   if (peekHex) {
-    // 모서리가 벗겨져 색이 비치는 자리 (네 모서리 중 하나)
+    // 가장자리가 벗겨져 색이 비치는 자리 (원 안 네 곳 중 하나 — 원 밖 모서리는 보이지 않습니다)
     const corners = [
-      [10, 10], [N - 10, 10], [10, N - 10], [N - 10, N - 10],
+      [40, 40], [N - 40, 40], [40, N - 40], [N - 40, N - 40],
     ];
     const [cx, cy] = corners[seed % corners.length];
     const blob = g.createRadialGradient(cx, cy, 2, cx, cy, 34);
@@ -330,7 +358,8 @@ function attachScratch(cell, node) {
         // 격자 칸 중심이 붓 안에 들어오면 벗겨진 것으로 셉니다
         const cxx = (px + 0.5) * step;
         const cyy = (py + 0.5) * step;
-        if ((cxx - x) ** 2 + (cyy - y) ** 2 <= BRUSH ** 2) cell.occ.add(py * OCC + px);
+        const k = py * OCC + px;
+        if (IN_CIRCLE.has(k) && (cxx - x) ** 2 + (cyy - y) ** 2 <= BRUSH ** 2) cell.occ.add(k);
       }
     }
   };
@@ -348,7 +377,7 @@ function attachScratch(cell, node) {
     }
   };
 
-  const progress = () => cell.occ.size / (OCC * OCC);
+  const progress = () => cell.occ.size / IN_CIRCLE.size;
 
   const canScratch = () => !cell.open && !cell.sent && !state.busy && state.left > 0;
 
@@ -430,12 +459,19 @@ function attachScratch(cell, node) {
     if (!cell.t0) cell.t0 = t;
     cell.strokes += 1;
 
-    // 눌린 횟수만큼 격자를 채웁니다 (실제 은박도 함께 지웁니다)
-    const want = Math.min(OCC * OCC, Math.round((progress() + KEY_STEP) * OCC * OCC));
+    // 한 번에 원 안 칸을 **정확히** KEY_CELLS 개 벗깁니다(실제 은박도 그 자리만 지웁니다).
+    // rub() 은 붓 반지름 안의 이웃 칸까지 세어 한 번에 몇 칸이 늘지 들쭉날쭉합니다 —
+    // 그러면 3번째에 열리는 경우가 생겨 키보드로는 쓰지 않습니다
     const step = N / OCC;
-    for (let k = 0; cell.occ.size < want && k < OCC * OCC; k++) {
+    let added = 0;
+    for (const k of IN_CIRCLE) {
+      if (added >= KEY_CELLS) break;
       if (cell.occ.has(k)) continue;
-      rub(((k % OCC) + 0.5) * step, (Math.floor(k / OCC) + 0.5) * step);
+      cell.occ.add(k);
+      added += 1;
+      g.beginPath();
+      g.arc(((k % OCC) + 0.5) * step, (Math.floor(k / OCC) + 0.5) * step, step * 0.8, 0, Math.PI * 2);
+      g.fill();
     }
     maybeCommit();
   });
@@ -477,6 +513,7 @@ async function showVerdict(res) {
   $("#hudLeft").textContent = String(state.left);
 
   if (d.match) {
+    markMatch(d.match_icon);
     $("#cardBox").classList.add("is-hit");
     setTimeout(() => $("#cardBox").classList.remove("is-hit"), 900);
     toast(`${d.match_icon ?? ""} ${d.match_name ?? ""} 3개! 획득 ${d.multiplier ?? 2}배`, "good", 2200);
@@ -501,8 +538,20 @@ function revealCell(d) {
 
   node.classList.remove("is-waiting", "is-rubbing");
   node.classList.add("is-open");
+  node.dataset.icon = d.icon ?? "";
   cell.cv.remove();
   cell.cv = null;
+}
+
+/**
+ * 매칭된 3칸 표시 — 열린 칸의 그림이 매칭 그림과 같으면 .is-match (화면 표시만 · 판정 무관).
+ * 매칭 여부와 그림은 서버가 준 값(match · match_icon)만 씁니다
+ */
+function markMatch(icon) {
+  if (!icon) return;
+  for (const node of $("#grid").children) {
+    node.classList.toggle("is-match", node.classList.contains("is-open") && node.dataset.icon === icon);
+  }
 }
 
 // ══════════════════════════════════════════════════════════════

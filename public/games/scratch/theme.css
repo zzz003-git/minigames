@@ -1,0 +1,132 @@
+/* ==========================================================================
+   슥슥 긁기 — 게임별 디자인 「리본 선물 카드 은박 스티커」 (REQ-56 · REQ-60 · 2026-10-06)
+   시안: reward-minigame-research/plans/2026-10-06/게임별디자인/mock/scratch.html
+   ==========================================================================
+
+   연결: base.css → theme-light.css → 이 파일.  되돌리기: 이 게임의 커밋 revert.
+
+   ── 판정과 맞닿는 곳 (REQ-56 §3-1) ─────────────────────────────────────────
+   · 원형은 여기 border-radius:50% 하나로 만든다(DOM 그대로 · 캔버스 140 논리 px 그대로).
+     game.js 는 **원 안 격자 칸만** 진행률에 세고, 키보드는 Enter 정확히 4번에 열린다.
+   · 복권처럼 보이지 않게 사각 칸·금액·「당첨」·동전 커서를 쓰지 않는다(시안 지시).
+
+   ── 색 ────────────────────────────────────────────────────────────────────
+   accent #7646C7 은 연보라 바탕 대비 4.9:1 · 흰 카드 6.0:1 — 글자에 그대로 쓴다.
+   ========================================================================== */
+
+body.game--scratch {
+  --bg: #EEE5FA;
+  --void: #E5D9F6;
+  --surface: #FFFFFF;
+  --surface-2: #FAF6FF;
+
+  --text-main: #241B38;
+  --text-2: #2F2547;
+  --text-sub: #574A70;
+  --text-dim: #574A70;
+  --text-faint: #625579;
+
+  --accent: #7646C7;
+  --accent-ink: #FFFFFF;
+  --accent-08: rgba(118, 70, 199, 0.08);
+  --accent-10: rgba(118, 70, 199, 0.1);
+  --accent-14: rgba(118, 70, 199, 0.14);
+  --accent-20: rgba(118, 70, 199, 0.22);
+  --accent-45: rgba(118, 70, 199, 0.5);
+
+  --coral: #B23A0A;
+  --danger: #B23A0A;
+  --gold: #7646C7;      /* base 가 은박 포커스 테두리에 --gold 를 쓴다 */
+
+  --theme-display: "Stylish", "Noto Sans KR", var(--sans);
+
+  background:
+    radial-gradient(120% 50% at 50% 0%, #F7F1FF 0%, rgba(247, 241, 255, 0) 70%),
+    var(--bg);
+  background-color: var(--bg);
+}
+
+body.game--scratch .headline {
+  font-family: var(--theme-display);
+  font-size: 30px;
+  font-weight: 400;
+  line-height: 1.2;
+  word-break: keep-all;
+}
+body.game--scratch .footnote { word-break: keep-all; }
+
+/* ══════════════════════════════════════════════════════════════
+   플레이 — 흰 선물 카드 + 원형 은박 스티커
+   ══════════════════════════════════════════════════════════════ */
+
+body.game--scratch .scratchcard {
+  position: relative;
+  background: #FFFFFF;
+  border: 2px dashed rgba(118, 70, 199, 0.45);
+  box-shadow: 0 0 0 6px #FFFFFF, 0 8px 18px rgba(36, 27, 56, 0.12);
+}
+body.game--scratch .scratchcard__label { color: var(--text-main); }
+/* 오른쪽 위 리본이 「🍔 2개」 칩을 덮지 않게 머리줄만 비켜 둔다 */
+body.game--scratch .scratchcard__head { padding-right: 40px; }
+
+/* 리본 — 오른쪽 위 모서리. 장식이라 누를 수 없다 */
+body.game--scratch .sc-ribbon {
+  position: absolute;
+  top: -22px;
+  right: -10px;
+  width: 64px;
+  height: auto;
+  z-index: 2;
+  pointer-events: none;
+  transform-origin: 50% 40%;
+}
+body.game--scratch .scratchcard.is-hit .sc-ribbon { animation: scribbon 700ms ease-in-out; }
+@keyframes scribbon {
+  25% { transform: rotate(-10deg); }
+  60% { transform: rotate(8deg); }
+}
+body.game--scratch .scratchcard.is-hit { animation: scardlift 900ms ease-out; }
+@keyframes scardlift {
+  0% { transform: translateY(0); box-shadow: 0 0 0 6px #FFFFFF, 0 8px 18px rgba(36, 27, 56, 0.12); }
+  30% { transform: translateY(-6px); box-shadow: 0 0 0 6px #FFFFFF, 0 0 0 10px rgba(118, 70, 199, 0.35), 0 16px 24px rgba(36, 27, 56, 0.16); }
+  100% { transform: translateY(0); box-shadow: 0 0 0 6px #FFFFFF, 0 8px 18px rgba(36, 27, 56, 0.12); }
+}
+
+/* 원형 스티커 — 칸·은박 모두 원으로 */
+body.game--scratch .scell {
+  border-radius: 50%;
+  background: #F4EEFC;
+  border: 1px solid rgba(118, 70, 199, 0.25);
+}
+body.game--scratch .scell__foil { border-radius: 50%; }
+body.game--scratch .scell__pt {
+  font-size: 12px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--accent-10);
+  color: var(--accent);
+  font-weight: 700;
+}
+/* 상태 규칙을 같은 범위로 다시 선언 (REQ-56 §1-3) */
+body.game--scratch .scell.is-open {
+  background: #FFFFFF;
+  border-color: rgba(118, 70, 199, 0.45);
+}
+/* 매칭된 3칸 — 보라 링 (화면 표시만) */
+body.game--scratch .scell.is-match {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent);
+}
+
+/* HUD — 카드 아래 편지 봉투 띠 느낌 */
+body.game--scratch [data-screen="play"] .hud {
+  background: #FFFFFF;
+  border: 1px solid rgba(118, 70, 199, 0.25);
+  border-radius: 14px;
+  padding: 8px 12px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body.game--scratch .scratchcard.is-hit,
+  body.game--scratch .scratchcard.is-hit .sc-ribbon { animation: none; }
+}
