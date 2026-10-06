@@ -49,6 +49,7 @@ body.game--clover {
   background:
     radial-gradient(120% 40% at 50% 0%, #F6FAE9 0%, rgba(246, 250, 233, 0) 70%),
     linear-gradient(#DDEEBE 0%, var(--bg) 38%, #B9DA8A 100%) fixed;
+  background-color: var(--bg); /* 그라디언트를 못 그리는 경우의 바탕 · 대비 측정 기준 */
 }
 
 /* ── 연쇄 잔광 · 합쳐진 「10」 — 민트 → 햇빛 노랑 (README_clover 남은 과제) ──── */
