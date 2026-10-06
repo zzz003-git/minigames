@@ -1,0 +1,115 @@
+/* ==========================================================================
+   밝은 바탕 게임 공통 덮어쓰기 (REQ-56 · REQ-57 ① · 2026-10-06)
+   ==========================================================================
+
+   base.css 는 어두운 남색 바탕을 전제로 흰색 rgba 를 70곳 넘게 고정해 두었다.
+   밝은 바탕 게임 20종이 같은 덮어쓰기를 저마다 복사하지 않도록 여기 한 장에 모은다.
+
+   ── 연결 ──────────────────────────────────────────────────────────────────
+   base.css → theme-light.css → games/<code>/theme.css   (이 순서가 우선순위다)
+   <body> 에 `theme-light` 클래스를 정적으로 붙인 게임만 이 파일을 링크한다.
+   되돌리기: 링크 한 줄과 body 클래스를 빼면 된다.
+
+   ── 여기에 넣지 않는 것 ────────────────────────────────────────────────────
+   게임별 색(bg·surface·글자·accent)은 각 게임 theme.css 가 정한다. 여기서는
+   「밝은 바탕이면 어느 게임이든 같은 것」만 다룬다.
+
+   ── 우선순위 ──────────────────────────────────────────────────────────────
+   토큰은 `body.theme-light`(0,1,1) 에 둔다. `.game--accent-*`(0,1,0) 를 이기고,
+   뒤에 오는 게임 theme.css 의 `body.game--<code>` 와는 같은 값이라 게임 쪽이 이긴다.
+   컴포넌트 덮어쓰기는 `:where(body.theme-light)` 로 감싸 base.css 와 **같은**
+   우선순위로 둔다 — 상태 규칙(.is-*·:disabled)을 덮지 않게 하기 위해서다.
+   ========================================================================== */
+
+body.theme-light {
+  /* 흰색 기반 웰·테두리 → 검정 기반. 값은 base.css 의 단계를 그대로 뒤집은 것 */
+  --well: rgba(0, 0, 0, 0.04);
+  --well-soft: rgba(0, 0, 0, 0.03);
+  --well-key: rgba(0, 0, 0, 0.06);
+
+  --border: rgba(0, 0, 0, 0.1);
+  --border-soft: rgba(0, 0, 0, 0.08);
+  --border-mid: rgba(0, 0, 0, 0.14);
+  --border-strong: rgba(0, 0, 0, 0.22);
+}
+
+/* ── splash: 30종 모두 지금처럼 어둡게 ─────────────────────────────────────
+   splash.js 는 body 의 --bg·--text-main 을 그대로 받는다. 하단 로고 글자가 흰색
+   원본이라 밝은 바탕을 받으면 「easy·joy」가 사라진다. 그래서 splash 안에서만
+   어두운 기본값으로 되돌린다(공통 파일은 고치지 않는다). */
+body.theme-light .splash {
+  --bg: #0f1420;
+  --surface: #1a2231;
+  --surface-2: #161d2b;
+  --text-main: #e8ecf4;
+  --text-2: #c6d0e0;
+  --text-sub: #8a97ae;
+  --text-dim: #6f7c93;
+  --border-mid: rgba(255, 255, 255, 0.08);
+}
+
+/* ── 상단바 · 버튼 ───────────────────────────────────────────────────────── */
+:where(body.theme-light) .topbar__back { background: rgba(0, 0, 0, 0.06); }
+:where(body.theme-light) .topbar__back:hover,
+:where(body.theme-light) .topbar__back:focus-visible { background: rgba(0, 0, 0, 0.12); }
+
+:where(body.theme-light) .btn:hover:not(:disabled),
+:where(body.theme-light) .btn--ghost:hover:not(:disabled) { background: rgba(0, 0, 0, 0.04); }
+:where(body.theme-light) .btn--primary:disabled { background: rgba(0, 0, 0, 0.06); }
+
+/* ── 진행 표시 ───────────────────────────────────────────────────────────── */
+:where(body.theme-light) .pip { background: rgba(0, 0, 0, 0.14); }
+:where(body.theme-light) .progress { background: rgba(0, 0, 0, 0.08); }
+:where(body.theme-light) .chart__bar { background: rgba(0, 0, 0, 0.14); }
+:where(body.theme-light) .timebar { background: rgba(0, 0, 0, 0.1); }
+:where(body.theme-light) .ring-track { stroke: rgba(0, 0, 0, 0.08); }
+:where(body.theme-light) .life { color: rgba(0, 0, 0, 0.18); }
+:where(body.theme-light) .trial-dot.is-bad { background: rgba(198, 40, 40, 0.1); }
+
+/* ── HUD 라벨 10px → 12px (REQ-56 §1-4) ────────────────────────────────────
+   clover 의 판 진행 중 작은 화면 규칙(body.cv-playing … 9px)은 그쪽 선택자가 더
+   강해 이 규칙이 덮지 않는다 — REQ-57 ⑤ 예외 그대로. */
+:where(body.theme-light) .hud__label { font-size: 12px; color: var(--text-sub); }
+
+/* ── 숫자패드 시트 ───────────────────────────────────────────────────────── */
+:where(body.theme-light) .sheet { box-shadow: 0 -12px 32px rgba(0, 0, 0, 0.16); }
+:where(body.theme-light) .sheet__grip { background: rgba(0, 0, 0, 0.2); }
+:where(body.theme-light) .numpad__key:hover:not(:disabled) { background: rgba(0, 0, 0, 0.08); }
+:where(body.theme-light) .numpad__key--ok:disabled { background: rgba(0, 0, 0, 0.06); }
+
+/* ── 광고 보상 카드 (위치·박스 크기는 그대로 · 글자만 12px · 대비 4.5:1) ──────── */
+:where(body.theme-light) .reward {
+  background: rgba(255, 255, 255, 0.55);
+  border-color: rgba(0, 0, 0, 0.28);
+}
+:where(body.theme-light) .reward:hover:not(:disabled) { background: rgba(255, 255, 255, 0.75); }
+:where(body.theme-light) .reward__title { color: var(--text-main); }
+:where(body.theme-light) .reward__desc { font-size: 12px; color: var(--text-sub); }
+:where(body.theme-light) .reward__note { font-size: 12px; color: var(--text-sub); opacity: 1; }
+:where(body.theme-light) .reward__cta { color: var(--text-main); border-color: rgba(0, 0, 0, 0.3); }
+
+:where(body.theme-light) .ad-box { box-shadow: 0 20px 48px rgba(0, 0, 0, 0.22); }
+
+/* ── 토스트: 고정 남색(#202a3b) → 면 색. 글자는 본문 색을 따른다 ─────────────── */
+:where(body.theme-light) .toast {
+  background: var(--surface);
+  color: var(--text-main);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.18);
+}
+
+/* ── 테스트 빌드 띠(스테이징 전용) — 연한 금색 글자가 밝은 바탕에서 안 보인다 ─── */
+:where(body.theme-light) .testbar {
+  color: #6B4E0E;
+  background: rgba(214, 177, 102, 0.22);
+  border-color: rgba(107, 78, 14, 0.35);
+}
+
+/* ── 밝은 바탕 게임의 무대 요소 중 흰색 rgba 로 고정된 것 ──────────────────────
+   (게임 theme.css 가 무대를 다시 그리면 그쪽이 이긴다) */
+:where(body.theme-light) .vote-opt__fill { background: rgba(0, 0, 0, 0.06); }
+:where(body.theme-light) .cup { background: rgba(255, 255, 255, 0.5); }
+:where(body.theme-light) .natgauge__mark { border-left-color: rgba(0, 0, 0, 0.35); }
+:where(body.theme-light) .cv-tray__dot { background: rgba(0, 0, 0, 0.08); }
+:where(body.theme-light) .cv-banner { border-color: rgba(0, 0, 0, 0.22); }
+:where(body.theme-light) .cv-banner__ico { background: rgba(0, 0, 0, 0.06); }
+:where(body.theme-light) .cv-playbar__x { background: rgba(0, 0, 0, 0.06); }
