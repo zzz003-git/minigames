@@ -121,6 +121,7 @@ body.game--scratch .scell.is-match {
 
 /* HUD — 카드 아래 편지 봉투 띠 느낌 */
 body.game--scratch [data-screen="play"] .hud {
+  align-items: flex-start;   /* 가운데 칸에 달력이 있어 키가 다르다 — 라벨을 같은 높이에 */
   background: #FFFFFF;
   border: 1px solid rgba(118, 70, 199, 0.25);
   border-radius: 14px;
