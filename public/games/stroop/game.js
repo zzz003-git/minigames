@@ -39,7 +39,12 @@ const state = {
   timer: null,
   itemTimer: 0,
   locked: true,
+  /** 표시색 key → 색 (REQ-56 §3-1). 판정과 무관하며 그리는 곳에서만 씁니다 */
+  show: {},
 };
+
+/** 오답일 때 부러진 크레파스를 보여 주는 시간. 총 타이머는 이미 멈춘 뒤입니다 */
+const MISS_HOLD_MS = 450;
 
 let lastResult = null;
 
@@ -94,6 +99,7 @@ async function startRun() {
       boosts: 0,
       maxBoosts: res.max_boosts,
       limitMs: res.round.limit_ms,
+      show: readShowColors(res.round.palette),
       t0: performance.now(),
     });
 
@@ -120,6 +126,21 @@ const hexOf = (key) => state.palette.find((c) => c.key === key)?.hex ?? "#fff";
 /** 정답 = 글자에 칠해진 색. pub 에는 hex 만 오므로 팔레트에서 키를 되찾습니다. */
 const answerOf = (item) => state.palette.find((c) => c.hex === item.ink_hex)?.key;
 
+/**
+ * 표시색 — 서버 hex 는 어두운 바탕용이라 흰 스케치북에서 노랑·초록이 보이지 않습니다.
+ * 테마가 정한 `--stroop-<key>` 를 런 시작 때 한 번 읽고, 없으면 서버 hex 를 씁니다.
+ * **판정은 여전히 ink_hex → key** 이고, 이 값은 글자·버튼을 칠할 때만 씁니다.
+ */
+function readShowColors(palette) {
+  const cs = getComputedStyle(document.body);
+  const out = {};
+  for (const c of palette ?? []) {
+    out[c.key] = cs.getPropertyValue(`--stroop-${c.key}`).trim() || c.hex;
+  }
+  return out;
+}
+const showOf = (key) => state.show[key] || hexOf(key);
+
 function renderItem() {
   const item = state.items[state.index];
   if (!item) {
@@ -129,16 +150,18 @@ function renderItem() {
 
   const word = $("#word");
   word.textContent = item.word;
-  word.style.color = item.ink_hex;
+  const inkKey = answerOf(item);
+  word.style.color = inkKey ? showOf(inkKey) : item.ink_hex;
 
   const host = clear($("#choices"));
   for (const key of item.choices) {
+    const hex = showOf(key);
     host.append(
       el(
         "button",
-        { class: "choice", type: "button", onclick: () => pick(key) },
-        el("span", { class: "choice__swatch", style: `background:${hexOf(key)}`, "aria-hidden": "true" }),
-        nameOf(key),
+        { class: "choice", type: "button", "data-key": key, style: `--crayon:${hex}`, onclick: () => pick(key) },
+        el("span", { class: "choice__swatch", style: `background-color:${hex}`, "aria-hidden": "true" }),
+        el("span", { class: "choice__name" }, nameOf(key)),
       ),
     );
   }
@@ -167,7 +190,11 @@ function pick(key) {
     return;
   }
 
-  onMiss("틀렸어요");
+  // 고른 크레파스를 부러진 모양으로 (표시만) — 빨강을 쓰지 않아 「빨강」 보기와 헷갈리지 않습니다
+  for (const b of $("#choices").children) {
+    if (b.dataset.key === key) b.classList.add("is-miss");
+  }
+  onMiss("틀렸어요", MISS_HOLD_MS);
 }
 
 function startItemTimer(ms) {
@@ -193,11 +220,20 @@ function startItemTimer(ms) {
 
 // ── 오답 — 이어할지 확정할지 ─────────────────────────────────
 
-function onMiss(reason) {
+function onMiss(reason, holdMs = 0) {
   // 이어하기를 고르면 남은 시간을 그대로 이어받아야 하므로 멈추기 전에 붙잡아 둡니다.
   state.remainMs = state.timer?.left() ?? state.limitMs;
   state.timer?.stop();
 
+  // 타이머는 위에서 이미 멈췄습니다 — 잠깐 부러진 크레파스를 보여 준 뒤 화면을 넘깁니다
+  if (holdMs > 0) {
+    setTimeout(() => showMiss(reason), holdMs);
+    return;
+  }
+  showMiss(reason);
+}
+
+function showMiss(reason) {
   $("#pauseTitle").textContent = reason;
   $("#pauseSub").textContent = `${state.streak}연속에서 끊겼어요`;
   $("#pauseFigure").textContent = `${state.streak}연속`;

@@ -1,0 +1,246 @@
+/* ==========================================================================
+   색깔 말하기 — 게임별 디자인 「크레파스 스케치북」 (REQ-56 §3-1 · 2026-10-06)
+   시안: reward-minigame-research/plans/2026-10-06/게임별디자인/mock/stroop.html
+   ==========================================================================
+
+   연결: base.css → theme-light.css → 이 파일.  되돌리기: 이 게임의 커밋 revert.
+
+   ── 판정과 맞닿는 곳 (REQ-56 §3-1) ─────────────────────────────────────────
+   · 서버 ink_hex(#f0705c 등 — 어두운 바탕용)는 흰 스케치북에서 노랑 1.66:1 · 초록 1.83:1
+     이라 「색을 맞히는 게임인데 색이 안 보인다」. 그래서 **표시색만** 아래 --stroop-<key>
+     로 바꾼다. game.js 가 런 시작 때 한 번 읽어 단어 글자와 크레파스 버튼에 같은 값을 쓴다.
+   · 정답 판정(answerOf 가 ink_hex 로 key 를 찾는 것)은 그대로다. 이 파일이 없으면
+     game.js 는 서버 hex 로 그린다.
+   · 오답: 고른 크레파스가 끝이 부러진 회색으로 바뀐다(.choice.is-miss). 빨강을 쓰지 않아
+     「빨강」 보기와 헷갈리지 않는다.
+
+   ── 색 (흰 바탕 #FFFFFF 기준 · 스케치북 종이도 #FFFFFF) ────────────────────
+     표시색 — 큰 글자(96px)라 기준 3:1
+       red    #E5484D  3.91:1   (시안 그대로)
+       blue   #2F6FDE  4.72:1   (시안 그대로)
+       green  #2E9E5B  3.41:1   (시안 그대로)
+       yellow #A87A00  3.85:1   (시안 #F4C20D 1.67:1 → 진한 노랑으로)
+       purple #7C4DCC  5.54:1
+     --accent      #2A63C8  글자·테두리용 (bg 5.65:1 · surface #F6F5F2 5.18:1)
+     --theme-fill  #2F6FDE  면 전용 (시간 막대) — surface 4.33:1 이라 글자에 쓰지 않는다
+     --coral       #8A1C1C  오답색 (bg 9.28:1 · surface 8.51:1)
+     크레파스 이름은 흰 종이 띠 위 #1D1D1F (16:1)
+   ========================================================================== */
+
+body.game--stroop {
+  --bg: #FFFFFF;
+  --void: #F6F5F2;
+  --surface: #F6F5F2;
+  --surface-2: #FBFAF8;
+
+  --text-main: #1D1D1F;
+  --text-2: #2A2A2E;
+  --text-sub: #5B5B60;   /* bg 6.7:1 · surface 6.19:1 */
+  --text-dim: #5B5B60;
+  --text-faint: #6B6B70; /* bg 5.30:1 */
+
+  --accent: #2A63C8;
+  --accent-ink: #FFFFFF;
+  --accent-08: rgba(47, 111, 222, 0.08);
+  --accent-10: rgba(47, 111, 222, 0.1);
+  --accent-14: rgba(47, 111, 222, 0.14);
+  --accent-20: rgba(47, 111, 222, 0.22);
+  --accent-45: rgba(47, 111, 222, 0.5);
+
+  --coral: #8A1C1C;
+  --danger: #8A1C1C;
+
+  --theme-fill: #2F6FDE;
+  --theme-crayon2: #F4C20D; /* 문항 막대 면 전용 (글자 아님) */
+  --theme-display: "Black Han Sans", "Noto Sans KR", var(--sans);
+
+  /* 표시색 — game.js 가 런 시작 때 1회 읽는다 (key → 색) */
+  --stroop-red: #E5484D;
+  --stroop-blue: #2F6FDE;
+  --stroop-green: #2E9E5B;
+  --stroop-yellow: #A87A00;
+  --stroop-purple: #7C4DCC;
+
+  background-color: var(--bg);
+}
+
+/* 제목·설명 — 장식 서체는 큰 글자에만 (원칙 ④) */
+body.game--stroop .headline {
+  font-family: var(--theme-display);
+  font-size: 28px;
+  font-weight: 400;
+  line-height: 1.25;
+  word-break: keep-all;
+}
+body.game--stroop .footnote { word-break: keep-all; }
+
+/* 주 버튼 hover — theme-light.css 의 `.btn:hover` 웰 색이 뒤에 와서 주 버튼 면을 지운다
+   (흰 글자가 연회색 위에 1.09:1). 터치 기기에선 탭 뒤 hover 가 남으므로 같은 범위로 되돌린다 */
+body.game--stroop .btn--primary:hover:not(:disabled) { background: var(--accent); color: var(--accent-ink); }
+
+/* ══════════════════════════════════════════════════════════════
+   플레이 — 흰 스케치북과 크레파스
+   ══════════════════════════════════════════════════════════════ */
+
+/* STREAK — 「참 잘했어요」 도장 */
+body.game--stroop [data-screen="play"] #hudStreak {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  border: 3px solid var(--accent);
+  box-shadow: inset 0 0 0 4px #FFFFFF, inset 0 0 0 5.5px var(--accent);
+  transform: rotate(-8deg);
+  font-size: 22px;
+  color: var(--accent);
+}
+body.game--stroop [data-screen="play"] .hud__value { color: var(--text-main); }
+body.game--stroop [data-screen="play"] #hudStreak.hud__value--accent { color: var(--accent); }
+body.game--stroop [data-screen="play"] .hud__value.is-urgent { color: var(--coral); }
+
+/* 시간 막대 — 연필선 굵기 */
+body.game--stroop [data-screen="play"] .timebar {
+  height: 8px;
+  border-radius: 8px 3px 7px 3px / 4px 6px 3px 5px;
+  background: rgba(0, 0, 0, 0.07);
+}
+body.game--stroop [data-screen="play"] #timebar { background: var(--theme-fill); }
+body.game--stroop [data-screen="play"] #itembar {
+  background: var(--theme-crayon2);
+  box-shadow: inset 0 0 0 1.5px rgba(29, 29, 31, 0.55);
+}
+/* 상태 규칙을 같은 범위로 다시 선언 (REQ-56 §1-3) */
+body.game--stroop [data-screen="play"] .timebar__fill.is-urgent { background: var(--coral); }
+
+/* 스케치북 — 위쪽 스프링 링 + 점선 안쪽 테두리 */
+body.game--stroop [data-screen="play"] .card--hero {
+  position: relative;
+  background: #FFFFFF;
+  border: 0;
+  box-shadow: 0 0 0 2px #E7E4DC, 0 4px 12px rgba(0, 0, 0, 0.08);
+  padding-top: 40px;
+  padding-bottom: 40px;
+}
+body.game--stroop [data-screen="play"] .card--hero::before {
+  /* 스프링 링 — 장식 */
+  content: "";
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  top: 8px;
+  height: 16px;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 50% 55%, #D9D8D4 0 6px, #B9BCC2 6.5px 7.5px, transparent 8px) 0 0 / 26px 16px space no-repeat;
+}
+body.game--stroop [data-screen="play"] .card--hero::after {
+  content: "";
+  position: absolute;
+  inset: 32px 10px 10px;
+  border: 2.5px dashed #E3E0D8;
+  border-radius: 4px;
+  pointer-events: none;
+}
+
+/* 단어 — 크레파스 글씨. 색은 game.js 가 표시색으로 넣는다 */
+body.game--stroop .stroop-word {
+  position: relative;
+  z-index: 1;
+  font-family: var(--theme-display);
+  font-weight: 400;
+  font-size: clamp(72px, 23vw, 96px);
+  line-height: 1.05;
+  letter-spacing: 0.02em;
+  word-break: keep-all;
+}
+
+/* 보기 — 가로로 누운 크레파스. 몸통에 흰 종이 띠, 오른쪽이 뾰족한 끝 */
+body.game--stroop #choices {
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+body.game--stroop .choice {
+  --crayon: #888888;
+  display: flex;
+  align-items: stretch;
+  min-height: 56px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  filter: drop-shadow(0 2px 0 rgba(0, 0, 0, 0.18));
+  transition: transform 120ms ease, filter 160ms ease, opacity 160ms ease;
+}
+body.game--stroop .choice__name {
+  order: 1;
+  flex: 1;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: -1px;
+  border-radius: 9px 0 0 9px;
+  /* 크레파스 몸통 = 색 · 가운데 흰 종이 띠 */
+  background:
+    linear-gradient(90deg, rgba(0, 0, 0, 0.12) 0 10px, transparent 10px),
+    linear-gradient(90deg, var(--crayon) 0 30px, #FFFFFF 30px calc(100% - 14px), var(--crayon) calc(100% - 14px));
+  box-shadow: inset 0 7px 0 var(--crayon), inset 0 -7px 0 var(--crayon);
+  color: #1D1D1F;
+  font-size: 20px;
+  font-weight: 900;
+  letter-spacing: 0.3em;
+  text-indent: 0.3em;
+}
+body.game--stroop .choice__swatch {
+  order: 2;
+  flex: none;
+  width: 50px;
+  height: auto;
+  margin: 0;
+  border-radius: 0;
+  background-color: var(--crayon);
+  background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.18) 0 18%, transparent 18% 70%, rgba(255, 255, 255, 0.25) 70%);
+  clip-path: polygon(0 8%, 18% 8%, 78% 36%, 100% 42%, 100% 58%, 78% 64%, 18% 92%, 0 92%);
+  transform-origin: 0 50%;
+  transition: transform 160ms ease;
+}
+/* 상태 규칙을 같은 범위로 다시 선언 (REQ-56 §1-3) */
+body.game--stroop .choice:active:not(:disabled) { transform: scale(0.97); }
+body.game--stroop .choice:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+body.game--stroop .choice.is-hit { background: transparent; outline: 3px solid var(--accent); outline-offset: 3px; }
+/* 오답 — 부러진 크레파스: 회색 + 끝이 꺾여 떨어짐 + 꺾인 자리 금 */
+body.game--stroop .choice.is-miss {
+  background: transparent;
+  filter: grayscale(1) drop-shadow(0 2px 0 rgba(0, 0, 0, 0.18));
+  opacity: 0.8;
+}
+body.game--stroop .choice.is-miss .choice__name::after {
+  content: "";
+  position: absolute;
+  right: -1px;
+  top: -2px;
+  bottom: -2px;
+  width: 9px;
+  background: var(--bg);
+  clip-path: polygon(40% 0, 100% 0, 100% 100%, 30% 100%, 80% 78%, 10% 56%, 70% 36%, 0 18%);
+  pointer-events: none;
+}
+body.game--stroop .choice.is-miss .choice__swatch {
+  transform: translate(8px, 9px) rotate(16deg);
+}
+
+/* 낮은 화면(375×667 · 360×640) — 크레파스 4개가 한 화면에 들어오게 (터치 높이 48px 유지) */
+@media (max-height: 700px) {
+  body.game--stroop [data-screen="play"] .card--hero { padding: 30px 16px 16px; }
+  body.game--stroop [data-screen="play"] .card--hero::before { top: 6px; }
+  body.game--stroop [data-screen="play"] .card--hero::after { inset: 26px 8px 8px; }
+  body.game--stroop .stroop-word { font-size: 64px; }
+  body.game--stroop #choices { gap: 8px; }
+  body.game--stroop .choice { min-height: 48px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body.game--stroop .choice,
+  body.game--stroop .choice__swatch { transition: none; }
+}
