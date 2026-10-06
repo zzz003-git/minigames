@@ -52,6 +52,9 @@ body.game--clover {
   background-color: var(--bg); /* 그라디언트를 못 그리는 경우의 바탕 · 대비 측정 기준 */
 }
 
+/* 제목은 낱말 단위로만 줄을 바꾼다 — 「…찾아주세 / 요」 한 글자 줄바꿈 (기획회신 REP-47 검토 2-A) */
+body.game--clover .headline { word-break: keep-all; }
+
 /* ── 연쇄 잔광 · 합쳐진 「10」 — 햇살 노랑 네잎 (REQ-59 · 2026-10-06) ─────────
    네잎 그림은 game.js 의 IMG_LUCKY(lucky_gold.v1.png). 진초록 세잎 판과 반대색이라
    생기는 순간부터 점수에 닿을 때까지 들판에 묻히지 않는다.

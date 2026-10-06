@@ -150,12 +150,14 @@ body.game--stopwatch #timerMain {
   color: var(--text-sub);
 }
 .sw-legend span { display: inline-flex; align-items: center; gap: 5px; }
+/* 다이얼 위 #swTarget 과 같은 ▲ (기획회신 REP-47 검토 2-B). 다이얼 쪽은 꼭짓점이 중심을
+   향하도록 돌아가므로 각도는 목표마다 다르다 — 범례는 돌리지 않은 기본 모양이다 */
 .sw-legend__target {
   width: 0;
   height: 0;
   border-left: 6px solid transparent;
   border-right: 6px solid transparent;
-  border-top: 11px solid var(--theme-target);
+  border-bottom: 11px solid var(--theme-target);
 }
 .sw-legend__now {
   width: 11px;
