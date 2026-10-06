@@ -2,9 +2,9 @@
 
 **이 파일은 손으로 고치지 않습니다.** `node scripts/gen-changelog.mjs` 가 `git log` 에서 만듭니다.
 
-| 기준 커밋 | `dcb5794` |
+| 기준 커밋 | `3cf9049` |
 | --- | --- |
-| 커밋 수 | 194개 |
+| 커밋 수 | 196개 |
 
 ## 이 파일이 낡았는지 확인하는 법
 
@@ -29,7 +29,25 @@
 
 ---
 
+## 2026-10-06
+
+### `3cf9049` 사주 서비스명 「오늘의 기운」 → 「오늘의 사주」 (REQ-53)
+> **대조군 영향** — 게임 설정
+
+- `public/mind/`
+- `public/saju/ (3)`
+- `public/shared/ (3)`
+- `public/tarot/`
+- `public/today/ (2)`
+- `src/lib/`
+- `src/services/ (2)`
+
 ## 2026-10-05
+
+### `7f3fba4` docs: CHANGELOG 재생성 (기준 dcb5794)
+> **대조군 영향** — 게임 문서
+
+- `docs/CHANGELOG.md`
 
 ### `dcb5794` 타로 의식 끝 ↔ 카드 공개 간극 없애기 (REQ-49)
 
