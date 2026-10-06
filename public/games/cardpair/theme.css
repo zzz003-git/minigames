@@ -1,0 +1,206 @@
+/* ==========================================================================
+   카드 짝 맞추기 — 게임별 디자인 「파란 물결무늬 그림 카드」 (REQ-56 · 2026-10-06)
+   시안: reward-minigame-research/plans/2026-10-06/게임별디자인/mock/cardpair.html
+   ==========================================================================
+
+   연결: base.css → theme-light.css → 이 파일.  되돌리기: 이 게임의 커밋 revert.
+   game.js 는 고치지 않는다 (REQ-56 §3-3 — CSS·정적 장식만).
+
+   ── 그림 ──────────────────────────────────────────────────────────────────
+   /games/cardpair/img/card_back.v1.png  (512², 카드는 x112–413 · y63–464)
+   /games/cardpair/img/card_front.v1.png (512², 카드는 x113–398 · y70–442)
+   그림 둘레에 투명 여백이 있어 background-size·position 으로 카드 부분만 칸에 맞춘다.
+     뒷면: 512/301 = 170% · 512/401 = 128% → 위치 53% 57%
+     앞면: 512/285 = 180% · 512/372 = 138% → 위치 50% 50%
+
+   ── 판정과 맞닿는 곳 ──────────────────────────────────────────────────────
+   · 카드 배치·그림은 서버 응답 그대로. 상태 클래스(is-face · is-waiting · is-matched ·
+     is-miss · is-hinted)는 game.js 가 주고, 여기서는 모양만 다시 선언한다(§1-3).
+   · 뒷면 글자(state.back)는 지우지 않는다 — 광고 소재 세트가 걸리면 그 자리에 브랜드
+     아트가 들어온다(game.js `res.ext?.back`). CSS 로는 「?」와 광고 글자를 가를 수 없어
+     둘 다 물결 카드 가운데 흰 동전 위에 작게 보인다. (시안은 「?」를 지움 — 회신에 적음)
+
+   ── 색 ────────────────────────────────────────────────────────────────────
+     --accent      #2F5BD3  (bg 4.96:1 · 흰 면 5.90:1)
+     --coral       #A93A0B  시안 #C2410C 는 bg 4.35:1 이라 어둡게 (bg 5.35:1)
+     --theme-gold  #F2B134  면·테두리 전용 (별 스티커 · 짝 맞은 테)
+   ========================================================================== */
+
+body.game--cardpair {
+  --bg: #E3ECFA;
+  --void: #D8E3F6;
+  --surface: #FFFFFF;
+  --surface-2: #F3F7FE;
+
+  --text-main: #1A2340;
+  --text-2: #26304F;
+  --text-sub: #4A5578;
+  --text-dim: #4A5578;
+  --text-faint: #56618A;
+
+  --accent: #2F5BD3;
+  --accent-ink: #FFFFFF;
+  --accent-08: rgba(47, 91, 211, 0.08);
+  --accent-10: rgba(47, 91, 211, 0.1);
+  --accent-14: rgba(47, 91, 211, 0.14);
+  --accent-20: rgba(47, 91, 211, 0.22);
+  --accent-45: rgba(47, 91, 211, 0.5);
+
+  --coral: #A93A0B;
+  --danger: #A93A0B;
+
+  --theme-gold: #F2B134;
+  --theme-display: "Cute Font", "Noto Sans KR", var(--sans);
+  --theme-back: url("/games/cardpair/img/card_back.v1.png") 53% 57% / 170% 128% no-repeat;
+  --theme-front: url("/games/cardpair/img/card_front.v1.png") 50% 50% / 180% 138% no-repeat;
+
+  /* 연파랑 거실 바닥 — 세로 마루 줄 */
+  background:
+    repeating-linear-gradient(90deg, #D3E0F5 0 2px, transparent 2px 56px),
+    var(--bg);
+  background-color: var(--bg);
+}
+
+/* 제목 — Cute Font 는 글자가 작게 보여 크게 (원칙 ④: 24px 이상) */
+body.game--cardpair .headline {
+  font-family: var(--theme-display);
+  font-size: 38px;
+  font-weight: 400;
+  line-height: 1.1;
+  word-break: keep-all;
+}
+body.game--cardpair .footnote,
+body.game--cardpair .footnote--dim { word-break: keep-all; }
+
+/* ══════════════════════════════════════════════════════════════
+   플레이 — 카드 16장을 펼친 거실 깔개
+   ══════════════════════════════════════════════════════════════ */
+
+/* HUD — 맞춘 쌍은 금색 테 스티커 */
+body.game--cardpair [data-screen="play"] .hud__item:nth-child(2) {
+  background: #FFFFFF;
+  border: 3px solid var(--theme-gold);
+  border-radius: 30px;
+  padding: 2px 12px;
+  box-shadow: 0 3px 0 rgba(26, 35, 64, 0.15);
+}
+body.game--cardpair [data-screen="play"] .hud__value { color: var(--text-main); }
+body.game--cardpair [data-screen="play"] .hud__value--accent { color: var(--accent); }
+
+/* 깔개 */
+body.game--cardpair [data-screen="play"] .stage {
+  background-color: #FBF7EC;
+  background-image: repeating-linear-gradient(45deg, rgba(242, 177, 52, 0.14) 0 8px, transparent 8px 16px);
+  border: 4px solid #FFFFFF;
+  border-radius: 22px;
+  box-shadow: 0 0 0 4px var(--theme-gold), 0 8px 0 2px rgba(26, 35, 64, 0.15);
+}
+
+/* 카드 — 뒷면(물결무늬 그림) */
+body.game--cardpair .mcard {
+  position: relative;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  filter: drop-shadow(0 2px 0 rgba(26, 35, 64, 0.35));
+}
+body.game--cardpair .mcard__back {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 9px;
+  /* 뒷면 글자(「?」 또는 광고 브랜드 아트)는 가운데 흰 동전 위에 작게 */
+  background:
+    radial-gradient(circle at 50% 50%, #FFFFFF 0 13px, rgba(255, 255, 255, 0) 13.5px),
+    var(--theme-back);
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--accent);
+}
+
+/* 상태 — 같은 범위로 다시 선언 (REQ-56 §1-3) */
+/* 뒤집힘: 흰 앞면 그림 + Y축 뒤집기 */
+body.game--cardpair .mcard.is-face {
+  background: var(--theme-front);
+  border: 0;
+  animation: cp-flip 250ms cubic-bezier(0.3, 0.9, 0.4, 1);
+}
+body.game--cardpair .mcard.is-waiting { background: var(--theme-front); }
+body.game--cardpair .mcard__sym { font-size: clamp(30px, 9.5vw, 40px); }
+
+/* 짝 맞음: 흐리게 하지 않고 금색 테 + 별 스티커 + 서로 3도 기울기 */
+body.game--cardpair .mcard.is-matched {
+  background: var(--theme-front);
+  border: 0;
+  opacity: 1;
+  cursor: default;
+  box-shadow: 0 0 0 3px var(--theme-gold);
+  transform: rotate(-3deg);
+  animation: none;
+}
+body.game--cardpair .mcard.is-matched:nth-child(even) { transform: rotate(3deg); }
+body.game--cardpair .mcard.is-matched::after {
+  content: "★";
+  position: absolute;
+  right: -7px;
+  top: -9px;
+  width: 24px;
+  height: 24px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 2px solid #FFFFFF;
+  background: var(--theme-gold);
+  color: #7A5200;
+  font-size: 14px;
+  line-height: 1;
+  pointer-events: none;
+}
+
+/* 힌트: 금색 점선 */
+body.game--cardpair .mcard.is-hinted {
+  background: var(--theme-front);
+  border: 0;
+  box-shadow: none;
+  outline: 3px dashed var(--theme-gold);
+  outline-offset: 2px;
+}
+
+/* 틀림: 산호색 테 + 좌우 흔들림 */
+body.game--cardpair .mcard.is-miss {
+  box-shadow: 0 0 0 3px var(--coral);
+  animation: cp-shake 320ms ease-in-out;
+}
+
+body.game--cardpair .mcard:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+body.game--cardpair .mcard:active:not(:disabled) { transform: scale(0.95); }
+body.game--cardpair .mcard.is-matched:active { transform: rotate(-3deg); }
+body.game--cardpair .mcard.is-matched:nth-child(even):active { transform: rotate(3deg); }
+
+@keyframes cp-flip {
+  from { transform: perspective(400px) rotateY(90deg); }
+  to { transform: perspective(400px) rotateY(0deg); }
+}
+@keyframes cp-shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  50% { transform: translateX(5px); }
+  75% { transform: translateX(-3px); }
+}
+
+/* ── 공통 요소 ───────────────────────────────────────────────────────────── */
+/* 11px 글자 → 12px (REQ-56 §1-4 · 12px 미만 금지). 박스 크기는 그대로 */
+body.game--cardpair .topbar__badge,
+body.game--cardpair .stat__label,
+body.game--cardpair .chart__caption { font-size: 12px; }
+
+/* 주 버튼 hover — theme-light.css 의 `.btn:hover:not(:disabled)` 가 면을 덮어 흰 글자가
+   사라진다(모바일은 탭 뒤 :hover 가 남음). 공통 파일 수정 전까지 여기서 되돌린다 */
+body.game--cardpair .btn--primary:hover:not(:disabled) { background: var(--accent); }
+
+@media (prefers-reduced-motion: reduce) {
+  body.game--cardpair .mcard.is-face,
+  body.game--cardpair .mcard.is-miss { animation: none; }
+}
