@@ -1,0 +1,225 @@
+/* ==========================================================================
+   60초 암산 — 게임별 디자인 「교실 칠판 암산」 (REQ-56 · 2026-10-06)
+   시안: reward-minigame-research/plans/2026-10-06/게임별디자인/mock/mathrush.html
+   ==========================================================================
+
+   연결: base.css → 이 파일 (어두운 바탕이라 theme-light.css 는 연결하지 않는다).
+   되돌리기: 이 게임의 커밋 revert.
+   game.js 는 고치지 않는다 (REQ-56 §3-3 — CSS·정적 장식만).
+
+   ── 판정과 맞닿는 곳 ──────────────────────────────────────────────────────
+   · 문제·답·남은 시간은 game.js 가 그대로 쓴다. 여기서는 모양만 바꾼다.
+   · 정답 동그라미·지우개 스윕·분필 부러짐 연출은 game.js 가 상태 클래스를 주지 않아
+     넣지 않는다(정답 순간을 CSS 로 알 길이 없음). 오답은 .answer-box.is-wrong 으로 보인다.
+
+   ── 색 ────────────────────────────────────────────────────────────────────
+     --accent     #FFE27A  노란 분필 (bg 8.29:1 · surface 6.76:1)
+     --coral      #FFA596  분홍 분필 — 시안 #FF8A7A 는 surface 대비 3.77:1 이라 밝힘
+                           (bg 5.60:1 · surface 4.56:1)
+     --text-sub   #C4D2C8  (bg 6.77:1 · surface 5.52:1)
+   ========================================================================== */
+
+body.game--mathrush {
+  --bg: #2A4436;
+  --void: #233A2E;
+  --surface: #345241;
+  --surface-2: #2F4B3B;
+
+  --text-main: #F7F5EE;
+  --text-2: #EAE8DF;
+  --text-sub: #C4D2C8;
+  --text-dim: #C4D2C8;
+  --text-faint: #AFC0B4;
+
+  --accent: #FFE27A;
+  --accent-ink: #2A4436;
+  --accent-08: rgba(255, 226, 122, 0.08);
+  --accent-10: rgba(255, 226, 122, 0.1);
+  --accent-14: rgba(255, 226, 122, 0.14);
+  --accent-20: rgba(255, 226, 122, 0.2);
+  --accent-45: rgba(255, 226, 122, 0.45);
+
+  --coral: #FFA596;
+  --danger: #FFA596;
+
+  --theme-wood: #8B5E3C;
+  --theme-wood-dark: #6E4A2F;
+  --theme-display: "Gaegu", "Noto Sans KR", var(--sans);
+
+  /* 칠판 녹색 + 분필 지운 자국 */
+  background:
+    radial-gradient(40% 12% at 20% 30%, rgba(255, 255, 255, 0.05), transparent),
+    radial-gradient(35% 10% at 80% 55%, rgba(255, 255, 255, 0.045), transparent),
+    radial-gradient(30% 9% at 35% 82%, rgba(255, 255, 255, 0.035), transparent),
+    var(--bg);
+  background-color: var(--bg);
+}
+
+/* 제목 — 분필 손글씨 (원칙 ④: 큰 글자에만) */
+body.game--mathrush .headline {
+  font-family: var(--theme-display);
+  font-size: 32px;
+  font-weight: 700;
+  line-height: 1.15;
+  word-break: keep-all;
+  text-shadow: 0 0 2px rgba(255, 255, 255, 0.35);
+}
+body.game--mathrush .footnote,
+body.game--mathrush .footnote--dim { word-break: keep-all; }
+
+/* ══════════════════════════════════════════════════════════════
+   플레이 — 나무틀 칠판 · 분필 시간바 · 지우개 숫자패드
+   ══════════════════════════════════════════════════════════════ */
+
+body.game--mathrush [data-screen="play"] .hud__value { text-shadow: 0 0 3px rgba(255, 255, 255, 0.4); }
+body.game--mathrush [data-screen="play"] .hud__value--accent { text-shadow: 0 0 3px rgba(255, 226, 122, 0.45); }
+body.game--mathrush [data-screen="play"] .hud__value.is-urgent { color: var(--coral); }
+
+/* 시간 — 나무 받침대 위 분필 막대 */
+body.game--mathrush [data-screen="play"] .timebar {
+  position: relative;
+  height: 12px;
+  overflow: visible;
+  border-radius: 3px;
+  background: linear-gradient(var(--theme-wood), var(--theme-wood-dark));
+  box-shadow: 0 3px 0 #4B3120;
+}
+body.game--mathrush [data-screen="play"] .timebar__fill {
+  position: relative;
+  top: -6px;
+  height: 10px;
+  border-radius: 6px 3px 3px 6px;
+  background: linear-gradient(#FFFFFF, #E9E6DC);
+  box-shadow: 0 0 5px rgba(255, 255, 255, 0.3);
+}
+body.game--mathrush [data-screen="play"] .timebar__fill.is-urgent { background: linear-gradient(#FFD0C8, var(--coral)); }
+
+/* 문제 칠판 — 갈색 나무 프레임 */
+body.game--mathrush [data-screen="play"] .card--hero {
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(closest-side at 35% 40%, rgba(255, 255, 255, 0.06), transparent),
+    #2F5240;
+  border: 8px solid var(--theme-wood);
+  border-radius: 8px;
+  box-shadow: 0 0 0 2px #5B3D25, inset 0 0 36px rgba(0, 0, 0, 0.35), 0 5px 0 #4B3120;
+}
+/* 분필 받침 위 분필 한 토막 — 장식 */
+body.game--mathrush [data-screen="play"] .card--hero::after {
+  content: "";
+  position: absolute;
+  left: 14px;
+  bottom: 0;
+  width: 56px;
+  height: 6px;
+  border-radius: 3px 3px 0 0;
+  background: #E9E6DC;
+  opacity: 0.85;
+  pointer-events: none;
+}
+body.game--mathrush .question {
+  color: #F7F5EE;
+  font-weight: 700;
+  text-shadow: 0 0 2px rgba(255, 255, 255, 0.7), 1px 1px 5px rgba(255, 255, 255, 0.3);
+}
+
+/* 답 — 노란 분필 밑줄 칸 */
+body.game--mathrush .answer-box {
+  position: relative;
+  background: transparent;
+  border: 0;
+  color: var(--accent);
+  text-shadow: 0 0 3px rgba(255, 226, 122, 0.45);
+}
+body.game--mathrush .answer-box::after {
+  content: "";
+  position: absolute;
+  left: 18%;
+  right: 18%;
+  bottom: 6px;
+  height: 4px;
+  border-radius: 5px 2px 6px 2px / 3px 5px 2px 4px;
+  background: var(--accent);
+  box-shadow: 0 0 5px rgba(255, 226, 122, 0.45);
+  pointer-events: none;
+}
+/* 상태 (REQ-56 §1-3 같은 범위로 다시 선언) */
+body.game--mathrush .answer-box.is-empty { color: var(--text-faint); text-shadow: none; }
+body.game--mathrush .answer-box.is-empty::after { background: rgba(247, 245, 238, 0.35); box-shadow: none; }
+body.game--mathrush .answer-box.is-wrong { color: var(--coral); text-shadow: 0 0 3px rgba(255, 165, 150, 0.45); }
+body.game--mathrush .answer-box.is-wrong::after {
+  background: var(--coral);
+  box-shadow: 0 0 5px rgba(255, 165, 150, 0.45);
+}
+/* 오답 — 분홍 분필 사선 */
+body.game--mathrush .answer-box.is-wrong::before {
+  content: "";
+  position: absolute;
+  left: 30%;
+  right: 30%;
+  top: 50%;
+  height: 4px;
+  margin-top: -2px;
+  border-radius: 3px;
+  background: var(--coral);
+  transform: rotate(-14deg);
+  opacity: 0.9;
+  pointer-events: none;
+}
+
+/* 숫자패드 — 나무 받침대 위 펠트 지우개 키 */
+body.game--mathrush [data-screen="play"] .sheet {
+  background: linear-gradient(#7A5334, var(--theme-wood-dark));
+  border-color: transparent;
+  box-shadow: inset 0 4px 0 var(--theme-wood), 0 -8px 18px rgba(0, 0, 0, 0.3);
+}
+body.game--mathrush [data-screen="play"] .sheet__grip { background: #A7825F; }
+body.game--mathrush .numpad__key {
+  position: relative;
+  padding: 10px 0 22px; /* 위아래 합은 base(16+16)와 같게 — 시트 높이를 늘리지 않는다 */
+  border-radius: 8px;
+  /* 끝의 단색 = 글자 밑 면(그라디언트 윗부분과 같은 색) — 대비 측정 기준 */
+  background: linear-gradient(#E4E3DC 0 74%, #3F3B36 74% 100%) #E4E3DC;
+  color: #1D1D1A;
+  font-weight: 700;
+  box-shadow: 0 3px 0 #2A2623;
+}
+body.game--mathrush .numpad__key--util {
+  background: linear-gradient(#CFCDC4 0 74%, #3F3B36 74% 100%) #CFCDC4;
+  color: #1D1D1A;
+  font-weight: 700;
+}
+body.game--mathrush .numpad__key--ok {
+  background: linear-gradient(var(--accent) 0 74%, #3F3B36 74% 100%) var(--accent);
+  color: #1D1D1A;
+}
+/* 상태 (REQ-56 §1-3 같은 범위로 다시 선언) */
+body.game--mathrush .numpad__key:hover:not(:disabled) { background: linear-gradient(#F0EFE9 0 74%, #3F3B36 74% 100%) #F0EFE9; }
+body.game--mathrush .numpad__key--util:hover:not(:disabled) { background: linear-gradient(#DCDAD2 0 74%, #3F3B36 74% 100%) #DCDAD2; }
+body.game--mathrush .numpad__key--ok:hover:not(:disabled) { background: linear-gradient(var(--accent) 0 74%, #3F3B36 74% 100%) var(--accent); filter: brightness(1.06); }
+body.game--mathrush .numpad__key:active:not(:disabled) { transform: translateY(2px); box-shadow: 0 1px 0 #2A2623; }
+body.game--mathrush .numpad__key:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+body.game--mathrush .numpad__key:disabled { color: rgba(29, 29, 26, 0.45); }
+body.game--mathrush .numpad__key--ok:disabled {
+  background: linear-gradient(#9FA69E 0 74%, #3F3B36 74% 100%) #9FA69E;
+  color: #1D1D1A;
+  filter: none;
+}
+
+/* ── 공통 요소: 11px 글자 → 12px (REQ-56 §1-4). 박스 크기는 그대로 ── */
+body.game--mathrush .topbar__badge,
+body.game--mathrush .stat__label,
+body.game--mathrush .chart__caption,
+body.game--mathrush .hud__label,
+body.game--mathrush .reward__desc { font-size: 12px; }
+body.game--mathrush .reward__note { font-size: 12px; opacity: 1; color: var(--text-sub); }
+
+/* base 의 380px 이하 키(14+14)와 같은 높이 */
+@media (max-width: 380px) {
+  body.game--mathrush .numpad__key { padding: 8px 0 20px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body.game--mathrush .numpad__key:active:not(:disabled) { transform: none; }
+}
