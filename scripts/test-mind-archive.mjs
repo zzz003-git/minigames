@@ -186,6 +186,12 @@ console.log("\n[6] 오늘 회전이 아닌 장면 → 409 DAY_CHANGED · 축 +1 
   check("−1 선택지 4개 → 축 3 이 +4", ok.status === 200 && ok.data.axes_gain?.[3] === 4, JSON.stringify(ok.data.axes_gain));
   const s = await c.get("/api/mind/state");
   check("state.dist_open false", s.data.dist_open === false);
+  // v2 화면이 금액을 상수로 쓰지 않게 (REQ-63) — 재열람 합계 = 오늘 선택 몫(셋 다 보너스 제외)
+  const detailSum = (ok.data.gain_detail ?? []).filter((d) => d.kind !== "triple").reduce((a, d) => a + d.p, 0);
+  check("state.today_points = 오늘 선택 적립 · core_points · portrait_points",
+    s.data.today_points === detailSum && s.data.today_points === ok.data.gained &&
+      s.data.core_points > 0 && s.data.portrait_points > 0,
+    `today_points=${s.data.today_points} gained=${ok.data.gained} detail=${detailSum}`);
   sql(`UPDATE mind_daily SET ad_stats = 1 WHERE user_id = ${q(uid)}`);
   const st = await c.get("/api/mind/stats");
   check("닫힌 stats 에 total 없음", st.data.open === false && !("total" in st.data), JSON.stringify(st.data));

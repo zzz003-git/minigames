@@ -12,125 +12,214 @@
   <link rel="mask-icon" href="/safari-pinned-tab.svg" color="#E07A1F">
   <link rel="manifest" href="/site.webmanifest">
   <title>오늘의 선택</title>
-  <meta name="color-scheme" content="dark">
-  <meta name="theme-color" content="#0F1420">
-  <meta name="description" content="오늘의 선택 한 봉투. 90초면 오늘의 마음이 나옵니다.">
+  <meta name="theme-color" content="#2A8F80">
+  <meta name="description" content="매일 한 장면, 4번 고르면 오늘의 내 마음 유형이 나와요.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Gugi&family=Noto+Sans+KR:wght@400;500;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../shared/base.css">
   <link rel="stylesheet" href="../shared/nextbar.css">
   <link rel="stylesheet" href="mind.css">
 </head>
-<body class="game suite suite--mind">
+<!-- mind-v2: 청록·크림 원판 테마는 이 페이지에만. /pair/ · /p/ 도 mind.css 를 읽으므로 그쪽(suite--mind)은 그대로 둔다 -->
+<body class="game suite suite--mind mind-v2">
   <div id="siteNav"></div>
   <div class="app">
     <header class="topbar" id="header"></header>
 
     <main class="app__body">
 
-      <!-- 홈 — 오늘의 봉투 -->
+      <!-- S1 오늘 — 크림 원판(마음 나침반) -->
       <section class="screen is-active" data-screen="home">
-        <div class="envelope" id="envelope" role="button" tabindex="0"
-             aria-label="오늘의 선택 봉투를 엽니다">
-          <div class="envelope__glyph" id="envGlyph">✉️</div>
-          <div class="envelope__title" id="envTitle">오늘의 선택</div>
-          <div class="envelope__sub" id="envSub">봉투를 열어 보세요</div>
-        </div>
+        <p class="m-promise" id="introStrip" hidden>
+          <svg width="22" height="22" viewBox="-12 -12 24 24" aria-hidden="true"><circle r="11" fill="#2A8F80"/><path d="M0-6.5 L1.9 0 L0 6.5 L-1.9 0Z" fill="#FFD24A" stroke="#E2572B" stroke-width=".9"/></svg>
+          <span>매일 한 장면, 4번 고르면<br><b>오늘의 내 마음 유형</b>이 나와요</span>
+        </p>
 
-        <div class="stats">
-          <div class="stat stat--accent">
-            <div class="stat__label">마음 지도</div>
-            <div class="stat__value" id="mapValue">—</div>
-          </div>
-          <div class="stat">
-            <div class="stat__label">도감</div>
-            <div class="stat__value" id="collValue">—</div>
+        <div class="discwrap" id="envelope" role="button" tabindex="0" aria-label="오늘의 장면 열기">
+          <svg class="disc" viewBox="-161 -161 322 322" aria-hidden="true">
+            <defs><path id="rimTop" d="M -134 0 A 134 134 0 0 1 134 0"/></defs>
+            <circle r="158" fill="#FFF8E7"/>
+            <circle r="150" fill="none" stroke="#0E2B28" stroke-opacity=".16" stroke-width="1"/>
+            <circle r="119" fill="none" stroke="#0E2B28" stroke-opacity=".14" stroke-width="1"/>
+            <g stroke="#0E2B28" stroke-opacity=".10" stroke-width="1" stroke-dasharray="2 5">
+              <path d="M0 64V114 M45 45L81 81 M64 0H114 M-45 45L-81 81 M-64 0H-114 M45 -45L81 -81 M-45 -45L-81 -81"/>
+            </g>
+            <g stroke="#E2572B" stroke-width="2.4" stroke-linecap="round">
+              <path d="M0 124V144 M88 88L101 101 M124 0H144 M-88 88L-101 101 M-124 0H-144"/>
+            </g>
+            <g fill="#FFD24A" stroke="#E2572B" stroke-width="1.3" stroke-linejoin="round">
+              <path d="M95 -95 L104 -112 L112 -104Z"/><path d="M-95 -95 L-104 -112 L-112 -104Z"/>
+            </g>
+            <circle r="62" fill="#FFD24A" fill-opacity=".38"/>
+            <text font-family="Noto Sans KR" font-weight="700" font-size="15" letter-spacing="1.2" fill="#0E2B28"><textPath href="#rimTop" startOffset="50%" text-anchor="middle" id="discRim">오늘의 장면</textPath></text>
+          </svg>
+          <div class="disc__in">
+            <span class="disc__glyph" id="envGlyph">💬</span>
+            <span class="disc__title" id="envTitle">오늘의 선택</span>
           </div>
         </div>
 
         <!-- 그날 선택을 못 받았을 때 (REQ-47) — 다른 날 선택으로 대신하지 않고 다시 시도 -->
-        <div class="card card--info" id="mindError" hidden>
-          <p class="footnote" id="mindErrorText">선택을 불러오지 못했어요.</p>
-          <button class="btn mt-sm" id="mindRetryBtn" type="button">다시 시도</button>
+        <div class="m-panel" id="mindError" hidden>
+          <p class="m-sub" id="mindErrorText">선택을 불러오지 못했어요.</p>
+          <button class="m-btn-line mt-sm" id="mindRetryBtn" type="button">다시 시도</button>
         </div>
 
-        <button class="btn" id="mapBtn">마음 지도 보기</button>
-        <!-- 광고로 열어 둔 지난 선택 (M-04) — 오늘 기록·적립과 무관 -->
-        <div class="archivelist" id="archiveList" hidden></div>
-        <div id="adbarArchive"></div>
-        <p class="footnote--dim center" id="homeNote">오락용이에요 — 심리학적 진단이 아닙니다</p>
+        <div class="m-base">
+          <p class="m-meta" id="envSub">심리테스트 4문항</p>
+          <p class="m-meta__sub" id="envSubNote">다 고르면 결과 유형 카드 1장이 나와요</p>
+          <p class="m-meta__sub" id="homeSummary" hidden></p>
+          <button class="m-btn-main" type="button" id="envOpenBtn">장면 열기</button>
+          <p class="m-legal" id="homeNote">오락용이에요 — 심리학적 진단이 아닙니다</p>
+        </div>
       </section>
 
-      <!-- 장면 -->
+      <!-- S1 열림 — 장면 (v5 H1: data-screen="scene" 유지) -->
       <section class="screen" data-screen="scene">
-        <div class="card card--accent card--center card--hero">
-          <div class="scene__glyph" id="sceneGlyph">🛋️</div>
-          <div class="headline" id="sceneTitle">—</div>
+        <div class="mini">
+          <div class="minidisc">
+            <svg viewBox="-66 -66 132 132" aria-hidden="true"><circle r="64" fill="#FFF8E7"/><circle r="56" fill="none" stroke="#0E2B28" stroke-opacity=".15"/><circle r="30" fill="#FFD24A" fill-opacity=".38"/>
+              <g stroke="#E2572B" stroke-width="2" stroke-linecap="round"><path d="M0 -62V-52 M0 52V62 M52 0H62 M-62 0H-52"/></g></svg>
+            <span id="sceneGlyph">💬</span>
+          </div>
+          <h2 class="m-onteal" id="sceneTitle">—</h2>
+        </div>
+
+        <section class="m-panel scene" aria-label="오늘의 장면">
+          <span class="scene__tag" id="sceneTag">오늘의 장면</span>
           <p class="scene__text" id="sceneText">—</p>
+          <div class="m-hairline"></div>
+          <p class="scene__hint" id="sceneHint"><i aria-hidden="true">?</i><span><b>정답은 없어요.</b> 나라면? 하고 골라요</span></p>
+        </section>
+
+        <div class="m-base">
+          <p class="m-meta" id="sceneMeta">심리테스트 4문항</p>
+          <button class="m-btn-main" type="button" id="sceneStartBtn">시작하기</button>
+          <p class="m-legal">오락용이에요 — 심리학적 진단이 아닙니다</p>
         </div>
-        <button class="btn btn--primary" id="sceneStartBtn">시작하기</button>
       </section>
 
-      <!-- 문항 -->
+      <!-- S2 문항 -->
       <section class="screen" data-screen="quiz">
-        <div class="qbar"><span id="qbarFill"></span></div>
-        <p class="qstep" id="qStep">1 / 4</p>
-        <div class="card card--center">
-          <div class="qtext" id="qText">—</div>
+        <div class="m-panel prog">
+          <div class="prog__disc" aria-hidden="true">
+            <svg id="qDial" viewBox="-26 -26 52 52" width="52" height="52"><circle r="25" fill="#FFF8E7"/>
+              <g fill="none" stroke-width="6">
+                <path d="M 2.6 -19.8 A 20 20 0 0 1 19.8 -2.6"/>
+                <path d="M 19.8 2.6 A 20 20 0 0 1 2.6 19.8"/>
+                <path d="M -2.6 19.8 A 20 20 0 0 1 -19.8 2.6"/>
+                <path d="M -19.8 -2.6 A 20 20 0 0 1 -2.6 -19.8"/>
+              </g>
+            </svg>
+            <span id="qStep">1/4</span>
+          </div>
+          <div class="prog__text"><b id="qStepText">4문항 중 1번째</b><span>고르면 바로 다음 문항이에요</span></div>
+          <button class="m-btn-line" type="button" id="qPrev" hidden>‹ 이전</button>
         </div>
-        <div class="opts" id="opts"></div>
+
+        <div class="qscene"><span class="qscene__chip" id="qScene">—</span></div>
+        <h2 class="qtext" id="qText">—</h2>
+        <div class="opts" id="opts" role="list"></div>
       </section>
 
-      <!-- 결과 -->
+      <!-- S3 결과 -->
       <section class="screen" data-screen="result">
-        <div class="card card--accent card--center card--hero" id="resultCard">
-          <div class="type__glyph" id="typeGlyph">🛌</div>
-          <div class="headline" id="typeName">—</div>
-          <p class="type__desc" id="typeDesc">—</p>
-          <!-- 유형별 대응 팁 (REQ-47 · typeMeet) — 공유 카드에는 넣지 않는다 -->
-          <p class="type__meet" id="typeMeet" hidden></p>
+        <div class="medal" id="resultCard">
+          <svg viewBox="-88 -88 176 176" aria-hidden="true">
+            <circle r="86" fill="#FFD24A"/>
+            <circle r="86" fill="none" stroke="#E2572B" stroke-width="1.5"/>
+            <g stroke="#E2572B" stroke-width="2.2" stroke-linecap="round"><path d="M0 -84V-77 M0 77V84 M77 0H84 M-84 0H-77 M59.4 -59.4L54.4 -54.4 M-59.4 -59.4L-54.4 -54.4 M59.4 59.4L54.4 54.4 M-59.4 59.4L-54.4 54.4"/></g>
+            <circle r="74" fill="#FFF8E7"/>
+            <circle r="68" fill="none" stroke="#0E2B28" stroke-opacity=".12"/>
+          </svg>
+          <div class="medal__in">
+            <span class="medal__kicker" id="medalKicker">오늘의 나는</span>
+            <span class="medal__glyph" id="typeGlyph">—</span>
+            <h2 class="medal__name" id="typeName">—</h2>
+          </div>
         </div>
 
-        <div class="card card--info">
-          <div class="card__label">마음 지도</div>
-          <p class="footnote" id="axisEcho">—</p>
-          <div class="axisbars" id="axisBars"></div>
-        </div>
+        <section class="m-panel res">
+          <p class="res__desc" id="typeDesc">—</p>
+          <p class="meet" id="typeMeet" hidden></p>
+          <div class="m-hairline"></div>
+          <div class="gain" id="resGain">
+            <span class="got__ico" aria-hidden="true">✓</span>
+            <span><b class="gain__sum" id="resGainSum">—</b><small class="gain__parts" id="resGainParts"></small></span>
+          </div>
+          <div class="m-hairline"></div>
+          <!-- 페어로 가는 유일한 유도 지점 — 셋 다 하기 전엔 테두리형(보조), 셋 다 한 뒤엔 채워진 주 버튼 (D6) -->
+          <div id="pairBox">
+            <p class="pair__q">그 사람이라면 뭘 고를까?</p>
+            <p class="pair__sub">그 사람이 무엇을 골랐을지 내가 맞혀 보고, 링크로 그 사람의 진짜 답을 받아요 · 이름·연락처는 받지 않아요</p>
+            <a class="m-btn-line pair__btn" id="pairCta" href="/pair/">너를 맞혀볼게 — 링크 보내기</a>
+            <p class="m-sub center" id="pairDone" hidden></p>
+          </div>
+          <!-- 지난 선택 결과에서 오늘 결과로 -->
+          <button class="m-btn-main" type="button" id="todayResultBtn" hidden>오늘 결과 보기</button>
+        </section>
+        <p class="morehint" id="moreHint" hidden><span>▾ 맨 아래에서 오늘의 나 카드 보기</span></p>
 
-        <div class="card card--info">
-          <div class="card__label">오늘의 적립</div>
-          <p class="footnote" id="resGain">—</p>
-          <p class="footnote--dim mt-sm" id="resDist">전국 분포는 광고를 보면 열려요</p>
-        </div>
+        <h2 class="m-onteal sec" id="statsHead">오늘 사람들은?</h2>
+        <section class="m-panel" id="statsBox">
+          <div id="adbarStats"></div>
+          <p class="wait" id="resDist">
+            <span class="wait__ico" aria-hidden="true"><svg width="20" height="20" viewBox="-10 -10 20 20"><circle r="9" fill="none" stroke="#0E2B28" stroke-opacity=".35" stroke-width="1.5"/><path d="M0-5V0L3.5 2.5" fill="none" stroke="#0E2B28" stroke-width="1.6" stroke-linecap="round"/></svg></span>
+            <span><b id="resDistMain">오늘 분포는 사람이 더 모이면 열려요</b><small id="resDistSub"></small></span>
+          </p>
+        </section>
 
-        <div id="adbarStats"></div>
+        <h2 class="m-onteal sec" id="archiveHead" hidden>놓친 지난 선택</h2>
+        <section class="m-panel archive" id="archiveBox" hidden>
+          <p class="archive__lead">최근 6일 중 못 한 날의 장면을 할 수 있어요 · 적립은 없어요</p>
+          <div class="archivelist" id="archiveList" hidden></div>
+          <div id="adbarArchive"></div>
+        </section>
+
+        <section class="m-panel links">
+          <a class="link-row" href="#map" id="mapLink">
+            <span class="rowico"><svg width="26" height="26" viewBox="-13 -13 26 26" aria-hidden="true"><circle r="12" fill="#FFF8E7" stroke="#0E2B28" stroke-opacity=".3"/><g stroke="#0E2B28" stroke-opacity=".25"><path d="M0-10V10M-10 0H10M-7-7L7 7M7-7L-7 7"/></g><g fill="#FFD24A" stroke="#E2572B" stroke-width=".8"><circle cy="-6" r="2.4"/><circle cx="4.2" cy="-4.2" r="2.4"/><circle cx="6" r="2.4"/><circle cx="-4.2" cy="4.2" r="2.4"/></g></svg></span>
+            <span class="link-row__text"><b>이달의 마음</b><span id="mapLinkSub">오늘 고른 답 4개가 이달의 마음에 더해졌어요</span></span>
+            <span class="chev" aria-hidden="true">›</span>
+          </a>
+          <a class="link-row" href="#coll" id="collLink">
+            <span class="rowico rowico--cards" id="collLinkGlyph">🃏</span>
+            <span class="link-row__text"><b id="collLinkTitle">유형 카드 모음</b><span>장면마다 만난 유형이 한 장씩 모여요</span></span>
+            <span class="chev" aria-hidden="true">›</span>
+          </a>
+          <p class="m-legal">오락용이에요 — 심리학적 진단이 아닙니다</p>
+        </section>
+
+        <p class="m-onteal--b tomorrow" id="resNote">내일은 다른 장면이 와요</p>
         <div id="nextBlock"></div>
-        <!-- 페어로 가는 유일한 유도 지점. 오늘의 선택을 마쳐야 열리는 기능이라
-             그 결과를 본 이 자리가 가장 자연스럽다. 코랄은 페어 전용 색이다. -->
-        <a class="btn btn--pair" id="pairCta" href="/pair/">너를 맞혀볼게 — 링크 보내기</a>
-        <button class="btn" id="collBtn">도감 보기</button>
-        <button class="btn" id="archiveBackBtn" type="button">← 처음으로</button>
-        <div class="footnote--dim center" id="resNote"></div>
       </section>
 
-      <!-- 마음 지도 -->
+      <!-- S4 이달의 마음 -->
       <section class="screen" data-screen="map">
-        <div class="card">
-          <div class="card__head"><span class="card__title" id="mapTitle">마음 지도</span></div>
-          <div class="axisbars" id="mapBars"></div>
-          <p class="footnote--dim mt-md" id="mapNote">—</p>
-        </div>
-        <button class="btn" id="mapBackBtn">← 돌아가기</button>
+        <h2 class="m-onteal ttl" id="mapTitle">이달의 마음</h2>
+        <section class="m-panel expl">
+          <p class="def"><b>이달 내가 고른 답에 자주 나온 마음일수록 점이 많아요.</b></p>
+          <p id="mapGoalLine">한 방향에 점 5개면 꽉 차요.</p>
+          <div class="legend" aria-hidden="true"><span><i class="lg lg--on"></i>나온 횟수</span><span id="lgToday"><i class="lg lg--today"></i>오늘 생긴 점</span></div>
+        </section>
+        <div class="compasswrap" id="mapBars"></div>
+        <p class="foot" id="mapNote"></p>
+        <button class="m-btn-main" type="button" id="mapBackBtn">결과로 돌아가기</button>
       </section>
 
-      <!-- 도감 -->
+      <!-- S5 유형 카드 모음 -->
       <section class="screen" data-screen="coll">
-        <div class="card">
-          <div class="card__head"><span class="card__title" id="collTitle">도감</span></div>
-          <div class="collrows" id="collRows"></div>
-        </div>
-        <button class="btn" id="collBackBtn">← 돌아가기</button>
+        <h2 class="m-onteal ttl" id="collTitle">유형 카드 모음</h2>
+        <section class="m-panel expl">
+          <p>장면마다 고른 답에 따라 유형 카드 1장이 모여요. 같은 장면도 다르게 고르면 다른 유형이 나와요.</p>
+          <div class="legend" aria-hidden="true"><span><i class="lg lg--met">✓</i>만난 유형</span><span><i class="lg lg--empty"></i>다르게 고르면 나오는 유형</span></div>
+          <p class="m-sub mt-sm">같은 장면이 다시 오면 다르게 골라 새 유형을 모아 보세요</p>
+        </section>
+        <section class="m-panel list" aria-label="장면별 유형 카드">
+          <ul id="collRows"></ul>
+        </section>
+        <button class="m-btn-main" type="button" id="collBackBtn">결과로 돌아가기</button>
       </section>
 
     </main>

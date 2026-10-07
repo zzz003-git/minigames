@@ -164,7 +164,7 @@ export async function state({ env, userId }) {
   await touchUser(env, userId, day);
 
   const month = monthKey(day);
-  const [st, axes, coll, suite, points, win, open] = await Promise.all([
+  const [st, axes, coll, suite, points, win, open, mindToday] = await Promise.all([
     loadDay(env, userId, day),
     loadAxes(env, userId, month),
     collection(env, userId),
@@ -172,6 +172,13 @@ export async function state({ env, userId }) {
     pointState(env, userId, day),
     archiveWindow(env, userId, day),
     distOpen(env, "mind", day),
+    // 오늘 선택으로 받은 포인트(재열람 결과 화면) — 셋 다 보너스는 빼고 선택 몫만 (REQ-63 v2)
+    env.DB.prepare(
+      `SELECT COALESCE(SUM(amount), 0) AS p FROM suite_points
+        WHERE user_id = ? AND day = ? AND reason LIKE 'MIND\\_%' ESCAPE '\\'`,
+    )
+      .bind(userId, day)
+      .first(),
   ]);
 
   return {
@@ -198,6 +205,10 @@ export async function state({ env, userId }) {
     },
     ad_stats_seen: st.adStats,
     dist_open: open, // 분포가 열렸는가 — 닫혀 있으면 화면이 분포 광고 카드를 숨긴다 (REQ-62 ⑭)
+    // 화면이 금액을 상수로 쓰지 않게 (REQ-63 v2) — 예고 「+{core}P부터」 · 지도 완성 「+{portrait}P」 · 재열람 합계
+    core_points: SUITE.POINTS.CORE_DONE,
+    portrait_points: SUITE.POINTS.MILESTONE_FULL,
+    today_points: mindToday?.p ?? 0,
     suite,
     points,
   };
