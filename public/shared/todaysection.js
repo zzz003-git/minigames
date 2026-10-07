@@ -136,9 +136,11 @@ export async function renderTodaySection(host, { heading = true } = {}) {
   host.className = "hubarea";
 
   if (heading) host.append(areaHead(data));
-  // 결과 도착 한 줄 — 안 본 도착이 있을 때만, 목록 위(REQ-70 · 추가 결정 37). 소개 시트를 거치지 않는다
+  // 결과 도착 한 줄 — 오늘의 선택을 **안 한 날에만**(기획회신 REP-67 2절 · Master 「권고대로」).
+  // 한 날은 아래 페어 띠가 링크 목록을 불러 「도착」을 직접 보여 주므로 같은 소식이 두 번이 된다.
+  // 안 한 날은 띠가 잠금이고 목록을 안 부르니(아래 mindDone) 이 줄이 유일한 알림이다.
   const arrival = arrivalInfo(data);
-  if (arrival) host.append(arrivalLine(arrival, "td-pair"));
+  if (arrival && !data.services.some((s) => s.key === "mind" && s.done)) host.append(arrivalLine(arrival, "td-pair"));
 
   const grid = el("nav", { class: "hubarea__grid", "aria-label": "오늘의 나 3종" });
   for (const s of data.services) grid.append(serviceCard(s, data));
