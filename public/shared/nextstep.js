@@ -83,8 +83,11 @@ async function dayChanged(day) {
 
 async function go(e) {
   e.preventDefault();
+  // 주소는 await **전에** 읽는다 — 이벤트 처리가 끝나면 브라우저가 e.currentTarget 을 비워서,
+  // 뒤에서 읽으면 null 이 되어 아무 데도 안 간다(2026-10-07 폰 확인)
+  const href = e.currentTarget.href;
   if (await dayChanged(cur.day)) location.reload();
-  else location.href = e.currentTarget.href;
+  else location.href = href;
 }
 
 let bar = null;
