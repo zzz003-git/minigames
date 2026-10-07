@@ -25,12 +25,10 @@ import { bindPairIntro } from "../shared/pairintro.js";
 const ARM_DELAY_MS = 400;
 
 /**
- * 축의 쉬운 이름 (REQ-63 · INTEGRATED v4) — 증분 +1 통일로 축이 「방향」이 아니라 「주제」를 세므로
- * 양끝을 아우르는 말로 부른다. 순서는 COMMON.axes(energy·decide·warmth·adventure·having·express·recover·tempo).
- * 콘텐츠 DB(mind-common.js 생성물)는 손대지 않는다.
+ * 축 이름 — 콘텐츠 DB v2.2 의 쉬운 이름(「힘을 얻는 법」 등)을 그대로 읽는다. 화면 상수를 두지 않아
+ * 페어·허브와 이름이 같다 (REQ-66 ④ · 이전엔 REQ-63 에서 화면 상수 AXIS_EASY 였다)
  */
-const AXIS_EASY = ["힘을 얻는 법", "정하는 법", "사람 사이 온도", "익숙함과 새로움", "쓰기와 아끼기", "마음 표현", "쉬는 법", "계획과 즉흥"];
-const axisName = (i) => AXIS_EASY[i] ?? COMMON.axes[i]?.name ?? "";
+const axisName = (i) => COMMON.axes[i]?.name ?? "";
 
 /** 상단바 아이콘 — 작은 나침반 원판 (봉투 폐기) */
 const COMPASS_ICON =
@@ -461,6 +459,14 @@ function renderResult({ exp, typeIdx, res, replay, archiveDay }) {
   $("#typeMeet").hidden = !meet;
   if (meet) clear($("#typeMeet")).append(el("span", { class: "meet__label" }, "나랑 지낼 땐 ·"), ` ${meet}`);
 
+  // 공개 연출 — 오늘 제출이 성공한 직후에만 0.5초 뒤집기. 재열람·지난 선택·움직임 줄이기는 생략 (REQ-66 ③)
+  const medal = $("#resultCard");
+  medal.classList.remove("m-flip");
+  if (res && !replay && !isArchive && !matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    void medal.offsetWidth; // 같은 화면에서 다시 붙여도 애니메이션이 처음부터 돌게
+    medal.classList.add("m-flip");
+  }
+
   renderGain({ res, replay, archiveDay });
 
   // 지난 선택 결과 — 오늘의 적립·분포·페어·다음 안내 바와 무관하므로 그 자리들을 감추고 「오늘 결과 보기」
@@ -516,7 +522,8 @@ function renderGain({ res, replay, archiveDay }) {
     const p = state.st.today_points ?? 0;
     parts = p > 0 ? `오늘 선택으로 받은 포인트 +${p}P` : "";
   } else {
-    const detail = res.gain_detail ?? [];
+    // 셋 다 보너스(+15P)는 받기 상자에 쓰지 않는다 — 다음 안내 바·허브만 말한다(기획 회신 57-3, 타로·사주와 통일)
+    const detail = (res.gain_detail ?? []).filter((d) => d.kind !== "triple");
     const total = detail.length ? detail.reduce((a, d) => a + d.p, 0) : res.gained;
     sum = `+${total}P 받았어요`;
     const items = detail.map((d) => `${GAIN_LABEL[d.kind] ?? ""} ${d.p}`.trim());

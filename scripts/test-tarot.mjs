@@ -671,6 +671,17 @@ console.log("\n[24] v2 화면 필드 — 첫 방문 · 뽑은 날 수 · 어제 
   check("빈 draws 행은 draw_days 에 안 셈", (await c.get("/api/tarot/today")).data.draw_days === 2);
 }
 
+console.log("\n[25] 오늘 금빛이 된 카드 gold_today (REQ-66 ①)");
+{
+  const c = client();
+  await c.get("/api/tarot/today");
+  const uid = lastUser();
+  sql(`INSERT INTO tarot_coll (user_id, card_id, first_day, via, gold, gold_day) VALUES
+       (${q(uid)}, 17, '2000-01-01', 'draw', 1, ${q(today())}), (${q(uid)}, 3, '2000-01-01', 'draw', 1, '2000-01-02'), (${q(uid)}, 5, '2000-01-01', 'draw', 0, NULL)`);
+  const t = (await c.get("/api/tarot/today")).data;
+  check("오늘 금빛이 된 카드만 (17) — 예전 금빛(3)·은색(5) 제외", JSON.stringify(t.gold_today) === "[17]", JSON.stringify(t.gold_today));
+}
+
 console.log(`\n${pass} 통과 · ${failures.length} 실패`);
 if (failures.length) {
   console.log("실패:\n  " + failures.join("\n  "));

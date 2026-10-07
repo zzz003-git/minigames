@@ -295,7 +295,12 @@ function pairInfo(pairs, mindDone) {
 
   const COPY = {
     locked: { line: "오늘의 선택을 마치면 열려요", cta: "오늘의 선택 먼저 하기", href: "/mind/" },
-    ready: { line: `오늘 보낼 수 있는 링크 ${left}개`, cta: "링크 보내기", href: "/pair/" },
+    // 다 썼으면 선택 화면과 같은 문구(기획 회신 59-3)
+    ready: {
+      line: left > 0 ? `오늘 보낼 수 있는 링크 ${left}개` : `오늘 링크 ${pairs?.max_per_day ?? ""}개를 다 보냈어요`,
+      cta: "링크 보내기",
+      href: "/pair/",
+    },
     waiting: { line: `${relation}에게 보낸 링크가 기다리고 있어요`, cta: "링크 다시 보기", href: "/pair/" },
     arrived: { line: "결과가 도착했어요 — 서로 알기 지수 확인", cta: "결과 보기", href: "/pair/" },
   }[state];
@@ -692,7 +697,8 @@ async function drawProgress(host, data, by, theme) {
   if (rows.children.length) host.append(rows);
 
   if (by.mind?.done) host.append(await hubPair());
-  if (data.first_visit) {
+  // 예시는 셋 다 해 본 적이 없을 때만 — 재방문이어도 아직 없으면 남긴다(기획 회신 59-2 · flow/hub C-6)
+  if (!data.ever_triple) {
     const ex = await examplePreview(data);
     if (ex) host.append(ex);
   }

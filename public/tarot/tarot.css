@@ -614,3 +614,19 @@ button.collcell { padding: 0; cursor: pointer; color: inherit; font: inherit; }
   position: absolute; left: 50%; bottom: 4px; transform: translateX(-50%); padding: 1px 7px; border-radius: 999px;
   background: var(--t-gold); color: var(--t-ink); font-size: 12px; font-weight: 700; line-height: 16px; white-space: nowrap;
 }
+
+/* ── 카드 크게 보기 (REQ-66 ②) — 결과 카드 그림이 버튼이 됐다 ── */
+button.t-frame { border: 0; font: inherit; color: inherit; cursor: zoom-in; }
+.t-zoom {
+  position: fixed; inset: 0; z-index: 130; display: flex; align-items: center; justify-content: center;
+  padding: 64px 16px calc(24px + env(safe-area-inset-bottom, 0px)); background: rgba(5, 8, 20, 0.92);
+}
+.t-zoom__img {
+  display: block; max-width: 100%; max-height: 100%; aspect-ratio: 2 / 3; object-fit: contain;
+  border-radius: 14px; box-shadow: 0 0 0 1px var(--t-gold-line), 0 18px 48px rgba(0, 0, 0, 0.6);
+}
+.t-zoom__close {
+  position: absolute; top: calc(12px + env(safe-area-inset-top, 0px)); right: 12px; width: 44px; height: 44px;
+  border-radius: 50%; border: 1px solid var(--t-gold-line); background: var(--t-velvet); color: var(--t-cream);
+  font-size: 18px; line-height: 1; cursor: pointer;
+}

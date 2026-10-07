@@ -246,18 +246,26 @@ export async function state({ env, userId }) {
   const day = dayKey();
   await touchUser(env, userId, day);
 
-  const [{ profile: p, changedDay }, st, got, suite, points, open, paid] = await Promise.all([
+  const [{ profile: p, changedDay }, st, got, suite, points, open, paidRows] = await Promise.all([
     loadProfile(env, userId),
     loadDay(env, userId, day),
     stamps(env, userId),
     dailyState(env, userId, day),
     pointState(env, userId, day),
     distOpen(env, "saju", day),
-    env.DB.prepare(`SELECT key FROM suite_points WHERE user_id = ? AND key LIKE 'MILESTONE_SAJU_%'`)
-      .bind(userId)
+    // 사주 보너스 지급 여부 + 오늘 사주로 받은 합계(재진입 적립 줄 · 기획 회신 58-3 A-10) — 한 번에
+    env.DB.prepare(
+      `SELECT key, reason, amount, day FROM suite_points
+        WHERE user_id = ? AND (key LIKE 'MILESTONE_SAJU_%' OR (day = ? AND reason LIKE 'SAJU_%'))`,
+    )
+      .bind(userId, day)
       .all()
-      .then((r) => new Set((r?.results ?? []).map((x) => x.key))),
+      .then((r) => r?.results ?? []),
   ]);
+  const paid = new Set(paidRows.map((x) => x.key));
+  const gainedToday = paidRows
+    .filter((x) => x.day === day && (x.reason.startsWith("SAJU_") || x.reason.startsWith("MILESTONE_SAJU_")))
+    .reduce((a, x) => a + (x.amount ?? 0), 0);
 
   const todayGz = dayGanzhi(day);
   const soonDone = [0, 1, 2, 3, 4, 5].map(
@@ -297,6 +305,7 @@ export async function state({ env, userId }) {
     soon_bonus: SUITE.POINTS.MILESTONE_HALF,
     grand_bonus: SUITE.POINTS.MILESTONE_GRAND,
     core_points: SUITE.POINTS.CORE_DONE, // 「+5P부터」 예고
+    saju_gained_today: gainedToday, // 다시 들어왔을 때 「오늘 사주로 받은 포인트 +nP」(셋 다 보너스 제외)
     ad_tomorrow: st.adTomorrow,
     ad_person: st.adPerson,
     ad_stats_seen: st.adStats,

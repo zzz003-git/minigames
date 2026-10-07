@@ -354,7 +354,8 @@ export async function today({ env, userId, request }) {
          (SELECT draws FROM tarot_daily WHERE user_id = ?1 AND day = ?2) AS yday,
          (SELECT draws FROM tarot_daily WHERE user_id = ?1 AND day = ?3) AS lastyear,
          (SELECT COALESCE(SUM(amount), 0) FROM suite_points
-           WHERE user_id = ?1 AND day = ?4 AND (reason LIKE 'TAROT_%' OR reason LIKE 'MILESTONE_TAROT%')) AS today_points`,
+           WHERE user_id = ?1 AND day = ?4 AND (reason LIKE 'TAROT_%' OR reason LIKE 'MILESTONE_TAROT%')) AS today_points,
+         (SELECT json_group_array(card_id) FROM tarot_coll WHERE user_id = ?1 AND gold = 1 AND gold_day = ?4) AS gold_today`,
     )
       .bind(userId, addDays(day, -1), yearAgo(day), day)
       .first(),
@@ -393,6 +394,8 @@ export async function today({ env, userId, request }) {
     // 금빛 도감 (SPEC-03) — 78장 완성 전엔 늘 빈 배열이다
     gold,
     gold_count: gold.length,
+    // 오늘(tarotDay) 금빛이 된 카드 — 다시 들어와도 그 카드의 숨은 이야기를 보인다 (REQ-66 ①)
+    gold_today: JSON.parse(hist?.gold_today ?? "[]"),
     gold_milestones: TAROT.GOLD_MILESTONES,
     // 78장을 다 모았는데 완성 화면을 아직 끝까지 안 봤다 → 화면이 첫머리에 띄운다 (§1-1)
     gold_intro_pending: coll.length >= TAROT.CARDS && !meta.goldIntroSeen,

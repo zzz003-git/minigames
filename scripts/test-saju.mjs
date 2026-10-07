@@ -221,6 +221,17 @@ console.log("\n[7] v2 서버 필드 — 열흘 지급 여부 · 금액 · 문구
   check("1930 이전 → 400 OUT_OF_RANGE", old.status === 400 && old.data.code === "OUT_OF_RANGE", `${old.status} ${old.data.code}`);
 }
 
+console.log("\n[8] 다시 들어왔을 때 오늘 사주 적립 saju_gained_today (REQ-66 · A-10)");
+{
+  const { c } = await freshUser();
+  const s0 = await c.get("/api/saju/state");
+  await c.post("/api/saju/profile", { birth: "1990-03-14", hour: null });
+  const t = await c.post("/api/saju/today", {});
+  const s = await c.get("/api/saju/state");
+  check("꽂기 전 0 · 뒤 = 그때 받은 gained", s0.data.saju_gained_today === 0 && s.data.saju_gained_today === t.data.gained,
+    `${s0.data.saju_gained_today} → ${s.data.saju_gained_today} (gained ${t.data.gained})`);
+}
+
 console.log(`\n${pass} 통과 · ${failures.length} 실패`);
 if (failures.length) {
   console.log("실패:\n  " + failures.join("\n  "));

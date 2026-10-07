@@ -123,10 +123,12 @@
         <!-- 1층 — 읽기 -->
         <article class="card card--hero t-panel resultcard" id="resultCard">
           <div class="reading">
-            <div class="t-frame" id="resGlyph" aria-hidden="true"></div>
+            <!-- 누르면 크게 보기 (REQ-66 ②) -->
+            <button class="t-frame" id="resGlyph" type="button" aria-label="카드 크게 보기"></button>
             <div>
               <span class="t-label" id="resFocus">오늘 하루</span>
               <h2 class="t-title reading__name" id="resName">—</h2>
+              <p class="reading__zoom">카드를 누르면 크게 보여요</p>
               <!-- 금빛 단계 표기 (SPEC-03 §1-1 ④) — 적립 줄과 따로, 카드 이름 바로 아래 -->
               <p class="tierline" id="resTier" hidden></p>
             </div>

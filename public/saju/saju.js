@@ -102,6 +102,7 @@ for (const a of $$("[data-edit-profile]")) {
     if (!a.classList.contains("is-locked")) openFix();
   });
 }
+$("#regBack").addEventListener("click", () => showScreen(state.fixFrom ?? "stamp"));
 $("#deleteProfile").addEventListener("click", openDelete);
 $("#deleteOk").addEventListener("click", doDelete);
 $("#deleteCancel").addEventListener("click", () => closeSheet("delete"));
@@ -160,6 +161,7 @@ function showMain() {
   renderEditLinks();
   if (!state.st.registered) {
     renderReg();
+    $("#regBack").hidden = true; // 미등록 — 돌아갈 화면이 없다
     showScreen("reg");
     return;
   }
@@ -243,6 +245,11 @@ function openConfirm() {
     ...(f.hour == null ? ["비워 둠 ", el("small", {}, "모름")] : [timeLabel(f.hour, f.minute)]),
   );
   $("#confirmErr").hidden = true;
+  // 첫 등록만 24시간 정정 창이 열린다 — 지운 뒤 다시 넣기·고치기는 30일 뒤 (기획 회신 58-1)
+  const first = !state.st.registered && !state.st.profile_changed_day;
+  $("#confirmRule").textContent = first
+    ? "24시간 안에 한 번 고칠 수 있어요 · 그 뒤 30일마다"
+    : "다시 넣은 생일은 30일 뒤 바꿀 수 있어요";
   openSheet("confirm");
 }
 
@@ -304,6 +311,9 @@ function openFix() {
   $("#hourM").value = p.hour == null ? "" : pad2(p.minute ?? 0);
   setHourOpen(p.hour != null);
   renderReg();
+  // 고치기를 연 화면으로 돌아갈 길 (기획 회신 58-2)
+  state.fixFrom = document.querySelector(".screen.is-active")?.dataset.screen;
+  $("#regBack").hidden = false;
   showScreen("reg");
 }
 
@@ -460,7 +470,8 @@ function renderGain(res) {
   const host = clear($("#rdGain"));
   const ck = el("span", { class: "ck", "aria-hidden": "true" });
   if (!res) {
-    host.append(ck, "오늘 적립 완료");
+    // 다시 들어왔을 때 — 타로·선택과 같은 형식(기획 회신 58-3 A-10), 금액은 서버 값
+    host.append(ck, `오늘 사주로 받은 포인트 +${state.st.saju_gained_today ?? 0}P`);
     return;
   }
   const label = (g) =>

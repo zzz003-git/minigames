@@ -728,14 +728,19 @@ function renderResult(cardId, focus, res) {
   hero.append(cardFace(cardId, true));
   // 금빛 바퀴(78장 완성 뒤)에서는 카드 테두리가 은색·금빛으로 갈린다
   hero.className = `t-frame ${tierClass(cardId)}`;
+  hero.onclick = () => openZoom(cardId);
   $("#resName").textContent = r.card.name;
 
   // 숨은 이야기 — 이 뽑기로 금빛이 된 순간에만 번짐 → 한 글자씩 (SPEC-03 §2)
   const storyNode = $("#resStory");
   storyNode.hidden = true;
+  // 다시 들어왔어도 **오늘 금빛이 된 카드**면 이야기를 연출 없이 그대로 보인다 (REQ-66 ①)
+  const goldToday = Boolean(res.replay && state.today.gold_today?.includes(cardId));
   if (!res.replay && res.gold_new) {
     hero.classList.add("is-blooming");
     showStory(storyNode, cardId, GOLD_BLOOM_MS);
+  } else if (goldToday) {
+    showStory(storyNode, cardId, 0, { instant: true });
   }
 
   // 「작년 오늘」 — 1년 전 같은 날 기록이 있을 때만
@@ -746,9 +751,9 @@ function renderResult(cardId, focus, res) {
   // 금빛 단계 표기 — 적립 줄을 안 읽고 넘겨도 보이게 카드 바로 아래 (SPEC-03 §1-1 ④)
   const tier = $("#resTier");
   const alreadyGold = !res.replay && !res.is_new && !res.gold_new && state.today.gold?.includes(cardId);
-  tier.hidden = !(res.gold_new || alreadyGold) || res.replay;
-  tier.textContent = res.gold_new ? "✦ 금빛이 됐어요 · 숨은 이야기" : "✦ 이미 금빛 · 별가루 +1";
-  tier.classList.toggle("is-new", Boolean(res.gold_new));
+  tier.hidden = !(res.gold_new || alreadyGold || goldToday);
+  tier.textContent = res.gold_new || goldToday ? "✦ 금빛이 됐어요 · 숨은 이야기" : "✦ 이미 금빛 · 별가루 +1";
+  tier.classList.toggle("is-new", Boolean(res.gold_new || goldToday));
 
   $("#resInterp").textContent = r.interp;
   $("#resAdvice").textContent = r.advice;
@@ -940,11 +945,11 @@ const loadStories = () => (storiesP ??= import("./tarot-story.js").then((m) => m
  * 이야기 한 줄을 한 글자씩 보여 준다. **탭하면 즉시 전부.** 움직임 줄이기 설정이면
  * 처음부터 전부 보인다 — 글자가 하나씩 나오는 것도 움직임이다.
  */
-async function showStory(node, cardId, delayMs = 0) {
+async function showStory(node, cardId, delayMs = 0, { instant = false } = {}) {
   const text = (await loadStories())[cardId] ?? "";
   node.hidden = false;
   node.textContent = "";
-  if (reducedMotion()) {
+  if (instant || reducedMotion()) {
     node.textContent = text;
     return;
   }
@@ -966,6 +971,35 @@ async function showStory(node, cardId, delayMs = 0) {
       if (i >= text.length) clearInterval(timer);
     }, step);
   }, reducedMotion() ? 0 : delayMs);
+}
+
+/**
+ * 카드 크게 보기 (REQ-66 ②) — 어두운 막 위에 원본 그림 1장. 닫기 = ✕ · 막 탭 · 뒤로 키 · Esc.
+ * 뒤로 키로 닫히게 기록을 한 칸 쌓고, 닫을 때는 그 칸을 되돌린다(닫는 길이 하나라 상태가 꼬이지 않게).
+ */
+function openZoom(cardId) {
+  if ($(".t-zoom")) return;
+  const opener = document.activeElement;
+  const close = () => history.back(); // → popstate 에서 걷는다
+  const closeBtn = el("button", { class: "t-zoom__close", type: "button", "aria-label": "닫기", onclick: close }, "✕");
+  const ov = el(
+    "div",
+    { class: "t-zoom", role: "dialog", "aria-modal": "true", "aria-label": `${TAROT_DB.cards[cardId].name} 크게 보기`, onclick: (e) => e.target === ov && close() },
+    el("img", { class: "t-zoom__img", src: CARD_IMG(cardId), alt: TAROT_DB.cards[cardId].name, draggable: "false" }),
+    closeBtn,
+  );
+  const onKey = (e) => e.key === "Escape" && close();
+  const onPop = () => {
+    ov.remove();
+    removeEventListener("popstate", onPop);
+    removeEventListener("keydown", onKey);
+    opener?.focus?.();
+  };
+  history.pushState({ tarotZoom: true }, "");
+  addEventListener("popstate", onPop);
+  addEventListener("keydown", onKey);
+  document.body.append(ov);
+  closeBtn.focus();
 }
 
 const stat = (label, value) =>
