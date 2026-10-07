@@ -641,6 +641,36 @@ console.log("\n[23] 날짜 바꾸기 — 서버 왕복 (로컬이 테스트 모�
   }
 }
 
+console.log("\n[24] v2 화면 필드 — 첫 방문 · 뽑은 날 수 · 어제 · 오늘 타로 적립 · 적립 내역 (REQ-63 묶음 2)");
+{
+  const day = today();
+  const back = (n) => {
+    const [y, m, d] = day.split("-").map(Number);
+    return new Date(Date.UTC(y, m - 1, d - n)).toISOString().slice(0, 10);
+  };
+  const c = client();
+  const t0 = (await c.get("/api/tarot/today")).data;
+  const uid = lastUser();
+  check("처음 → first_tarot_day 참 · draw_days 0 · yesterday null · today_points 0",
+    t0.first_tarot_day === true && t0.draw_days === 0 && t0.yesterday === null && t0.today_points === 0);
+  check("예고 금액은 서버 값(core_points · new_points)", t0.core_points === 5 && t0.new_points === 3, `${t0.core_points} ${t0.new_points}`);
+  const d = (await c.post("/api/tarot/draw", { focus: "day" })).data;
+  const kinds = (d.gain_detail ?? []).map((x) => `${x.kind}${x.p}`).join(" ");
+  check("첫 장 gain_detail = daily5 new3", kinds === "daily5 new3", kinds);
+  const t1 = (await c.get("/api/tarot/today")).data;
+  check("뽑은 뒤 → 오늘이 첫 날이라 first_tarot_day 그대로 참 · draw_days 1 · today_points 8",
+    t1.first_tarot_day === true && t1.draw_days === 1 && t1.today_points === 8, `${t1.first_tarot_day} ${t1.draw_days} ${t1.today_points}`);
+  // 어제 뽑은 기록을 심는다 — 그러면 오늘은 첫 방문이 아니다
+  sql(`INSERT INTO tarot_daily (user_id, day, draws) VALUES (${q(uid)}, ${q(back(1))}, '[{"c":17,"f":"love"}]')`);
+  const t2 = (await c.get("/api/tarot/today")).data;
+  check("어제 기록 → first_tarot_day 거짓 · draw_days 2 · yesterday {17, love}",
+    t2.first_tarot_day === false && t2.draw_days === 2 && t2.yesterday?.card_id === 17 && t2.yesterday?.focus === "love",
+    JSON.stringify({ f: t2.first_tarot_day, n: t2.draw_days, y: t2.yesterday }));
+  // 빈 draws 행(광고만 보고 안 뽑은 날)은 뽑은 날로 세지 않는다
+  sql(`INSERT INTO tarot_daily (user_id, day, draws, ad_more_used) VALUES (${q(uid)}, ${q(back(2))}, '[]', 1)`);
+  check("빈 draws 행은 draw_days 에 안 셈", (await c.get("/api/tarot/today")).data.draw_days === 2);
+}
+
 console.log(`\n${pass} 통과 · ${failures.length} 실패`);
 if (failures.length) {
   console.log("실패:\n  " + failures.join("\n  "));

@@ -338,7 +338,7 @@ export async function today({ env, userId, request }) {
   const day = tarotDay(env, request);
   await touchUser(env, userId, day);
 
-  const [st, meta, coll, suite, points, dust, gold, lastYear, specials, open] = await Promise.all([
+  const [st, meta, coll, suite, points, dust, gold, hist, specials, open] = await Promise.all([
     loadDay(env, userId, day),
     loadMeta(env, userId),
     collection(env, userId),
@@ -346,13 +346,22 @@ export async function today({ env, userId, request }) {
     pointState(env, userId, day),
     loadDust(env, userId),
     goldCards(env, userId),
-    env.DB.prepare(`SELECT draws FROM tarot_daily WHERE user_id = ? AND day = ?`)
-      .bind(userId, yearAgo(day))
+    // 지난 기록 한 번에 (REQ-63 타로 v4 N15) — 첫 이용일 · 뽑은 날 수 · 어제 · 작년 오늘 · 오늘 타로 적립
+    env.DB.prepare(
+      `SELECT
+         (SELECT MIN(day) FROM tarot_daily WHERE user_id = ?1 AND json_array_length(draws) > 0) AS first_day,
+         (SELECT COUNT(*) FROM tarot_daily WHERE user_id = ?1 AND json_array_length(draws) > 0) AS draw_days,
+         (SELECT draws FROM tarot_daily WHERE user_id = ?1 AND day = ?2) AS yday,
+         (SELECT draws FROM tarot_daily WHERE user_id = ?1 AND day = ?3) AS lastyear,
+         (SELECT COALESCE(SUM(amount), 0) FROM suite_points
+           WHERE user_id = ?1 AND day = ?4 AND (reason LIKE 'TAROT_%' OR reason LIKE 'MILESTONE_TAROT%')) AS today_points`,
+    )
+      .bind(userId, addDays(day, -1), yearAgo(day), day)
       .first(),
     loadSpecials(env, userId),
     distOpen(env, "tarot", day),
   ]);
-  const ly = firstDraw(lastYear?.draws);
+  const ly = firstDraw(hist?.lastyear);
 
   return {
     day,
@@ -364,6 +373,15 @@ export async function today({ env, userId, request }) {
     ad_more_max: TAROT.AD_MORE_PER_DAY,
     ad_stats_seen: st.adStatsSeen,
     dist_open: open, // 분포가 열렸는가 — 닫혀 있으면 화면이 분포 광고 카드를 숨긴다 (REQ-62 ⑭)
+    // ── v2 화면 (REQ-63 타로 IMPL v4) ──
+    // 첫 방문 = 뽑은 날이 아직 없거나, 처음 뽑은 날이 오늘. 같은 날 두 번째 장에서도 참이다
+    first_tarot_day: !hist?.first_day || hist.first_day === day,
+    draw_days: hist?.draw_days ?? 0, // 달력 탭은 2일 이상부터
+    yesterday: firstDraw(hist?.yday), // 어제의 카드 줄 {card_id, focus} | null
+    today_points: hist?.today_points ?? 0, // 다시 볼 때 받기 상자 — 오늘 타로로 받은 합계(셋 다 보너스 제외)
+    // 예고 문구 「+5P부터」·「새 카드면 +3P」의 금액 — 화면에 상수를 두지 않는다
+    core_points: SUITE.POINTS.CORE_DONE,
+    new_points: SUITE.POINTS.COLLECT_NEW,
     welcome_available: TAROT.WELCOME_DRAW && !meta.welcomeUsed,
     collection: coll,
     collection_count: coll.length,
@@ -799,7 +817,7 @@ export async function goldIntroSeen({ env, userId }) {
     .bind(userId)
     .first();
   if ((owned?.n ?? 0) < TAROT.CARDS) {
-    throw new ApiError("NOT_COMPLETE", "도감을 다 모은 뒤에 볼 수 있는 화면이에요.", 400);
+    throw new ApiError("NOT_COMPLETE", "카드 모음을 다 모은 뒤에 볼 수 있는 화면이에요.", 400);
   }
   await env.DB.prepare(
     `INSERT INTO tarot_meta (user_id, gold_intro_seen, updated_at) VALUES (?, 1, ?)

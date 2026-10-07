@@ -13,16 +13,17 @@
   <link rel="manifest" href="/site.webmanifest">
   <title>오늘의 타로</title>
   <meta name="color-scheme" content="dark">
-  <meta name="theme-color" content="#141127">
+  <meta name="theme-color" content="#0B1026">
   <meta name="description" content="오늘의 카드 한 장. 매일 자정에 새 카드가 기다립니다.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght@700;800&family=Noto+Sans+KR:wght@400;500;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../shared/base.css">
   <link rel="stylesheet" href="../shared/nextbar.css">
+  <link rel="stylesheet" href="theme.css">
   <link rel="stylesheet" href="tarot.css">
 </head>
-<body class="game suite suite--tarot">
+<body class="game suite suite--tarot t-sky">
   <div id="siteNav"></div>
   <div class="app">
     <header class="topbar" id="header"></header>
@@ -33,24 +34,46 @@
 
       <!-- 덱 · 포커스 선택 -->
       <section class="screen is-active" data-screen="deck">
-        <p class="hint center" id="deckHint">무엇이 궁금하세요?</p>
-        <div class="focus-row" id="focusRow"></div>
-        <!-- 올해의 카드 · 이달의 카드 칩 (SPEC-04 §3·§4) — 일일 뽑기와 별개 · 광고 없음 -->
-        <div class="focus-row specialrow" id="specialRow"></div>
+        <!-- 첫 방문 약속 띠 (REQ-63 v2 · 첫 방문이고 오늘 첫 장 전에만) -->
+        <div class="promise" id="deckIntro" hidden>
+          <p class="promise__head">카드 한 장을 뒤집으면 포인트가 쌓여요<span class="promise__pt" id="deckIntroPt"></span></p>
+          <ol class="steps" aria-label="하는 순서">
+            <li><b>1</b>고민</li><i></i>
+            <li><b>2</b>섞기</li><i></i>
+            <li><b>3</b>한 장 뒤집기</li>
+          </ol>
+        </div>
+        <!-- 재방문 · 오늘 첫 장 전 -->
+        <p class="todaypt" id="todayPt" hidden>오늘 카드 한 장 뒤집으면 <b id="todayPtVal"></b></p>
+        <h2 class="t-title ttl" id="deckHint">무엇이 궁금하세요?</h2>
+        <div id="focusRow" role="group" aria-label="궁금한 것"></div>
+        <p class="prepick" id="focusNote" hidden></p>
         <!-- 「작년의 올해 카드」 작은 상자 (SPEC-04 §3 · REQ-46) — 작년 기록이 있을 때만 -->
         <div class="lastyearbox" id="lastYearBox" hidden></div>
 
-        <div class="deckwrap">
+        <div class="deckstage">
           <div class="deck breathe" id="deck" role="button" tabindex="0"
-               aria-label="덱을 좌우로 쓸어 섞으세요. 키보드는 Enter.">
-            <span class="dcard"></span><span class="dcard"></span><span class="dcard"></span>
+               aria-label="카드를 좌우로 쓸어 섞으세요. 키보드는 Enter.">
+            <span class="dcard"></span><span class="dcard"></span><span class="dcard"></span><span class="dcard"></span><span class="dcard"></span>
           </div>
-          <div class="sh-dots" id="shDots" aria-hidden="true"></div>
-          <!-- 진척 칩 (SPEC-03 §1-1 ③) — 1회차 「도감 n/78」, 완성 뒤 「✦ 금빛 n/78」 -->
-          <span class="dustchip deckchip" id="deckChip"></span>
+          <div class="swipehint" aria-hidden="true"><svg viewBox="0 0 220 40" fill="none" stroke="#E8C46A" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M24 26 Q110 6 196 26" stroke-width="1.5" stroke-dasharray="2 6" opacity=".7"/>
+            <path d="M32 20 L20 27 L34 32" stroke-width="1.8"/><path d="M188 20 L200 27 L186 32" stroke-width="1.8"/>
+            <circle cx="110" cy="17" r="10" fill="#F4E9D0" fill-opacity=".16" stroke="#F4E9D0" stroke-opacity=".75" stroke-width="1.5"/><circle cx="110" cy="17" r="3" fill="#F4E9D0" stroke="none"/>
+          </svg></div>
         </div>
+        <!-- 섞기 버튼 = 덱 탭 한 번과 같은 동작 (shuffleOnce) -->
+        <button class="t-btn shufflebtn" id="shuffleBtn" type="button">카드 섞기 <span class="t-btn__count" id="shuffleCount"></span></button>
+        <p class="shufflenote"><span class="sh-dots" id="shDots" aria-hidden="true"></span><span id="deckSub"></span></p>
 
-        <p class="footnote center" id="deckSub">고민을 고르면 덱이 열려요</p>
+        <div class="rows">
+          <!-- 어제의 카드 — 누르면 그 카드 상세 -->
+          <button class="rowlink rowlink--yday" id="ydayRow" type="button" hidden></button>
+          <!-- 올해의 카드 · 이달의 카드 줄 (SPEC-04 §3·§4) — 일일 뽑기와 별개 · 광고 없음 -->
+          <div id="specialRow"></div>
+        </div>
+        <!-- 카드 모음 줄 (SPEC-03 §1-1 ③) — 1회차 「카드 모음 n/78장」, 완성 뒤 「✦ 금빛 n/78」 -->
+        <a class="rowlink rowlink--plain deckchip" id="deckChip" href="#coll" hidden></a>
         <!-- 뽑기 전에도 고지 (REQ-37 · Master 2026-10-05). 덱·셔플 조작과 겹치지 않게 화면 맨 아래 -->
         <p class="legal legal--bottom center">카드 이미지는 생성형 AI를 활용해 제작했습니다.</p>
       </section>
@@ -73,9 +96,9 @@
           <div class="tcard" id="spGlyph" aria-hidden="true"></div>
           <div class="headline" id="spName">—</div>
           <p class="story" id="spStory" hidden></p>
-          <p class="reading" id="spLine">—</p>
+          <p class="interp" id="spLine">—</p>
           <p class="tierline" id="spCollect"></p>
-          <p class="footnote--dim mt-sm" id="spSaved">달력에 남겨 둘게요</p>
+          <p class="footnote--dim mt-sm" id="spSaved">기록에 남겨 둘게요</p>
         </div>
         <div class="card exchange" id="spExchange" hidden></div>
         <button class="btn" id="spBack" type="button">확인</button>
@@ -84,78 +107,106 @@
 
       <!-- 부채꼴 -->
       <section class="screen" data-screen="fan">
-        <p class="hint center"><span id="fanHint">마음이 가는 카드를 한 장 고르세요</span><br><span class="hint--sub" id="fanSub">좌우로 쓸어 고르고, 손을 떼면 뽑혀요</span></p>
+        <div class="fanmsg">
+          <h2 class="t-title" id="fanHint">마음이 가는 카드를 한 장 고르세요</h2>
+          <!-- 안심 줄은 #fanSub 안 — 의식 동안 함께 숨는다 -->
+          <p id="fanSub">좌우로 쓸어 고르고, 손을 떼면 뽑혀요<br><span class="safe" id="fanSafe">✦ 정답은 없어요 · 마음 가는 카드를 고르면 돼요</span></p>
+        </div>
         <div class="fanstage" id="fanStage" role="group" aria-label="카드 22장"></div>
       </section>
 
       <!-- 결과 -->
       <section class="screen" data-screen="result">
-        <div class="card card--accent card--center card--hero" id="resultCard">
-          <div class="card__label card__label--mono" id="resFocus">오늘 하루</div>
-          <div class="tcard" id="resGlyph" aria-hidden="true">🎈</div>
-          <div class="headline" id="resName">—</div>
-          <!-- 금빛 단계 표기 (SPEC-03 §1-1 ④) — 적립 줄과 따로, 카드 바로 아래 -->
-          <p class="tierline" id="resTier" hidden></p>
+        <!-- 오늘 2장 이상 뽑았으면 장 고르기 (E17) -->
+        <div class="drawtabs" id="drawTabs" role="tablist" aria-label="오늘 뽑은 카드" hidden></div>
+
+        <!-- 1층 — 읽기 -->
+        <article class="card card--hero t-panel resultcard" id="resultCard">
+          <div class="reading">
+            <div class="t-frame" id="resGlyph" aria-hidden="true"></div>
+            <div>
+              <span class="t-label" id="resFocus">오늘 하루</span>
+              <h2 class="t-title reading__name" id="resName">—</h2>
+              <!-- 금빛 단계 표기 (SPEC-03 §1-1 ④) — 적립 줄과 따로, 카드 이름 바로 아래 -->
+              <p class="tierline" id="resTier" hidden></p>
+            </div>
+          </div>
           <!-- 숨은 이야기 (SPEC-03 §2) — 이 뽑기로 금빛이 된 순간에만. 탭하면 즉시 전부 -->
           <p class="story" id="resStory" hidden></p>
-          <p class="reading" id="resInterp">—</p>
-          <p class="advice" id="resAdvice">—</p>
+          <p class="interp" id="resInterp">—</p>
+          <p class="advice"><b>조언</b><span id="resAdvice">—</span></p>
           <!-- 「작년 오늘」 (SPEC-03 §5) — 1년 전 같은 날 기록이 있을 때만 -->
           <p class="lastyear" id="resLastYear" hidden></p>
-        </div>
+        </article>
 
-        <!-- 한 마디 (SPEC-04 §1) — 키워드 6개 중 하나. 보상 없음 · 자유 입력 없음 -->
-        <div class="card word" id="word" hidden>
-          <div class="card__label">이 카드가 오늘 나에게는…</div>
-          <div class="focus-row wordchips" id="wordChips"></div>
-          <div class="worddist" id="wordDist"></div>
-          <p class="footnote--dim" id="wordNote"></p>
-        </div>
+        <!-- 받기 — 금액·내역은 서버 gained · gain_detail -->
+        <section class="gain" id="resGainBox" aria-label="받은 것">
+          <p class="gain__main" id="resGain"></p>
+          <p class="gain__line" id="resGainSub"></p>
+          <p class="gain__line" id="resGainBonus" hidden></p>
+          <p class="gain__help" id="resCollHelp" hidden>뽑은 카드는 카드 모음에 쌓여요</p>
+        </section>
 
         <!-- 별가루 교환 (SPEC-02 T-08) — 두 번째 카드가 스스로 뒤집힌다. 누를 것이 없다 -->
         <div class="card exchange" id="exchange" hidden></div>
 
-        <div class="stats stats--inset" id="resLucky"></div>
-
-        <div class="card card--info">
-          <div class="card__head">
-            <span class="card__label">오늘의 적립</span>
-            <span class="dustchip" id="resDust">✦ 별가루 0/4</span>
-          </div>
-          <p class="footnote" id="resGain">—</p>
-          <p class="footnote--dim mt-sm" id="resDist">전국 분포는 광고를 보면 열려요</p>
-        </div>
-
+        <!-- 주 행동 — 무료 장이 남았으면 금 버튼, 아니면 광고 카드, 다 썼으면 없음(다음 안내 바) -->
         <div id="adbarMore"></div>
-        <div id="adbarStats"></div>
+        <p class="subnote" id="moreNote" hidden>고민을 바꿔 오늘 한 장 더 볼 수 있어요</p>
+
+        <!-- 2층 — 접힘 -->
+        <h3 class="sechead">더 보기</h3>
+        <div class="stack">
+          <button class="fold" id="resLuckyFold" type="button" aria-expanded="false" aria-controls="resLucky">
+            <span class="fold__text"><span class="fold__t">행운의 색 · 숫자 · 물건</span><span class="fold__s">오늘 곁에 두면 좋은 것 3가지</span></span><span class="fold__chev" aria-hidden="true">⌄</span>
+          </button>
+          <div class="stats stats--inset" id="resLucky" hidden></div>
+          <button class="fold" id="wordFold" type="button" aria-expanded="false" aria-controls="word" hidden>
+            <span class="fold__text"><span class="fold__t">이 카드가 오늘 나에게 하는 말 고르기</span><span class="fold__s">사람이 모이면 다른 사람 선택도 보여요</span></span><span class="fold__chev" aria-hidden="true">⌄</span>
+          </button>
+          <!-- 한 마디 (SPEC-04 §1) — 키워드 6개 중 하나. 보상 없음 · 자유 입력 없음 -->
+          <div class="card word" id="word" hidden>
+            <div class="wordchips" id="wordChips"></div>
+            <div class="worddist" id="wordDist"></div>
+            <p class="footnote--dim" id="wordNote"></p>
+          </div>
+          <!-- 분포 — 공개 전에는 광고 카드도 % 줄도 없이 한 줄만 (D2) -->
+          <div id="adbarStats"></div>
+          <p class="distline" id="resDist" hidden></p>
+          <p class="distwait" id="distWait" hidden>오늘 사람들이 뽑은 카드는 사람이 더 모이면 열려요</p>
+        </div>
 
         <!-- 다음 안내 바 본문 끝 블록 (REQ-63 · shared/nextstep.js) — 크로스 칩 대체 -->
         <div id="nextBlock"></div>
 
-        <button class="btn" id="collBtn">도감 보기</button>
-        <div class="footnote--dim center" id="resNote"></div>
+        <button class="btn btn--ghost t-btn--ghost" id="collBtn" type="button">카드 모음 보기</button>
+        <p class="resnote" id="resNote"></p>
         <!-- 고지 (TAROT-PLAN-01 10절 · 인공지능기본법 31조① — dev/개발수정요청_AI고지) -->
         <p class="legal center">본 콘텐츠는 오락용입니다.<br>카드 이미지는 생성형 AI를 활용해 제작했습니다.</p>
       </section>
 
       <!-- 도감 78칸 (SPEC-02 1절) · 금빛 (SPEC-03 §1~3) · 달력 (SPEC-03 §5) -->
       <section class="screen" data-screen="coll">
-        <div class="viewtabs" id="collViewTabs" role="tablist">
-          <button type="button" data-view="grid" class="is-sel">도감</button>
+        <!-- 달력 탭은 뽑은 날이 2일 이상일 때만 (draw_days) -->
+        <div class="viewtabs" id="collViewTabs" role="tablist" hidden>
+          <button type="button" data-view="grid" class="is-sel">카드 모음</button>
           <button type="button" data-view="cal">달력</button>
         </div>
 
-        <div class="card" id="collGridView">
-          <div class="card__head">
-            <span class="card__title" id="collTitle">도감</span>
-            <span class="dustchip" id="collDust">✦ 별가루 0/4</span>
+        <div id="collGridView">
+          <!-- 규칙 상자 — 10장 미만·별가루 0 이면 두 줄, 그 뒤로 별가루 규칙까지 -->
+          <section class="rulebox" id="collNote" aria-label="카드 모음 안내"></section>
+          <div class="colltop">
+            <h2 class="t-title" id="collTitle">카드 모음</h2>
+            <small id="collTotal"></small>
           </div>
           <div class="collbar" id="collBar" aria-hidden="true"></div>
-          <div class="focus-row colltabs" id="collTabs"></div>
+          <div class="barleg" id="collBarLeg"></div>
+          <span class="dustchip" id="collDust" hidden></span>
+          <div class="focus-row colltabs" id="collTabs" hidden></div>
           <!-- 카드 상세 — 금빛이면 숨은 이야기, 아니면 잠금 문구 -->
           <div class="detail" id="collDetail" hidden></div>
           <div class="collgrid" id="collGrid"></div>
-          <p class="footnote--dim mt-md" id="collNote">—</p>
         </div>
 
         <div class="card" id="calView" hidden>

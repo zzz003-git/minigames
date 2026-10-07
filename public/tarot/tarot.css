@@ -1,19 +1,19 @@
 /**
  * 🔮 오늘의 타로 — 전용 스타일
  *
- * 공용 base.css 위에 얹는다. 미니게임과 색이 다른 이유는 별도 서비스이기 때문이고
- * (프로토의 보라·금 팔레트), 골격(.card .btn .screen .stats)은 그대로 재사용한다.
+ * 공용 base.css 위에 theme.css(v2 「밤의 그림책」 — 남청·금, REQ-63)를 얹고, 그 위에 이 파일이
+ * 화면별 배치를 더한다. 골격(.card .btn .screen .stats)은 그대로 재사용한다. 보라는 쓰지 않는다.
  */
 
 .suite--tarot {
   --t-gold: #e8c46a;
   --t-gold-dim: #8d7a45;
-  /* 원안 값(rgba(169,139,224,.24) / rgba(255,255,255,.045)). 불투명 색이 아니라
-     반투명이라 배경 그라데이션이 면 위로 비친다 — 세 화면이 갈리는 장치다 */
-  --t-line: rgba(169, 139, 224, 0.24);
-  --t-surface: rgba(255, 255, 255, 0.045);
-  background: radial-gradient(120% 90% at 50% 0%, #241c3d 0%, #171226 50%, #120f1e 100%);
+  /* 옛 보라 선·면 → 금 실선·벨벳 면 (theme.css 토큰) */
+  --t-line: rgba(232, 196, 106, 0.22);
+  --t-surface: rgba(24, 33, 74, 0.6);
 }
+/* 상단바 아이콘 — 이모지 대신 theme.css 의 문양 그림 */
+.t-sky .topbar__icon { font-size: 0; }
 
 .suite .hint { color: var(--text-sub); font-size: 13px; min-height: 18px; }
 .suite .center { text-align: center; }
@@ -34,19 +34,19 @@
 /* 오늘 이미 뽑은 고민은 다시 못 고른다 — 결과 쇼핑 방지(T-02) */
 .chip-focus.is-used { opacity: 0.28; text-decoration: line-through; pointer-events: none; }
 
-/* ── 덱 ── */
-.deckwrap { display: flex; flex-direction: column; align-items: center; gap: 20px; }
+/* ── 덱 ── (시안 t1 150×225 · 재방문 t6 106×159) */
 .deck {
-  position: relative; width: 130px; height: 196px;
+  position: relative; width: 150px; height: 225px;
   cursor: grab; touch-action: none;
 }
+.deck.deck--sm { width: 106px; height: 159px; }
 .deck:focus-visible { outline: 2px solid var(--t-gold); outline-offset: 6px; }
 .dcard {
   position: absolute; inset: 0; border-radius: 12px;
   border: 1.5px solid var(--t-gold-dim);
   background:
     radial-gradient(circle at 50% 42%, rgba(232, 196, 106, 0.22) 0 12%, transparent 13%),
-    repeating-linear-gradient(45deg, #2b2452 0 8px, #251f47 8px 16px);
+    var(--t-velvet);
   box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
 }
 /* 손대기 전에는 숨쉬듯 — 「만지고 싶은 물건」 (프로토 사양) */
@@ -76,7 +76,7 @@
   border-radius: 9px; border: 1.2px solid var(--t-gold-dim);
   background:
     radial-gradient(circle at 50% 40%, rgba(232, 196, 106, 0.18) 0 12%, transparent 13%),
-    repeating-linear-gradient(45deg, #2b2452 0 7px, #251f47 7px 14px);
+    var(--t-velvet);
   cursor: pointer;
   transition: filter 0.18s ease;
   padding: 0;
@@ -100,25 +100,15 @@
   font-size: 64px;
   border: 1.5px solid var(--t-gold-dim);
 }
-.flipcard__face--back {
-  background:
-    radial-gradient(circle at 50% 42%, rgba(232, 196, 106, 0.22) 0 12%, transparent 13%),
-    repeating-linear-gradient(45deg, #2b2452 0 8px, #251f47 8px 16px);
-}
+.flipcard__face--back { background: var(--t-cardback-img) center/100% 100% no-repeat, var(--t-velvet); }
 .flipcard__face--front {
   transform: rotateY(180deg);
-  background: linear-gradient(180deg, #2e2757, #221d43);
+  background: var(--t-velvet);
   border-color: var(--t-gold);
 }
 
-/* ── 결과 ── */
+/* ── 결과 ── (.reading 2열 · .interp · .advice 는 theme.css) */
 .tcard { font-size: 60px; line-height: 1; margin: 6px 0 10px; }
-.reading { font-size: 15px; line-height: 1.7; color: var(--text); margin-top: 6px; }
-.advice {
-  margin-top: 14px; padding-top: 12px;
-  border-top: 1px solid var(--t-line);
-  font-size: 13.5px; color: var(--t-gold);
-}
 
 /* ── 도감 ── */
 .collgrid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; margin-top: 10px; }
@@ -175,7 +165,7 @@
   width: 168px; aspect-ratio: 2 / 3; margin: 6px auto 10px;
   border-radius: 12px; overflow: hidden;
   border: 1.5px solid var(--t-gold-dim);
-  background: linear-gradient(180deg, #2e2757, #221d43);
+  background: var(--t-velvet);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
 }
 
@@ -209,7 +199,7 @@
 .collbar__tick {
   position: absolute; top: 50%; width: 12px; height: 12px;
   transform: translate(-50%, -50%);
-  border-radius: 50%; border: 2px solid var(--t-gold-dim); background: #171226;
+  border-radius: 50%; border: 2px solid var(--t-gold-dim); background: var(--t-sky-0);
 }
 .collbar__tick.is-on { background: var(--t-gold); border-color: var(--t-gold); }
 .collbar__tick span {
@@ -397,10 +387,7 @@ button.collcell { padding: 0; cursor: pointer; color: inherit; font: inherit; }
 
 /* ══ 3단계 — 한 마디 · 이달의 질문 · 올해/이달의 카드 (SPEC-04 · REQ-42) ═══════ */
 
-/* 덱 화면 특별 카드 칩 */
-.specialrow { margin: -12px 0 14px; }
-.specialrow:empty { display: none; }
-.chip-special { border-color: var(--t-goldline); color: var(--t-goldline); }
+/* 특별 카드 모드의 이름표 */
 .special-label { align-self: center; color: var(--t-goldline); font-size: 14px; font-weight: 700; margin-right: 6px; }
 
 /* 한 마디 */
@@ -476,9 +463,9 @@ button.collcell { padding: 0; cursor: pointer; color: inherit; font: inherit; }
 }
 .ritual__back {
   border: 1.5px solid var(--t-gold-dim);
-  background: repeating-linear-gradient(135deg, #2b2350 0 9px, #332a5e 9px 18px);
+  background: var(--t-cardback-img) center/100% 100% no-repeat, var(--t-velvet);
 }
-.ritual__front { transform: rotateY(180deg); border: 1.5px solid var(--t-gold); background: #221d43; }
+.ritual__front { transform: rotateY(180deg); border: 1.5px solid var(--t-gold); background: var(--t-velvet); }
 
 /* 공중에서 천천히 기울며 흔들림 */
 .ritual__card.tilt { animation: t-rtilt 4s ease-in-out infinite; }
@@ -552,3 +539,78 @@ button.collcell { padding: 0; cursor: pointer; color: inherit; font: inherit; }
 .ritual__card.is-finale .ritual__ring { opacity: 1; filter: brightness(1.8); }
 /* 움직임 줄이기의 열림도 인라인 transform 을 걷은 뒤라 자리를 클래스가 잡는다 */
 .ritual__card.is-revealed-still { transform: translate(-50%, -50%) scale(1.45); }
+
+/* ══ v2 화면 배치 (REQ-63 묶음 2 · 시안 t1~t6 의 화면별 style 을 옮김) ═══════════════
+   부품 모양(약속 띠·줄 링크·받기 상자·접힘·규칙 상자)은 theme.css, 여기는 자리만. */
+
+/* t1·t6 시작 */
+.suite--tarot .promise { margin: 12px 0 0; }
+.todaypt { margin: 12px 0 0; text-align: center; font-size: 14px; color: var(--t-cream); }
+.todaypt b { display: inline-block; margin-left: 4px; padding: 1px 9px; border-radius: 999px; background: var(--t-gold); color: var(--t-ink); font: 700 13px/1.5 var(--t-mono); }
+.ttl { margin: 18px 0 10px; font-size: 18px; text-align: center; }
+.prepick { margin: 10px 0 0; text-align: center; font-size: 14px; color: var(--t-silver); }
+.qnote { margin: 4px 0 0; text-align: center; font-size: 12px; color: var(--t-muted); }
+.deckstage { height: 278px; margin-top: 4px; }
+.deck--sm ~ .swipehint { bottom: 8px; }
+.suite--tarot .deckstage:has(.deck--sm) { height: 178px; }
+.shufflebtn { margin-top: 14px; }
+.shufflebtn[hidden] { display: none; }
+.rows { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+.rows #specialRow { display: flex; flex-direction: column; gap: 8px; }
+.rows #specialRow:empty, .rowlink[hidden] { display: none; }
+.deckchip { margin-top: 6px; }
+.deckchip.is-goldround .rowlink__t { color: var(--t-goldline); }
+.lastyearbox { margin: 10px 0 0; }
+
+/* t2 부채 */
+.fanmsg { text-align: center; padding: 0 16px; }
+#fanHint { margin: 26px 0 0; font-size: 22px; line-height: 1.35; }
+#fanSub { margin: 8px 0 0; font-size: 15px; line-height: 1.55; color: var(--t-silver); }
+.safe {
+  display: inline-flex; align-items: center; gap: 6px; margin: 12px 0 0; line-height: 1.4; padding: 6px 14px; border-radius: 999px;
+  font-size: 14px; font-weight: 700; color: var(--t-gold); background: rgba(232, 196, 106, 0.10); border: 1px solid var(--t-gold-line);
+}
+
+/* t3·t4 결과 */
+.drawtabs { display: flex; gap: 6px; margin: 0 0 10px; overflow-x: auto; }
+.drawtabs[hidden] { display: none; }
+.resultcard { padding: 14px 16px 16px; }
+.resultcard .t-label { display: block; font-family: var(--t-body); font-size: 13px; font-weight: 700; letter-spacing: 0.02em; }
+.resultcard .tierline { margin-top: 4px; }
+.gain { margin-top: 14px; }
+.gain__main[hidden], .gain__line[hidden], .gain__help[hidden] { display: none; }
+#adbarMore { margin-top: 12px; }
+.mainbtn { min-height: 56px; font-size: 17px; }
+.sechead { margin-top: 18px; }
+.stack { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+.stack > [hidden] { display: none; }
+.fold.is-open .fold__chev { transform: rotate(180deg); }
+.stack .word { margin: 0; }
+.distline { margin: 2px 0 0; font-size: 13px; line-height: 1.5; color: var(--t-silver); text-align: center; }
+.distwait {
+  margin: 2px 0 0; padding: 10px 14px; border-radius: 14px; border: 1px dashed var(--t-gold-hair);
+  font-size: 13px; line-height: 1.5; color: var(--t-silver); text-align: center;
+}
+#collBtn { margin-top: 10px; }
+.resnote { margin: 8px 0 0; text-align: center; font-size: 13px; color: var(--t-silver); }
+
+/* t5 카드 모음 */
+.colltop { display: flex; align-items: baseline; justify-content: space-between; margin-top: 16px; }
+.colltop h2 { margin: 0; font-size: 20px; }
+.colltop h2 .t-mono { color: var(--t-gold); font-weight: 700; }
+.colltop small { font-size: 13px; color: var(--t-muted); }
+#collBar { margin: 14px 6px 0; }
+.barleg { display: flex; justify-content: space-between; margin-top: 8px; font-size: 12px; color: var(--t-muted); }
+#collDust { margin-top: 10px; }
+#collDust[hidden], #collTabs[hidden], #collViewTabs[hidden] { display: none; }
+#collViewTabs { margin-bottom: 12px; }
+.collcell { position: relative; border-radius: 8px; }
+.collcell.is-have { border: 0; background: var(--t-velvet); box-shadow: 0 0 0 2px var(--t-gold), 0 0 14px rgba(232, 196, 106, 0.45); }
+.collcell.is-miss .q {
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 20px; height: 20px; border-radius: 50%;
+  background: rgba(11, 16, 38, 0.85); border: 1px solid var(--t-gold-line); color: var(--t-gold); font: 700 12px/18px var(--t-mono); text-align: center;
+}
+.todaytag {
+  position: absolute; left: 50%; bottom: 4px; transform: translateX(-50%); padding: 1px 7px; border-radius: 999px;
+  background: var(--t-gold); color: var(--t-ink); font-size: 12px; font-weight: 700; line-height: 16px; white-space: nowrap;
+}

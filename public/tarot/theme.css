@@ -1,0 +1,452 @@
+/* 오늘의 타로 v2 테마 — 시안 mock/tarot/theme.css 그대로 옮김 (REQ-63 묶음 2)
+   빠진 절: 2(사이트 바 — 공용 그대로 둔다 · v4 「원래 로고」) · 6-2(크로스 칩 — 다음 안내 바로 대체) ·
+   v2 의 다음 안내 바 규칙(shared/nextbar.css 가 맡는다). 타로 페이지(body.t-sky)에서만 읽힌다. */
+/* =====================================================================
+   오늘의 타로 — theme.css  (시각 시스템 v1 · 2026-10-06)
+   「밤의 그림책, 별빛 아래 점술 탁자」
+   - 모든 타로 시안이 <link rel="stylesheet" href="theme.css"> 로 불러 쓴다
+   - 서체: Google Fonts <link> 를 각 HTML 에서 부른다
+     https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght@700;800&family=Noto+Sans+KR:wght@400;500;700&family=JetBrains+Mono:wght@400;500;700&display=swap
+   - 보라 계열 금지. 글자색은 아래 토큰만 (대비 확인값은 system.md)
+   - t-* 클래스와 함께, 기존 DOM 계약 클래스(.chip-focus .card .btn .reward .toast .collbar …)
+     도 .t-sky 안에서 같은 모양이 되도록 묶어 두었다 — JS 가 쓰는 이름은 바꾸지 않는다
+   ===================================================================== */
+
+:root{
+  /* ── 색 ───────────────────────────── */
+  --t-sky-0:#0B1026;          /* 밤하늘 아래(가장 어두움) */
+  --t-sky-1:#141C3F;          /* 밤하늘 위(밝은 쪽) */
+  --t-nav:#0A0E22;            /* 사이트 탭 줄 */
+  --t-velvet:#18214A;         /* 벨벳 패널 면 */
+  --t-velvet-2:#1F2A5A;       /* 패널 안 한 단 밝은 면(칩·스탯 칸) */
+  --t-velvet-on:#2A3466;      /* 선택된 칩 면 */
+  --t-toast:#222C5C;          /* 토스트 면 */
+  --t-gold:#E8C46A;           /* 금박 — 강조·테두리·금빛 도감 */
+  --t-gold-hi:#F3DC97;        /* 금박 하이라이트(버튼 그라디언트 위) */
+  --t-gold-lo:#D2A94B;        /* 금박 그늘(버튼 그라디언트 아래) */
+  --t-gold-line:rgba(232,196,106,.6);   /* 금선 1px 60% */
+  --t-gold-hair:rgba(232,196,106,.22);  /* 아주 옅은 금 구분선 */
+  --t-cream:#F4E9D0;          /* 별빛 크림 — 본문 글자 */
+  --t-silver:#C9CED8;         /* 은 — 보조 글자·은색 카드 */
+  --t-muted:#A9B0CC;          /* 연한 글자 — 설명·고지 */
+  --t-faint:#8790B0;          /* 가장 연한 글자 — 사용 끝난 칩(벨벳·밤하늘 위에서만) */
+  --t-ink:#0B1026;            /* 금 바탕 위 글자 */
+
+  /* 수트 계열색(달력 막대·의식 물듦 — 기존 값 유지, 보라 #c79bff 는 의식 연출 전용) */
+  --t-suit-major:#E8C46A; --t-suit-wands:#E0864A; --t-suit-cups:#6AA8E0;
+  --t-suit-swords:#B7BFCC; --t-suit-pentacles:#7CC48A;
+
+  /* ── 서체 ─────────────────────────── */
+  --t-title:"Nanum Myeongjo", "Noto Serif KR", serif;     /* 800 */
+  --t-body:"Noto Sans KR", system-ui, sans-serif;
+  --t-mono:"JetBrains Mono", ui-monospace, monospace;      /* tabular */
+
+  /* 글자 크기 */
+  --t-fs-display:26px;  /* 완성 화면 제목 등 */
+  --t-fs-h1:22px;       /* 카드 이름(결과) */
+  --t-fs-h2:18px;       /* 패널 제목 */
+  --t-fs-body:15px;     /* 해석 본문(행간 1.7) */
+  --t-fs-sm:13px;       /* 힌트·칩 */
+  --t-fs-xs:12px;       /* 고지·라벨 (이보다 작게 쓰지 않는다) */
+
+  /* ── 간격 (4px 단위) ──────────────── */
+  --t-s1:4px; --t-s2:8px; --t-s3:12px; --t-s4:16px; --t-s5:20px; --t-s6:24px; --t-s8:32px;
+  --t-gutter:16px;      /* 화면 좌우 여백 */
+
+  /* ── 반경 ─────────────────────────── */
+  --t-r-panel:14px;     /* 벨벳 패널 */
+  --t-r-card:12px;      /* 카드 그림·카드 뒷면(큰 것) */
+  --t-r-card-sm:8px;    /* 부채·도감 칸 카드 */
+  --t-r-btn:12px;
+  --t-r-pill:999px;
+
+  /* ── 그림자·빛 ────────────────────── */
+  --t-sh-panel:0 10px 28px rgba(3,6,20,.55), inset 0 1px 0 rgba(244,233,208,.06);
+  --t-sh-card:0 8px 24px rgba(3,6,20,.6);
+  --t-glow-gold:0 0 0 1px var(--t-gold), 0 0 16px rgba(232,196,106,.38);
+
+  /* ── 골격 높이 (base.css 원값 확인 불가 → 시안 공통값. 구현은 base.css 값을 그대로 둔다) ── */
+  --t-nav-h:44px;
+  --t-header-h:52px;
+
+  /* ── 그림(data URI) ───────────────── */
+  --t-stars:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22180%22 height=%22180%22 viewBox=%220 0 180 180%22%3E%3Ccircle cx=%2258.3%22 cy=%2227.2%22 r=%220.5%22 fill=%22%23F4E9D0%22 opacity=%220.39%22/%3E%3Ccircle cx=%2296.5%22 cy=%2265.8%22 r=%220.5%22 fill=%22%23F4E9D0%22 opacity=%220.80%22/%3E%3Ccircle cx=%2238.6%22 cy=%2215.5%22 r=%220.8%22 fill=%22%23F4E9D0%22 opacity=%220.38%22/%3E%3Ccircle cx=%2216.3%22 cy=%2276.4%22 r=%221.0%22 fill=%22%23F4E9D0%22 opacity=%220.41%22/%3E%3Ccircle cx=%2240.2%22 cy=%22112.9%22 r=%220.5%22 fill=%22%23F4E9D0%22 opacity=%220.64%22/%3E%3Ccircle cx=%2271.4%22 cy=%22175.7%22 r=%220.5%22 fill=%22%23F4E9D0%22 opacity=%220.63%22/%3E%3Ccircle cx=%2224.0%22 cy=%2275.4%22 r=%221.0%22 fill=%22%23F4E9D0%22 opacity=%220.41%22/%3E%3Ccircle cx=%2255.5%22 cy=%22146.9%22 r=%220.6%22 fill=%22%23F4E9D0%22 opacity=%220.40%22/%3E%3Ccircle cx=%22102.8%22 cy=%2233.8%22 r=%220.5%22 fill=%22%23F4E9D0%22 opacity=%220.62%22/%3E%3Ccircle cx=%2211.3%22 cy=%2210.7%22 r=%220.6%22 fill=%22%23F4E9D0%22 opacity=%220.60%22/%3E%3Ccircle cx=%2295.7%22 cy=%22139.9%22 r=%220.8%22 fill=%22%23F4E9D0%22 opacity=%220.64%22/%3E%3Ccircle cx=%2281.6%22 cy=%2254.0%22 r=%220.6%22 fill=%22%23F4E9D0%22 opacity=%220.70%22/%3E%3Ccircle cx=%2243.9%22 cy=%22103.4%22 r=%221.0%22 fill=%22%23F4E9D0%22 opacity=%220.60%22/%3E%3Ccircle cx=%2261.8%22 cy=%2280.8%22 r=%221.0%22 fill=%22%23F4E9D0%22 opacity=%220.84%22/%3E%3Ccircle cx=%2221.3%22 cy=%2275.3%22 r=%220.7%22 fill=%22%23F4E9D0%22 opacity=%220.43%22/%3E%3Ccircle cx=%2288.0%22 cy=%227.1%22 r=%220.5%22 fill=%22%23F4E9D0%22 opacity=%220.73%22/%3E%3C/svg%3E");
+  --t-constellation:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22393%22 height=%22520%22 viewBox=%220 0 393 520%22%3E%3Cg fill=%22none%22 stroke=%22%23E8C46A%22 stroke-opacity=%22.16%22 stroke-width=%22.8%22%3E%3Cpolyline points=%2234,96 78,70 118,88 150,58 186,74%22/%3E%3Cpolyline points=%22270,40 300,86 352,70 338,122 300,86%22/%3E%3Cpolyline points=%22232,214 262,252 312,240 356,276%22/%3E%3Cpolyline points=%2228,330 64,368 48,420%22/%3E%3C/g%3E%3Cg fill=%22%23E8C46A%22 fill-opacity=%22.45%22%3E%3Ccircle cx=%2234%22 cy=%2296%22 r=%221.3%22/%3E%3Ccircle cx=%2278%22 cy=%2270%22 r=%221.3%22/%3E%3Ccircle cx=%22118%22 cy=%2288%22 r=%221.3%22/%3E%3Ccircle cx=%22150%22 cy=%2258%22 r=%221.3%22/%3E%3Ccircle cx=%22186%22 cy=%2274%22 r=%221.3%22/%3E%3Ccircle cx=%22270%22 cy=%2240%22 r=%221.3%22/%3E%3Ccircle cx=%22300%22 cy=%2286%22 r=%221.3%22/%3E%3Ccircle cx=%22352%22 cy=%2270%22 r=%221.3%22/%3E%3Ccircle cx=%22338%22 cy=%22122%22 r=%221.3%22/%3E%3Ccircle cx=%22300%22 cy=%2286%22 r=%221.3%22/%3E%3Ccircle cx=%22232%22 cy=%22214%22 r=%221.3%22/%3E%3Ccircle cx=%22262%22 cy=%22252%22 r=%221.3%22/%3E%3Ccircle cx=%22312%22 cy=%22240%22 r=%221.3%22/%3E%3Ccircle cx=%22356%22 cy=%22276%22 r=%221.3%22/%3E%3Ccircle cx=%2228%22 cy=%22330%22 r=%221.3%22/%3E%3Ccircle cx=%2264%22 cy=%22368%22 r=%221.3%22/%3E%3Ccircle cx=%2248%22 cy=%22420%22 r=%221.3%22/%3E%3C/g%3E%3C/svg%3E");
+  --t-sigil-icon:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%22-12 -12 24 24%22%3E%3Cg fill=%22none%22 stroke=%22%23E8C46A%22 stroke-width=%221.4%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Ccircle r=%2210.5%22/%3E%3Cpath d=%22M 1.8 -6 A 6.5 6.5 0 1 0 1.8 6 A 5.2 5.2 0 1 1 1.8 -6 Z%22/%3E%3C/g%3E%3Ccircle r=%221.4%22 fill=%22%23E8C46A%22/%3E%3C/svg%3E");
+  --t-cardback-img:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 200 300%22 width=%22200%22 height=%22300%22%3E%3Cdefs%3E%3ClinearGradient id=%22bg%22 x1=%220%22 y1=%220%22 x2=%220%22 y2=%221%22%3E%3Cstop offset=%220%22 stop-color=%22%231B2552%22/%3E%3Cstop offset=%221%22 stop-color=%22%230F1638%22/%3E%3C/linearGradient%3E%3CradialGradient id=%22gl%22 cx=%22.5%22 cy=%22.5%22 r=%22.5%22%3E%3Cstop offset=%220%22 stop-color=%22%23E8C46A%22 stop-opacity=%22.16%22/%3E%3Cstop offset=%221%22 stop-color=%22%23E8C46A%22 stop-opacity=%220%22/%3E%3C/radialGradient%3E%3C/defs%3E%3Crect width=%22200%22 height=%22300%22 rx=%2214%22 fill=%22url(%23bg)%22/%3E%3Crect x=%227%22 y=%227%22 width=%22186%22 height=%22286%22 rx=%229%22 fill=%22none%22 stroke=%22%23E8C46A%22 stroke-width=%223%22/%3E%3Crect x=%2215%22 y=%2215%22 width=%22170%22 height=%22270%22 rx=%225%22 fill=%22none%22 stroke=%22%23E8C46A%22 stroke-width=%221.5%22 stroke-opacity=%22.75%22/%3E%3Ccircle cx=%22170%22 cy=%2296.99%22 r=%220.98%22 fill=%22%23F4E9D0%22 opacity=%220.6%22/%3E%3Ccircle cx=%22124.53%22 cy=%2251.76%22 r=%220.61%22 fill=%22%23F4E9D0%22 opacity=%220.48%22/%3E%3Ccircle cx=%22152.64%22 cy=%22262.19%22 r=%220.8%22 fill=%22%23F4E9D0%22 opacity=%220.7%22/%3E%3Ccircle cx=%2233.45%22 cy=%22228.78%22 r=%221.04%22 fill=%22%23F4E9D0%22 opacity=%220.4%22/%3E%3Ccircle cx=%22169.19%22 cy=%2276.92%22 r=%220.87%22 fill=%22%23F4E9D0%22 opacity=%220.66%22/%3E%3Ccircle cx=%2236.44%22 cy=%22260.82%22 r=%220.84%22 fill=%22%23F4E9D0%22 opacity=%220.7%22/%3E%3Ccircle cx=%2245.52%22 cy=%22228.68%22 r=%221.01%22 fill=%22%23F4E9D0%22 opacity=%220.67%22/%3E%3Ccircle cx=%2226.71%22 cy=%22117.79%22 r=%220.63%22 fill=%22%23F4E9D0%22 opacity=%220.61%22/%3E%3Ccircle cx=%2277.91%22 cy=%22265.8%22 r=%220.79%22 fill=%22%23F4E9D0%22 opacity=%220.62%22/%3E%3Ccircle cx=%22155.9%22 cy=%2284.21%22 r=%220.88%22 fill=%22%23F4E9D0%22 opacity=%220.69%22/%3E%3Ccircle cx=%2264.61%22 cy=%22222.19%22 r=%220.7%22 fill=%22%23F4E9D0%22 opacity=%220.56%22/%3E%3Ccircle cx=%22163.31%22 cy=%22104.36%22 r=%220.77%22 fill=%22%23F4E9D0%22 opacity=%220.67%22/%3E%3Ccircle cx=%2225.48%22 cy=%22213.82%22 r=%220.77%22 fill=%22%23F4E9D0%22 opacity=%220.51%22/%3E%3Cpath d=%22M 30 23 L 31.96 28.04 L 37 30 L 31.96 31.96 L 30 37 L 28.04 31.96 L 23 30 L 28.04 28.04 Z%22 fill=%22%23E8C46A%22/%3E%3Cpath d=%22M 170 23 L 171.96 28.04 L 177 30 L 171.96 31.96 L 170 37 L 168.04 31.96 L 163 30 L 168.04 28.04 Z%22 fill=%22%23E8C46A%22/%3E%3Cpath d=%22M 30 263 L 31.96 268.04 L 37 270 L 31.96 271.96 L 30 277 L 28.04 271.96 L 23 270 L 28.04 268.04 Z%22 fill=%22%23E8C46A%22/%3E%3Cpath d=%22M 170 263 L 171.96 268.04 L 177 270 L 171.96 271.96 L 170 277 L 168.04 271.96 L 163 270 L 168.04 268.04 Z%22 fill=%22%23E8C46A%22/%3E%3Cpath d=%22M 100 36 L 101.12 38.88 L 104 40 L 101.12 41.12 L 100 44 L 98.88 41.12 L 96 40 L 98.88 38.88 Z%22 fill=%22%23E8C46A%22/%3E%3Cpath d=%22M 100 256 L 101.12 258.88 L 104 260 L 101.12 261.12 L 100 264 L 98.88 261.12 L 96 260 L 98.88 258.88 Z%22 fill=%22%23E8C46A%22/%3E%3Ccircle cx=%22100%22 cy=%22150%22 r=%2276%22 fill=%22url(%23gl)%22/%3E%3Cg transform=%22translate(100 150) scale(1.95)%22 fill=%22none%22 stroke=%22%23E8C46A%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M 0 -33 A 33 33 0 1 1 -0.01 -33%22 stroke-width=%221.25%22/%3E%3Cpath d=%22M 0 -29.5 A 29.5 29.5 0 1 1 -0.01 -29.5%22 stroke-width=%22.7%22/%3E%3Cpath d=%22M -1.6 -1.2 L 0 1.4 L 1.6 -1.2%22 stroke-width=%22.6%22 transform=%22translate(31.3 0) rotate(90) scale(1.05)%22/%3E%3Cpath d=%22M -1.4 -1.4 L 1.4 1.4 M -1.4 1.4 L 0 0%22 stroke-width=%22.6%22 transform=%22translate(27.11 15.65) rotate(120) scale(1.05)%22/%3E%3Cpath d=%22M 0 -1.6 L 0 1.6 M -1.3 -0.4 L 1.3 -0.4%22 stroke-width=%22.6%22 transform=%22translate(15.65 27.11) rotate(150) scale(1.05)%22/%3E%3Cpath d=%22M -1.5 1.2 L 0 -1.4 L 1.5 1.2 Z%22 stroke-width=%22.6%22 transform=%22translate(0 31.3) rotate(180) scale(1.05)%22/%3E%3Cpath d=%22M -1.6 -1.2 L 0 1.4 L 1.6 -1.2%22 stroke-width=%22.6%22 transform=%22translate(-15.65 27.11) rotate(210) scale(1.05)%22/%3E%3Cpath d=%22M -1.4 -1.4 L 1.4 1.4 M -1.4 1.4 L 0 0%22 stroke-width=%22.6%22 transform=%22translate(-27.11 15.65) rotate(240) scale(1.05)%22/%3E%3Cpath d=%22M 0 -1.6 L 0 1.6 M -1.3 -0.4 L 1.3 -0.4%22 stroke-width=%22.6%22 transform=%22translate(-31.3 0) rotate(270) scale(1.05)%22/%3E%3Cpath d=%22M -1.5 1.2 L 0 -1.4 L 1.5 1.2 Z%22 stroke-width=%22.6%22 transform=%22translate(-27.11 -15.65) rotate(300) scale(1.05)%22/%3E%3Cpath d=%22M -1.6 -1.2 L 0 1.4 L 1.6 -1.2%22 stroke-width=%22.6%22 transform=%22translate(-15.65 -27.11) rotate(330) scale(1.05)%22/%3E%3Cpath d=%22M -1.4 -1.4 L 1.4 1.4 M -1.4 1.4 L 0 0%22 stroke-width=%22.6%22 transform=%22translate(-0 -31.3) rotate(360) scale(1.05)%22/%3E%3Cpath d=%22M 0 -1.6 L 0 1.6 M -1.3 -0.4 L 1.3 -0.4%22 stroke-width=%22.6%22 transform=%22translate(15.65 -27.11) rotate(390) scale(1.05)%22/%3E%3Cpath d=%22M -1.5 1.2 L 0 -1.4 L 1.5 1.2 Z%22 stroke-width=%22.6%22 transform=%22translate(27.11 -15.65) rotate(420) scale(1.05)%22/%3E%3Cpath d=%22M 0 -22 A 22 22 0 1 1 -0.01 -22%22 stroke-width=%22.7%22 stroke-dasharray=%221.6 1.4%22/%3E%3Cpath d=%22M 0 -22 L 15.56 15.56 L -22 0 L 15.56 -15.56 L 0 22 L -15.56 -15.56 L 22 0 L -15.56 15.56 L 0 -22 Z%22 stroke-width=%220.8%22/%3E%3Cpath d=%22M 0 -9.5 A 9.5 9.5 0 1 1 -0.01 -9.5%22 stroke-width=%22.55%22 opacity=%22.7%22/%3E%3Cg transform=%22scale(1)%22%3E%3Cpath d=%22M 6 -11 A 12 12 0 1 0 6 11 A 9.5 9.5 0 1 1 6 -11 Z%22 stroke-width=%221%22/%3E%3Cpath d=%22M -7 0 Q 0 -6 7 0 Q 0 6 -7 0 Z%22 stroke-width=%220.8%22/%3E%3Cpath d=%22M 0 -3 L 0.9 -0.9 L 3 0 L 0.9 0.9 L 0 3 L -0.9 0.9 L -3 0 L -0.9 -0.9 Z%22 fill=%22%23E8C46A%22 stroke=%22none%22 transform=%22scale(0.8)%22/%3E%3C/g%3E%3Ccircle cx=%220%22 cy=%22-22%22 r=%221.5%22 fill=%22%23F4E9D0%22 stroke=%22none%22/%3E%3Ccircle cx=%2215.56%22 cy=%22-15.56%22 r=%221.5%22 fill=%22%23F4E9D0%22 stroke=%22none%22/%3E%3Ccircle cx=%2222%22 cy=%220%22 r=%221.5%22 fill=%22%23F4E9D0%22 stroke=%22none%22/%3E%3Ccircle cx=%2215.56%22 cy=%2215.56%22 r=%221.5%22 fill=%22%23F4E9D0%22 stroke=%22none%22/%3E%3Ccircle cx=%220%22 cy=%2222%22 r=%221.5%22 fill=%22%23F4E9D0%22 stroke=%22none%22/%3E%3Ccircle cx=%22-15.56%22 cy=%2215.56%22 r=%221.5%22 fill=%22%23F4E9D0%22 stroke=%22none%22/%3E%3Ccircle cx=%22-22%22 cy=%220%22 r=%221.5%22 fill=%22%23F4E9D0%22 stroke=%22none%22/%3E%3Ccircle cx=%22-15.56%22 cy=%22-15.56%22 r=%221.5%22 fill=%22%23F4E9D0%22 stroke=%22none%22/%3E%3C/g%3E%3C/svg%3E");
+  --t-cardback-img-sm:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 200 300%22 width=%22200%22 height=%22300%22%3E%3Cdefs%3E%3ClinearGradient id=%22bg%22 x1=%220%22 y1=%220%22 x2=%220%22 y2=%221%22%3E%3Cstop offset=%220%22 stop-color=%22%231B2552%22/%3E%3Cstop offset=%221%22 stop-color=%22%230F1638%22/%3E%3C/linearGradient%3E%3CradialGradient id=%22gl%22 cx=%22.5%22 cy=%22.5%22 r=%22.5%22%3E%3Cstop offset=%220%22 stop-color=%22%23E8C46A%22 stop-opacity=%22.16%22/%3E%3Cstop offset=%221%22 stop-color=%22%23E8C46A%22 stop-opacity=%220%22/%3E%3C/radialGradient%3E%3C/defs%3E%3Crect width=%22200%22 height=%22300%22 rx=%2214%22 fill=%22url(%23bg)%22/%3E%3Crect x=%227%22 y=%227%22 width=%22186%22 height=%22286%22 rx=%229%22 fill=%22none%22 stroke=%22%23E8C46A%22 stroke-width=%224.5%22/%3E%3Crect x=%2215%22 y=%2215%22 width=%22170%22 height=%22270%22 rx=%225%22 fill=%22none%22 stroke=%22%23E8C46A%22 stroke-width=%223%22 stroke-opacity=%22.75%22/%3E%3Cpath d=%22M 30 21 L 32.52 27.48 L 39 30 L 32.52 32.52 L 30 39 L 27.48 32.52 L 21 30 L 27.48 27.48 Z%22 fill=%22%23E8C46A%22/%3E%3Cpath d=%22M 170 21 L 172.52 27.48 L 179 30 L 172.52 32.52 L 170 39 L 167.48 32.52 L 161 30 L 167.48 27.48 Z%22 fill=%22%23E8C46A%22/%3E%3Cpath d=%22M 30 261 L 32.52 267.48 L 39 270 L 32.52 272.52 L 30 279 L 27.48 272.52 L 21 270 L 27.48 267.48 Z%22 fill=%22%23E8C46A%22/%3E%3Cpath d=%22M 170 261 L 172.52 267.48 L 179 270 L 172.52 272.52 L 170 279 L 167.48 272.52 L 161 270 L 167.48 267.48 Z%22 fill=%22%23E8C46A%22/%3E%3Ccircle cx=%22100%22 cy=%22150%22 r=%2276%22 fill=%22url(%23gl)%22/%3E%3Cg transform=%22translate(100 150) scale(2.05)%22 fill=%22none%22 stroke=%22%23E8C46A%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M 0 -33 A 33 33 0 1 1 -0.01 -33%22 stroke-width=%221.9%22/%3E%3Cpath d=%22M 0 -22 L 15.56 15.56 L -22 0 L 15.56 -15.56 L 0 22 L -15.56 -15.56 L 22 0 L -15.56 15.56 L 0 -22 Z%22 stroke-width=%221.5%22/%3E%3Cg transform=%22scale(1.3)%22%3E%3Cpath d=%22M 6 -11 A 12 12 0 1 0 6 11 A 9.5 9.5 0 1 1 6 -11 Z%22 stroke-width=%221.3%22/%3E%3Cpath d=%22M -7 0 Q 0 -6 7 0 Q 0 6 -7 0 Z%22 stroke-width=%221.3%22/%3E%3Cpath d=%22M 0 -3 L 0.9 -0.9 L 3 0 L 0.9 0.9 L 0 3 L -0.9 0.9 L -3 0 L -0.9 -0.9 Z%22 fill=%22%23E8C46A%22 stroke=%22none%22 transform=%22scale(0.75)%22/%3E%3C/g%3E%3Ccircle cx=%220%22 cy=%22-22%22 r=%222.1%22 fill=%22%23F4E9D0%22 stroke=%22none%22/%3E%3Ccircle cx=%2215.56%22 cy=%22-15.56%22 r=%222.1%22 fill=%22%23F4E9D0%22 stroke=%22none%22/%3E%3Ccircle cx=%2222%22 cy=%220%22 r=%222.1%22 fill=%22%23F4E9D0%22 stroke=%22none%22/%3E%3Ccircle cx=%2215.56%22 cy=%2215.56%22 r=%222.1%22 fill=%22%23F4E9D0%22 stroke=%22none%22/%3E%3Ccircle cx=%220%22 cy=%2222%22 r=%222.1%22 fill=%22%23F4E9D0%22 stroke=%22none%22/%3E%3Ccircle cx=%22-15.56%22 cy=%2215.56%22 r=%222.1%22 fill=%22%23F4E9D0%22 stroke=%22none%22/%3E%3Ccircle cx=%22-22%22 cy=%220%22 r=%222.1%22 fill=%22%23F4E9D0%22 stroke=%22none%22/%3E%3Ccircle cx=%22-15.56%22 cy=%22-15.56%22 r=%222.1%22 fill=%22%23F4E9D0%22 stroke=%22none%22/%3E%3C/g%3E%3C/svg%3E");
+  /* 은빛 판 — 완성 화면 78칸 은빛 물결(.t-cardback--silver). sm 판의 금선만 은(--t-silver)으로 바꾼 같은 문양 */
+  --t-cardback-img-silver:url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 200 300%22 width=%22200%22 height=%22300%22%3E%3Cdefs%3E%3ClinearGradient id=%22bg%22 x1=%220%22 y1=%220%22 x2=%220%22 y2=%221%22%3E%3Cstop offset=%220%22 stop-color=%22%231B2552%22/%3E%3Cstop offset=%221%22 stop-color=%22%230F1638%22/%3E%3C/linearGradient%3E%3CradialGradient id=%22gl%22 cx=%22.5%22 cy=%22.5%22 r=%22.5%22%3E%3Cstop offset=%220%22 stop-color=%22%23C9CED8%22 stop-opacity=%22.16%22/%3E%3Cstop offset=%221%22 stop-color=%22%23C9CED8%22 stop-opacity=%220%22/%3E%3C/radialGradient%3E%3C/defs%3E%3Crect width=%22200%22 height=%22300%22 rx=%2214%22 fill=%22url(%23bg)%22/%3E%3Crect x=%227%22 y=%227%22 width=%22186%22 height=%22286%22 rx=%229%22 fill=%22none%22 stroke=%22%23C9CED8%22 stroke-width=%224.5%22/%3E%3Crect x=%2215%22 y=%2215%22 width=%22170%22 height=%22270%22 rx=%225%22 fill=%22none%22 stroke=%22%23C9CED8%22 stroke-width=%223%22 stroke-opacity=%22.75%22/%3E%3Cpath d=%22M 30 21 L 32.52 27.48 L 39 30 L 32.52 32.52 L 30 39 L 27.48 32.52 L 21 30 L 27.48 27.48 Z%22 fill=%22%23C9CED8%22/%3E%3Cpath d=%22M 170 21 L 172.52 27.48 L 179 30 L 172.52 32.52 L 170 39 L 167.48 32.52 L 161 30 L 167.48 27.48 Z%22 fill=%22%23C9CED8%22/%3E%3Cpath d=%22M 30 261 L 32.52 267.48 L 39 270 L 32.52 272.52 L 30 279 L 27.48 272.52 L 21 270 L 27.48 267.48 Z%22 fill=%22%23C9CED8%22/%3E%3Cpath d=%22M 170 261 L 172.52 267.48 L 179 270 L 172.52 272.52 L 170 279 L 167.48 272.52 L 161 270 L 167.48 267.48 Z%22 fill=%22%23C9CED8%22/%3E%3Ccircle cx=%22100%22 cy=%22150%22 r=%2276%22 fill=%22url(%23gl)%22/%3E%3Cg transform=%22translate(100 150) scale(2.05)%22 fill=%22none%22 stroke=%22%23C9CED8%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M 0 -33 A 33 33 0 1 1 -0.01 -33%22 stroke-width=%221.9%22/%3E%3Cpath d=%22M 0 -22 L 15.56 15.56 L -22 0 L 15.56 -15.56 L 0 22 L -15.56 -15.56 L 22 0 L -15.56 15.56 L 0 -22 Z%22 stroke-width=%221.5%22/%3E%3Cg transform=%22scale(1.3)%22%3E%3Cpath d=%22M 6 -11 A 12 12 0 1 0 6 11 A 9.5 9.5 0 1 1 6 -11 Z%22 stroke-width=%221.3%22/%3E%3Cpath d=%22M -7 0 Q 0 -6 7 0 Q 0 6 -7 0 Z%22 stroke-width=%221.3%22/%3E%3Cpath d=%22M 0 -3 L 0.9 -0.9 L 3 0 L 0.9 0.9 L 0 3 L -0.9 0.9 L -3 0 L -0.9 -0.9 Z%22 fill=%22%23C9CED8%22 stroke=%22none%22 transform=%22scale(0.75)%22/%3E%3C/g%3E%3Ccircle cx=%220%22 cy=%22-22%22 r=%222.1%22 fill=%22%23FFFFFF%22 stroke=%22none%22/%3E%3Ccircle cx=%2215.56%22 cy=%22-15.56%22 r=%222.1%22 fill=%22%23FFFFFF%22 stroke=%22none%22/%3E%3Ccircle cx=%2222%22 cy=%220%22 r=%222.1%22 fill=%22%23FFFFFF%22 stroke=%22none%22/%3E%3Ccircle cx=%2215.56%22 cy=%2215.56%22 r=%222.1%22 fill=%22%23FFFFFF%22 stroke=%22none%22/%3E%3Ccircle cx=%220%22 cy=%2222%22 r=%222.1%22 fill=%22%23FFFFFF%22 stroke=%22none%22/%3E%3Ccircle cx=%22-15.56%22 cy=%2215.56%22 r=%222.1%22 fill=%22%23FFFFFF%22 stroke=%22none%22/%3E%3Ccircle cx=%22-22%22 cy=%220%22 r=%222.1%22 fill=%22%23FFFFFF%22 stroke=%22none%22/%3E%3Ccircle cx=%22-15.56%22 cy=%22-15.56%22 r=%222.1%22 fill=%22%23FFFFFF%22 stroke=%22none%22/%3E%3C/g%3E%3C/svg%3E");
+}
+
+/* =====================================================================
+   1. 바탕 — 남청 밤하늘 + 별 점 + 옅은 금 별자리
+   ===================================================================== */
+html{background:var(--t-sky-0)}
+.t-sky{
+  margin:0;
+  color:var(--t-cream);
+  font-family:var(--t-body);
+  font-size:var(--t-fs-body);
+  line-height:1.6;
+  -webkit-font-smoothing:antialiased;
+  background-color:var(--t-sky-0);
+  background-image:
+    var(--t-constellation),
+    var(--t-stars),
+    radial-gradient(120% 60% at 50% 0%, rgba(232,196,106,.07), transparent 60%),
+    linear-gradient(180deg, var(--t-sky-1) 0%, var(--t-sky-0) 100%);
+  background-repeat:no-repeat, repeat, no-repeat, no-repeat;
+  background-position:center 40px, 0 0, 0 0, 0 0;
+  background-size:393px 520px, 180px 180px, 100% 100%, 100% 100%;
+  background-attachment:local, local, local, local;
+}
+.t-sky *, .t-sky *::before, .t-sky *::after{box-sizing:border-box}
+.t-mono, .t-sky .num{font-family:var(--t-mono);font-variant-numeric:tabular-nums}
+
+/* 제목 서체 — Nanum Myeongjo 800 (규칙은 system.md 3절) */
+.t-title, .t-sky .headline, .t-sky .complete__title{
+  font-family:var(--t-title);font-weight:800;letter-spacing:-.01em;line-height:1.3;color:var(--t-cream);
+}
+.t-title--display{font-size:var(--t-fs-display)}
+.t-title--h1{font-size:var(--t-fs-h1)}
+.t-title--h2{font-size:var(--t-fs-h2)}
+.t-title--gold{color:var(--t-gold)}
+
+.t-label{font-family:var(--t-mono);font-size:var(--t-fs-xs);font-weight:500;letter-spacing:.08em;color:var(--t-gold)}
+.t-sub{font-size:var(--t-fs-sm);color:var(--t-muted)}
+.t-legal, .t-sky .legal{font-size:var(--t-fs-xs);line-height:1.55;color:var(--t-muted);text-align:center}
+.t-rule{height:1px;border:0;margin:var(--t-s4) 0;
+  background:linear-gradient(90deg,transparent,var(--t-gold-line) 20%,var(--t-gold-line) 80%,transparent)}
+
+/* =====================================================================
+   3. #header — 상단바 .topbar (COMMON.md 2: margin 10px 16px 0 · padding 10px 14px · 둥근 막대)
+      ‹ 뒤로(겉 30px 원, 누르는 영역 44px) · 문양 아이콘 · 「오늘의 타로」 · 배지
+   ===================================================================== */
+.t-sky #header, .t-sky .topbar, .t-header{
+  margin:10px var(--t-gutter) 0;
+  height:var(--t-header-h);
+  display:flex;align-items:center;gap:10px;
+  padding:0 10px 0 7px;  /* 44px 뒤로 버튼 안의 30px 원이 COMMON 의 padding 14px 자리에 오도록 */
+  background:linear-gradient(180deg, rgba(24,33,74,.92), rgba(11,16,38,.72));
+  border:1px solid var(--t-gold-hair);border-radius:var(--t-r-panel);
+}
+.t-header__back, .t-sky .topbar__back{
+  width:44px;height:44px;flex:none;display:inline-flex;align-items:center;justify-content:center;
+  font-size:22px;line-height:1;padding-bottom:2px;color:var(--t-cream);text-decoration:none;border:0;
+  background:radial-gradient(circle, var(--t-velvet-2) 0 14.5px, var(--t-gold-hair) 15px 15.5px, transparent 16px);
+}
+.t-header__back:focus-visible{outline:2px solid var(--t-gold);outline-offset:-4px;border-radius:50%}
+.t-header__icon, .t-sky .topbar__icon{width:22px;height:22px;flex:none;background:var(--t-sigil-icon) center/contain no-repeat}
+.t-header__title, .t-sky .topbar__title{font-family:var(--t-title);font-weight:800;font-size:19px;line-height:1.2;color:var(--t-cream);margin:0}
+.t-header__badge{
+  margin-left:auto;padding:4px 10px;border-radius:var(--t-r-pill);
+  font-family:var(--t-mono);font-size:var(--t-fs-xs);font-weight:500;font-variant-numeric:tabular-nums;
+  color:var(--t-gold);border:1px solid var(--t-gold-line);background:rgba(11,16,38,.6);
+}
+
+/* =====================================================================
+   4. 벨벳 금테 패널 .t-panel — 모서리 금 꺾쇠
+      기존 .card(.card--accent/--info/--hero) 와 같이 쓴다: class="card card--info t-panel"
+   ===================================================================== */
+.t-panel{
+  position:relative;
+  background:
+    radial-gradient(140% 90% at 50% 0%, rgba(244,233,208,.05), transparent 60%),
+    var(--t-velvet);
+  border:1px solid var(--t-gold-line);
+  border-radius:var(--t-r-panel);
+  box-shadow:var(--t-sh-panel);
+  padding:var(--t-s5) var(--t-s4);
+  color:var(--t-cream);
+}
+/* 모서리 금 꺾쇠 4개 — 테두리 안쪽 6px 에 12×12 L자 (::before 에 radius 를 주면 꺾쇠가 잘린다) */
+.t-panel::before{
+  content:"";position:absolute;inset:6px;pointer-events:none;
+  --k:12px; --w:1.5px; --c:var(--t-gold);
+  background:
+    linear-gradient(var(--c),var(--c)) 0 0/var(--k) var(--w),
+    linear-gradient(var(--c),var(--c)) 0 0/var(--w) var(--k),
+    linear-gradient(var(--c),var(--c)) 100% 0/var(--k) var(--w),
+    linear-gradient(var(--c),var(--c)) 100% 0/var(--w) var(--k),
+    linear-gradient(var(--c),var(--c)) 0 100%/var(--k) var(--w),
+    linear-gradient(var(--c),var(--c)) 0 100%/var(--w) var(--k),
+    linear-gradient(var(--c),var(--c)) 100% 100%/var(--k) var(--w),
+    linear-gradient(var(--c),var(--c)) 100% 100%/var(--w) var(--k);
+  background-repeat:no-repeat;
+}
+.t-panel > *{position:relative}
+.t-panel--hero{padding:var(--t-s6) var(--t-s4);text-align:center}
+.t-panel--flat{box-shadow:none}
+.t-panel__head{display:flex;align-items:baseline;justify-content:space-between;gap:var(--t-s2);margin-bottom:var(--t-s3)}
+
+/* 패널 안 3칸 스탯(.stats .stat 계약 유지) */
+.t-sky .stats, .t-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--t-s2)}
+.t-sky .stat, .t-stat{
+  background:var(--t-velvet-2);border:1px solid var(--t-gold-hair);border-radius:10px;
+  padding:var(--t-s3) var(--t-s2);text-align:center;
+}
+.t-sky .stat__label, .t-stat__label{display:block;font-size:var(--t-fs-xs);color:var(--t-muted)}
+.t-sky .stat__value, .t-stat__value{display:block;margin-top:2px;font-size:var(--t-fs-body);font-weight:700;color:var(--t-cream)}
+
+/* =====================================================================
+   5. 금테 칩 .t-chip (.is-on) — 기존 .chip-focus(.is-sel/.is-used/:disabled) 도 같은 모양
+   ===================================================================== */
+.t-chip, .t-sky .chip-focus, .t-sky .chip-special{
+  min-height:44px;padding:0 var(--t-s4);
+  display:inline-flex;align-items:center;justify-content:center;gap:6px;
+  font-family:var(--t-body);font-size:var(--t-fs-sm);font-weight:500;color:var(--t-cream);
+  background:var(--t-velvet);
+  border:1px solid var(--t-gold-line);border-radius:var(--t-r-pill);
+  cursor:pointer;transition:background .2s,border-color .2s,color .2s,box-shadow .2s;
+}
+.t-chip:focus-visible, .t-sky .chip-focus:focus-visible{outline:2px solid var(--t-gold);outline-offset:2px}
+.t-chip.is-on, .t-sky .chip-focus.is-sel, .t-sky .chip-focus.is-on{
+  background:var(--t-velvet-on);color:var(--t-gold);font-weight:700;
+  border:1.5px solid var(--t-gold);box-shadow:0 0 12px rgba(232,196,106,.25);
+}
+.t-chip.is-on::before, .t-sky .chip-focus.is-sel::before{content:"✦";font-size:10px}
+.t-chip.is-used, .t-chip:disabled, .t-sky .chip-focus.is-used, .t-sky .chip-focus:disabled{
+  color:var(--t-faint);border-color:var(--t-gold-hair);background:var(--t-velvet);
+  text-decoration:line-through;text-decoration-color:rgba(135,144,176,.7);cursor:default;box-shadow:none;
+}
+/* 특별 칩 — 금 점선 테두리 */
+.t-chip--special, .t-sky .chip-special{border-style:dashed;color:var(--t-gold)}
+/* 작은 표시 칩(도감 n/78 · 별가루) */
+.t-chip--tag, .t-sky .dustchip{
+  min-height:28px;padding:0 var(--t-s3);
+  display:inline-flex;align-items:center;gap:6px;border-radius:var(--t-r-pill);
+  font-family:var(--t-mono);font-size:var(--t-fs-xs);font-weight:500;font-variant-numeric:tabular-nums;
+  color:var(--t-gold);background:rgba(11,16,38,.55);border:1px solid var(--t-gold-line);
+}
+
+/* =====================================================================
+   6. 버튼 — 주 .t-btn / 보조 .t-btn--ghost  (기존 .btn .btn--primary .btn--ghost 와 함께)
+   ===================================================================== */
+.t-btn, .t-sky .btn--primary{
+  min-height:52px;width:100%;padding:0 var(--t-s5);
+  display:inline-flex;align-items:center;justify-content:center;gap:var(--t-s2);
+  font-family:var(--t-body);font-size:16px;font-weight:700;letter-spacing:-.01em;
+  color:var(--t-ink);
+  background:linear-gradient(180deg,var(--t-gold-hi) 0%,var(--t-gold) 45%,var(--t-gold-lo) 100%);
+  border:0;border-radius:var(--t-r-btn);
+  box-shadow:0 0 0 1px rgba(11,16,38,.4) inset, 0 0 0 1px var(--t-gold-hi), 0 6px 18px rgba(232,196,106,.22);
+  cursor:pointer;text-decoration:none;
+}
+.t-btn:active{transform:translateY(1px)}
+.t-btn:focus-visible{outline:2px solid var(--t-cream);outline-offset:3px}
+.t-btn--ghost, .t-sky .btn--ghost{
+  min-height:48px;width:100%;padding:0 var(--t-s5);
+  display:inline-flex;align-items:center;justify-content:center;gap:var(--t-s2);
+  font-family:var(--t-body);font-size:15px;font-weight:500;color:var(--t-cream);
+  background:rgba(24,33,74,.6);
+  border:1px solid var(--t-gold-line);border-radius:var(--t-r-btn);box-shadow:none;cursor:pointer;
+}
+.t-btn--ghost:focus-visible{outline:2px solid var(--t-gold);outline-offset:3px}
+.t-btn--inline{width:auto}
+
+/* =====================================================================
+   7. 광고 카드 .adcard — 위치·크기는 기존 #adbarMore/#adbarStats(.reward) 그대로, 테마만
+      마크업 계약: .reward > .reward__icon .reward__text(.reward__title .reward__desc) .reward__cta
+   ===================================================================== */
+.adcard, .t-sky #adbarMore .reward, .t-sky #adbarStats .reward{
+  display:flex;align-items:center;gap:var(--t-s3);
+  padding:var(--t-s3) var(--t-s3) var(--t-s3) var(--t-s4);
+  background:linear-gradient(100deg, var(--t-velvet-2), var(--t-velvet));
+  border:1px dashed var(--t-gold-line);border-radius:var(--t-r-panel);
+  color:var(--t-cream);
+}
+.adcard .reward__icon{width:36px;height:54px;flex:none;border-radius:5px;
+  background:var(--t-cardback-img-sm) center/cover no-repeat;box-shadow:0 2px 8px rgba(3,6,20,.6);
+  font-size:0;color:transparent} /* 🔮 이모지 대신 카드 뒷면 미니어처 */
+.adcard .reward__icon--map{width:36px;height:36px;border-radius:50%;
+  background:var(--t-velvet-on) var(--t-sigil-icon) center/22px no-repeat;border:1px solid var(--t-gold-line)}
+.adcard .reward__text{flex:1;min-width:0}
+.adcard .reward__title{display:block;font-size:15px;font-weight:700;color:var(--t-cream)}
+.adcard .reward__desc{display:block;margin-top:2px;font-size:var(--t-fs-xs);line-height:1.45;color:var(--t-muted)}
+.adcard .reward__cta{
+  flex:none;min-height:44px;min-width:64px;padding:0 var(--t-s4);
+  display:inline-flex;align-items:center;justify-content:center;
+  font-size:var(--t-fs-sm);font-weight:700;color:var(--t-ink);
+  background:var(--t-gold);border:0;border-radius:var(--t-r-pill);
+}
+
+/* =====================================================================
+   8. 진척 바 .t-progress — 기존 #collBar(.collbar .collbar__fill .collbar__tick.is-on .collbar--gold)
+   ===================================================================== */
+.t-progress, .t-sky .collbar{
+  position:relative;height:10px;border-radius:var(--t-r-pill);
+  background:rgba(11,16,38,.75);border:1px solid var(--t-gold-hair);
+}
+.t-progress__fill, .t-sky .collbar__fill{
+  position:absolute;left:0;top:0;bottom:0;border-radius:inherit;
+  background:linear-gradient(90deg,var(--t-silver),#E4E7EE);
+}
+.t-progress--gold .t-progress__fill, .t-sky .collbar--gold .collbar__fill{
+  background:linear-gradient(90deg,var(--t-gold-lo),var(--t-gold) 60%,var(--t-gold-hi));
+  box-shadow:0 0 10px rgba(232,196,106,.45);
+}
+/* 마일스톤 점 20/39/58/78 → left: 25.64% 50% 74.36% 100% */
+.t-progress__tick, .t-sky .collbar__tick{
+  position:absolute;top:50%;width:12px;height:12px;margin:-6px 0 0 -6px;transform:rotate(45deg);
+  background:var(--t-sky-0);border:1.5px solid var(--t-gold-line);
+}
+.t-progress__tick.is-on, .t-sky .collbar__tick.is-on{background:var(--t-gold);border-color:var(--t-gold-hi)}
+.t-progress__legend{display:flex;justify-content:space-between;margin-top:var(--t-s2);
+  font-family:var(--t-mono);font-size:var(--t-fs-xs);color:var(--t-muted);font-variant-numeric:tabular-nums}
+
+/* =====================================================================
+   9. 토스트 .t-toast (기존 ui.js toast → .toast)
+   ===================================================================== */
+.t-toast, .t-sky .toast{
+  display:inline-flex;align-items:center;gap:var(--t-s2);
+  max-width:calc(393px - 2 * var(--t-gutter));
+  padding:var(--t-s3) var(--t-s4);
+  font-size:14px;font-weight:500;color:var(--t-cream);
+  background:var(--t-toast);border:1px solid var(--t-gold-line);border-radius:var(--t-r-pill);
+  box-shadow:0 10px 30px rgba(3,6,20,.6);
+}
+.t-toast::before{content:"✦";color:var(--t-gold);font-size:11px}
+
+/* =====================================================================
+   10. 카드 — 뒷면 .t-cardback (2:3) · 실제 카드 그림 금테 프레임 .t-frame
+   ===================================================================== */
+.t-cardback{
+  aspect-ratio:2/3;
+  background:var(--t-cardback-img) center/100% 100% no-repeat, var(--t-velvet);
+  border-radius:var(--t-r-card);
+  box-shadow:var(--t-sh-card);
+}
+/* 폭 80px 이하(부채 64·74px, 도감 칸, 광고 아이콘): 룬·가는 고리를 뺀 굵은 선 판 */
+.t-cardback--sm{
+  background-image:var(--t-cardback-img-sm);
+  border-radius:var(--t-r-card-sm);
+  box-shadow:0 4px 12px rgba(3,6,20,.6);
+}
+/* 은빛 판(78장 완성 연출 · 금빛 바퀴의 은색 칸 표시) — 폭 80px 이하 전용 */
+.t-cardback--silver{background:var(--t-cardback-img-silver) center/100% 100% no-repeat, var(--t-velvet);border-radius:var(--t-r-card-sm)}
+/* 덱·부채·의식·도감 빈칸 — 기존 클래스에 그대로 입힌다 */
+.t-sky .dcard, .t-sky .ritual__back{background:var(--t-cardback-img) center/100% 100% no-repeat, var(--t-velvet)}
+.t-sky .fcard, .t-sky .collcell.is-miss{background:var(--t-cardback-img-sm) center/100% 100% no-repeat, var(--t-velvet)}
+
+.t-frame{
+  position:relative;display:inline-block;aspect-ratio:2/3;
+  padding:5px;border-radius:calc(var(--t-r-card) + 4px);
+  background:linear-gradient(160deg,var(--t-gold-hi),var(--t-gold-lo) 40%,var(--t-gold) 70%,var(--t-gold-lo));
+  box-shadow:var(--t-sh-card), 0 0 24px rgba(232,196,106,.18);
+}
+.t-frame::after{ /* 안쪽 남청 실선 — 그림과 금테 사이 */
+  content:"";position:absolute;inset:4px;border-radius:var(--t-r-card);
+  box-shadow:inset 0 0 0 1.5px var(--t-sky-0);pointer-events:none;
+}
+.t-frame img{display:block;width:100%;height:100%;object-fit:cover;border-radius:calc(var(--t-r-card) - 1px)}
+.t-frame.is-gold{box-shadow:var(--t-sh-card), 0 0 0 1px var(--t-gold-hi), 0 0 28px rgba(232,196,106,.5)}
+.t-frame.is-silver{background:linear-gradient(160deg,#EEF0F4,#9DA4B3 45%,var(--t-silver) 70%,#9DA4B3)}
+
+/* =====================================================================
+   11. 움직임 줄이기
+   ===================================================================== */
+@media (prefers-reduced-motion: reduce){
+  .t-sky *, .t-sky *::before, .t-sky *::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
+}
+
+/* =====================================================================
+   v2 (2026-10-06 · INTEGRATED 결정서) — 흐름 v2 부품
+   약속 띠 · 단계 줄 · 섞기 버튼 · 받기 상자 · 접힘 줄 · 보너스 줄 · 어제의 카드 줄 ·
+   규칙 상자 · 다음 안내 바(공용, 테마 무관 같은 모양)
+   ===================================================================== */
+/* 첫 방문 약속 띠 (#deckIntro) */
+.promise{margin:12px var(--t-gutter) 0;padding:12px 14px 12px;border-radius:var(--t-r-panel);
+  background:linear-gradient(100deg,rgba(232,196,106,.18),rgba(31,42,90,.92) 55%);border:1px solid var(--t-gold-line)}
+.promise__head{display:flex;align-items:center;gap:8px;margin:0;word-break:keep-all;font-size:16px;font-weight:700;line-height:1.35;color:var(--t-cream)}
+.promise__pt{margin-left:auto;flex:none;padding:3px 10px;border-radius:var(--t-r-pill);
+  font-family:var(--t-mono);font-size:13px;font-weight:700;color:var(--t-ink);background:var(--t-gold)}
+/* 단계 줄 ①②③ */
+.steps{display:flex;align-items:center;gap:6px;margin:10px 0 0;padding:0;list-style:none}
+.steps li{display:flex;align-items:center;gap:5px;flex:none;font-size:13px;line-height:1.2;color:var(--t-muted);white-space:nowrap}
+.steps li b{width:22px;height:22px;flex:none;border-radius:50%;display:grid;place-items:center;
+  font:700 12px/1 var(--t-mono);color:var(--t-muted);border:1.5px solid var(--t-gold-hair)}
+.steps li.is-done{color:var(--t-silver)}
+.steps li.is-done b{color:var(--t-gold);border-color:var(--t-gold-line);font-size:13px}
+.steps li.is-now{color:var(--t-gold);font-weight:700}
+.steps li.is-now b{background:var(--t-gold);border-color:var(--t-gold);color:var(--t-ink);box-shadow:0 0 10px rgba(232,196,106,.5)}
+.steps i{flex:1;min-width:6px;height:1px;background:var(--t-gold-hair)}
+.steps--bare{margin:12px var(--t-gutter) 0;justify-content:center}
+/* 고민 칩 4열 */
+.focusgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.focusgrid .chip-focus{padding:0 2px;font-size:14px;white-space:nowrap}
+.chip-q{width:100%;margin-top:6px;font-size:14px}
+/* 덱 무대 */
+.deckstage{position:relative;display:flex;align-items:center;justify-content:center}
+.deckstage::before{content:"";position:absolute;left:50%;top:50%;width:300px;height:300px;transform:translate(-50%,-50%);border-radius:50%;
+  background:radial-gradient(circle,rgba(232,196,106,.16),rgba(232,196,106,.05) 45%,transparent 70%);pointer-events:none}
+.deck{position:relative}
+.deck .dcard{position:absolute;left:0;top:0;width:100%;height:100%;border-radius:12px;
+  box-shadow:0 10px 24px rgba(3,6,20,.65),0 0 0 1px rgba(232,196,106,.25)}
+.deck .dcard:nth-child(1){transform:translate(-14px,9px) rotate(-8deg);filter:brightness(.7)}
+.deck .dcard:nth-child(2){transform:translate(-8px,5px) rotate(-4.5deg);filter:brightness(.82)}
+.deck .dcard:nth-child(3){transform:translate(-3px,3px) rotate(-1.5deg);filter:brightness(.92)}
+.deck .dcard:nth-child(4){transform:translate(7px,0) rotate(3deg)}
+.deck .dcard:nth-child(5){transform:translate(0,-3px) rotate(0)}
+.swipehint{position:absolute;left:50%;bottom:-4px;width:220px;height:40px;transform:translateX(-50%);pointer-events:none}
+.swipehint svg{width:100%;height:100%;overflow:visible}
+/* 섞기 버튼 (탭 = 한 번 섞기, js 탭 처리와 같음) */
+.shufflebtn .t-btn__count{font-family:var(--t-body);font-size:13px;font-weight:700;padding:2px 8px;border-radius:var(--t-r-pill);background:rgba(11,16,38,.14)}
+.shufflenote{display:flex;align-items:center;justify-content:center;gap:8px;margin:8px 0 0;font-size:13px;color:var(--t-silver)}
+.sh-dots{display:inline-flex;gap:6px}
+.sh-dots i{width:9px;height:9px;border-radius:50%;border:1.5px solid var(--t-gold-line)}
+.sh-dots i.is-on{background:var(--t-gold);border-color:var(--t-gold)}
+/* 줄 링크(도감 · 어제의 카드 · 보너스 카드) — 행 전체 탭, 높이 44px 이상 */
+.rowlink{display:flex;align-items:center;gap:12px;min-height:44px;width:100%;padding:6px 12px;border-radius:var(--t-r-panel);
+  text-decoration:none;color:var(--t-cream);font-family:var(--t-body);text-align:left}
+.rowlink__text{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.35}
+.rowlink__t{font-size:14px;font-weight:700;color:var(--t-cream)}
+.rowlink__s{font-size:12px;color:var(--t-muted)}
+.rowlink__go{flex:none;font-size:20px;line-height:1;color:var(--t-gold)}
+.rowlink--plain{justify-content:center;gap:8px;padding:0}
+.rowlink--plain .rowlink__t{font-weight:500;color:var(--t-silver)}
+.rowlink--yday{background:var(--t-velvet);border:1px solid var(--t-gold-hair)}
+.rowlink--bonus{border:1.5px dashed var(--t-gold-line);background:rgba(11,16,38,.45)}
+.rowlink--bonus .rowlink__t{color:var(--t-gold)}
+.rowlink__thumb{width:32px;height:48px;flex:none;border-radius:5px;object-fit:cover;box-shadow:0 0 0 1px var(--t-gold-line)}
+.rowlink__star{width:32px;height:48px;flex:none;display:grid;place-items:center;border-radius:5px;border:1px dashed var(--t-gold-line);color:var(--t-gold);font-size:14px}
+/* 결과 1층 — 읽기 */
+.reading{display:grid;grid-template-columns:112px 1fr;gap:14px;align-items:center}
+.reading .t-frame{width:112px}
+.reading__name{margin:4px 0 0;font-size:30px}
+.reading__zoom{margin:6px 0 0;font-size:12px;color:var(--t-muted)}
+.interp{margin:14px 0 0;font-size:17px;line-height:1.6;color:var(--t-cream)}
+.advice{margin:8px 0 0;font-size:15px;line-height:1.55;color:var(--t-silver)}
+.advice b{color:var(--t-gold);font-weight:700;margin-right:6px}
+/* 받기 상자 (#resGain 2행화) */
+.gain{padding:12px 14px;border-radius:var(--t-r-panel);background:rgba(232,196,106,.10);border:1px solid var(--t-gold)}
+.gain__main{display:flex;align-items:baseline;gap:8px;margin:0;font-size:18px;font-weight:700;color:var(--t-cream)}
+.gain__pt{font-family:var(--t-mono);font-size:26px;font-weight:700;color:var(--t-gold);line-height:1}
+.gain__line{margin:6px 0 0;font-size:14px;color:var(--t-cream)}
+.gain__line .t-mono{color:var(--t-gold)}
+.gain__help{margin:8px 0 0;padding-top:8px;border-top:1px dashed var(--t-gold-hair);font-size:13px;line-height:1.5;color:var(--t-silver)}
+.gain__help b{color:var(--t-gold)}
+.subnote{margin:6px 0 0;font-size:13px;color:var(--t-silver);text-align:center}
+/* 2층 접힘 줄 */
+.fold{display:flex;align-items:center;gap:12px;min-height:56px;width:100%;padding:10px 14px;border-radius:var(--t-r-panel);
+  background:var(--t-velvet);border:1px solid var(--t-gold-hair);color:var(--t-cream);font-family:var(--t-body);text-align:left}
+.fold__text{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.4}
+.fold__t{font-size:15px;font-weight:700}
+.fold__s{font-size:12px;color:var(--t-muted)}
+.fold__chev{flex:none;width:28px;height:28px;border-radius:50%;display:grid;place-items:center;border:1px solid var(--t-gold-line);color:var(--t-gold);font-size:13px}
+.sechead{display:flex;align-items:center;gap:10px;margin:0;font-size:13px;font-weight:700;color:var(--t-muted)}
+.sechead::before,.sechead::after{content:"";flex:1;height:1px;background:var(--t-gold-hair)}
+/* 광고 카드 손해 없음 줄 (.reward__note — ad.js:224 지원) */
+.adcard .reward__note{display:block;margin-top:4px;font-size:12px;line-height:1.4;color:var(--t-gold)}
+/* 도감 규칙 상자 (#collNote 이동·분할) */
+.rulebox{padding:14px 14px 12px;border-radius:var(--t-r-panel);background:var(--t-velvet);border:1px solid var(--t-gold-line)}
+.rulebox__t{margin:0;font-size:17px;font-weight:700;color:var(--t-cream)}
+.rulebox__goal{display:block;margin:10px 0 0;padding:8px 10px;border-radius:10px;background:rgba(232,196,106,.12);font-size:14px;color:var(--t-cream)}
+.rulebox__goal b{color:var(--t-gold)}
+.rulebox ul{margin:8px 0 0;padding:0 0 0 2px;list-style:none}
+.rulebox li{position:relative;padding-left:14px;font-size:13px;line-height:1.6;color:var(--t-silver)}
+.rulebox li::before{content:"✦";position:absolute;left:0;top:0;font-size:9px;color:var(--t-gold)}
+/* 보조 광고 카드(주 행동이 아닌 자리) — CTA 를 테두리형으로 낮춰 채워진 버튼이 화면에 1개가 되게 */
+.adcard--sub .reward__cta{background:transparent;color:var(--t-gold);box-shadow:inset 0 0 0 1.5px var(--t-gold)}
+.rowlink__star{font-size:12px;font-weight:700}
+button.rowlink{cursor:pointer}

@@ -14,15 +14,12 @@
  */
 
 import { apiGet, apiPost, ApiFail } from "../shared/api.js";
-import { $, el, clear, showScreen, toast, renderHeader, setHeaderBadge } from "../shared/ui.js";
+import { $, el, clear, showScreen, toast, renderHeader } from "../shared/ui.js";
 import { watchAdForReward, renderRewardCard, clearRewardCard } from "../shared/ad.js";
 import { TAROT_DB } from "./tarot-db.js";
 import { renderSiteNav } from "../shared/sitenav.js";
 import { startRitual } from "./tarot-ritual.js";
 import { renderNextStep } from "../shared/nextstep.js";
-
-/** 분포가 아직 닫혀 있을 때의 한 줄 — 인원 수를 적지 않는다 (REQ-62 ⑭) */
-const DIST_SOON = "사람이 더 모이면 열려요";
 
 const FOCUS = [
   { k: "day", label: "오늘 하루" },
@@ -71,15 +68,18 @@ const GOLD_BLOOM_MS = 800;
 /** 숨은 이야기가 한 글자씩 다 나타나기까지 (SPEC-03 §2 「약 1.5초」) */
 const STORY_TYPE_MS = 1500;
 
-/** 도감 수트 탭. id 범위는 SPEC-02 0절 */
+/** 카드 모음 수트 탭 — 쉬운 이름 (REQ-63 E19). id 범위는 SPEC-02 0절 */
 const SUITS = [
   { k: "all", label: "전체", from: 0, to: 77 },
-  { k: "major", label: "메이저", from: 0, to: 21 },
-  { k: "wands", label: "완드", from: 22, to: 35 },
-  { k: "cups", label: "컵", from: 36, to: 49 },
-  { k: "swords", label: "소드", from: 50, to: 63 },
-  { k: "pentacles", label: "펜타클", from: 64, to: 77 },
+  { k: "major", label: "큰 카드", from: 0, to: 21 },
+  { k: "wands", label: "완드·열정", from: 22, to: 35 },
+  { k: "cups", label: "컵·마음", from: 36, to: 49 },
+  { k: "swords", label: "소드·생각", from: 50, to: 63 },
+  { k: "pentacles", label: "펜타클·돈", from: 64, to: 77 },
 ];
+
+/** 카드 모음의 별가루 규칙·수트 탭·전체 마일스톤은 10장 이상 또는 별가루 1개 이상부터 (#11) */
+const COLL_RULES_FROM = 10;
 
 const state = {
   today: null,
@@ -176,7 +176,7 @@ async function boot() {
   // 보여 주는 것은 **첫 장** — 서버·허브·달력·분포의 「오늘의 카드」와 같다 (REQ-62 ⑧)
   if (state.today.draws.length > 0) {
     const first = state.today.draws[0];
-    renderResult(first.c, first.f, { gained: 0, replay: true });
+    renderResult(first.c, first.f, { gained: 0, replay: true, idx: 0 });
     return;
   }
   enterDeck();
@@ -186,67 +186,154 @@ async function boot() {
 // 덱 · 포커스
 // ══════════════════════════════════════════════════════════════
 
+/**
+ * 덱(시작) 화면 — REQ-63 v2.
+ *
+ * 노출 조건(IMPL v4-3 · v5 R1). 「첫 방문」 = 서버 `first_tarot_day`(처음 뽑은 날이 오늘이거나 아직 없음).
+ *   약속 띠·「골라 뒀어요」  첫 방문 && 오늘 첫 장 전 && 특별 카드 모드 아님
+ *   「+5P부터」 줄           재방문 && 오늘 첫 장 전 && 특별 카드 모드 아님
+ *   이달의 질문·특별 카드 줄·카드 모음 줄   재방문만
+ * 같은 날 두 번째 장부터는 금액 예고가 없다(하루 코어는 첫 장에만 주므로).
+ */
 function enterDeck() {
   state.mode = null;
-  state.focus = null;
   state.shuffles = 0;
   state.needShuffles = state.today.shuffles ?? 3;
+  // 고민은 아직 안 고른 첫 칩을 미리 골라 둔다 — 첫 터치가 거절되지 않게 (E2)
+  const used = state.today.used_focuses ?? [];
+  state.focus = FOCUS.find((f) => !used.includes(f.k))?.k ?? null;
+
+  const t = state.today;
+  const first = Boolean(t.first_tarot_day);
+  const beforeFirst = (t.draws?.length ?? 0) === 0;
+  $("#deckIntro").hidden = !(first && beforeFirst);
+  $("#todayPt").hidden = !(!first && beforeFirst);
+  $("#deckIntroPt").textContent = `+${t.core_points}P부터`;
+  $("#todayPtVal").textContent = `+${t.core_points}P부터`;
 
   renderFocusRow();
+  renderFocusNote();
   renderSpecialRow();
+  renderYesterday();
+  renderDeckChip();
   renderDots();
   $("#deck").classList.add("breathe");
+  $("#deck").classList.toggle("deck--sm", !first); // 재방문은 줄이 늘어 덱을 줄인다 (t6)
   $("#deckHint").textContent = "무엇이 궁금하세요?";
-  $("#deckSub").textContent = "고민을 고르면 덱이 열려요";
-  // 진척 칩 — 완성 뒤엔 금빛 바퀴라는 것을 덱 앞에서부터 알 수 있게 (SPEC-03 §1-1 ③)
-  const coll = state.today.collection_count ?? 0;
-  $("#deckChip").textContent =
-    coll >= TOTAL ? `✦ 금빛 ${state.today.gold_count ?? 0}/${TOTAL}` : `도감 ${coll}/${TOTAL}`;
-  $("#deckChip").classList.toggle("is-goldround", coll >= TOTAL);
-  setHeaderBadge(`오늘 ${state.today.remaining}장`);
   showScreen("deck");
 }
 
 function renderFocusRow() {
   const host = clear($("#focusRow"));
   const used = state.today.used_focuses ?? [];
-  // 그달 첫째 주 월요일에만 5번째 칩 「이달의 질문」 (SPEC-04 §2)
-  const mq = state.today.question?.open ? monthQuestion(state.today.day) : null;
-  const chips = mq ? [...FOCUS, { k: "q", label: `✦ ${mq.q}` }] : FOCUS;
+  const grid = el("div", { class: "focusgrid" });
+  host.append(grid);
 
-  for (const f of chips) {
+  const chip = (f, cls = "") => {
     const isUsed = used.includes(f.k);
     const node = el(
       "button",
       {
-        class: `chip-focus ${isUsed ? "is-used" : ""} ${state.focus === f.k ? "is-sel" : ""}`,
+        class: `chip-focus ${cls} ${isUsed ? "is-used" : ""} ${state.focus === f.k ? "is-sel" : ""}`,
         type: "button",
+        "aria-pressed": state.focus === f.k ? "true" : "false",
         ...(isUsed ? { disabled: "", "aria-label": `${f.label} — 오늘 이미 뽑았어요` } : {}),
       },
       f.label,
     );
     if (!isUsed) node.addEventListener("click", () => pickFocus(f.k));
-    host.append(node);
+    return node;
+  };
+  for (const f of FOCUS) grid.append(chip(f));
+
+  // 그달 첫째 주 월요일에만 「이달의 질문」 (SPEC-04 §2) — 첫 방문에는 숨긴다
+  const mq = state.today.question?.open && !state.today.first_tarot_day ? monthQuestion(state.today.day) : null;
+  if (mq) {
+    host.append(
+      chip({ k: "q", label: `✦ 이달의 질문: ${mq.q}` }, "chip-q"),
+      el("p", { class: "qnote" }, "이달의 질문 · 오늘만 열려요"),
+    );
   }
+}
+
+/** 「고민은 「오늘 하루」로 골라 뒀어요」 — 첫 방문 · 오늘 첫 장 전 · 특별 카드 모드 아님 */
+function renderFocusNote() {
+  const t = state.today;
+  const show = t.first_tarot_day && (t.draws?.length ?? 0) === 0 && !state.mode && state.focus;
+  const note = $("#focusNote");
+  note.hidden = !show;
+  if (show) note.textContent = `고민은 「${FOCUS.find((f) => f.k === state.focus)?.label}」로 골라 뒀어요 · 바꿔도 돼요`;
 }
 
 function pickFocus(k) {
   state.focus = k;
   renderFocusRow();
-  $("#deckHint").textContent = "덱을 좌우로 쓸어 섞어 주세요";
-  $("#deckSub").textContent = `${state.needShuffles}번 섞으면 카드가 펼쳐져요`;
+  renderFocusNote();
 }
 
+/** 어제의 카드 줄 — 누르면 그 카드 상세 (N6) */
+function renderYesterday() {
+  const y = state.today.yesterday;
+  const row = $("#ydayRow");
+  row.hidden = !y || state.mode != null;
+  if (row.hidden) return;
+  const name = TAROT_DB.cards[y.card_id]?.name ?? "—";
+  const fl = y.focus === "q" ? "이달의 질문" : (FOCUS.find((f) => f.k === y.focus)?.label ?? "오늘 하루");
+  row.setAttribute("aria-label", `어제의 카드 ${name} 다시 보기`);
+  clear(row).append(
+    el("img", { class: "rowlink__thumb", src: THUMB_IMG(y.card_id), alt: "", loading: "lazy", decoding: "async", draggable: "false" }),
+    el(
+      "span",
+      { class: "rowlink__text" },
+      el("span", { class: "rowlink__t" }, `어제의 카드 · ${name}`),
+      el("span", { class: "rowlink__s" }, `어제 「${fl}」로 뽑았어요 · 눌러서 다시 보기`),
+    ),
+    el("span", { class: "rowlink__go", "aria-hidden": "true" }, "›"),
+  );
+}
+
+/** 카드 모음 줄 — 재방문만. 완성 뒤엔 금빛 바퀴라는 것을 덱 앞에서부터 알 수 있게 (SPEC-03 §1-1 ③) */
+function renderDeckChip() {
+  const chip = $("#deckChip");
+  chip.hidden = Boolean(state.today.first_tarot_day) || state.mode != null;
+  if (chip.hidden) return;
+  const coll = state.today.collection_count ?? 0;
+  const gold = coll >= TOTAL;
+  chip.classList.toggle("is-goldround", gold);
+  clear(chip).append(
+    el(
+      "span",
+      { class: "rowlink__t" },
+      gold ? "✦ 금빛 " : "카드 모음 ",
+      el("span", { class: "t-mono" }, `${gold ? (state.today.gold_count ?? 0) : coll}/${TOTAL}`),
+      gold ? "장 · 은색 카드를 금빛으로" : "장 · 뽑은 카드가 모이는 곳",
+    ),
+    el("span", { class: "rowlink__go", "aria-hidden": "true" }, "›"),
+  );
+}
+
+const ORDINAL = ["첫", "두", "세", "네", "다섯"];
+
+/** 섞기 점 · 버튼 표지 · 안내 줄 — state.needShuffles 로 만든다 (#16) */
 function renderDots() {
   const host = clear($("#shDots"));
   for (let i = 0; i < state.needShuffles; i++) {
     host.append(el("i", { class: i < state.shuffles ? "is-on" : "" }));
   }
+  const need = state.needShuffles;
+  const done = state.shuffles >= need;
+  $("#shuffleBtn").hidden = done;
+  $("#shuffleCount").textContent = need > 1 ? `${need}번 중 ${ORDINAL[state.shuffles] ?? state.shuffles + 1} 번째` : "";
+  $("#deckSub").textContent = done
+    ? "펼쳐집니다…"
+    : need === 1
+      ? "한 번 섞으면 펼쳐져요"
+      : `카드를 좌우로 쓸어도 돼요 · ${need}번 섞으면 카드가 펼쳐져요`;
 }
 
 const deck = $("#deck");
 
-/** 좌우로 쓸면 한 번 섞인다. 탭도 같게 취급한다 — 접근성(기획서 1절) */
+/** 좌우로 쓸면 한 번 섞인다. 탭·「카드 섞기」 버튼도 같게 취급한다 — 접근성(기획서 1절) */
 function shuffleOnce() {
   if (state.busy || !state.focus || state.shuffles >= state.needShuffles) {
     if (!state.focus) toast("먼저 궁금한 것을 골라 주세요", "error", 1400);
@@ -260,11 +347,20 @@ function shuffleOnce() {
   navigator.vibrate?.(12);
   renderDots();
 
-  if (state.shuffles >= state.needShuffles) {
-    $("#deckSub").textContent = "펼쳐집니다…";
-    setTimeout(openFan, 420);
-  }
+  if (state.shuffles >= state.needShuffles) setTimeout(openFan, 420);
 }
+
+$("#shuffleBtn").addEventListener("click", shuffleOnce);
+$("#ydayRow").addEventListener("click", () => {
+  const y = state.today.yesterday;
+  if (!y) return;
+  showCollection();
+  showCardDetail(y.card_id);
+});
+$("#deckChip").addEventListener("click", (e) => {
+  e.preventDefault();
+  showCollection();
+});
 
 deck.addEventListener("pointerdown", (e) => {
   state.dragX = e.clientX;
@@ -620,6 +716,10 @@ function renderResult(cardId, focus, res) {
       : (FOCUS.find((f) => f.k === focus)?.label ?? "오늘 하루");
 
   $("#resFocus").textContent = focusLabel;
+  renderDrawTabs(res.idx ?? state.today.draws.length - 1);
+  // 2층 접힘은 결과를 새로 그릴 때마다 닫아 둔다
+  setFold($("#resLuckyFold"), false);
+  setFold($("#wordFold"), false);
   // 한 마디 — 해석을 읽은 뒤 아래에서 키워드 하나 (SPEC-04 §1). 다시 들어와도 고른 것이 보인다
   renderWord(cardId);
   // 뽑기 직후면 플립 전에 받아 둔 그림이 캐시에서 나온다. 다시 들어온 경우엔 받는 동안
@@ -627,7 +727,7 @@ function renderResult(cardId, focus, res) {
   const hero = clear($("#resGlyph"));
   hero.append(cardFace(cardId, true));
   // 금빛 바퀴(78장 완성 뒤)에서는 카드 테두리가 은색·금빛으로 갈린다
-  hero.className = `tcard ${tierClass(cardId)}`;
+  hero.className = `t-frame ${tierClass(cardId)}`;
   $("#resName").textContent = r.card.name;
 
   // 숨은 이야기 — 이 뽑기로 금빛이 된 순간에만 번짐 → 한 글자씩 (SPEC-03 §2)
@@ -659,44 +759,110 @@ function renderResult(cardId, focus, res) {
     stat("행운의 물건", r.item),
   );
 
-  const coll = state.today.collection?.length ?? 0;
-  const total = TAROT_DB.cards.length;
-  const dustMax = state.today.dust_max ?? 4;
-  // 중복이어도 해석·적립은 그대로 — 꽝이 없다. 달라지는 것은 별가루 한 줄뿐이다
-  const exchanged = res.exchanged_card_id ?? res.gold_exchanged_card_id;
-  const pick = res.replay
-    ? ""
-    : res.is_new
-      ? " · 새 카드가 도감에 들어왔어요"
-      : res.gold_new
-        ? " · 이 카드가 금빛이 되었어요"
-        : exchanged != null
-          ? ` · 별가루 +1 (${dustMax}/${dustMax})`
-          : ` · 별가루 +1 (${res.dust ?? state.today.dust}/${dustMax})`;
-  // 완성 뒤에는 「도감」 대신 「금빛」 진척을 적는다
-  const progress = coll >= total ? `금빛 ${state.today.gold_count ?? 0}/${total}장` : `도감 ${coll}/${total}장`;
-  $("#resGain").textContent = res.replay
-    ? `오늘 뽑은 카드예요 · ${progress}`
-    : `+${res.gained}P 적립 · ${progress}${pick}`;
-  $("#resDust").textContent = `✦ 별가루 ${state.today.dust ?? 0}/${dustMax}`;
+  renderGain(res);
 
   if (res.replay) renderExchange(null);
   else if (res.gold_exchanged_card_id != null) renderExchange(res.gold_exchanged_card_id, { gold: true });
   else renderExchange(res.exchanged_card_id);
 
-  setHeaderBadge(`도감 ${coll}/${total}`);
   // 서비스 사이 이동 = 공용 다음 안내 바 (REQ-63 · 크로스 칩 대체)
   renderNextStep({ svc: "tarot", suite: state.today.suite, justCompleted: (res.triple_gained ?? 0) > 0 });
   renderResultAds();
 
-  const note = $("#resNote");
-  note.textContent =
-    state.today.remaining > 0
-      ? `오늘 ${state.today.remaining}장 더 뽑을 수 있어요`
-      : "내일 자정에 새 카드가 기다립니다";
+  $("#resNote").textContent =
+    state.today.remaining > 0 ? `오늘 ${state.today.remaining}장 남음` : "내일 자정에 새 카드가 기다립니다";
 
   showScreen("result");
   armScreen("result");
+}
+
+/**
+ * 받기 상자 (IMPL v4-2) — 큰 숫자 = 서버 `gained`, 내역 = 서버 `gain_detail`. 금액 상수를 쓰지 않는다.
+ * 셋 다 보너스(triple)는 여기 쓰지 않는다 — 다음 안내 바가 말한다(같은 돈 두 번 금지).
+ */
+function renderGain(res) {
+  const t = state.today;
+  const main = clear($("#resGain"));
+  const sub = clear($("#resGainSub"));
+  const bonus = $("#resGainBonus");
+  const mono = (v) => el("span", { class: "t-mono" }, String(v));
+  $("#resCollHelp").hidden = !t.first_tarot_day;
+  bonus.hidden = true;
+
+  // 다시 들어온 경우 · 「오늘의 카드」 탭 — 장별 금액은 쓰지 않는다 (N3)
+  if (res.replay) {
+    main.hidden = false;
+    main.append("오늘 뽑은 카드예요");
+    sub.append("오늘 타로로 받은 포인트 ", mono(`+${t.today_points ?? 0}`), "P");
+    return;
+  }
+
+  main.hidden = !(res.gained > 0); // 두 번째 장 이후 0P 면 금액 줄 없이 내역만
+  if (res.gained > 0) main.append(el("span", { class: "gain__pt" }, `+${res.gained}P`), "받았어요");
+
+  const detail = res.gain_detail ?? [];
+  const sum = (pred) => detail.filter(pred).reduce((a, d) => a + d.p, 0);
+  const daily = sum((d) => d.kind === "daily");
+  const fresh = sum((d) => d.kind === "new" && !d.src);
+  const viaDust = sum((d) => d.kind === "new" && d.src === "exchange");
+  const dustMax = t.dust_max ?? 4;
+  const goldRound = (t.collection_count ?? 0) >= TOTAL;
+
+  if (res.is_new) {
+    const parts = [];
+    if (daily) parts.push(["오늘 ", mono(daily)]);
+    if (fresh) parts.push(["새 카드 ", mono(fresh)]);
+    parts.forEach((p, i) => sub.append(...(i ? [" + "] : []), ...p));
+    sub.append(`${parts.length ? " · " : ""}카드 모음에 1장 들어갔어요`);
+  } else if (res.gold_new) {
+    sub.append("이 카드가 금빛이 되었어요");
+  } else if (res.gold_exchanged_card_id != null) {
+    sub.append("별가루 4개가 모여 은색 카드 1장이 금빛이 되었어요");
+  } else if (res.exchanged_card_id != null) {
+    sub.append("별가루 4개가 모여 못 만난 카드 1장이 왔어요");
+    if (viaDust) sub.append(" · 별가루로 온 카드 ", mono(viaDust));
+  } else if (goldRound) {
+    sub.append("이미 금빛인 카드예요 · 별가루 +1 ", mono(`(${res.dust}/${dustMax})`), " · 4개 모이면 은색 카드 1장이 금빛으로");
+  } else {
+    sub.append("같은 카드가 또 나와 별가루 +1 ", mono(`(${res.dust}/${dustMax})`), " · 4개 모이면 못 만난 카드 1장");
+  }
+
+  // 마일스톤(일반·금빛) — 둘째 줄
+  const ms = sum((d) => d.kind === "bonus");
+  if (ms > 0) {
+    bonus.hidden = false;
+    clear(bonus).append(
+      goldRound ? `금빛 ${t.gold_count ?? 0}장 ` : `카드 ${t.collection_count ?? 0}장 모았어요 `,
+      mono(`+${ms}P`),
+    );
+  }
+}
+
+/** 오늘 2장 이상 뽑았으면 결과 위에 장 고르기 (E17) — 첫 장이 「오늘의 카드」 */
+function renderDrawTabs(idx) {
+  const draws = state.today.draws ?? [];
+  const host = clear($("#drawTabs"));
+  host.hidden = draws.length < 2;
+  if (host.hidden) return;
+  draws.forEach((d, i) => {
+    const b = el(
+      "button",
+      { type: "button", role: "tab", class: `chip-focus ${i === idx ? "is-sel" : ""}`, "aria-selected": i === idx ? "true" : "false" },
+      i === 0 ? "오늘의 카드" : `${i + 1}번째 장`,
+    );
+    if (i !== idx) b.addEventListener("click", () => renderResult(d.c, d.f, { gained: 0, replay: true, idx: i }));
+    host.append(b);
+  });
+}
+
+/** 2층 접힘 줄 — 누르면 바로 아래 칸이 열린다 */
+function setFold(btn, open) {
+  btn.setAttribute("aria-expanded", open ? "true" : "false");
+  btn.classList.toggle("is-open", open);
+  $(`#${btn.getAttribute("aria-controls")}`).hidden = !open;
+}
+for (const id of ["#resLuckyFold", "#wordFold"]) {
+  $(id).addEventListener("click", (e) => setFold(e.currentTarget, e.currentTarget.getAttribute("aria-expanded") !== "true"));
 }
 
 /** 교환 카드가 스스로 뒤집히기까지의 뜸 — 결과 화면을 먼저 한 번 보게 한다 */
@@ -834,13 +1000,16 @@ function renderResultAds() {
   // 처음엔 덱으로 돌아가는 길이 광고 카드뿐이었다. 그래서 광고 2회를 다 쓰면 「오늘 1장 더
   // 뽑을 수 있어요」라고 적혀 있는데 누를 것이 없었고, 남은 장이 있는데도 광고를 또 보게
   // 했다. 폰 실기에서 「뽑아도 진행이 안 된다」로 드러났다(REQ-40 스테이징 확인 2026-10-05).
+  // 웰컴 장이 남은 경우의 부제 (#7 — 「처음 오신 선물」 금지, 재방문에도 나온다)
+  $("#moreNote").hidden = !((state.today.remaining ?? 0) > 0 && state.today.welcome_available && state.today.draws.length >= 1);
   if ((state.today.remaining ?? 0) > 0) {
-    const btn = el("button", { class: "btn", type: "button" }, `한 장 더 뽑기 (${state.today.remaining}장 남음)`);
+    // 이 화면의 주 행동 — 채운 금 버튼 1개
+    const btn = el("button", { class: "t-btn mainbtn", type: "button" }, "다른 고민으로 한 장 더");
     btn.addEventListener("click", () => enterDeck());
     $("#adbarMore").append(btn);
   } else if ((state.today.ad_more_used ?? 0) < (state.today.ad_more_max ?? 2)) {
     // 「한 장 더」 광고 — 상한을 다 쓰면 **버튼을 숨긴다**(비활성화가 아니라 제거)
-    renderRewardCard($("#adbarMore"), {
+    const card = renderRewardCard($("#adbarMore"), {
       icon: "🔮",
       title: "광고 보고 한 장 더",
       // 손해 없음을 문자로 적는다 (기획서 T-03)
@@ -854,16 +1023,18 @@ function renderResultAds() {
         enterDeck();
       },
     });
+    card.classList.add("adcard");
   }
 
-  // 분포가 아직 닫혀 있으면 광고 카드를 내지 않는다 — 봐도 받을 것이 없다 (REQ-62 ⑭ · D2)
+  // 분포가 아직 닫혀 있으면 광고 카드도 % 줄도 없이 한 줄만 — 봐도 받을 것이 없다 (REQ-62 ⑭ · D2 · N11)
+  $("#resDist").hidden = true;
+  $("#distWait").hidden = true;
   if (state.today.ad_stats_seen) {
     loadStats();
   } else if (!state.today.dist_open) {
-    $("#resDist").textContent = DIST_SOON;
+    $("#distWait").hidden = false;
   } else {
-    $("#resDist").textContent = "전국 분포는 광고를 보면 열려요";
-    renderRewardCard($("#adbarStats"), {
+    const card = renderRewardCard($("#adbarStats"), {
       icon: "🗺️",
       title: "광고 보고 전국 분포 보기",
       desc: "오늘 사람들이 뽑은 카드",
@@ -877,6 +1048,9 @@ function renderResultAds() {
         loadStats();
       },
     });
+    // 주 행동이 아닌 자리 — CTA 를 테두리형으로 낮춰 채운 버튼이 화면에 1개가 되게
+    card.classList.add("adcard", "adcard--sub");
+    card.querySelector(".reward__icon")?.classList.add("reward__icon--map");
   }
 }
 
@@ -886,9 +1060,10 @@ async function loadStats() {
     const line = $("#resDist");
     if (!s.open) {
       // 표본이 적을 때 %를 보여 주면 그 값이 사람 한두 명을 뜻한다 (SUITE 1.5) — 인원 수도 싣지 않는다
-      line.textContent = DIST_SOON;
+      $("#distWait").hidden = false;
       return;
     }
+    line.hidden = false;
     const mine = s.items.find((i) => String(i.key) === String(s.my_card));
     const top = s.items[0];
     // 카드 이름을 적는다 — 두 번째 장을 보고 있어도 `my_card`(첫 장)에 대한 사실이 되게 (REQ-62 ⑧)
@@ -918,45 +1093,68 @@ function showCollection() {
   const n = goldRound ? (state.today.gold_count ?? 0) : have.size;
   const ms = (goldRound ? state.today.gold_milestones : state.today.milestones) ?? [];
 
-  $("#collTitle").textContent = goldRound ? `금빛 ${n} / ${total}` : `도감 ${n} / ${total}`;
-  $("#collDust").textContent = `✦ 별가루 ${state.today.dust ?? 0}/${state.today.dust_max ?? 4}`;
+  const dust = state.today.dust ?? 0;
+  // 처음 몇 장 동안은 규칙 두 줄만 — 별가루·수트·전체 마일스톤은 10장 또는 별가루 1개부터 (#11)
+  const full = goldRound || have.size >= COLL_RULES_FROM || dust >= 1;
+  const next = ms.find((m) => n < m.n);
+  const mono = (v) => el("span", { class: "t-mono" }, String(v));
+
+  clear($("#collTitle")).append(goldRound ? "금빛 " : "카드 모음 ", mono(n), "장");
+  $("#collTotal").textContent = `모두 ${total}장`;
+  $("#collDust").hidden = dust < 1;
+  $("#collDust").textContent = `✦ 별가루 ${dust}/${state.today.dust_max ?? 4}`;
   $("#collBar").classList.toggle("collbar--gold", goldRound);
   $("#collDetail").hidden = true;
 
-  // 진척 바 — 마일스톤 자리에 점을 찍고, 넘은 점은 채운다
+  // 진척 바 — 마일스톤 자리에 ◆, 넘은 점은 채운다. 처음엔 다음 목표 하나만
   const bar = clear($("#collBar"));
   bar.append(el("div", { class: "collbar__fill", style: `width:${((n / total) * 100).toFixed(1)}%` }));
-  for (const m of ms) {
+  for (const m of full ? ms : next ? [next] : []) {
     bar.append(
-      el(
-        "div",
-        {
-          class: `collbar__tick ${n >= m.n ? "is-on" : ""}`,
-          style: `left:${((m.n / total) * 100).toFixed(1)}%`,
-          title: `${m.n}장 +${m.p}P`,
-        },
-        el("span", {}, String(m.n)),
-      ),
+      el("div", {
+        class: `collbar__tick ${n >= m.n ? "is-on" : ""}`,
+        style: `left:${((m.n / total) * 100).toFixed(1)}%`,
+        title: `${m.n}장 +${m.p}P`,
+      }),
     );
   }
+  clear($("#collBarLeg")).append(
+    el("span", {}, `지금 ${n}장`),
+    el("span", {}, next ? `${next.n - n}장 더 모으면 +${next.p}P` : goldRound ? "모두 금빛" : "모두 모았어요"),
+  );
 
-  const next = ms.find((m) => n < m.n);
-  $("#collNote").textContent = goldRound
-    ? next
-      ? `금빛 ${next.n}장이면 +${next.p}P (${next.n - n}장 남음) · 은색 카드를 뽑으면 금빛이 되고, 금빛 카드가 겹치면 별가루가 돼요. 카드를 누르면 숨은 이야기를 볼 수 있어요`
-      : "78장이 모두 금빛이 되었어요."
-    : next
-      ? `${next.n}장을 모으면 +${next.p}P (${next.n - n}장 남음) · 겹친 카드는 별가루가 되고, 4개면 아직 못 만난 카드로 바뀌어요`
-      : "도감을 모두 채웠어요.";
+  // 규칙 상자
+  const goal = next
+    ? el("p", { class: "rulebox__goal" }, el("b", {}, `${next.n}장`), goldRound ? " 금빛이면 " : " 모으면 ", el("b", {}, `+${next.p}P`))
+    : null;
+  const rules = goldRound
+    ? ["은색 카드를 뽑으면 금빛이 돼요", "금빛 카드가 겹치면 별가루 +1 · 4개 = 은색 카드 1장이 금빛으로", "카드를 누르면 숨은 이야기를 볼 수 있어요"]
+    : full
+      ? ["같은 카드가 또 나오면 별가루 +1", "별가루 4개 = 아직 못 만난 카드 1장", "◆ = 포인트 받는 지점"]
+      : [];
+  clear($("#collNote")).append(
+    el(
+      "h2",
+      { class: "rulebox__t" },
+      goldRound ? (next ? "은색 카드를 금빛으로 물들여요" : "78장이 모두 금빛이 되었어요") : next ? "뽑은 카드가 여기 모여요" : "카드를 모두 모았어요",
+    ),
+    goal,
+    rules.length ? el("ul", {}, rules.map((r) => el("li", {}, r))) : null,
+  );
 
+  if (!full) state.collTab = "all";
+  $("#collTabs").hidden = !full;
   renderCollTabs(have);
   renderCollGrid(have);
   setCollView(state.collView ?? "grid");
   showScreen("coll");
 }
 
-/** 「도감 | 달력」 (SPEC-03 §5) */
+/** 「카드 모음 | 달력」 (SPEC-03 §5) — 달력 탭은 뽑은 날이 2일 이상일 때만 (#13) */
 function setCollView(v) {
+  const calOk = (state.today.draw_days ?? 0) >= 2;
+  $("#collViewTabs").hidden = !calOk;
+  if (!calOk) v = "grid";
   state.collView = v;
   for (const b of document.querySelectorAll("#collViewTabs button")) {
     b.classList.toggle("is-sel", b.dataset.view === v);
@@ -976,7 +1174,9 @@ async function showCardDetail(cardId) {
   const box = clear($("#collDetail"));
   const thumb = el("div", { class: `collcell collcell--detail ${tierClass(cardId)}` });
   thumb.append(cardFace(cardId, true, THUMB_IMG(cardId)));
-  const story = el("p", { class: isGold ? "story" : "story story--locked" }, isGold ? "…" : "금빛이 되면 이야기가 열려요");
+  // 완성 전에는 「다시 만나면 열려요」가 거짓이다 — 78장 뒤 금빛 바퀴에서만 열린다 (N9)
+  const locked = (state.today.collection_count ?? 0) < TOTAL ? "78장을 모두 모으면 열리는 이야기가 있어요" : "금빛이 되면 이야기가 열려요";
+  const story = el("p", { class: isGold ? "story" : "story story--locked" }, isGold ? "…" : locked);
   const close = el("button", { class: "detail__close", type: "button", "aria-label": "닫기" }, "✕");
   close.addEventListener("click", () => (box.hidden = true));
   box.append(thumb, el("div", { class: "detail__text" }, el("div", { class: "exchange__name" }, c.name), story), close);
@@ -987,16 +1187,12 @@ async function showCardDetail(cardId) {
 
 function renderCollTabs(have) {
   const host = clear($("#collTabs"));
-  // 금빛 바퀴에선 탭 숫자도 금빛 장수 — 다 모은 뒤엔 「78/78」이 아무것도 말해 주지 않는다
-  const goldRound = have.size >= TOTAL;
-  const gold = new Set(state.today.gold ?? []);
+  // 탭 옆 n/22 분수는 쓰지 않는다 (E19) — 진척은 위 막대가 말한다
   for (const s of SUITS) {
-    let got = 0;
-    for (let i = s.from; i <= s.to; i++) if (goldRound ? gold.has(i) : have.has(i)) got++;
     const node = el(
       "button",
       { class: `chip-focus ${state.collTab === s.k ? "is-sel" : ""}`, type: "button" },
-      `${s.label} ${got}/${s.to - s.from + 1}`,
+      s.label,
     );
     node.addEventListener("click", () => {
       state.collTab = s.k;
@@ -1011,6 +1207,8 @@ function renderCollGrid(have) {
   const s = SUITS.find((x) => x.k === state.collTab) ?? SUITS[0];
   const host = clear($("#collGrid"));
 
+  const todayIds = new Set((state.today.draws ?? []).map((d) => d.c));
+
   for (let i = s.from; i <= s.to; i++) {
     const c = TAROT_DB.cards[i];
     const got = have.has(i);
@@ -1018,7 +1216,7 @@ function renderCollGrid(have) {
     const cell = el(got ? "button" : "div", {
       class: `collcell ${got ? `is-have ${tierClass(i)}` : "is-miss"}`,
       title: got ? c.name : "아직 만나지 않은 카드",
-      ...(got ? { type: "button" } : {}),
+      ...(got ? { type: "button", "aria-label": todayIds.has(i) ? `${c.name} · 오늘 뽑음` : c.name } : {}),
     });
     if (got) {
       cell.addEventListener("click", () => showCardDetail(i));
@@ -1032,8 +1230,9 @@ function renderCollGrid(have) {
       });
       img.addEventListener("error", () => img.replaceWith(c.glyph), { once: true });
       cell.append(img);
+      if (todayIds.has(i)) cell.append(el("span", { class: "todaytag" }, "오늘"));
     } else {
-      cell.append("?");
+      cell.append(el("span", { class: "q", "aria-hidden": "true" }, "?"));
     }
     host.append(cell);
   }
@@ -1149,7 +1348,7 @@ function showCalDay(rec) {
       { class: "detail__text" },
       el("div", { class: "exchange__title" }, `${mm}월 ${dd}일 · ${focusLabel}`),
       el("div", { class: "exchange__name" }, r.card.name),
-      el("p", { class: "reading reading--sm" }, r.interp),
+      el("p", { class: "reading--sm" }, r.interp),
     ),
   );
   box.hidden = false;
@@ -1234,9 +1433,9 @@ const randomShineCell = () => seeded(`${state.today.day}|complete`) % TOTAL;
 
 /** 그 카드의 한 마디 칸을 그린다. 고른 적 있으면 서버 상태(내 선택·남은 바꾸기·비율)를 받아 온다 */
 async function renderWord(cardId) {
-  const host = $("#word");
+  // 칸은 2층 접힘 줄(#wordFold)이 연다 — 여기서는 줄을 보일지만 정한다
   const kws = S3?.KEYWORDS?.[cardId];
-  host.hidden = !kws;
+  $("#wordFold").hidden = !kws;
   if (!kws) return;
   drawWord(cardId, { kw: null, changes_left: 1, dist: null });
   try {
@@ -1315,17 +1514,35 @@ async function pickWord(cardId, kw, prev) {
 const specialTitle = (kind, period) =>
   kind === "year" ? `${period}년의 카드` : `${Number(period.slice(5, 7))}월의 카드`;
 
-/** 덱 화면의 특별 카드 칩 — 아직 안 뽑은 것만. 「작년의 올해 카드」 한 줄도 여기 */
+/**
+ * 덱 아래 「✦ 11월의 카드 뽑기」 줄 — 아직 안 뽑은 것만, 첫 방문엔 숨김(v4-3).
+ * 「작년의 올해 카드」 상자도 여기서 그린다. 금액 「새 카드면 +3P」는 서버 `new_points`.
+ */
 function renderSpecialRow() {
   const host = clear($("#specialRow"));
   const sp = state.today.special ?? {};
   const add = (kind, period) => {
-    const b = el("button", { type: "button", class: "chip-focus chip-special" }, `✦ ${specialTitle(kind, period)} 뽑기`);
+    const b = el(
+      "button",
+      { type: "button", class: "rowlink rowlink--bonus" },
+      el("span", { class: "rowlink__star", "aria-hidden": "true" }, kind === "year" ? period : `${Number(period.slice(5, 7))}월`),
+      el(
+        "span",
+        { class: "rowlink__text" },
+        el("span", { class: "rowlink__t" }, `✦ ${specialTitle(kind, period)} 뽑기`),
+        el(
+          "span",
+          { class: "rowlink__s" },
+          `${kind === "year" ? "올해의 카드 · 1년에 한 번" : "이달의 카드 · 한 달에 한 번"} · 새 카드면 +${state.today.new_points}P`,
+        ),
+      ),
+      el("span", { class: "rowlink__go", "aria-hidden": "true" }, "›"),
+    );
     b.addEventListener("click", () => enterSpecial(kind, period));
     host.append(b);
   };
   renderLastYearBox(sp.year); // 특별 카드를 뽑는 중이면 스스로 숨는다
-  if (state.mode) return; // 특별 카드를 뽑는 중에는 띄우지 않는다
+  if (state.mode || state.today.first_tarot_day) return; // 뽑는 중 · 첫 방문에는 띄우지 않는다
   if (sp.year && sp.year.card_id == null) add("year", sp.year.period);
   if (sp.month && sp.month.card_id == null) add("month", sp.month.period);
 }
@@ -1378,10 +1595,15 @@ function enterSpecial(kind, period) {
       return b;
     })(),
   );
+  // 특별 카드 모드에서는 금액 예고·약속 띠·「골라 뒀어요」·어제·카드 모음 줄을 숨긴다 (v5 R1)
+  $("#deckIntro").hidden = true;
+  $("#todayPt").hidden = true;
+  renderFocusNote();
   renderSpecialRow();
+  renderYesterday();
+  renderDeckChip();
   renderDots();
-  $("#deckHint").textContent = "덱을 한 번 쓸어 섞어 주세요";
-  $("#deckSub").textContent =
+  $("#deckHint").textContent =
     kind === "year" ? "올해를 비춰 줄 카드 한 장이에요" : "이번 달을 비춰 줄 카드 한 장이에요";
 }
 
@@ -1412,13 +1634,13 @@ function renderSpecialResult(res) {
   const dustMax = state.today.dust_max ?? 4;
   const exchanged = res.exchanged_card_id != null || res.gold_exchanged_card_id != null;
   // 처음 만난 카드는 일일 뽑기와 같은 +3P (REQ-62 ⑯ · E2) — 금액은 서버가 준 값
+  // 받기 = 「+3P 받았어요 · 카드 모음에 1장」, 겹치면 금액 줄 없음 (E2 · v4 #20). 교환 카드 +3P 는 앞에 붙인다
+  const got = res.gained > 0 ? `+${res.gained}P 받았어요 · ` : "";
   $("#spCollect").textContent = res.is_new
-    ? res.gained > 0
-      ? `+${res.gained}P · 새 카드가 카드 모음에 들어왔어요`
-      : "새 카드가 도감에 들어왔어요"
+    ? `${got}카드 모음에 1장`
     : res.gold_new
       ? "✦ 금빛이 됐어요 · 숨은 이야기"
-      : `별가루 +1 (${exchanged ? dustMax : res.dust}/${dustMax})`;
+      : `${got}별가루 +1 (${exchanged ? dustMax : res.dust}/${dustMax})`;
 
   const story = $("#spStory");
   story.hidden = true;
@@ -1467,7 +1689,7 @@ function leaveSpecial() {
   }
   if (state.today.draws.length > 0) {
     const first = state.today.draws[0]; // 오늘의 카드 = 첫 장 (REQ-62 ⑧)
-    renderResult(first.c, first.f, { gained: 0, replay: true });
+    renderResult(first.c, first.f, { gained: 0, replay: true, idx: 0 });
   } else {
     enterDeck();
   }
@@ -1485,7 +1707,7 @@ function showSpecialDetail(kind, period, id) {
       { class: "detail__text" },
       el("div", { class: "exchange__title" }, `✦ ${specialTitle(kind, period)}`),
       el("div", { class: "exchange__name" }, TAROT_DB.cards[id]?.name ?? "—"),
-      el("p", { class: "reading reading--sm" }, (kind === "year" ? S3?.YEAR : S3?.MONTH)?.[id] ?? ""),
+      el("p", { class: "reading--sm" }, (kind === "year" ? S3?.YEAR : S3?.MONTH)?.[id] ?? ""),
     ),
   );
   box.hidden = false;
