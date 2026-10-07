@@ -23,7 +23,7 @@
 import { ApiError } from "../lib/http.js";
 import { SUITE } from "../lib/config.js";
 import { dayKey } from "../lib/time.js";
-import { collectionState, dailyState, pointState, touchUser } from "../lib/suite.js";
+import { collectionState, dailyState, pointState, touchUser, SERVICE_READY } from "../lib/suite.js";
 
 /**
  * 서비스별 준비 상태.
@@ -32,10 +32,11 @@ import { collectionState, dailyState, pointState, touchUser } from "../lib/suite
  * 세 칸이 있다는 것 자체가 이 제품의 약속이기 때문이다. 칸을 지웠다가 다시 넣으면
  * 이용자는 새 서비스가 생긴 줄 알지만 실제로는 처음부터 있던 것이다.
  */
+// 준비 여부는 suite.js `SERVICE_READY` 한 곳 — 서비스 화면의 다음 안내 바와 같은 값이어야 한다
 const SERVICE_META = {
-  tarot: { key: "tarot", icon: "🔮", name: "오늘의 타로", href: "/tarot/", ready: true },
-  saju: { key: "saju", icon: "🌤️", name: "오늘의 사주", href: "/saju/", ready: true },
-  mind: { key: "mind", icon: "🔬", name: "오늘의 선택", href: "/mind/", ready: true },
+  tarot: { key: "tarot", icon: "🔮", name: "오늘의 타로", href: "/tarot/", ready: SERVICE_READY.tarot },
+  saju: { key: "saju", icon: "🌤️", name: "오늘의 사주", href: "/saju/", ready: SERVICE_READY.saju },
+  mind: { key: "mind", icon: "🔬", name: "오늘의 선택", href: "/mind/", ready: SERVICE_READY.mind },
 };
 
 export async function today({ env, userId }) {
@@ -72,6 +73,7 @@ export async function today({ env, userId }) {
     triple: state.progress >= services.length,
     triple_paid: state.triple_paid,
     triple_points: SUITE.POINTS.TRIPLE_DONE,
+    saju_registered: state.saju_registered,
     points,
   };
 }

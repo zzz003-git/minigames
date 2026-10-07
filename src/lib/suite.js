@@ -182,16 +182,32 @@ export async function completeDaily(env, userId, service, itemKey, day = dayKey(
   return { triple, tripleGained, done };
 }
 
-/** 허브·크로스 칩이 쓰는 오늘 진행 상태 */
+/**
+ * 서비스 준비 여부 — 허브(`/api/today` services[].ready)와 세 서비스의 다음 안내 바가 같은 값을 본다.
+ * 준비 중인 서비스는 「다음」 으로 고르지 않는다(NEXTBAR v5).
+ */
+export const SERVICE_READY = { tarot: true, saju: true, mind: true };
+
+/** 허브·다음 안내 바가 쓰는 오늘 진행 상태 */
 export async function dailyState(env, userId, day = dayKey()) {
-  const row = await env.DB.prepare(
-    `SELECT tarot_done, saju_done, mind_done, tarot_key, saju_key, mind_key, triple_paid
-       FROM suite_daily WHERE user_id = ? AND day = ?`,
-  )
-    .bind(userId, day)
-    .first();
+  const [row, user] = await Promise.all([
+    env.DB.prepare(
+      `SELECT tarot_done, saju_done, mind_done, tarot_key, saju_key, mind_key, triple_paid
+         FROM suite_daily WHERE user_id = ? AND day = ?`,
+    )
+      .bind(userId, day)
+      .first(),
+    env.DB.prepare(`SELECT saju_profile IS NOT NULL AS reg FROM suite_user WHERE user_id = ?`)
+      .bind(userId)
+      .first(),
+  ]);
 
   return {
+    // 다음 안내 바(REQ-63 · NEXTBAR v5) — 날짜 재확인·사주 지목 문구·+15P 금액을 서버 값으로
+    day,
+    triple_points: SUITE.POINTS.TRIPLE_DONE,
+    saju_registered: Boolean(user?.reg),
+    ready: SERVICE_READY,
     tarot: { done: Boolean(row?.tarot_done), key: row?.tarot_key ?? null },
     saju: { done: Boolean(row?.saju_done), key: row?.saju_key ?? null },
     mind: { done: Boolean(row?.mind_done), key: row?.mind_key ?? null },

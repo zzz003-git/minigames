@@ -19,6 +19,8 @@ import { $, el, clear, showScreen, toast, renderHeader, setHeaderBadge } from ".
 import { watchAdForReward, renderRewardCard, clearRewardCard } from "../shared/ad.js";
 import { expOfDay } from "./mind-pick.js";
 import { renderSiteNav } from "../shared/sitenav.js";
+import { renderNextStep, hideNextStep } from "../shared/nextstep.js";
+import { bindPairIntro } from "../shared/pairintro.js";
 
 const ARM_DELAY_MS = 400;
 /** 분포가 아직 닫혀 있을 때의 한 줄 — 인원 수를 적지 않는다 (REQ-62 ⑭) */
@@ -78,6 +80,8 @@ $("#mapBackBtn").addEventListener("click", () => showScreen(state.st?.done ? "re
 $("#collBtn").addEventListener("click", showCollection);
 $("#collBackBtn").addEventListener("click", () => showScreen(state.st?.done ? "result" : "home"));
 $("#mindRetryBtn").addEventListener("click", () => boot());
+// 「너를 맞혀볼게」 첫 탭에만 소개 시트 B (REQ-63 공용)
+bindPairIntro($("#pairCta"));
 // 결과에서 홈으로 — 지난 선택 중이었으면 오늘의 선택 흐름으로 되돌린다
 $("#archiveBackBtn").addEventListener("click", () => {
   state.archiveDay = null;
@@ -345,7 +349,7 @@ function renderResult({ exp, typeIdx, res, replay, archiveDay }) {
 
   // 지난 선택 결과 — 오늘의 적립·전국 분포·페어·크로스와 무관하므로 그 자리들을 감춘다
   const isArchive = Boolean(archiveDay);
-  for (const id of ["#adbarStats", "#crossChips", "#pairCta", "#resDist"]) $(id).hidden = isArchive;
+  for (const id of ["#adbarStats", "#nextBlock", "#pairCta", "#resDist"]) $(id).hidden = isArchive;
   // 「← 처음으로」는 늘 보인다 — 홈에 지난 선택 열기·열어 둔 목록이 있는데, 결과에서 갈 길이
   // 없으면 오늘을 마친 뒤(광고를 쓰기 가장 좋은 때) 거기에 닿을 수 없다 (REQ-47)
   $("#archiveBackBtn").hidden = false;
@@ -370,8 +374,16 @@ function renderResult({ exp, typeIdx, res, replay, archiveDay }) {
       : `+${res.gained}P 적립 · 도감 ${state.st.collection.length}칸${res.is_new ? " (새 칸!)" : ""}` +
         (res.portrait_new ? " · 마음 초상 완성!" : "");
 
-  if (!isArchive) {
-    renderCrossChips();
+  // 서비스 사이 이동 = 공용 다음 안내 바 (REQ-63 · 크로스 칩 대체). 지난 선택 결과에는 두지 않는다.
+  // 셋 다 한 뒤에는 「너를 맞혀볼게」 가 이 화면의 주 버튼이라 고정 바를 띄우지 않는다(NEXTBAR v4)
+  if (isArchive) hideNextStep();
+  else {
+    renderNextStep({
+      svc: "mind",
+      suite: state.st.suite,
+      justCompleted: (res?.triple_gained ?? 0) > 0,
+      hasPrimaryAction: !$("#pairCta").hidden,
+    });
     renderStatsAd();
   }
 
@@ -398,26 +410,6 @@ function renderAxisBars(host, axes, goal) {
       ),
     );
   });
-}
-
-function renderCrossChips() {
-  const host = clear($("#crossChips"));
-  const s = state.st.suite ?? {};
-  const chips = [
-    { key: "tarot", href: "/tarot/", icon: "🔮", name: "오늘의 타로" },
-    { key: "saju", href: "/saju/", icon: "🌤️", name: "오늘의 사주" },
-  ];
-  for (const c of chips) {
-    const done = s[c.key]?.done;
-    host.append(
-      el(
-        "a",
-        { class: `crosschip ${done ? "is-done" : ""}`, href: c.href },
-        el("b", {}, `${c.icon} ${c.name}`),
-        done ? "오늘 완료했어요" : "아직 봉인돼 있어요 →",
-      ),
-    );
-  }
 }
 
 function armScreen(name, ms = ARM_DELAY_MS) {

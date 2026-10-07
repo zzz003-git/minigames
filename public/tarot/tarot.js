@@ -19,6 +19,7 @@ import { watchAdForReward, renderRewardCard, clearRewardCard } from "../shared/a
 import { TAROT_DB } from "./tarot-db.js";
 import { renderSiteNav } from "../shared/sitenav.js";
 import { startRitual } from "./tarot-ritual.js";
+import { renderNextStep } from "../shared/nextstep.js";
 
 /** 분포가 아직 닫혀 있을 때의 한 줄 — 인원 수를 적지 않는다 (REQ-62 ⑭) */
 const DIST_SOON = "사람이 더 모이면 열려요";
@@ -684,7 +685,8 @@ function renderResult(cardId, focus, res) {
   else renderExchange(res.exchanged_card_id);
 
   setHeaderBadge(`도감 ${coll}/${total}`);
-  renderCrossChips();
+  // 서비스 사이 이동 = 공용 다음 안내 바 (REQ-63 · 크로스 칩 대체)
+  renderNextStep({ svc: "tarot", suite: state.today.suite, justCompleted: (res.triple_gained ?? 0) > 0 });
   renderResultAds();
 
   const note = $("#resNote");
@@ -821,28 +823,6 @@ function armScreen(name, ms = ARM_DELAY_MS) {
   setTimeout(() => {
     screen.style.pointerEvents = "";
   }, ms);
-}
-
-/** 크로스 칩 — 광고가 아니라 **무료 이동**이다. 완료한 서비스로는 다시 유도하지 않는다 */
-function renderCrossChips() {
-  const host = clear($("#crossChips"));
-  const s = state.today.suite ?? {};
-  const chips = [
-    { key: "saju", href: "/saju/", icon: "🌤️", name: "오늘의 사주" },
-    { key: "mind", href: "/mind/", icon: "🔬", name: "오늘의 선택" },
-  ];
-
-  for (const c of chips) {
-    const done = s[c.key]?.done;
-    host.append(
-      el(
-        "a",
-        { class: `crosschip ${done ? "is-done" : ""}`, href: c.href },
-        el("b", {}, `${c.icon} ${c.name}`),
-        done ? "오늘 완료했어요" : "아직 봉인돼 있어요 →",
-      ),
-    );
-  }
 }
 
 function renderResultAds() {

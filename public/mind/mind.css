@@ -74,17 +74,6 @@
 .axisrow__n { font-size: 11px; color: var(--text-faint); text-align: right; font-family: var(--mono); }
 .axisrow.is-full .axisrow__name { color: var(--m-key); }
 
-/* ── 크로스 칩 (SUITE 2.4) ── */
-.crosschips { display: flex; gap: 8px; margin: 4px 0 12px; }
-.crosschip {
-  flex: 1; display: block; padding: 11px 12px;
-  border: 1px solid var(--border-mid); border-radius: 12px;
-  background: var(--well-soft); color: var(--text-sub);
-  font-size: 12.5px; line-height: 1.45; text-decoration: none;
-}
-.crosschip b { display: block; color: var(--text); font-size: 13px; margin-bottom: 2px; }
-.crosschip.is-done { border-color: var(--m-key-dim); color: var(--m-key); }
-
 /* ── 도감 ── */
 .collrows { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
 .collrow { display: flex; align-items: center; gap: 10px; font-size: 13px; }

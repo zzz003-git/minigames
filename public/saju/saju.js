@@ -14,6 +14,7 @@ import { $, el, clear, showScreen, toast, renderHeader, setHeaderBadge } from ".
 import { watchAdForReward, renderRewardCard, clearRewardCard } from "../shared/ad.js";
 import { SAJU_DB } from "./saju-db.js";
 import { renderSiteNav } from "../shared/sitenav.js";
+import { renderNextStep } from "../shared/nextstep.js";
 
 const STEMS = ["갑", "을", "병", "정", "무", "기", "경", "신", "임", "계"];
 const BRANCHES = ["자", "축", "인", "묘", "진", "사", "오", "미", "신", "유", "술", "해"];
@@ -181,7 +182,7 @@ function renderChart() {
   setHeaderBadge(`${c.day_master.name} 일간`);
   $("#chartNote").textContent = `${pick(dm.intro, state.st.day + "dm")} · 도장 ${state.st.stamp_count}/60`;
 
-  renderCross($("#crossChips"));
+  // 명식 화면에서는 다른 서비스로 보내지 않는다 — 오늘 몫을 하기 전 이탈 금지 (REQ-63 hub/IMPL)
   renderProfileLinks();
   showScreen("chart");
 }
@@ -250,7 +251,8 @@ function renderReading(res) {
   const soon = Math.floor(gz / 10);
   $("#rdNote").textContent = `이번 순 ${state.st.soon_done[soon]}/10`;
 
-  renderCross($("#crossChips2"));
+  // 서비스 사이 이동 = 공용 다음 안내 바 (REQ-63 · 크로스 칩 대체)
+  renderNextStep({ svc: "saju", suite: state.st.suite, justCompleted: (res?.triple_gained ?? 0) > 0 });
   renderProfileLinks();
   renderAds();
   showScreen("reading");
@@ -281,22 +283,6 @@ function armScreen(name, ms = ARM_DELAY_MS) {
   if (!s) return;
   s.style.pointerEvents = "none";
   setTimeout(() => { s.style.pointerEvents = ""; }, ms);
-}
-
-function renderCross(host) {
-  clear(host);
-  const s = state.st.suite ?? {};
-  for (const c of [
-    { key: "tarot", href: "/tarot/", icon: "🔮", name: "오늘의 타로" },
-    { key: "mind", href: "/mind/", icon: "🔬", name: "오늘의 선택" },
-  ]) {
-    const done = s[c.key]?.done;
-    host.append(
-      el("a", { class: `crosschip ${done ? "is-done" : ""}`, href: c.href },
-        el("b", {}, `${c.icon} ${c.name}`),
-        done ? "오늘 완료했어요" : "아직 봉인돼 있어요 →"),
-    );
-  }
 }
 
 // ══════════════════════════════════════════════════════════════

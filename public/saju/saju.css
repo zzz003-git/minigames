@@ -83,17 +83,6 @@
 .stampcell.is-got { border-color: var(--s-dim); background: var(--s-surface); color: var(--s-key); }
 .stampcell.is-today { outline: 2px solid var(--s-key); outline-offset: -2px; }
 
-/* ── 크로스 칩 (SUITE 2.4) ── */
-.crosschips { display: flex; gap: 8px; margin: 4px 0 12px; }
-.crosschip {
-  flex: 1; display: block; padding: 11px 12px;
-  border: 1px solid var(--border-mid); border-radius: 12px;
-  background: var(--well-soft); color: var(--text-sub);
-  font-size: 12.5px; line-height: 1.45; text-decoration: none;
-}
-.crosschip b { display: block; color: var(--text); font-size: 13px; margin-bottom: 2px; }
-.crosschip.is-done { border-color: var(--s-dim); color: var(--s-key); }
-
 /* 오락용 고지 — 타로(tarot.css .legal)와 같은 값 (REQ-62 ④) */
 .legal { margin-top: 18px; font-size: 12px; line-height: 1.6; color: var(--text-sub); }
 
