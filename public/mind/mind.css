@@ -85,6 +85,8 @@
   color: var(--m-ink);
   word-break: keep-all;
 }
+/* 사이트바는 공용 모양 그대로 — 본문 글자색(먹색)을 물려받아 로고 글자가 사라지지 않게 */
+.mind-v2 .sitebar { color: var(--text-main); }
 .mind-v2 .app__body { gap: 12px; padding-top: 12px; }
 .mind-v2 .screen { gap: 12px; }
 .mind-v2 .mt-sm { margin-top: 8px; }

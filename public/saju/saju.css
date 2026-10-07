@@ -60,6 +60,13 @@ body.suite--saju {
 }
 /* 이 화면의 부품은 display 를 직접 정하므로 hidden 속성이 지지 않게 */
 .suite--saju [hidden] { display: none !important; }
+/* 사이트바는 공용 모양 그대로 — 본문 글자색(먹색)을 물려받아 로고 글자가 사라지지 않게 */
+.suite--saju .sitebar {
+  /* 이 페이지가 body 에서 바꾼 글자·테두리 토큰을 사이트바 안에서만 base.css 값으로 되돌린다 */
+  --text: #e8ecf4; --text-main: #e8ecf4; --text-sub: #8a97ae;
+  --border-mid: rgba(255, 255, 255, 0.08); --border-strong: rgba(255, 255, 255, 0.12);
+  color: var(--text-main);
+}
 .suite--saju .s-num { font-family: var(--s-f-mono); font-variant-numeric: tabular-nums; }
 .suite--saju .s-han { font-family: var(--s-f-han); font-weight: 900; }
 .suite--saju .screen { gap: 14px; }
