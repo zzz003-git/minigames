@@ -185,8 +185,10 @@ function openInput() {
 function fitInput() {
   const screen = document.querySelector('[data-screen="input"]');
   const r = screen.getBoundingClientRect();
-  const below = document.querySelector(".app").getBoundingClientRect().bottom - r.bottom;
-  screen.style.setProperty("--bb-out", `${Math.round(r.top + scrollY + below)}px`);
+  const app = document.querySelector(".app").getBoundingClientRect();
+  // 숨은 상태에서 재면 0 — 그때는 지난 값(없으면 CSS 대체값 0)을 그대로 둔다
+  if (!r.height || !app.height) return;
+  screen.style.setProperty("--bb-out", `${Math.round(r.top + scrollY + app.bottom - r.bottom)}px`);
   const h = $("#inputHistory");
   h.scrollTop = h.scrollHeight;
 }
