@@ -2,9 +2,9 @@
 
 **이 파일은 손으로 고치지 않습니다.** `node scripts/gen-changelog.mjs` 가 `git log` 에서 만듭니다.
 
-| 기준 커밋 | `5165d01` |
+| 기준 커밋 | `0e019a7` |
 | --- | --- |
-| 커밋 수 | 243개 |
+| 커밋 수 | 266개 |
 
 ## 이 파일이 낡았는지 확인하는 법
 
@@ -29,7 +29,169 @@
 
 ---
 
+## 2026-10-07
+
+### `0e019a7` 스테이징 테스트 띠에 화면 크기 한 줄 — 카톡 안 실제 높이 읽기용 (기획회신 REP-64-65 3절)
+
+- `public/shared/`
+
+### `0971540` 숫자야구 입력판 높이 재기 — 숨은 상태(0) 방어 (test:api 1-b · c5ecd5f 후속)
+> **대조군 영향** — 게임 폴더
+
+- `public/games/baseball/`
+
+### `12955f0` 「전체」 첫 화면 오늘의 나를 원래 목록으로 되돌림 — 게임 아래 어두운 목록 · 결과 도착 한 줄은 유지 (REQ-70)
+
+- `public/index.html`
+- `public/shared/`
+- `scripts/test-hub.mjs`
+
+### `c5ecd5f` 숫자야구 입력판 화면 맞춤 · 충전 카드 기회 0일 때만 · 결과 화면 「광고 보고 한 판 더」 (REQ-67 · REQ-68)
+> **대조군 영향** — 게임 폴더
+
+- `public/games/baseball/ (3)`
+- `public/games/stopwatch/`
+- `public/games/stretch/`
+- `public/shared/`
+
+### `d043417` 기획 회신 반영 — 선택 DB v2.3(받는 사람 문항 tMe) · 보낸 링크 목록 안내 한 줄 · 첫 화면 「셋 다 하면 +15P」 (REQ-65 후속)
+
+- `public/mind/ (2)`
+- `public/pair/`
+- `public/shared/`
+
+### `6639aff` 오늘의 나 3종 배경음악 연결 — 타로·선택·사주
+
+- `public/mind/ (2)`
+- `public/saju/ (2)`
+- `public/shared/`
+- `public/tarot/ (2)`
+
+### `610f4e7` 「전체」 첫 화면 — 오늘의 나 축소판을 게임 위로 · 결과 도착 한 줄 (REQ-65 묶음 3)
+
+- `public/index.html`
+- `public/shared/ (2)`
+- `public/today/`
+- `scripts/test-hub.mjs`
+
+### `1847acc` 너를 맞혀볼게 화면 개편 — 보내는 쪽 8화면 · 받는 쪽 5화면 (REQ-65 묶음 2)
+
+- `public/og/`
+- `public/p/ (2)`
+- `public/pair/ (4)`
+- `scripts/test-pair-ui.mjs`
+
+### `6c06b63` 너를 맞혀볼게 — 자기 응답 차단·30일 정리 Cron·보낸 사람 결과·도착 알림 (REQ-65 묶음 0·1)
+> **대조군 영향** — 게임 설정
+
+- `migrations/0031_pair_owner_seen.sql`
+- `public/p/`
+- `scripts/test-api.mjs`
+- `src/index.js`
+- `src/lib/ (2)`
+- `src/services/ (2)`
+
+### `d82e911` 게임 31종 배경음악 연결 — 첫 탭에 재생, 상단 바 소리 버튼
+> **대조군 영향** — 게임 폴더
+
+- `public/games/balance/ (2)`
+- `public/games/baseball/ (2)`
+- `public/games/basket/ (2)`
+- `public/games/cardpair/ (2)`
+- `public/games/clover/ (2)`
+- `public/games/countdot/ (2)`
+- `public/games/detective/ (2)`
+- `public/games/dropcatch/ (2)`
+- … 외 24곳
+
+### `0b47c14` 오늘의 나 v2 보완 (REQ-66)
+
+- `public/mind/ (4)`
+- `public/saju/ (2)`
+- `public/shared/`
+- `public/tarot/ (3)`
+- `scripts/test-saju.mjs`
+- `scripts/test-tarot.mjs`
+- `src/services/ (2)`
+
+### `19bdabb` 다음 안내 바를 눌러도 이동하지 않던 것 수정 (REQ-63 묶음 1 후속)
+
+- `public/shared/`
+
+### `acb0ff9` 사주 「생일 정보 고치기null」·내 글자 화면 빈칸 수정 (REQ-63 묶음 4 후속)
+
+- `public/mind/`
+- `public/saju/ (3)`
+
+### `94b8422` 타로 금빛 카드 세로 검은 줄 수정 (REQ-63 묶음 2 후속)
+
+- `public/tarot/`
+
+### `92ff461` 오늘의 나 v2 묶음 5 — 허브 화면 (REQ-63)
+
+- `public/index.html`
+- `public/shared/`
+- `public/today/ (3)`
+- `scripts/test-hub.mjs`
+- `src/services/`
+
+### `5b6e78f` 오늘의 나 v2 — 선택·사주 사이트바 글자색을 공용 값으로 (REQ-63)
+
+- `public/mind/`
+- `public/saju/`
+
+### `de48cd7` 오늘의 나 v2 묶음 4 — 사주 화면 (REQ-63)
+
+- `public/saju/ (3)`
+- `public/shared/`
+- `scripts/test-saju.mjs`
+- `src/services/`
+
+### `17af604` 오늘의 나 v2 묶음 3 — 선택 화면 (REQ-63)
+
+- `public/mind/ (3)`
+- `scripts/test-mind-archive.mjs`
+- `src/services/`
+
+### `68e77e9` 오늘의 나 v2 묶음 2 — 타로 화면 (REQ-63)
+
+- `public/tarot/ (4)`
+- `scripts/test-tarot.mjs`
+- `src/services/`
+
+### `7d8fedf` 오늘의 나 v2 — 적립 내역 gain_detail (REQ-63 v4 공통)
+
+- `src/lib/`
+- `src/services/ (3)`
+
+### `88cb116` 오늘의 나 v2 묶음 1 — 공용 다음 안내 바 (REQ-63)
+
+- `public/mind/ (3)`
+- `public/saju/ (3)`
+- `public/shared/ (3)`
+- `public/tarot/ (3)`
+- `scripts/test-nextstep.mjs`
+- `src/lib/`
+- `src/services/`
+
+### `ce3fc48` 오늘의 나 — 현행 결함 수정 (REQ-62)
+
+- `migrations/0030_mind_axes_nonneg.sql`
+- `public/mind/ (3)`
+- `public/saju/ (3)`
+- `public/shared/ (2)`
+- `public/tarot/ (2)`
+- `scripts/test-api.mjs`
+- `scripts/test-mind-archive.mjs`
+- `scripts/test-saju.mjs`
+- … 외 4곳
+
 ## 2026-10-06
+
+### `c0a5ee2` docs: CHANGELOG 재생성 (기준 5165d01)
+> **대조군 영향** — 게임 문서
+
+- `docs/CHANGELOG.md`
 
 ### `5165d01` 오늘의 전국 게이지 — 게임별 디자인 「모두의 온도계」 (REQ-56 §3-3 · REQ-60)
 > **대조군 영향** — 게임 폴더
