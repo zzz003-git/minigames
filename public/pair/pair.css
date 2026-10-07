@@ -1,111 +1,152 @@
 /**
- * 🔗 너를 맞혀볼게 — 발급 화면 전용
+ * 🔗 너를 맞혀볼게 v2 — 보내는 쪽 /pair/ · 받는 쪽 /p/ 공용 (REQ-65 묶음 2 · 시안 mock/pair/theme.css)
  *
- * 오늘의 선택과 같은 청록 팔레트를 쓴다(`suite--mind`). 페어는 그 서비스의 확장이지
- * 별개 서비스가 아니라서, 색이 갈리면 오히려 새 서비스처럼 보인다.
+ * 오늘의 선택 v2 를 잇는다: 청록 바탕 · 크림 면 · 귤노랑 주 버튼 · Gugi 제목 · 겹친 두 원(「둘」).
+ * 범위는 `body.pair-v2` 안, 이름은 모두 `pr-` 접두 — base.css 의 게임용 이름(.chart .pillar .stage …)과
+ * 겹치지 않게. 청록 위 글자는 큰 흰 제목만, 본문·고지·보조 버튼은 크림 면 위.
  */
-
-/* ── 관계 고르기 ── */
-.relgrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 10px;
-  margin: 10px 0 16px;
-}
-.relcard {
-  display: flex; flex-direction: column; align-items: center; gap: 8px;
-  padding: 20px 14px; border-radius: 20px;
-  background: var(--m-surface);
-  border: 1px solid var(--m-line);
-  color: inherit; cursor: pointer;
-  transition: border-color var(--t), background var(--t);
-}
-.relcard:hover { border-color: var(--m-key); background: rgba(127, 216, 192, 0.08); }
-.relcard:active { transform: scale(0.985); }
-.relcard:focus-visible { outline: 2px solid var(--m-key); outline-offset: 2px; }
-.relcard__icon { font-size: 26px; }
-.relcard b { font-size: 15px; }
-
-/* ── 문항 ── */
-.qhead { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
-.qhead__rel { margin-left: auto; font-size: 12.5px; color: var(--m-key); }
-
-.qtext {
-  margin: 0 0 14px;
-  font-size: 17px; font-weight: 700; line-height: 1.5;
+.pair-v2 {
+  --m-teal: #2A8F80; --m-teal-edge: #237A6D; --m-teal-deep: #1D6156;
+  --m-cream: #FFF8E7; --m-cream-2: #F5EBD3;
+  --m-yellow: #FFD24A; --m-yellow-dk: #E0AE1E; --m-orange: #E2572B;
+  --m-ink: #0E2B28; --m-ink-2: #4A6461;
+  --m-hair: rgba(14, 43, 40, .14); --m-hair-2: rgba(14, 43, 40, .28);
+  --m-f-title: "Gugi", "Noto Sans KR", sans-serif;
+  background: radial-gradient(130% 80% at 50% 38%, var(--m-teal) 55%, var(--m-teal-edge) 100%) fixed var(--m-teal);
+  color: var(--m-ink);
   word-break: keep-all;
 }
+/* 사이트바는 공용 모양 그대로 — 본문 글자색(먹색)을 물려받아 로고 글자가 사라지지 않게 */
+.pair-v2 .sitebar { color: var(--text-main); }
+.pair-v2 .app__body { gap: 12px; padding-top: 12px; }
+.pair-v2 .screen { gap: 12px; }
+.pair-v2 [hidden] { display: none !important; }
+.pair-v2 button { font: inherit; }
 
-.qgroup { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+/* 상단바 — 크림 면 · Gugi 제목 · 「둘이 하는 놀이」 칩 */
+.pair-v2 .topbar { background: var(--m-cream); border: 0; box-shadow: 0 6px 16px -10px rgba(0, 0, 0, .35); color: var(--m-ink); }
+.pair-v2 .topbar__back { background: var(--m-cream-2); color: var(--m-ink); font-size: 20px; }
+.pair-v2 .topbar__icon { width: 28px; height: 24px; flex: none; }
+.pair-v2 .topbar__title { font: 400 19px/1.2 var(--m-f-title); color: var(--m-ink); }
+.pr-chip { margin-left: auto; flex: none; padding: 4px 10px; border-radius: 999px; background: var(--m-teal-deep); color: #fff; font: 700 12.5px/1.2 var(--sans); white-space: nowrap; }
 
-.qopt, .qreason {
-  text-align: left; padding: 14px 15px; border-radius: 16px;
-  background: var(--surface-2); border: 1px solid var(--border);
-  color: inherit; cursor: pointer; line-height: 1.45;
-  word-break: keep-all;
-  transition: border-color var(--t), background var(--t);
-}
-.qopt { font-size: 14.5px; }
-.qreason { font-size: 13px; color: var(--text-2); padding: 11px 14px; border-radius: 14px; }
+/* 받는 사람 단독 머리 — 이동 없음 */
+.pr-solo { display: flex; align-items: center; gap: 8px; margin: 12px 0 0; padding: 7px 12px; border-radius: 999px; background: var(--m-cream); width: max-content; max-width: 100%; }
+.pr-solo svg { width: 22px; height: 22px; flex: none; }
+.pr-solo span { font-size: 12.5px; font-weight: 700; }
+.pr-solo small { font-weight: 500; color: var(--m-ink-2); }
 
-.qopt:hover, .qreason:hover { border-color: rgba(127, 216, 192, 0.4); }
-.qopt.is-on, .qreason.is-on {
-  border-color: var(--m-key);
-  background: rgba(127, 216, 192, 0.1);
-  color: var(--text-main);
-}
-.qopt:focus-visible, .qreason:focus-visible { outline: 2px solid var(--m-key); outline-offset: 2px; }
+/* 크림 면 · 청록 위 큰 글자 */
+.pr-panel { background: var(--m-cream); border-radius: 24px; padding: 16px; box-shadow: 0 10px 24px -14px rgba(0, 0, 0, .45); }
+.pr-hair { height: 1px; background: var(--m-hair); margin: 14px 0; }
+.pr-onteal { margin: 0; color: #fff; font: 400 26px/1.25 var(--m-f-title); letter-spacing: .01em; text-align: center; text-shadow: 0 1px 0 rgba(0, 0, 0, .12); }
+.pr-onteal--sm { font-size: 24px; }
+.pr-onteal-b { margin: 6px 0 0 4px; color: #fff; font: 700 19px/1.35 var(--sans); letter-spacing: -.02em; }
+.pr-hero { text-align: center; }
+.pr-hero .pr-onteal { margin-top: 10px; }
+.pr-duo { display: block; margin: 0 auto; filter: drop-shadow(0 10px 14px rgba(8, 40, 35, .4)); }
+.pr-ptitle { margin: 0 0 10px; font-size: 13px; font-weight: 700; color: var(--m-teal-deep); }
 
-/* ── 링크 ── */
-.linkbox {
-  display: flex; align-items: center; gap: 8px;
-  padding: 12px 14px; border-radius: 16px;
-  background: var(--well); border: 1px solid var(--border-mid);
-  margin: 12px 0;
-}
-.linkbox__url {
-  flex: 1; min-width: 0;
-  font-family: var(--mono); font-size: 12px; color: var(--text-2);
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  /* 클립보드가 막힌 브라우저에서는 이 주소를 손으로 골라야 한다 */
-  -webkit-user-select: text; user-select: text;
-}
-.btn--sm { width: auto; padding: 8px 14px; font-size: 13px; flex: 0 0 auto; }
-.btn--ghost { background: transparent; border: 1px solid var(--border-mid); color: var(--text-2); }
+/* 버튼 */
+.pr-main { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: 56px; border: 0; border-radius: 999px; background: var(--m-yellow); color: var(--m-ink); font: 700 17px/1.2 var(--sans); letter-spacing: -.02em; text-decoration: none; cursor: pointer; box-shadow: 0 3px 0 var(--m-yellow-dk), 0 10px 18px -10px rgba(0, 0, 0, .45); }
+.pr-main:disabled { opacity: .5; cursor: default; }
+.pr-soft { display: flex; align-items: center; justify-content: center; width: 100%; min-height: 48px; border: 0; border-radius: 999px; background: var(--m-cream); color: var(--m-ink); font: 700 15px/1.2 var(--sans); text-decoration: none; cursor: pointer; box-shadow: 0 3px 10px -8px rgba(0, 0, 0, .45); }
+.pr-line { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 0 16px; border-radius: 999px; border: 1.5px solid var(--m-hair-2); background: transparent; color: var(--m-ink); font: 700 14px/1 var(--sans); cursor: pointer; }
 
-/* ── 보낸 링크 ── */
-/* 항목은 **버튼**이다. 눌러서 링크를 다시 꺼낼 수 있어야 하고, div 로 두면
-   키보드로 닿지 않는다. 그래서 버튼 기본 스타일을 여기서 지운다. */
-.minerow {
-  display: flex; align-items: center; gap: 12px;
-  width: 100%; text-align: left; font: inherit; color: inherit; cursor: pointer;
-  padding: 14px; border-radius: 18px; margin-bottom: 8px;
-  background: var(--surface-2); border: 1px solid var(--border);
-  transition: 0.15s;
-}
-.minerow:hover { background: var(--surface-3, rgba(255, 255, 255, 0.05)); }
-.minerow:active { transform: scale(0.99); }
-.minerow__icon { font-size: 20px; }
-.minerow__text { display: flex; flex-direction: column; gap: 2px; margin-right: auto; min-width: 0; }
-.minerow__text b { font-size: 14px; }
-.minerow__text span { font-size: 12px; color: var(--text-sub); }
-/* 보낸 시각·남은 시간 — 본문보다 한 단 낮춰 읽는 순서를 정한다 */
-.minerow__meta { font-size: 11px !important; color: var(--text-dim) !important; }
-.minerow__status { font-size: 11.5px; font-weight: 700; color: var(--text-dim); }
-/* 누를 수 있다는 표시. 이게 없어서 「탭해도 아무 동작 없음」으로 읽혔다 */
-.minerow__go { font-size: 18px; color: var(--text-dim); margin-left: 2px; }
-.minerow.is-done { border-color: var(--m-line); }
-.minerow.is-done .minerow__status { color: var(--m-key); }
-.minerow.is-old { opacity: 0.55; }
+/* 놀이 3단계 · 정보 줄 */
+.pr-steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.pr-steps li { display: flex; gap: 10px; align-items: flex-start; font-size: 14.5px; line-height: 1.45; }
+.pr-steps__n { flex: none; width: 24px; height: 24px; border-radius: 50%; background: var(--m-teal-deep); color: #fff; display: grid; place-items: center; font: 700 12.5px/1 var(--mono); }
+.pr-steps li.is-now .pr-steps__n { background: var(--m-yellow); color: var(--m-ink); box-shadow: inset 0 0 0 1.5px var(--m-orange); }
+.pr-steps small, .pr-fact small { display: block; font-size: 12.5px; color: var(--m-ink-2); }
+.pr-fact { display: flex; gap: 10px; align-items: flex-start; margin: 0; font-size: 14px; line-height: 1.5; }
+.pr-fact + .pr-fact { margin-top: 8px; }
+.pr-fact__ico { flex: none; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; background: var(--m-cream-2); font-size: 12px; font-weight: 700; margin-top: 1px; }
+.pr-fact__ico--ok { background: var(--m-teal-deep); color: #fff; }
+.pr-fact b { font-weight: 700; }
 
-/* 심리 콘텐츠 접점 공통 표기 — 어느 화면에 있든 늘 보인다 */
-.pairlegal {
-  margin: 18px auto 26px; padding: 0 16px;
-  max-width: 560px; text-align: center;
-  font-size: 11px; color: var(--text-dim);
-}
+/* 관계 2×2 */
+.pr-relgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.pr-rel { display: flex; align-items: center; gap: 10px; min-height: 68px; padding: 0 16px; border: 0; border-radius: 999px; background: var(--m-cream); color: var(--m-ink); font: 700 18px/1 var(--sans); text-align: left; cursor: pointer; box-shadow: 0 4px 12px -8px rgba(0, 0, 0, .45); }
+.pr-rel:disabled { opacity: .5; cursor: default; }
+.pr-rel__icon { font-size: 24px; line-height: 1; }
+.pr-rel__go { margin-left: auto; font-size: 18px; color: var(--m-ink-2); }
 
-.linklike {
-  background: none; border: 0; padding: 0;
-  color: var(--m-key); font-size: 12.5px; text-decoration: underline; cursor: pointer;
-}
+/* 줄 링크 · 배지 */
+.pr-row { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 64px; padding: 8px 4px; border: 0; background: none; color: var(--m-ink); text-align: left; text-decoration: none; cursor: pointer; }
+.pr-row + .pr-row { border-top: 1px solid var(--m-hair); }
+.pr-row.is-old { opacity: .6; }
+.pr-row__icon { font-size: 22px; flex: none; }
+.pr-row__text { flex: 1; min-width: 0; }
+.pr-row__text b { display: block; font-size: 15px; }
+.pr-row__text span { display: block; font-size: 12.5px; color: var(--m-ink-2); }
+.pr-chev { flex: none; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; background: var(--m-cream-2); font-size: 18px; line-height: 1; padding-bottom: 2px; }
+.pr-badge { flex: none; padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; background: var(--m-yellow); box-shadow: inset 0 0 0 1.5px var(--m-orange); }
+
+/* 진행 원판(3칸) */
+.pr-prog { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 20px; }
+.pr-prog__disc { position: relative; width: 52px; height: 52px; flex: none; }
+.pr-prog__disc svg { position: absolute; inset: 0; }
+.pr-prog__disc span { position: absolute; inset: 0; display: grid; place-items: center; font: 700 13px/1 var(--mono); }
+.pr-prog__text { flex: 1; min-width: 0; }
+.pr-prog__text b { display: block; font-size: 15px; line-height: 1.3; }
+.pr-prog__text span { display: block; font-size: 12.5px; color: var(--m-ink-2); line-height: 1.4; }
+.pr-prog .pr-line { padding: 0 14px; font-size: 13.5px; min-height: 40px; }
+
+/* 문항 · 선택지 · 근거 */
+.pr-qchip { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 12px 0 8px; margin-left: 4px; border-radius: 999px; background: var(--m-cream); font-size: 13.5px; font-weight: 700; width: max-content; }
+.pr-qtext { margin: 0 4px; font: 700 22px/1.4 var(--sans); letter-spacing: -.03em; color: #fff; }
+.pr-opts { display: flex; flex-direction: column; gap: 9px; }
+.pr-pill { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 54px; padding: 8px 18px 8px 20px; border-radius: 999px; border: 0; background: var(--m-cream); color: var(--m-ink); font: 500 15.5px/1.3 var(--sans); text-align: left; cursor: pointer; box-shadow: 0 4px 12px -8px rgba(0, 0, 0, .45); }
+.pr-pill__mark { margin-left: auto; flex: none; width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--m-hair-2); }
+.pr-pill.is-sel { background: var(--m-yellow); box-shadow: inset 0 0 0 2px var(--m-orange); }
+.pr-pill.is-sel .pr-pill__mark { border-color: var(--m-ink); background: radial-gradient(circle, var(--m-ink) 0 4px, transparent 5px); }
+.pr-pill:disabled { cursor: default; }
+.pr-picked { display: flex; align-items: center; gap: 10px; padding: 10px 10px 10px 14px; border-radius: 18px; background: var(--m-yellow); box-shadow: inset 0 0 0 2px var(--m-orange); }
+.pr-picked__text { flex: 1; min-width: 0; font-size: 14.5px; font-weight: 700; line-height: 1.35; }
+.pr-picked__text small { display: block; font-size: 12px; font-weight: 500; }
+.pr-picked .pr-line { min-height: 36px; padding: 0 12px; font-size: 13px; background: var(--m-cream); border-color: transparent; }
+.pr-reasons { display: flex; flex-direction: column; gap: 12px; }
+.pr-reason { display: flex; align-items: center; width: 100%; min-height: 50px; padding: 0 18px; border: 0; border-radius: 16px; background: var(--m-cream); color: var(--m-ink); font: 500 15px/1.3 var(--sans); text-align: left; cursor: pointer; box-shadow: 0 3px 10px -8px rgba(0, 0, 0, .45); }
+.pr-reason.is-sel { background: var(--m-yellow); box-shadow: inset 0 0 0 2px var(--m-orange); }
+
+/* 링크 주소 · 말풍선 미리보기 */
+.pr-url { display: flex; align-items: center; gap: 8px; padding: 8px 8px 8px 14px; border-radius: 16px; background: var(--m-cream-2); }
+.pr-url code { flex: 1; min-width: 0; font: 500 12.5px/1.3 var(--mono); color: var(--m-ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; -webkit-user-select: text; user-select: text; }
+.pr-url .pr-line { min-height: 38px; padding: 0 14px; font-size: 13px; background: var(--m-cream); }
+.pr-bubble { margin: 0 0 0 6px; padding: 12px 14px; border-radius: 4px 18px 18px 18px; background: #fff; font-size: 14.5px; line-height: 1.5; box-shadow: 0 2px 8px -6px rgba(0, 0, 0, .4); }
+.pr-bubble__link { margin-top: 8px; padding: 10px 12px; border-radius: 12px; background: var(--m-cream-2); font-size: 13px; line-height: 1.4; }
+.pr-bubble__link b { display: block; font-size: 14px; }
+.pr-bubble__link span { color: var(--m-ink-2); }
+
+/* 지수 원판 */
+.pr-gauge { position: relative; width: 196px; height: 196px; margin: 4px auto 0; }
+.pr-gauge svg { position: absolute; inset: 0; filter: drop-shadow(0 12px 18px rgba(8, 40, 35, .45)); }
+.pr-gauge__in { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+.pr-gauge__kicker { font-size: 12.5px; font-weight: 700; color: var(--m-ink-2); }
+.pr-gauge__pct { font: 400 50px/1 var(--m-f-title); margin-top: 4px; letter-spacing: -.02em; }
+.pr-gauge__pct small { font-size: 26px; }
+.pr-gauge__sub { margin: -14px 0 0; text-align: center; position: relative; }
+.pr-gauge__sub span { display: inline-block; padding: 6px 14px; border-radius: 999px; background: var(--m-cream); font-size: 14px; font-weight: 700; box-shadow: 0 4px 10px -8px rgba(0, 0, 0, .4); }
+.pr-mean { margin: 0 auto; width: max-content; max-width: 100%; padding: 5px 12px; border-radius: 999px; background: rgba(255, 248, 231, .94); font-size: 12.5px; line-height: 1.4; color: var(--m-ink-2); text-align: center; }
+
+/* 문항별 결과 */
+.pr-chemi { margin: 0; font-size: 15px; line-height: 1.6; font-weight: 500; }
+.pr-qres { padding: 12px 0; }
+.pr-qres + .pr-qres { border-top: 1px solid var(--m-hair); }
+.pr-qres__head { display: flex; gap: 8px; align-items: flex-start; }
+.pr-qres__mark { flex: none; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 700; margin-top: 1px; }
+.pr-qres__mark--hit { background: var(--m-yellow); box-shadow: inset 0 0 0 1.5px var(--m-orange); }
+.pr-qres__mark--miss { background: var(--m-cream-2); box-shadow: inset 0 0 0 1.5px var(--m-hair-2); }
+.pr-qres__q { margin: 0; font-size: 14px; font-weight: 700; line-height: 1.45; }
+.pr-qres__line { margin: 6px 0 0 32px; font-size: 13.5px; line-height: 1.5; }
+.pr-qres__line span { color: var(--m-ink-2); }
+.pr-qres__more { margin: 8px 0 0 32px; min-height: 36px; padding: 0 14px; font-size: 13px; }
+.pr-psy { margin: 8px 0 0 32px; font-size: 13px; line-height: 1.55; }
+.pr-psy p { margin: 0 0 4px; }
+
+/* 고지 — 청록 위 작은 글자 금지라 크림 띠 */
+.pr-legal { margin: 2px 0 0; padding: 9px 14px; border-radius: 14px; background: rgba(255, 248, 231, .94); font-size: 11.5px; line-height: 1.5; color: var(--m-ink-2); text-align: center; }
+.pr-legal--b { font-size: 13.5px; color: var(--m-ink); font-weight: 700; }
+
+@media (prefers-reduced-motion: reduce) { .pair-v2 * { transition: none !important; animation: none !important; } }

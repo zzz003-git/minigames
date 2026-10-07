@@ -12,117 +12,144 @@
   <link rel="mask-icon" href="/safari-pinned-tab.svg" color="#E07A1F">
   <link rel="manifest" href="/site.webmanifest">
   <title>너를 맞혀볼게</title>
-  <meta name="color-scheme" content="dark">
-  <meta name="theme-color" content="#0F1420">
+  <meta name="color-scheme" content="light">
+  <meta name="theme-color" content="#2A8F80">
   <meta name="description" content="세 문제로 그 사람을 맞혀 보고, 링크를 보내 답을 받아 보세요.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="../shared/base.css">
-  <link rel="stylesheet" href="../mind/mind.css">
-  <link rel="stylesheet" href="pair.css">
+  <link href="https://fonts.googleapis.com/css2?family=Gugi&family=Noto+Sans+KR:wght@400;500;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/shared/base.css">
+  <link rel="stylesheet" href="/pair/pair.css">
 </head>
-<body class="game suite suite--mind">
+<!-- 너를 맞혀볼게 v2 — 보내는 쪽 (REQ-65 묶음 2 · 시안 mock/pair pr1~pr6) -->
+<body class="game suite pair-v2">
   <div id="siteNav"></div>
   <div class="app">
     <header class="topbar" id="header"></header>
 
     <main class="app__body">
-      <!-- ⓪ 잠금 — 오늘의 선택을 마쳐야 열린다 (MIND-SPEC 1절)
-           서버는 이미 막고 있었지만(409) 화면이 3문항을 다 풀게 한 뒤에야
-           막혀서, 들인 시간이 통째로 버려졌다. 들어오는 자리에서 막는다. -->
+      <!-- pr1 잠금 — 오늘의 선택을 한 날에만 링크를 만든다. 결과 보기는 잠기지 않는다(F4) -->
       <section class="screen" data-screen="locked">
-        <div class="card card--info center">
-          <div class="mono-label">LOCKED</div>
-          <h2 class="big">아직 잠겨 있어요</h2>
-          <p class="hint">오늘의 선택을 마치면 열려요.<br>
-            <span class="hint--sub">내 답이 있어야 「맞혀보기」가 성립해요</span></p>
+        <div class="pr-hero" data-duo="lock">
+          <h2 class="pr-onteal">오늘의 선택을 하면<br>열려요</h2>
         </div>
-        <a class="btn btn--pair" href="/mind/">오늘의 선택 먼저 하기</a>
-        <a class="btn btn--ghost" href="/today/">← 오늘의 나로</a>
+        <p class="pr-legal pr-legal--b" id="lockDate">오늘의 선택이 아직이에요 · 매일 0시에 새로 열려요</p>
+        <section class="pr-panel">
+          <p class="pr-ptitle">이런 놀이예요</p>
+          <ol class="pr-steps" data-steps></ol>
+          <div class="pr-hair"></div>
+          <p class="pr-fact"><span class="pr-fact__ico">🔒</span><span>오늘의 선택(심리테스트 4문항)을 한 날에 링크를 만들 수 있어요<small>이름·연락처는 받지 않아요</small></span></p>
+        </section>
+        <a class="pr-main" href="/mind/">오늘의 선택 먼저 하기</a>
+        <button class="pr-soft" id="lockMine" type="button" hidden>도착한 결과 보기</button>
       </section>
 
-      <!-- ① 관계 고르기 -->
+      <!-- pr2 관계 고르기 -->
       <section class="screen" data-screen="relation">
-        <div class="card card--info center">
-          <div class="mono-label">PAIR</div>
-          <h2 class="big">너를 맞혀볼게</h2>
-          <p class="hint">세 문제로 그 사람을 맞혀 보고, 링크를 보내 답을 받아 봐요.<br>
-            <span class="hint--sub">응답한 사람은 계정 없이 바로 답할 수 있어요</span></p>
-        </div>
-
-        <p class="hint center">누구를 맞혀 볼까요?</p>
-        <nav class="relgrid" id="relGrid" aria-label="관계 고르기"></nav>
-
-        <p class="footnote--dim center" id="relNote">&nbsp;</p>
+        <h2 class="pr-onteal">누구를 맞혀 볼까요?</h2>
+        <nav class="pr-relgrid" id="relGrid" aria-label="관계 고르기"></nav>
+        <section class="pr-panel">
+          <ol class="pr-steps" data-steps data-now="1"></ol>
+          <div class="pr-hair"></div>
+          <p class="pr-fact"><span class="pr-fact__ico">🔗</span><span id="relNote"><b>오늘 보낼 수 있는 링크를 확인하고 있어요</b></span></p>
+          <p class="pr-fact" id="relPoints" hidden></p>
+        </section>
+        <section class="pr-panel" style="padding:4px 14px" id="mineBox" hidden>
+          <button class="pr-row" type="button" id="mineRow"></button>
+        </section>
       </section>
 
-      <!-- ② 세 문제 추측 -->
+      <!-- pr3 / pr3b 추측 — 같은 화면 안에서 답(pick) → 근거(reason) 단계 -->
       <section class="screen" data-screen="quiz">
-        <div class="qhead">
-          <span class="mono-label" id="qStep">1 / 3</span>
-          <span class="qhead__rel" id="qRel"></span>
+        <div class="pr-panel pr-prog">
+          <div class="pr-prog__disc" aria-hidden="true"><svg id="qDial" viewBox="-26 -26 52 52" width="52" height="52"></svg><span id="qStep">1/3</span></div>
+          <div class="pr-prog__text"><b id="qOrd">3문항 중 1번째</b><span id="qGuide">그 사람이 고를 것 같은 답을 눌러요</span></div>
+          <button class="pr-line" type="button" id="qPrev" hidden>‹ 이전</button>
         </div>
-        <p class="qtext" id="qText"></p>
-
-        <div class="qgroup" id="qOpts" role="radiogroup" aria-label="그 사람의 선택 추측"></div>
-
-        <p class="hint" id="qReasonHint" hidden>왜 그렇게 생각했나요?</p>
-        <div class="qgroup qgroup--reason" id="qReasons" role="radiogroup" aria-label="추측 근거" hidden></div>
-
-        <button class="btn" id="qNext" disabled>다음</button>
-        <p class="footnote--dim center">근거까지 골라야 다음으로 넘어가요</p>
+        <div id="qPickBox">
+          <span class="pr-qchip" id="qRel"></span>
+          <h2 class="pr-qtext" id="qText" style="margin-top:10px"></h2>
+          <div class="pr-opts" id="qOpts" role="radiogroup" aria-label="그 사람의 선택 추측" style="margin-top:16px"></div>
+        </div>
+        <div id="qReasonBox" hidden>
+          <div class="pr-picked" id="qPicked"><span class="pr-picked__text" id="qPickedText"></span><button class="pr-line" type="button" id="qRepick">바꾸기</button></div>
+          <h2 class="pr-onteal-b" id="qReasonHint">왜 그렇게 생각했나요?</h2>
+          <div class="pr-reasons" id="qReasons" role="radiogroup" aria-label="추측 근거" style="margin-top:12px"></div>
+          <p class="pr-legal" id="qEcho" style="text-align:left;margin-top:12px"></p>
+          <p class="pr-legal" id="qLastNote" style="margin-top:12px" hidden>링크를 만들면 오늘 남은 링크가 하나 줄어요</p>
+          <button class="pr-main" id="qNext" type="button" style="margin-top:12px" hidden>링크 만들기</button>
+        </div>
       </section>
 
-      <!-- ③ 링크 -->
+      <!-- pr4 링크 -->
       <section class="screen" data-screen="link">
-        <div class="card card--info center">
-          <div class="mono-label">LINK READY</div>
-          <h2 class="big">링크가 만들어졌어요</h2>
-          <p class="hint" id="linkNote"></p>
+        <div class="pr-hero" data-duo="check">
+          <h2 class="pr-onteal pr-onteal--sm">링크가 만들어졌어요</h2>
         </div>
-
-        <div class="linkbox">
-          <code class="linkbox__url" id="linkUrl"></code>
-          <button class="btn btn--sm" id="copyBtn">복사</button>
-        </div>
-        <button class="btn" id="shareBtn">공유하기</button>
-        <p class="footnote--dim center">내 추측은 상대에게 보이지 않아요 — 답을 받은 뒤에 함께 열려요</p>
-        <!-- 지금 복사하지 않아도 된다는 것을 여기서 말한다. 이 한 줄이 없어서
-             「지금 안 하면 잃는다」로 읽혔다(검수 1번). -->
-        <p class="footnote--dim center">이 링크는 「보낸 링크」에서 언제든 다시 복사할 수 있어요</p>
-
-        <a class="btn btn--ghost" href="/today/">← 오늘의 나로</a>
+        <section class="pr-panel">
+          <p class="pr-ptitle">그 사람에게는 이렇게 가요</p>
+          <div class="pr-bubble">내가 너를 얼마나 아는지 맞혀 봤어. 답해 줄래?
+            <div class="pr-bubble__link"><b>당신의 답을 맞혀 봤어요 — 너를 맞혀볼게</b><span>3문항 · 이름·연락처·가입 없이 답해요</span></div></div>
+          <button class="pr-main" id="shareBtn" type="button" style="margin-top:16px">링크 보내기 (카톡·문자)</button>
+          <div class="pr-url" style="margin-top:12px"><code id="linkUrl"></code><button class="pr-line" type="button" id="copyBtn">복사</button></div>
+          <div class="pr-hair"></div>
+          <p class="pr-fact"><span class="pr-fact__ico">⏳</span><span id="linkNote"></span></p>
+          <p class="pr-fact"><span class="pr-fact__ico">🔔</span><span><b>답이 오면 「오늘의 나」 맨 위에 떠요</b><small>「전체」 첫 화면에도 한 줄 떠요 · 휴대폰 알림은 오지 않아요 · 이 링크는 「보낸 링크」에서 다시 보낼 수 있어요</small></span></p>
+        </section>
+        <a class="pr-soft" href="/today/">오늘의 나로</a>
       </section>
 
-      <!-- 내가 보낸 링크 -->
+      <!-- pr5 보낸 링크 -->
       <section class="screen" data-screen="mine">
-        <h2 class="big center">보낸 링크</h2>
-        <div id="mineList"></div>
-        <button class="btn" id="mineBack">돌아가기</button>
+        <h2 class="pr-onteal">보낸 링크</h2>
+        <section class="pr-panel" style="padding:6px 14px 10px"><div id="mineList"></div></section>
+        <button class="pr-main" id="mineMain" type="button" hidden></button>
+        <section class="pr-panel">
+          <p class="pr-fact"><span class="pr-fact__ico">📮</span><span id="mineKeep"></span></p>
+          <p class="pr-fact" id="minePoints" hidden></p>
+        </section>
+        <button class="pr-soft" id="mineBack" type="button">새로 맞혀 보기</button>
       </section>
 
-      <!-- 보낸 링크 다시 보내기 — 목록에서 「기다리는 중」을 눌렀을 때 -->
+      <!-- pr5b 결과 보기 (신규) — /pair/?view={token} -->
+      <section class="screen" data-screen="view">
+        <h2 class="pr-onteal pr-onteal--sm" id="viewTitle">답이 왔어요</h2>
+        <div class="pr-gauge" id="pctGauge">
+          <svg viewBox="-96 -96 192 192" aria-hidden="true"><circle r="94" fill="#FFF8E7"/><circle r="70" fill="none" stroke="#0E2B28" stroke-opacity=".1" stroke-width="16"/><path id="pctArc" d="" fill="none" stroke="#FFD24A" stroke-width="16"/><circle r="79" fill="none" stroke="#E2572B" stroke-width="1.2" stroke-opacity=".7"/></svg>
+          <div class="pr-gauge__in"><span class="pr-gauge__kicker">서로 알기</span><span class="pr-gauge__pct" id="pctValue">—</span></div>
+        </div>
+        <p class="pr-gauge__sub"><span id="pctSub2"></span></p>
+        <p class="pr-mean">서로 알기 = 맞힌 문항 비율 · 점수·순위가 아니에요</p>
+        <section class="pr-panel">
+          <p class="pr-chemi" id="pctSub"></p>
+          <div class="pr-hair" style="margin:10px 0 2px"></div>
+          <div id="pairCards"></div>
+        </section>
+        <p class="pr-legal" id="viewDone" hidden></p>
+        <button class="pr-main" id="viewMain" type="button">다른 사람도 맞혀 보기</button>
+      </section>
+
+      <!-- pr6 다시 보내기 -->
       <section class="screen" data-screen="resend">
-        <div class="card card--info center">
-          <div class="mono-label">LINK</div>
-          <h2 class="big" id="resendTitle">보낸 링크</h2>
-          <p class="hint" id="resendNote"></p>
+        <div class="pr-hero" data-duo="clock">
+          <h2 class="pr-onteal pr-onteal--sm" id="resendTitle">보낸 링크</h2>
         </div>
-
-        <div class="linkbox">
-          <code class="linkbox__url" id="resendUrl"></code>
-          <button class="btn btn--sm" id="resendCopy">복사</button>
-        </div>
-        <button class="btn" id="resendShare">공유하기</button>
-        <button class="btn btn--ghost" id="resendBack">← 보낸 링크로</button>
+        <section class="pr-panel">
+          <p class="pr-fact"><span class="pr-fact__ico">⏳</span><span id="resendNote"></span></p>
+          <button class="pr-main" id="resendShare" type="button" style="margin-top:16px">다시 보내기 (카톡·문자)</button>
+          <div class="pr-url" style="margin-top:12px"><code id="resendUrl"></code><button class="pr-line" type="button" id="resendCopy">복사</button></div>
+          <div class="pr-hair"></div>
+          <p class="pr-fact"><span class="pr-fact__ico">↺</span><span>같은 링크를 다시 보내는 거예요<small>오늘 보낼 수 있는 개수는 줄지 않아요</small></span></p>
+          <p class="pr-fact"><span class="pr-fact__ico">🔔</span><span>답이 오면 「오늘의 나」 맨 위에 떠요<small>「전체」 첫 화면에도 한 줄 · 휴대폰 알림은 오지 않아요</small></span></p>
+        </section>
+        <button class="pr-soft" id="resendBack" type="button">‹ 보낸 링크로</button>
       </section>
-    </main>
 
-    <!-- 심리 콘텐츠 접점 공통 표기 — 허브와 같은 문장을 쓴다 (검수 3번) -->
-    <p class="pairlegal">순위 없음 · 광고 없이도 완결 · 본 콘텐츠는 오락용이며 심리학적 진단이 아닙니다</p>
+      <!-- 심리 콘텐츠 접점 공통 표기 — 허브와 같은 문장 -->
+      <p class="pr-legal">순위 없음 · 광고 없이도 완결 · 본 콘텐츠는 오락용이며 심리학적 진단이 아닙니다</p>
+    </main>
   </div>
 
-  <script type="module" src="pair.js"></script>
+  <script type="module" src="/pair/pair.js"></script>
 </body>
 </html>
