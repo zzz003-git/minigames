@@ -492,13 +492,16 @@ export async function draw({ env, userId, body, request }) {
       grants.push({ key, reason: key, amount: m.p, day });
     }
   }
-  const gained = (await grantMany(env, userId, grants)) + ex.gained;
+  const detail = []; // 적립 내역 (REQ-63 gain_detail)
+  const gained = (await grantMany(env, userId, grants, detail)) + ex.gained;
+  if (ex.gained > 0) detail.push({ kind: "new", src: "exchange", p: ex.gained });
 
   // 허브 갱신·분포·트리플 판정은 **첫 뽑기에서만**. 두 번째 카드로 오늘의 축이
   // 바뀌면 「오늘의 나 한 장」이 뽑을 때마다 달라진다.
   let suiteResult = null;
   if (isFirstDraw) {
     suiteResult = await completeDaily(env, userId, "tarot", cardId, day);
+    if (suiteResult.tripleGained > 0) detail.push({ kind: "triple", p: suiteResult.tripleGained });
   }
 
   const after = await loadDay(env, userId, day);
@@ -516,6 +519,7 @@ export async function draw({ env, userId, body, request }) {
     gold_exchanged_card_id: goldExchangedCardId, // 별가루로 금빛이 된 카드
     gold_count: gold.length,
     gained,
+    gain_detail: detail,
     core_done: isFirstDraw,
     remaining: Math.max(0, allowedDraws(after, afterMeta) - after.draws.length),
     triple: suiteResult?.triple ?? false,
@@ -628,11 +632,13 @@ export async function special({ env, userId, body, request }) {
   }
 
   const { isNew, ex, goldNew, goldExchangedCardId } = await collectCard(env, userId, cardId, day, { via: kind });
+  const detail = [];
   const newGained = isNew
     ? await grantMany(env, userId, [
         { key: `TAROT_NEW:${cardId}`, reason: "TAROT_NEW", amount: SUITE.POINTS.COLLECT_NEW, day },
-      ])
+      ], detail)
     : 0;
+  if (ex.gained > 0) detail.push({ kind: "new", src: "exchange", p: ex.gained });
   const [coll, gold] = await Promise.all([collection(env, userId), goldCards(env, userId)]);
 
   return {
@@ -648,6 +654,7 @@ export async function special({ env, userId, body, request }) {
     gold_exchanged_card_id: goldExchangedCardId,
     gold_count: gold.length,
     gained: newGained + ex.gained,
+    gain_detail: detail,
   };
 }
 

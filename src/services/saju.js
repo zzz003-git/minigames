@@ -363,10 +363,12 @@ export async function today({ env, userId }) {
       day,
     });
   }
-  const gained = await grantMany(env, userId, grants);
+  const detail = []; // 적립 내역 (REQ-63 gain_detail)
+  const gained = await grantMany(env, userId, grants, detail);
 
   // 허브 축은 **십신**이다 — 교차 리딩(십신 10 × 타로 22)의 사주 축
   const suiteResult = await completeDaily(env, userId, "saju", String(god), day);
+  if (suiteResult.tripleGained > 0) detail.push({ kind: "triple", p: suiteResult.tripleGained });
 
   return {
     ganzhi: gz,
@@ -384,6 +386,7 @@ export async function today({ env, userId }) {
     soon,
     soon_count: soonCount,
     gained,
+    gain_detail: detail,
     triple: suiteResult.triple,
     triple_gained: suiteResult.tripleGained,
     suite: await dailyState(env, userId, day),

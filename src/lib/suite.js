@@ -47,13 +47,29 @@ export async function grantPoints(env, userId, { key, reason, amount, day = dayK
   return (res?.meta?.changes ?? 0) > 0;
 }
 
-/** 여러 건을 한 번에. 실제로 지급된 것들의 합계를 돌려준다 */
-export async function grantMany(env, userId, grants) {
+/**
+ * 여러 건을 한 번에. 실제로 지급된 것들의 합계를 돌려준다.
+ *
+ * `detail` 배열을 넘기면 **실제로 지급된 것만** `{kind, p}` 로 쌓는다 — 결과 화면의 적립 내역
+ * (`gain_detail`, REQ-63 v4 공통)이 상수 없이 서버 값으로 그려지게. kind 는 지급 사유에서 정한다.
+ */
+export async function grantMany(env, userId, grants, detail = null) {
   let gained = 0;
   for (const g of grants) {
-    if (await grantPoints(env, userId, g)) gained += Math.round(g.amount);
+    if (await grantPoints(env, userId, g)) {
+      gained += Math.round(g.amount);
+      detail?.push({ kind: gainKind(g.reason), p: Math.round(g.amount) });
+    }
   }
   return gained;
+}
+
+/** 지급 사유 → 내역 종류: 하루 코어(daily) · 새로 모음(new) · 달성 보너스(bonus) · 셋 다(triple) */
+export function gainKind(reason) {
+  if (reason === "TRIPLE_DONE") return "triple";
+  if (/_NEW$/.test(reason)) return "new";
+  if (/^MILESTONE_|_PORTRAIT$/.test(reason)) return "bonus";
+  return "daily";
 }
 
 /** 계정 잔액과 오늘 적립분. 잔액 컬럼을 따로 두지 않는 이유는 마이그레이션 주석 참조 */

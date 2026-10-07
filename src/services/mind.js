@@ -314,7 +314,8 @@ export async function submit({ env, userId, body }) {
     });
   }
 
-  const gained = await grantMany(env, userId, grants);
+  const detail = []; // 적립 내역 (REQ-63 gain_detail)
+  const gained = await grantMany(env, userId, grants, detail);
 
   if (mapComplete && !before.portraitPaid) {
     await env.DB.prepare(
@@ -325,6 +326,7 @@ export async function submit({ env, userId, body }) {
   }
 
   const suiteResult = await completeDaily(env, userId, "mind", `${expId}:${typeIdx}`, day);
+  if (suiteResult.tripleGained > 0) detail.push({ kind: "triple", p: suiteResult.tripleGained });
 
   return {
     type_idx: typeIdx,
@@ -335,6 +337,7 @@ export async function submit({ env, userId, body }) {
     map_complete: mapComplete,
     portrait_new: mapComplete && !before.portraitPaid,
     gained,
+    gain_detail: detail,
     triple: suiteResult.triple,
     triple_gained: suiteResult.tripleGained,
     suite: await dailyState(env, userId, day),
