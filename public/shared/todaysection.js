@@ -84,19 +84,6 @@ export function arrivalInfo(data) {
   };
 }
 
-/**
- * 「전체」 축소판 머리 부제 — 금액은 여기 한 줄에만(home 최종 수정 #1·#4).
- * 시작 전이면 +15P 약속, 그 뒤엔 오늘 받은 포인트(0P 면 약속으로 되돌아감). 약속은 사주를 지목하는
- * 경우(미등록·14세 미만)엔 하지 않는다.
- * @returns {{kind:"promise"|"points", value:number}|null}
- */
-export function homeHeadLine(data) {
-  const promise = !data.triple && triplePromiseOk(data) ? { kind: "promise", value: data.triple_points } : null;
-  if (data.progress === 0) return promise;
-  const pt = Number(data.points?.today ?? 0);
-  return pt > 0 ? { kind: "points", value: pt } : promise;
-}
-
 /** 결과 도착 한 줄 — `/` 는 `td-pair`, `/today/` 는 `hub-arrive`. 소개 시트를 거치지 않는다 */
 function arrivalLine(a, cls) {
   return el(
@@ -108,181 +95,258 @@ function arrivalLine(a, cls) {
   );
 }
 
-/** 「전체」 축소판 진행판 칸 — 아직 안 했고 다음 차례가 아닌 칸의 말 (home IMPL 신규 문구) */
-const HOME_IDLE = { tarot: "카드 한 장", mind: "심리테스트", saju: "생일 운세" };
+// ══════════════════════════════════════════════════════════════
+// 「전체」(/) — 오늘의 나 원래 목록 (REQ-70 · Master 2026-10-07 「전체 화면은 원래 목록」)
+// REQ-65 묶음 3 의 밝은 축소판을 걷어내고 REP-59 의 어두운 목록(610f4e7^)으로 되돌렸다.
+// 바뀐 것은 맨 위 「결과 도착」 한 줄(REQ-65 F2 · 추가 결정 37)뿐. 허브 /today/ 는 아래 renderHub 그대로.
+// ══════════════════════════════════════════════════════════════
 
-/**
- * 「전체」(/) 의 오늘의 나 축소판 (REQ-65 묶음 3 · 시안 mock/home hm1~hm3).
- *
- * 게임 목록 **위**에 놓이는 밝은 판(#F4F1EC)이다 — 페이지와 게임 판은 어두운 그대로이고, 이 판의
- * 스타일은 `.td` 루트 아래로만 갇힌다(shared/today-home.css, `/` 만 링크). 진행판 + 추천 하나 +
- * 「오늘의 나 전체 보기 ›」. 금액은 머리 부제 한 줄에만, 페어는 안 본 도착이 있을 때만 한 줄.
- *
- * index.html 이 같은 높이의 스켈레톤(`is-loading`)을 먼저 깔아 둬서 늦게 그려져도 게임 목록이
- * 크게 밀리지 않는다.
- */
-export async function renderTodaySection(host) {
+/** 서비스별 색 — 「전체」(/) 의 어두운 바탕용. 허브 v2 는 아래 HUB_TINT */
+const TINT = { tarot: "#e8c46a", saju: "#9ab6f0", mind: "#7fd8c0" };
+
+/** 카드 두 번째 줄 — 그 서비스가 무엇을 시키는지 동사로 */
+const VERBS = {
+  tarot: "뽑기 · 모으기",
+  saju: "보기 · 채우기",
+  mind: "고르기 · 알기",
+};
+
+/** 아직 안 한 사람에게 보여 줄 한 줄 (hub/IMPL todaysection 40-42 교체) */
+const INVITE = {
+  tarot: "고민을 하나 고르고 카드 한 장을 뽑아요",
+  saju: "생일로 보는 오늘 운세",
+  mind: "4문항 고르기",
+};
+
+export async function renderTodaySection(host, { heading = true } = {}) {
   if (!host) return null;
-  if (!document.getElementById("hubSprite")) document.body.insertAdjacentHTML("afterbegin", SPRITE);
 
   let data;
   try {
+    // 「전체」 영역은 허브 전용 필드가 필요 없다(서버가 뺀다)
     data = normalize(await apiGet("/api/today", { compact: 1 }));
   } catch {
-    // 같은 높이 판에 다시 시도 — 판이 사라지면 게임 목록이 위로 튄다(home 최종 수정 #11)
-    clear(host).append(
-      el("p", { class: "td-fail" }, "오늘의 나를 못 불러왔어요"),
-      el("button", { class: "td-more", type: "button", onclick: () => renderTodaySection(host) }, "다시 시도"),
-    );
-    host.classList.replace("is-loading", "is-failed");
-    host.removeAttribute("aria-busy");
+    // 오늘의 나가 안 열려도 게임 영역은 멀쩡해야 한다 — 조용히 비운다
+    host.hidden = true;
     return null;
   }
 
-  const kids = [homeHead(data)];
-  const arrival = arrivalInfo(data);
-  if (arrival) kids.push(arrivalLine(arrival, "td-pair"));
-  if (data.triple) kids.push(...(await homeTriple(data)));
-  else kids.push(...homeProgress(data));
-  kids.push(
-    el(
-      "div",
-      { class: "td-foot" },
-      el("a", { class: "td-more", href: "/today/" }, "오늘의 나 전체 보기 ›"),
-      el("p", { class: "td-legal" }, "본 콘텐츠는 오락용이며", el("br"), "심리학적 진단이 아닙니다"),
-    ),
-  );
-
-  clear(host).append(...kids);
+  clear(host);
   host.hidden = false;
-  host.classList.remove("is-loading", "is-failed");
-  host.removeAttribute("aria-busy");
+  host.className = "hubarea";
+
+  if (heading) host.append(areaHead(data));
+  // 결과 도착 한 줄 — 안 본 도착이 있을 때만, 목록 위(REQ-70 · 추가 결정 37). 소개 시트를 거치지 않는다
+  const arrival = arrivalInfo(data);
+  if (arrival) host.append(arrivalLine(arrival, "td-pair"));
+
+  const grid = el("nav", { class: "hubarea__grid", "aria-label": "오늘의 나 3종" });
+  for (const s of data.services) grid.append(serviceCard(s, data));
+  host.append(grid);
+
+  // 페어 스트립은 **3종 카드 바로 아래**다(원안). 잠겨 있을 때는 링크가 있을 수
+  // 없으므로 목록을 부르지 않는다 — 대부분의 방문에서 요청 하나가 준다.
+  const mindDone = data.services.some((s) => s.key === "mind" && s.done);
+  const strip = el("div", { class: "pairstrip-slot" });
+  host.append(strip);
+  (mindDone ? apiGet("/api/mind/pairs").catch(() => null) : Promise.resolve(null))
+    .then((pairs) => strip.replaceWith(pairStrip(pairs, mindDone)));
+
+  // 「오늘의 나 카드」는 셋 다 했을 때만. 못 채운 사람에게 빈 틀을 보여 주지 않는다.
+  //
+  // **자리를 먼저 잡는다.** 이 함수는 DB 를 동적 import 하느라 비동기라, 그냥
+  // `host.append` 하면 아래 줄과 달력이 먼저 붙고 카드가 **맨 끝**에 떨어진다
+  // (실제로 그렇게 나왔다). 빈 자리를 순서대로 꽂아 두고 나중에 채운다.
+  const oneSlot = data.triple ? el("div", { class: "onecard-slot" }) : null;
+  if (oneSlot) host.append(oneSlot);
+
+  host.append(footRow(data));
+  host.append(el("div", { class: "archive", hidden: true, id: "archiveBox" }));
+
+  if (oneSlot) renderOneCard(oneSlot, data).catch(() => oneSlot.remove());
   return data;
 }
 
-function homeHead(data) {
-  const h = homeHeadLine(data);
-  const sub = !h
-    ? null
-    : h.kind === "promise"
-      ? el("span", {}, "셋 다 하면 ", el("b", { class: "td-pt" }, "+", el("span", { class: "js-triple-pts" }, String(h.value)), "P")) // 「보너스」는 쓰지 않는다 — NEXTBAR 명칭(기획 회신 63-1)
-      : el("span", {}, "오늘 받은 포인트 ", el("b", { class: "td-num" }, `${h.value}P`));
-  return el("div", { class: "td-head" }, ico("one", 32), el("span", { class: "td-head__txt" }, el("b", {}, "오늘의 나"), sub));
-}
-
-function homeProgress(data) {
-  const left = data.services.filter((s) => s.ready && !s.done);
-  const next = left[0] ?? null;
-
-  const cells = el("div", { class: "td-cells" });
-  data.services.forEach((s, i) => {
-    const isNext = next && s.key === next.key;
-    const state = s.done ? doneWord(s) : !s.ready ? (s.too_young ? "이용 불가" : "준비 중") : isNext ? "지금 할 차례" : HOME_IDLE[s.key];
-    cells.append(
-      el(
-        "div",
-        { class: `td-cell td-cell--${s.key}${s.done ? " is-done" : ""}${isNext ? " is-next" : ""}` },
-        s.done ? el("span", { class: "td-cell__check", "aria-hidden": "true" }, "✓") : el("span", { class: "td-cell__ord" }, String(i + 1)),
-        ico(s.key, 24),
-        el("b", { class: "td-cell__name" }, HUB[s.key].short),
-        el("span", { class: "td-cell__state" }, state),
-      ),
-    );
-  });
-  cells.append(
-    el("span", { class: "td-arrow", "aria-hidden": "true" }, "›"),
-    el("div", { class: "td-cell td-cell--one" }, ico("one", 24), el("b", { class: "td-cell__name" }, "오늘의 나", el("br"), "카드")),
-  );
-
-  const board = el(
-    "div",
-    { class: "td-board", "aria-label": "오늘 진행" },
-    el(
-      "p",
-      { class: "td-board__count" },
-      "타로 · 선택 · 사주 중 ",
-      el("b", { class: "td-num" }, String(data.progress)),
-      "개 했어요",
-      left.length === 1 ? el("span", { class: "td-nudge" }, `남은 하나는 ${HUB[left[0].key].left}`) : null,
-    ),
-    cells,
-  );
-  return next ? [board, homeReco(next, data, left.length)] : [board];
-}
-
-/** 추천 하나 — 「전체」 화면의 유일한 채운 버튼. 금액 문구는 없다(머리 한 줄에만 · home 최종 수정 #1) */
-function homeReco(s, data, leftCount) {
-  const label = leftCount === 1 ? "남은 하나" : data.progress === 0 ? "먼저 해 보세요" : "다음 차례";
-  let pic;
-  let line;
-  let sub = null;
-  if (s.key === "tarot") {
-    pic = el("span", { class: "td-reco__pic", "aria-hidden": "true" }, el("i", { style: "left:0;top:6px;transform:rotate(-12deg);opacity:.75" }), el("i", { style: "left:8px;top:2px;transform:rotate(4deg)" }));
-    line = HUB.tarot.line;
-  } else if (s.key === "saju") {
-    pic = ico("saju", 48);
-    line = data.saju_registered ? "내 생일로 오늘 운세 한 줄" : "생일만 넣으면 오늘 운세 한 줄";
-    if (!data.saju_registered) sub = "처음 한 번만 넣어요 · 이름·성별은 안 받아요";
-  } else {
-    pic = ico("mind", 48);
-    line = HUB.mind.line;
-    sub = HUB.mind.sub;
+/** 🌙 + 인사 + 진행 도트 + 「오늘 n/3 했어요」 */
+function areaHead(data) {
+  const dots = el("span", { class: "hubarea__dots", "aria-hidden": "true" });
+  for (const s of data.services) {
+    dots.append(el("span", { class: `hubarea__dot ${s.done ? "is-on" : ""}` }));
   }
+
   return el(
-    "article",
-    { class: `td-reco td-reco--${s.key}`, "data-svc": s.key },
+    "div",
+    { class: "hubarea__head" },
+    el("span", { class: "hubarea__icon", "aria-hidden": "true" }, "🌙"),
+    el(
+      "span",
+      { class: "hubarea__text" },
+      el("b", {}, "오늘의 나"),
+      el("span", {}, greeting(data)),
+    ),
+    dots,
+    el("span", { class: "hubarea__triple" }, `오늘 ${data.progress}/${data.total} 했어요`),
+  );
+}
+
+/** 진행에 따라 말이 달라진다 — 같은 문장을 하루 종일 보여 주지 않는다 */
+function greeting(data) {
+  if (data.triple) return "셋 다 했어요";
+  if (data.progress === 0) return "순위 없이 보는 하루";
+  return `${data.total - data.progress}개 남았어요`;
+}
+
+/** 서비스별 모으기 표기 — 서버 `unit` 대신 화면 이름으로 (hub/IMPL v3 #9) */
+const COLLECT_LABEL = { tarot: "카드 모음", saju: "열흘 도장", mind: "이달의 마음" };
+const COLLECT_UNIT = { tarot: "장", saju: "칸", mind: "" };
+
+function serviceCard(s, data) {
+  const state = !s.ready ? (s.too_young ? "이용 불가" : "곧") : s.done ? "완료" : "대기";
+  const invite = INVITE[s.key] + (s.key === "saju" && !data.saju_registered ? SAJU_FIRST : "");
+  const line = !s.ready ? (s.too_young ? "만 14세부터 이용할 수 있어요" : "준비하고 있어요") : s.done ? summarize(s) : invite;
+
+  const head = el(
+    "span",
+    { class: "hubcard__head" },
+    el("span", { class: "hubcard__icon", "aria-hidden": "true" }, s.icon),
+    el(
+      "span",
+      { class: "hubcard__name" },
+      el("b", {}, s.name),
+      el("span", {}, VERBS[s.key] ?? ""),
+    ),
+    el("span", { class: "hubcard__state" }, state),
+  );
+
+  const kids = [head, el("span", { class: "hubcard__line" }, line)];
+
+  // 모으기 막대 — 준비 중인 서비스에는 모을 것이 없다
+  if (s.ready && s.collect) {
+    const { got, total, unit } = s.collect;
+    const pct = total ? Math.round((got / total) * 100) : 0;
+    kids.push(
+      el(
+        "span",
+        { class: "hubcard__bar" },
+        el("span", { class: "hubcard__fill", style: `width:${pct}%` }),
+      ),
+      el("span", { class: "hubcard__meta" }, `${COLLECT_LABEL[s.key] ?? `모은 ${unit}`} ${got}/${total}${COLLECT_UNIT[s.key] ?? ""}`),
+    );
+  }
+
+  const attrs = { class: `hubcard ${s.done ? "is-done" : ""}`, style: `--t:${TINT[s.key]}` };
+  return s.ready ? el("a", { ...attrs, href: s.href }, ...kids) : el("span", { ...attrs, "aria-disabled": "true" }, ...kids);
+}
+
+/** 아래 줄 — 아카이브 · 트리플 안내 · 고지 */
+function footRow(data) {
+  const note = data.triple
+    ? data.triple_paid ? `셋 다 했어요 · +${data.triple_points}P 받았어요` : "셋 다 했어요"
+    : data.reachable < data.total
+      ? `지금은 ${data.reachable}칸까지 열려 있어요`
+      : triplePromiseOk(data)
+        ? `셋 다 하면 +${data.triple_points}P`
+        : "셋 다 하면 「오늘의 나 카드」";
+
+  return el(
+    "div",
+    { class: "hubarea__foot" },
+    archiveToggle(data, { cls: "hubarea__btn is-ghost", tint: TINT }),
+    el("span", { class: "hubarea__note" }, note),
+    el("span", { class: "hubarea__legal" }, LEGAL),
+  );
+}
+
+/**
+ * 「너를 맞혀볼게」 스트립.
+ *
+ * ── 왜 한 줄인가 ─────────────────────────────────────────────────────────
+ * 처음에는 세로로 큰 카드였는데 **3종 카드보다 커져서 주객이 뒤집혔다.**
+ * 이 영역의 주인공은 위의 세 칸이고 이것은 그 다음에 여는 것이다. 그래서
+ * 본문 문단과 단계 칩을 걷어내고 아이콘·제목·상태·지수·버튼을 한 줄에 넣었다.
+ *
+ * ── 이 카드만 코랄이다 ───────────────────────────────────────────────────
+ * 세 서비스는 각자 색이 있다(민트·파랑·금). 페어는 그 셋 중 하나가 아니라
+ * **셋을 마친 뒤에 열리는 다른 층**이라, 서비스 팔레트 밖의 색을 쓴다.
+ *
+ * ── 지수는 항상 보인다 ───────────────────────────────────────────────────
+ * 잠겨 있을 때도 숫자 자리를 비우지 않고 `??%` 를 블러로 깐다. 빈 자리는
+ * 「없는 기능」으로 읽히지만 가려진 숫자는 「아직 못 본 것」으로 읽힌다.
+ */
+function pairStrip(pairs, mindDone) {
+  const { state, pct, COPY } = pairInfo(pairs, mindDone);
+
+  // 잠금은 `??`, 아직 결과가 없으면 `?`, 도착이면 실제 값.
+  const face = state === "locked" ? "??" : pct == null ? "?" : String(pct);
+
+  const gauge = el(
+    "span",
+    { class: "pairstrip__gauge" },
+    el("span", { class: "pairstrip__pct" }, `${face}%`),
+    el("span", { class: "pairstrip__gaugelabel" }, "서로 알기 지수"),
+  );
+
+  const strip = el(
+    "a",
+    { class: `pairstrip is-${state}`, href: COPY.href },
+    el("span", { class: "pairstrip__mark", "aria-hidden": "true" }, pairMark()),
+    el(
+      "span",
+      { class: "pairstrip__text" },
+      el(
+        "span",
+        { class: "pairstrip__title" },
+        el("b", {}, "너를 맞혀볼게"),
+        // READY·WAITING·LOCKED 배지는 지웠다 — 「도착」만 남긴다(hub/IMPL 215-217)
+        state === "arrived" ? el("span", { class: "pairstrip__badge" }, "도착") : null,
+      ),
+      el("span", { class: "pairstrip__line" }, COPY.line),
+    ),
+    gauge,
+    el("span", { class: "pairstrip__cta" }, state === "locked" ? `🔒 ${COPY.cta}` : COPY.cta),
+  );
+  if (state !== "locked") bindPairIntro(strip); // 첫 탭엔 소개 시트 B
+  return strip;
+}
+
+/**
+ * 원안의 `crossReading` 블록.
+ *
+ * 축은 **서버가 준 key** 두 개다 — 사주의 십신 idx 와 타로의 카드 id. 화면이
+ * 다시 계산하지 않는다(그러면 두 곳이 어긋난다).
+ */
+async function renderOneCard(slot, data) {
+  const one = await oneCardData(data);
+  if (!one) return slot.remove();
+
+  const chips = el("div", { class: "onecard__chips" });
+  for (const t of [`🔮 ${one.cardName}`, `🌤️ ${one.sajuChip}`, one.mindChip]) {
+    chips.append(el("span", { class: "onecard__chip" }, t));
+  }
+
+  const box = el(
+    "div",
+    { class: "onecard" },
     el(
       "div",
-      { class: "td-reco__body" },
-      pic,
-      el(
-        "div",
-        {},
-        el("span", { class: "td-reco__label" }, label),
-        el("h2", { class: "td-reco__title" }, s.name),
-        el("p", { class: "td-reco__line" }, line),
-        sub ? el("p", { class: "td-reco__sub" }, sub) : null,
-      ),
+      { class: "onecard__head" },
+      el("b", {}, "오늘의 나 카드"),
+      data.triple_paid ? el("span", { class: "onecard__tag" }, `셋 다 했어요 · +${data.triple_points}P 받았어요`) : null,
     ),
-    el("a", { class: "td-btn", href: `${s.href}?from=home` }, HUB[s.key].cta),
+    chips,
+    el("p", { class: "onecard__line" }, one.line),
   );
-}
 
-/** 3/3 — 카드 한 줄(행 전체가 /today/ · 채운 버튼 없음) + 오늘 한 것 칩 + 내일 안내 */
-async function homeTriple(data) {
-  const by = Object.fromEntries(data.services.map((s) => [s.key, s]));
-  const one = await oneCardData(data).catch(() => null);
-  const card = el(
-    "a",
-    { class: "td-one", href: "/today/", "aria-label": "오늘의 나 카드 보기" },
+  box.append(
     el(
-      "span",
-      { class: "td-one__pic", "aria-hidden": "true" },
-      ico("tarot", 30),
-      ico("mind", 40),
-      el("span", { class: "td-one__seal" }),
+      "div",
+      { class: "onecard__foot" },
+      shareButton(one, "onecard__share"),
+      el("span", {}, SHARE_NOTE),
     ),
-    el(
-      "span",
-      { class: "td-one__txt" },
-      el("b", { class: "td-one__title" }, "오늘의 나 카드"),
-      data.triple_paid
-        ? el("span", { class: "td-one__tag" }, "셋 다 했어요 · +", el("span", { class: "js-triple-pts" }, String(data.triple_points)), "P 받았어요")
-        : null,
-      one?.line ? el("p", { class: "td-one__line" }, one.line) : null,
-    ),
-    el("span", { class: "td-one__go", "aria-hidden": "true" }, "›"),
   );
-  const theme = one?.sajuChip && one.sajuChip !== "오늘의 사주" ? one.sajuChip : "오늘 운세를 봤어요";
-  const chip = (key, what) => el("span", {}, ico(key, 20), el("em", {}, HUB[key].short), ` · ${what}`);
-  const done = el(
-    "div",
-    { class: "td-done", "aria-label": "오늘 한 것" },
-    chip("tarot", doneWord(by.tarot)),
-    chip("mind", doneWord(by.mind)),
-    chip("saju", theme),
-  );
-  return [card, done, el("p", { class: "td-tomorrow" }, "내일 0시에 새 세 칸이 열려요")];
+
+  slot.replaceWith(box);
 }
 
 /** 고지 줄 — 원문 + AI 고지(카드 그림이 보이는 곳이 있어 상시 · hub/IMPL v3 #5·14) */
