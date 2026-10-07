@@ -1357,6 +1357,8 @@ export const SUITE = {
     RELATIONS: ["lover", "friend", "family", "coworker"],
     MAX_PER_DAY: 3, // 이용자당·서비스 통합
     EXPIRE_MS: 72 * 60 * 60 * 1000, // 72시간
+    // 만료 뒤에도 「보낸 링크」 목록에 남기는 시간 — 다음 날 링크·결과가 사라지지 않게(REQ-65 S2 · F15 「4일」)
+    SHOW_AFTER_MS: 24 * 60 * 60 * 1000,
     KEEP_MS: 30 * 24 * 60 * 60 * 1000, // 30일 뒤 행 삭제
     QUESTIONS: 3, // 추측 문항 수 (심리 M-05)
   },

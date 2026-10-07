@@ -24,7 +24,7 @@ import { MIND, SUITE } from "../lib/config.js";
 import { ApiError } from "../lib/http.js";
 import { dayKey } from "../lib/time.js";
 import { grantMany, completeDaily, dailyState, distribution, distOpen, touchUser, pointState } from "../lib/suite.js";
-import { createLink, answerLink, openLink, myLinks } from "../lib/pair.js";
+import { createLink, answerLink, openLink, myLinks, ownerView } from "../lib/pair.js";
 // 도감용 목록(id·요일·months·제목·유형 이름)과 그날의 선택 고르기 — 화면과 **같은 파일**을 쓴다.
 // 본문(장면·문항)은 여전히 서버에 없다. 목록만 있으면 「그날 회전 결과가 이 실험인가」와
 // 「목록에 있는 실험인가」를 판정할 수 있다 (REQ-47)
@@ -566,12 +566,15 @@ export async function pairNew({ env, userId, body }) {
     throw new ApiError("BAD_PARAM", "문항 묶음이 올바르지 않습니다.", 400);
   }
 
-  const links = await myLinks(env, userId, day);
+  const links = await myLinks(env, userId);
   return {
     relation,
     q: pairQuestionIds(day, relation, pool),
-    remaining_today: Math.max(0, SUITE.PAIR.MAX_PER_DAY - links.length),
+    // 목록은 이제 72시간+보관 범위라, 오늘 남은 개수는 오늘 만든 것만 센다 (REQ-65 S2)
+    remaining_today: Math.max(0, SUITE.PAIR.MAX_PER_DAY - links.filter((l) => l.day === day).length),
     expire_hours: Math.round(SUITE.PAIR.EXPIRE_MS / 3600000),
+    pair_points: SUITE.POINTS.PAIR_OK, // REQ-65 S3
+    pair_points_today: await pairPaidToday(env, userId, day),
   };
 }
 
@@ -615,10 +618,11 @@ export async function pairCreate({ env, userId, body }) {
 /**
  * POST /api/pair/answer — 상대의 응답
  *
- * 응답자에게는 계정이 없다. 그래서 이 경로는 **로그인도 소유 확인도 하지 않는다** —
- * 토큰을 가진 사람이 곧 응답자다(기획서 3.2 마찰 0).
+ * 응답자에게는 계정이 없다. 그래서 이 경로는 **로그인을 요구하지 않는다** —
+ * 토큰을 가진 사람이 곧 응답자다(기획서 3.2 마찰 0). 단 쿠키 사용자가 링크 주인이면
+ * 막는다(PAIR_SELF · REQ-65 묶음 0).
  */
-export async function pairAnswer({ env, body }) {
+export async function pairAnswer({ env, body, userId }) {
   const picks = body?.answers;
   const n = SUITE.PAIR.QUESTIONS;
 
@@ -639,6 +643,7 @@ export async function pairAnswer({ env, body }) {
       const hitArr = ans.map((v, i) => v === guess[i]);
       return { hits: hitArr, pct: Math.round((hitArr.filter(Boolean).length / hitArr.length) * 100) };
     },
+    userId,
   );
 
   // 관계별 최고 지수 — "엄마와 64%" 를 다음에 보여 주기 위한 것
@@ -664,26 +669,47 @@ export async function pairAnswer({ env, body }) {
 }
 
 /** GET /api/pair/open?token= — 응답자 화면이 여는 링크 */
-export async function pairOpen({ env, url }) {
-  return openLink(env, url.searchParams.get("token"));
+export async function pairOpen({ env, url, userId }) {
+  return openLink(env, url.searchParams.get("token"), userId);
 }
 
 /** GET /api/mind/pairs — 내가 오늘 보낸 링크들 (푸시가 없으므로 재방문 시 여기서 본다) */
 export async function pairList({ env, userId }) {
   const day = dayKey();
-  const links = await myLinks(env, userId, day);
-  const rows = await env.DB.prepare(
-    `SELECT relation, best_pct FROM mind_pair_best WHERE user_id = ?`,
-  )
-    .bind(userId)
-    .all();
+  const [links, rows, paid] = await Promise.all([
+    myLinks(env, userId),
+    env.DB.prepare(`SELECT relation, best_pct FROM mind_pair_best WHERE user_id = ?`).bind(userId).all(),
+    pairPaidToday(env, userId, day),
+  ]);
 
   return {
     links,
     best: Object.fromEntries((rows?.results ?? []).map((r) => [r.relation, r.best_pct])),
     max_per_day: SUITE.PAIR.MAX_PER_DAY,
-    remaining_today: Math.max(0, SUITE.PAIR.MAX_PER_DAY - links.length),
+    remaining_today: Math.max(0, SUITE.PAIR.MAX_PER_DAY - links.filter((l) => l.day === day).length),
+    // 「답이 오면 +10P · 하루 1번」 — 금액·오늘 받았는지는 서버 값 (REQ-65 S3)
+    pair_points: SUITE.POINTS.PAIR_OK,
+    pair_points_today: paid,
+    // 목록에 남는 시간 「보낸 뒤 4일」(72 + 24시간) — 문구를 서버 값으로 (F15)
+    show_hours: Math.round((SUITE.PAIR.EXPIRE_MS + SUITE.PAIR.SHOW_AFTER_MS) / 3600000),
+    expire_hours: Math.round(SUITE.PAIR.EXPIRE_MS / 3600000),
   };
+}
+
+/** 오늘 「답이 와서 받는 +10P」(멱등키 PAIR_OK:{day})를 이미 받았나 — lib/pair.js 지급과 같은 키 */
+async function pairPaidToday(env, userId, day) {
+  const row = await env.DB.prepare(`SELECT 1 AS x FROM suite_points WHERE user_id = ? AND key = ?`)
+    .bind(userId, `PAIR_OK:${day}`)
+    .first();
+  return Boolean(row);
+}
+
+/**
+ * GET /api/mind/pair/view?token= — 보낸 사람의 결과 화면 (REQ-65 S1).
+ * 본인 링크만. 처음 열면 「새 결과」 알림이 꺼진다(owner_seen_at).
+ */
+export async function pairView({ env, userId, url }) {
+  return ownerView(env, userId, url.searchParams.get("token"));
 }
 
 /** 케미 리포트 (광고) — 지수 구간 코멘트. 열람 해제만 하고 내용은 화면이 고른다 */

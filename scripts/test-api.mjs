@@ -512,6 +512,15 @@ async function pairResendContract() {
     `${Math.round((row?.expires_in_ms ?? 0) / 3600000)}시간`);
   check("페어 보낸 시각을 준다", Number(row?.created_at) > 0);
 
+  // ── 자기 링크는 자기가 열거나 답할 수 없다 (REQ-65 묶음 0 · PAIR_SELF) ──
+  const selfOpen = await get(`/api/pair/open?token=${made.data.token}`);
+  const selfAns = await post("/api/pair/answer", { token: made.data.token, answers: [0, 1, 2] });
+  check("페어 자기 링크 열기 → 409 PAIR_SELF", selfOpen.status === 409 && selfOpen.data?.code === "PAIR_SELF",
+    `(${selfOpen.status} ${selfOpen.data?.code})`);
+  check("페어 자기 링크 답 → 409 PAIR_SELF · 상태 그대로", selfAns.status === 409 && selfAns.data?.code === "PAIR_SELF" &&
+    (await get("/api/mind/pairs")).data?.links?.find((l) => l.token === made.data.token)?.status === "open",
+    `(${selfAns.status} ${selfAns.data?.code})`);
+
   // ── 답이 온 링크는 주소를 주지 않는다 ──
   const answerCookie = cookie;
   cookie = ""; // 상대는 계정이 없다
@@ -522,6 +531,26 @@ async function pairResendContract() {
   const answered = (after.data?.links ?? []).find((l) => l.token === made.data?.token);
   check("페어 답이 온 링크는 상태가 바뀐다", answered?.status === "answered", `status=${answered?.status}`);
   check("페어 답이 온 링크에는 주소가 없다", answered?.url === undefined, `url=${answered?.url}`);
+
+  // ── 결과 도착 알림 · 보낸 사람 결과 화면 (REQ-65 묶음 1 · S1~S3 · F2) ──
+  const t1 = await get("/api/today");
+  check("페어 도착 알림 pair_unseen 1 · latest", t1.data?.pair_unseen === 1 && t1.data?.pair_latest?.token === made.data.token,
+    `unseen=${t1.data?.pair_unseen}`);
+  check("페어 목록 owner_seen false · day · +10P 받음", answered?.owner_seen === false && answered?.day === st.data.day &&
+    after.data?.pair_points > 0 && after.data?.pair_points_today === true, JSON.stringify({ seen: answered?.owner_seen, paid: after.data?.pair_points_today }));
+  const view = await get(`/api/mind/pair/view?token=${made.data.token}`);
+  check("페어 결과 화면 — 지수·적중·내 추측·근거, 상대 실제 답 없음",
+    view.status === 200 && typeof view.data?.pct === "number" && view.data?.hits?.length === 3 &&
+    view.data?.guess?.length === 3 && view.data?.reasons?.length === 3 && !("answer" in view.data) && !("answers" in view.data),
+    JSON.stringify(view.data).slice(0, 120));
+  const t2 = await get("/api/today?compact=1");
+  check("페어 결과를 보면 알림이 꺼진다(「전체」 compact 에도 실림)", t2.data?.pair_unseen === 0 && t2.data?.pair_latest === null,
+    `unseen=${t2.data?.pair_unseen}`);
+  const ownerCookie = cookie;
+  cookie = "";
+  const other = await get(`/api/mind/pair/view?token=${made.data.token}`);
+  cookie = ownerCookie;
+  check("페어 남의 결과는 못 본다", other.status === 404, `(${other.status} ${other.data?.code})`);
 
   cookie = cookieBefore;
   useIp(testIp(1));

@@ -66,6 +66,7 @@ import * as arcade from "./lib/arcade.js";
 import * as adRoutes from "./routes/ad.js";
 import * as statsRoutes from "./routes/stats.js";
 import * as sessionRoutes from "./routes/session.js";
+import { cleanupPairLinks } from "./lib/pair.js";
 
 const STARTERS = {
   STOPWATCH: stopwatch.start,
@@ -206,6 +207,7 @@ const ROUTES = {
   "GET /api/mind/pair/new": mind.pairNew,
   "POST /api/mind/pair": mind.pairCreate,
   "GET /api/mind/pairs": mind.pairList,
+  "GET /api/mind/pair/view": mind.pairView, // 보낸 사람의 결과 화면 (REQ-65 S1)
 
   "GET /api/webtoon/home": webtoon.home,
   "POST /api/webtoon/read": webtoon.read,
@@ -335,6 +337,14 @@ export default {
           if (!r.skipped) console.log(`MAJORITY_ROLL day=${r.day} moved=${r.moved}`);
         })
         .catch((err) => console.error("MAJORITY_ROLL failed", err?.stack ?? err)),
+    );
+
+    // 「너를 맞혀볼게」 링크 30일 정리 — 함수는 있었는데 부르는 곳이 없어 무기한 보관 중이었다
+    // (REQ-65 묶음 0 · impact P1). 추측·근거·적중 요약이 담긴 행이라 보관 기한을 지킨다.
+    ctx.waitUntil(
+      cleanupPairLinks(env)
+        .then((r) => console.log(`PAIR_CLEANUP deleted=${r.deleted}`))
+        .catch((err) => console.error("PAIR_CLEANUP failed", err?.stack ?? err)),
     );
   },
 

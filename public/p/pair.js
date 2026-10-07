@@ -50,6 +50,7 @@ async function boot() {
   try {
     state.link = await apiGet("/api/pair/open", { token: state.token });
   } catch (err) {
+    if (selfLink(err)) return;
     if (err instanceof ApiFail && err.code === "PAIR_EXPIRED") {
       info("🕰️", "링크가 만료됐어요", "새로 받아 보세요. 링크는 3일 동안만 열려 있어요.");
       return;
@@ -67,6 +68,13 @@ async function boot() {
   $("#introText").textContent =
     `${state.link.count}가지 질문에 답해 주세요. 그 사람이 당신을 얼마나 알고 있는지 나옵니다.`;
   showScreen("intro");
+}
+
+/** 내가 보낸 링크를 내가 열었다 — 서버가 PAIR_SELF 로 막는다 (REQ-65 묶음 0 · 시안 pp5_self 문구) */
+function selfLink(err) {
+  if (!(err instanceof ApiFail && err.code === "PAIR_SELF")) return false;
+  info("🔗", "내가 보낸 링크예요", "이 링크는 그 사람이 답하는 곳이에요. 카톡으로 그 사람에게 보내 주세요. 여기서 내가 답할 수는 없어요 — 답도 포인트도 남지 않아요.");
+  return true;
 }
 
 function info(glyph, title, text) {
@@ -125,6 +133,7 @@ async function send() {
     res = await apiPost("/api/pair/answer", { token: state.token, answers: state.answers });
   } catch (err) {
     state.busy = false;
+    if (selfLink(err)) return;
     if (err instanceof ApiFail && err.code === "PAIR_ANSWERED") {
       info("✅", "이미 답한 링크예요", "결과는 링크를 보낸 사람에게 있어요.");
       return;

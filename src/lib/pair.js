@@ -103,13 +103,27 @@ async function fetchRow(env, token) {
 }
 
 /**
+ * 자기 링크에 자기가 답하지 못하게 한다 (REQ-65 묶음 0 · Master ① · impact P2).
+ *
+ * 응답자에겐 계정이 없지만 요청마다 쿠키 사용자는 있다. 그 사용자가 링크 주인이면
+ * 같은 브라우저에서 자기 링크에 답해 하루 +10P(PAIR_OK)를 받을 수 있었다.
+ * 다른 브라우저·기기로 돌아가는 길은 남는다 — 하루 10P 상한으로 수용(Master 결정).
+ */
+function notOwner(row, userId) {
+  if (userId && row.owner_id === userId) {
+    throw new ApiError("PAIR_SELF", "내가 보낸 링크예요 — 그 사람에게 보내 주세요.", 409);
+  }
+}
+
+/**
  * 응답자가 여는 화면의 데이터.
  *
  * **owner 가 무엇을 추측했는지는 내려보내지 않는다.** 그걸 보여 주면 응답자가
  * 맞춰 주게 되고, 지수가 「서로 아는 정도」가 아니라 「배려한 정도」가 된다.
  */
-export async function openLink(env, token) {
+export async function openLink(env, token, userId) {
   const row = await fetchRow(env, token);
+  notOwner(row, userId);
 
   if (isExpired(row)) {
     throw new ApiError("PAIR_EXPIRED", "링크가 만료됐어요 — 새로 받아 보세요.", 410);
@@ -127,6 +141,7 @@ export async function openLink(env, token) {
     // 서비스가 화면을 그리는 데 필요한 것만. `guess`(내 추측)·`reasons`는 뺀다.
     question_ids: payload.q ?? [],
     count: (payload.q ?? []).length,
+    expire_hours: Math.round(SUITE.PAIR.EXPIRE_MS / 3600000), // 「72시간」 문구를 서버 값으로
   };
 }
 
@@ -138,8 +153,9 @@ export async function openLink(env, token) {
  *
  * @param {(payload:object, answer:any)=>{hits:boolean[], pct:number}} score
  */
-export async function answerLink(env, token, answer, score) {
+export async function answerLink(env, token, answer, score, userId) {
   const row = await fetchRow(env, token);
+  notOwner(row, userId); // 문항도 답도 적립(PAIR_OK)도 없이 끊는다
 
   if (isExpired(row)) {
     throw new ApiError("PAIR_EXPIRED", "링크가 만료됐어요 — 새로 받아 보세요.", 410);
@@ -182,26 +198,69 @@ export async function answerLink(env, token, answer, score) {
   return { row, payload, hits, pct, gained };
 }
 
-/** owner 가 결과를 다시 볼 때. 응답 전이면 status 만 돌려준다 */
+/**
+ * owner 가 결과를 볼 때 (REQ-65 S1 — 보낸 사람이 결과를 볼 화면이 없었다).
+ *
+ * 내 추측·근거와 적중 배열·지수만 준다. **상대의 실제 답은 원래 저장하지 않으므로 줄 수 없다**
+ * (answerLink 의 요약 치환 · Master ③ 안 보임 유지). 답이 온 링크를 처음 열면 owner_seen_at 을
+ * 남긴다 — 결과 도착 알림(`pair_unseen`)이 그걸로 꺼진다.
+ */
 export async function ownerView(env, ownerId, token) {
   const row = await fetchRow(env, token);
   if (row.owner_id !== ownerId) {
     throw new ApiError("PAIR_NOT_FOUND", "내가 만든 링크가 아니에요.", 404);
   }
 
+  if (row.status === "answered") {
+    await env.DB.prepare(`UPDATE pair_link SET owner_seen_at = ? WHERE token = ? AND owner_seen_at IS NULL`)
+      .bind(now(), row.token)
+      .run();
+  }
+
   const expired = isExpired(row) && row.status === "open";
+  const payload = parse(row.payload, {}) ?? {};
+  const summary = parse(row.answer, null);
   return {
     token: row.token,
     service: row.service,
     relation: row.relation,
     status: expired ? "expired" : row.status,
-    payload: parse(row.payload, {}),
-    summary: parse(row.answer, null),
+    pct: summary?.pct ?? null,
+    hits: summary?.hits ?? null,
+    question_ids: payload.q ?? [],
+    guess: payload.guess ?? [],
+    reasons: payload.reasons ?? [],
+    answered_at: row.answered_at ?? null,
   };
 }
 
 /**
- * 내가 오늘 만든 링크들 (결과 확인용 — 푸시가 없으므로 재방문 시 여기서 본다)
+ * 결과 도착 알림 — 답이 왔는데 보낸 사람이 아직 안 본 링크 수와 가장 최근 하나 (REQ-65 F2).
+ * 목록과 같은 시각 범위(72시간 + 보관 24시간)만 본다. 오늘의 선택 완료 여부와 무관하다.
+ */
+export async function unseenArrivals(env, ownerId) {
+  const rows = await env.DB.prepare(
+    `SELECT token, relation, answer FROM pair_link
+      WHERE owner_id = ? AND created_at >= ? AND status = 'answered' AND owner_seen_at IS NULL
+      ORDER BY answered_at DESC`,
+  )
+    .bind(ownerId, now() - SUITE.PAIR.EXPIRE_MS - SUITE.PAIR.SHOW_AFTER_MS)
+    .all();
+  const list = rows?.results ?? [];
+  const top = list[0];
+  return {
+    unseen: list.length,
+    latest: top ? { token: top.token, relation: top.relation, pct: parse(top.answer, null)?.pct ?? null } : null,
+  };
+}
+
+/**
+ * 내가 보낸 링크들 (결과 확인용 — 푸시가 없으므로 재방문 시 여기서 본다)
+ *
+ * ── 날짜가 아니라 시각 범위로 읽는다 (REQ-65 S2) ──────────────────────────
+ * 예전엔 「오늘 만든 것」만 읽어서 어제 보낸 링크와 그 결과가 다음 날 통째로 사라졌다.
+ * 이제 만든 지 72시간(답 받는 시간) + 24시간(보관) 안의 것을 모두 준다. 오늘 남은 개수는
+ * 호출하는 쪽이 `day` 로 오늘 것만 센다.
  *
  * ── 아직 답을 기다리는 링크는 주소를 함께 준다 ──────────────────────────
  * 만든 직후 복사하지 않고 화면을 떠나면 그 링크를 **다시 얻을 방법이 없었다.**
@@ -211,12 +270,12 @@ export async function ownerView(env, ownerId, token) {
  * 값**이고, 이 조회는 `owner_id = ?` 로 본인 것만 본다. 다만 이미 답이 왔거나
  * 만료된 링크는 다시 보낼 이유가 없으므로 주소를 빼서 오해를 만들지 않는다.
  */
-export async function myLinks(env, ownerId, day = dayKey()) {
+export async function myLinks(env, ownerId) {
   const rows = await env.DB.prepare(
-    `SELECT token, service, relation, status, answer, created_at FROM pair_link
-      WHERE owner_id = ? AND day = ? ORDER BY created_at DESC`,
+    `SELECT token, service, relation, day, status, answer, created_at, owner_seen_at FROM pair_link
+      WHERE owner_id = ? AND created_at >= ? ORDER BY created_at DESC`,
   )
-    .bind(ownerId, day)
+    .bind(ownerId, now() - SUITE.PAIR.EXPIRE_MS - SUITE.PAIR.SHOW_AFTER_MS)
     .all();
 
   return (rows?.results ?? []).map((r) => {
@@ -227,7 +286,9 @@ export async function myLinks(env, ownerId, day = dayKey()) {
       token: r.token,
       service: r.service,
       relation: r.relation,
+      day: r.day, // 만든 날(KST) — 오늘 남은 개수는 오늘 것만 센다
       status,
+      owner_seen: Boolean(r.owner_seen_at), // 「새 결과」 배지 = 답이 왔는데 아직 안 봄
       created_at: r.created_at ?? null,
       expires_at: expiresAt,
       // 남은 시간은 서버 시계로 센다 — 기기 시계가 틀어져도 만료 표시가 어긋나지 않는다

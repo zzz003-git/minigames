@@ -25,6 +25,7 @@ import { SUITE } from "../lib/config.js";
 import { dayKey } from "../lib/time.js";
 import { dayGanzhi } from "../lib/saju-calendar.js";
 import { collectionState, dailyState, pointState, touchUser, SERVICE_READY } from "../lib/suite.js";
+import { unseenArrivals } from "../lib/pair.js";
 
 /**
  * 서비스별 준비 상태.
@@ -49,7 +50,7 @@ export async function today({ env, userId, body }) {
   const compact = body?.compact === "1";
   await touchUser(env, userId, day);
 
-  const [state, points, coll, hist] = await Promise.all([
+  const [state, points, coll, hist, pair] = await Promise.all([
     dailyState(env, userId, day),
     pointState(env, userId, day),
     collectionState(env, userId, day),
@@ -61,6 +62,8 @@ export async function today({ env, userId, body }) {
         )
           .bind(userId)
           .first(),
+    // 「너를 맞혀볼게」 결과 도착 알림 — /today/ 맨 위·「전체」 한 줄이 같이 쓴다 (REQ-65 F2)
+    unseenArrivals(env, userId),
   ]);
 
   const services = SUITE.SERVICES.map((k) => ({
@@ -91,6 +94,8 @@ export async function today({ env, userId, body }) {
     triple_points: SUITE.POINTS.TRIPLE_DONE,
     saju_registered: state.saju_registered,
     points,
+    pair_unseen: pair.unseen, // 답이 왔는데 아직 안 본 링크 수 — 오늘의 선택 완료와 무관
+    pair_latest: pair.latest, // { token, relation, pct } | null — 한 줄 문구와 /pair/?view= 이동
     ...(compact
       ? {}
       : {
