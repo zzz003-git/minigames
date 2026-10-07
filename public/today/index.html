@@ -12,19 +12,20 @@
   <link rel="mask-icon" href="/safari-pinned-tab.svg" color="#E07A1F">
   <link rel="manifest" href="/site.webmanifest">
   <title>오늘의 나</title>
-  <meta name="color-scheme" content="dark">
-  <meta name="theme-color" content="#0F1420">
-  <meta name="description" content="타로 · 사주 · 마음 — 오늘의 나를 세 조각으로.">
+  <!-- 허브는 밝은 회백 바탕이다(REQ-63 묶음 5). 「전체」(/) 는 어두운 값 그대로 -->
+  <meta name="color-scheme" content="light">
+  <meta name="theme-color" content="#F4F1EC">
+  <meta name="description" content="타로 · 선택 · 사주 — 하루 한 번, 세 가지로 보는 오늘.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../shared/base.css">
+  <link rel="stylesheet" href="../shared/nextbar.css">
   <link rel="stylesheet" href="today.css">
 </head>
 <body class="game suite suite--today">
   <div id="siteNav"></div>
-  <!-- 원안의 허브는 영역 폭(1120px)을 쓴다. 좁은 판 폭이면 3칸이 세로로 쌓인다 -->
-  <div class="app hub--wide">
+  <div class="app">
     <header class="topbar" id="header"></header>
 
     <main class="app__body">
@@ -33,23 +34,8 @@
         <!-- 되감기 버튼이 붙는 자리. 테스트 빌드에서만 뜬다 -->
         <div id="testBanner" hidden></div>
 
-        <!-- 오늘의 나 영역 — 「전체」 화면과 같은 모듈이 그린다.
-             두 벌을 두면 카드 한 줄을 고칠 때마다 두 곳을 고쳐야 한다. -->
+        <!-- 허브 v2 — shared/todaysection.js `renderHub` 가 그린다(「전체」 의 영역과 같은 모듈) -->
         <div id="todayArea"></div>
-
-        <div class="stats">
-          <div class="stat stat--accent">
-            <div class="stat__label">오늘 적립</div>
-            <div class="stat__value" id="ptToday">—</div>
-          </div>
-          <div class="stat">
-            <div class="stat__label">모은 포인트</div>
-            <div class="stat__value" id="ptTotal">—</div>
-          </div>
-        </div>
-
-        <a class="btn" href="/games/">← 게임으로</a>
-        <p class="footnote--dim center">매일 자정에 새 하루가 열려요</p>
       </section>
     </main>
   </div>

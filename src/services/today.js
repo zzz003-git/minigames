@@ -23,6 +23,7 @@
 import { ApiError } from "../lib/http.js";
 import { SUITE } from "../lib/config.js";
 import { dayKey } from "../lib/time.js";
+import { dayGanzhi } from "../lib/saju-calendar.js";
 import { collectionState, dailyState, pointState, touchUser, SERVICE_READY } from "../lib/suite.js";
 
 /**
@@ -39,14 +40,27 @@ const SERVICE_META = {
   mind: { key: "mind", icon: "🔬", name: "오늘의 선택", href: "/mind/", ready: SERVICE_READY.mind },
 };
 
-export async function today({ env, userId }) {
+/**
+ * `GET /api/today` — 허브 /today/ 와 「전체」(/) 가 같이 쓴다.
+ * `?compact=1`(/ 의 영역)이면 허브 전용 필드(첫 방문·셋 다 이력·서비스 금액·오늘 일진)를 뺀다.
+ */
+export async function today({ env, userId, body }) {
   const day = dayKey();
+  const compact = body?.compact === "1";
   await touchUser(env, userId, day);
 
-  const [state, points, coll] = await Promise.all([
+  const [state, points, coll, hist] = await Promise.all([
     dailyState(env, userId, day),
     pointState(env, userId, day),
     collectionState(env, userId, day),
+    // 허브 v2(REQ-63 hub/IMPL 서버 4) — 한 쿼리. first_visit 은 created_day 가 아니라 기록 유무
+    compact
+      ? null
+      : env.DB.prepare(
+          `SELECT COUNT(*) AS n, COALESCE(MAX(triple_paid), 0) AS t FROM suite_daily WHERE user_id = ?`,
+        )
+          .bind(userId)
+          .first(),
   ]);
 
   const services = SUITE.SERVICES.map((k) => ({
@@ -58,6 +72,8 @@ export async function today({ env, userId }) {
     // 모으기 진행도 — 화면의 진행 막대가 쓴다. 서비스마다 세는 단위가 다르다
     // (장 / 칸 / 축). 이유는 suite.js `collectionState` 주석 참조.
     collect: coll[k],
+    // 서비스 완료 금액 — 허브 「+5P부터」 를 화면 상수 없이
+    ...(compact ? {} : { points: SUITE.POINTS.CORE_DONE }),
   }));
 
   const live = services.filter((s) => s.ready);
@@ -75,6 +91,13 @@ export async function today({ env, userId }) {
     triple_points: SUITE.POINTS.TRIPLE_DONE,
     saju_registered: state.saju_registered,
     points,
+    ...(compact
+      ? {}
+      : {
+          first_visit: (hist?.n ?? 0) === 0,
+          ever_triple: Boolean(hist?.t),
+          today_ganzhi: dayGanzhi(day), // 사주 추천 카드 「오늘 ○○일」 · 콜라주 인장 글자
+        }),
   };
 }
 

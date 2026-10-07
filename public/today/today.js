@@ -15,7 +15,7 @@
 
 import { $, renderHeader, toast } from "../shared/ui.js";
 import { renderSiteNav } from "../shared/sitenav.js";
-import { renderTodaySection } from "../shared/todaysection.js";
+import { renderHub } from "../shared/todaysection.js";
 import { renderTestBanner } from "../shared/testbanner.js";
 
 // 서비스 화면(타로·사주·마음·페어)에서도 이 탭이 켜진다 — 원안의
@@ -27,15 +27,6 @@ boot();
 
 async function boot() {
   renderTestBanner($("#testBanner"));
-
-  // 영역 자체는 「전체」 화면과 **같은 모듈**이 그린다. 허브가 더 보여 주는 것은
-  // 포인트 두 칸뿐이다 — 그것 때문에 영역을 두 벌 만들 이유는 없다.
-  const data = await renderTodaySection($("#todayArea"));
-  if (!data) {
-    toast("오늘을 불러오지 못했습니다.", "error");
-    return;
-  }
-
-  $("#ptToday").textContent = `${data.points.today}P`;
-  $("#ptTotal").textContent = `${data.points.total}P`;
+  // 허브 v2(REQ-63 묶음 5) — 「전체」 영역과 같은 모듈의 허브 판. 오늘 받은 포인트는 진행판이 보인다
+  if (!(await renderHub($("#todayArea")))) toast("오늘을 불러오지 못했습니다.", "error");
 }
