@@ -5,16 +5,19 @@
 
    연결: base.css → theme-light.css → 이 파일.  되돌리기: 이 게임의 커밋 revert.
 
+   ── 2026-10-07 경기장 트랙 (REQ-72 · Master 「네 수정안으로 결정합니다」) ─────────────
+   시안: plans/2026-10-07/스탑워치_고급화/확정/ · 살구색 바탕·붉은 트랙 4줄 → 한낮 경기장 사진 + 금색 시계.
+   바탕은 body::before(position:fixed) 한 장 — 화면 전환 transform 과 무관하게 화면 전체를 덮는다.
+   플레이 화면만 선명한 사진(:has), 나머지는 흐린 사진. :has 미지원이면 흐린 사진으로 남는다(허용).
+
    ── 색 ────────────────────────────────────────────────────────────────────
-   시안 accent #D9480F 는 바탕 대비 3.85:1 이라 글자색(--accent)으로 못 쓴다
-   (base.css 가 --accent 를 글자색으로 22곳에 쓴다). 그래서 둘로 나눈다.
-     --accent      #B83A0A  글자·테두리용 (바탕 5.16:1)
-     --theme-fill  #D9480F  면·발광 전용 (트랙 바닥·STOP 버튼·지금 지점)
+     --accent      #7A5420  글자·테두리용 (흰 카드 6.63:1)
+     --theme-fill  #A87A2E  면·그래픽 전용 (호·지금 점·카드 띠 — 문자판 3.58:1)
    ========================================================================== */
 
 body.game--stopwatch {
-  --bg: #FFF0E3;
-  --void: #F6E2D0;
+  --bg: #C9B9A8;   /* 사진 로드 전 순간용 대체색 — 그 위 글자는 카드 안이라 읽힌다 */
+  --void: #C9B9A8;
   --surface: #FFFFFF;
   --surface-2: #FFF8F1;
 
@@ -24,23 +27,83 @@ body.game--stopwatch {
   --text-dim: #6B5444;
   --text-faint: #7A6352; /* bg 5.0:1 */
 
-  --accent: #B83A0A;
-  --accent-ink: #FFFFFF; /* accent 위 흰 글자 5.6:1 */
-  --accent-08: rgba(217, 72, 15, 0.08);
-  --accent-10: rgba(217, 72, 15, 0.1);
-  --accent-14: rgba(217, 72, 15, 0.14);
-  --accent-20: rgba(217, 72, 15, 0.22);
-  --accent-45: rgba(217, 72, 15, 0.45);
+  --accent: #7A5420;
+  --accent-ink: #FFFFFF; /* accent 위 흰 글자 6.6:1 */
+  --accent-08: rgba(168, 122, 46, 0.08);
+  --accent-10: rgba(168, 122, 46, 0.1);
+  --accent-14: rgba(168, 122, 46, 0.14);
+  --accent-20: rgba(168, 122, 46, 0.22);
+  --accent-45: rgba(168, 122, 46, 0.45);
 
-  --coral: #C62828;      /* 오답·경고색 (bg 5.04:1) */
+  --coral: #C62828;
   --danger: #C62828;
 
-  --theme-fill: #D9480F;
-  --theme-target: #1F5FBF; /* 목표 지점 파랑 (bg 5.46:1) */
+  --theme-fill: #A87A2E;
+  --theme-target: #1F4D6B; /* 목표 ▲ (문자판 8.42:1) */
   --theme-display: "Orbit", "Noto Sans KR", var(--sans);
 
   background: var(--bg);
 }
+
+/* ── 바탕 사진 — 흐린 판(시작·결과·통계) 위 얇은 막. 플레이만 선명한 판 ── */
+body.game--stopwatch::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, rgba(247, 243, 236, 0.3) 0%, rgba(247, 243, 236, 0.1) 40%, rgba(20, 10, 8, 0.3) 100%),
+    url("img/track_bg_soft.v1.jpg") center bottom / cover no-repeat,
+    var(--bg);
+}
+body.game--stopwatch:has([data-screen="running"].is-active)::before {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0) 22%, rgba(255, 255, 255, 0) 70%, rgba(10, 8, 6, 0.25) 100%),
+    url("img/track_bg.v1.jpg") center bottom / cover no-repeat,
+    var(--bg);
+}
+
+/* 주 버튼 — 짙은 갈색 · 금빛 글자(12.56:1) */
+body.game--stopwatch .btn--primary,
+body.game--stopwatch .btn--primary:hover:not(:disabled) {
+  background: #2A1F17;
+  color: #F3E3AE;
+  box-shadow: 0 4px 0 #8A6424;
+}
+body.game--stopwatch .btn--primary:disabled {
+  background: #EFE6D6; /* 사진 위에서도 읽히게 불투명 면 · 글자 --text-sub 5.9:1 */
+  color: var(--text-sub);
+  box-shadow: none;
+}
+
+/* 사진 위에 바로 놓이는 글자 — 어두운 반투명 알약 + 흰 글자 (REQ-72 §6)
+   결과 #resultNote · 「손해 없음」 #retryNote · 시작 화면 충전 소진 안내(#adbar 안 한 줄) · 플레이 #stopHint */
+body.game--stopwatch .screen > .footnote--dim,
+body.game--stopwatch #adbar > .footnote--dim,
+body.game--stopwatch .sw-legend {
+  width: fit-content;
+  max-width: 100%;
+  margin-inline: auto;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: rgba(20, 14, 8, 0.55);
+  border: 1px solid rgba(233, 207, 143, 0.6);
+  color: #FFFFFF;
+  font-size: 13px;
+  text-align: center;
+}
+body.game--stopwatch .screen > .footnote--dim:empty { display: none; }
+/* 광고 카드 — 공용 반투명 흰 면(55%)이면 사진이 비쳐 작은 글자가 흐려진다. 이 게임만 불투명 */
+body.game--stopwatch .reward { background: #FBF7EE; }
+/* 보조 버튼(전체 통계 보기 · 결과로 돌아가기) — 투명 테두리 버튼은 사진 위에서 안 읽힌다. 시안처럼 밝은 면 */
+body.game--stopwatch .btn:not(.btn--primary):not(.btn--ghost),
+body.game--stopwatch .btn:not(.btn--primary):not(.btn--ghost):hover:not(:disabled) {
+  background: #FBF7EE;
+  border-color: rgba(122, 84, 32, 0.3);
+  color: var(--text-main);
+}
+body.game--stopwatch .screen > .footnote--dim[hidden] { display: none; }
 
 /* ── 제목 서체 ──────────────────────────────────────────────────────────── */
 body.game--stopwatch .topbar__title,
@@ -56,46 +119,11 @@ body.game--stopwatch .headline {
 body.game--stopwatch [data-screen="running"] {
   position: relative;
   isolation: isolate;
-  gap: 14px;
+  gap: 10px;
   padding-bottom: 18px;
 }
 
-/* 트랙 바닥 — 화면 아래 1/4. 장식이라 누를 수 없고 내용 뒤에 깔린다 */
-.sw-track {
-  position: absolute;
-  left: calc(var(--pad-x) * -1);
-  right: calc(var(--pad-x) * -1);
-  bottom: 0;
-  height: 26%;
-  z-index: -1;
-  pointer-events: none;
-  background:
-    repeating-linear-gradient(90deg, rgba(0, 0, 0, 0.05) 0 2px, transparent 2px 6px),
-    var(--theme-fill);
-  border-radius: 18px 18px 0 0;
-  overflow: hidden;
-}
-.sw-track i {
-  position: absolute;
-  left: 0;
-  right: 0;
-  height: 3px;
-  background: rgba(255, 255, 255, 0.92);
-}
-.sw-track i:nth-child(1) { top: 25%; }
-.sw-track i:nth-child(2) { top: 50%; }
-.sw-track i:nth-child(3) { top: 75%; }
-.sw-track::before {        /* 출발선 */
-  content: "";
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 9%;
-  width: 6px;
-  background: #fff;
-}
-
-/* 목표 표지 — 왼쪽 주황 띠가 붙은 흰 팻말 */
+/* 목표 표지 — 왼쪽 금색 띠가 붙은 흰 팻말 (트랙 4줄 .sw-track 은 사진으로 대체 · REQ-72) */
 body.game--stopwatch #runningTarget {
   align-self: flex-start;
   padding: 7px 16px 7px 12px;
@@ -111,17 +139,18 @@ body.game--stopwatch #runningTarget {
 
 /* 본체 — 화면 폭 72% · 높이가 낮은 화면에서는 높이 기준으로 줄인다 */
 .sw-watch {
-  --sw: min(72vw, 300px, 40vh);
+  /* 높이로도 줄인다 — 짧은 화면에서 STOP 이 사진 속 레인 번호(화면 아래 약 18%)보다 위에 오도록 (REQ-72 §7) */
+  --sw: min(72vw, 300px, 40vh, calc(100dvh - 470px));
   position: relative;
   width: var(--sw);
   aspect-ratio: 300 / 340;
   flex: none;
 }
-.sw-watch__svg { display: block; width: 100%; height: 100%; }
+.sw-watch__svg { display: block; width: 100%; height: 100%; filter: drop-shadow(0 22px 30px rgba(0, 0, 0, 0.45)); }
 
 .sw-tick { stroke: #241A12; stroke-width: 1.2; }
 .sw-tick--major { stroke-width: 2.4; }
-.sw-num { font-family: var(--mono); font-weight: 700; font-size: 15px; fill: #6B5444; }
+.sw-num { font-family: var(--mono); font-weight: 700; font-size: 15px; fill: #7A5420; }
 .sw-arc { stroke: var(--theme-fill); }
 .sw-now { fill: var(--theme-fill); }
 .sw-target { fill: var(--theme-target); }
@@ -142,12 +171,10 @@ body.game--stopwatch #timerMain {
   color: var(--text-main);
 }
 
-.sw-legend {
+.sw-legend {          /* 모양(어두운 알약 · 흰 글자)은 위 「사진 위 글자」 규칙 */
   display: flex;
   justify-content: center;
   gap: 18px;
-  font-size: 13px;
-  color: var(--text-sub);
 }
 .sw-legend span { display: inline-flex; align-items: center; gap: 5px; }
 /* 다이얼 위 #swTarget 과 같은 ▲ (기획회신 REP-47 검토 2-B). 다이얼 쪽은 꼭짓점이 중심을
@@ -166,30 +193,28 @@ body.game--stopwatch #timerMain {
   background: var(--theme-fill);
 }
 
-/* STOP — 주황 큰 버튼. 글자는 진한 먹색(큰 글자 3.97:1) */
+/* STOP — 금색 공. 글자 먹색(5.52:1) · 눌림은 지금처럼 아래로 4px */
 body.game--stopwatch .stop-circle {
   width: min(118px, 30vw, 15vh);
   min-width: 88px;
-  background: var(--theme-fill);
-  border: 4px solid var(--text-main);
-  box-shadow: 0 6px 0 var(--text-main);
-  color: var(--text-main);
+  background: radial-gradient(circle at 35% 30%, #E9CF8F, #B88B3A 60%, #8A6424);
+  border: 2px solid #F3E3AE;
+  box-shadow: 0 8px 18px rgba(30, 18, 8, 0.45);
+  color: #241A12;
   font-family: var(--theme-display);
   font-size: clamp(20px, 6.4vw, 26px);
   letter-spacing: 0.04em;
 }
-body.game--stopwatch .stop-circle:hover:not(:disabled) { background: #E2541C; }
+body.game--stopwatch .stop-circle:hover:not(:disabled) { filter: brightness(1.05); }
 body.game--stopwatch .stop-circle:active:not(:disabled) {
   transform: translateY(4px);
-  box-shadow: 0 2px 0 var(--text-main);
+  box-shadow: 0 3px 8px rgba(30, 18, 8, 0.45);
 }
 
-/* 안내 — 트랙 위 흰 알약 */
+/* 안내 — 사진 위 어두운 알약(모양은 위 「사진 위 글자」 규칙) */
 body.game--stopwatch #stopHint {
+  margin-top: auto; /* 화면 맨 아래로 — STOP 과 안내 사이에 레인 번호가 보이게 */
   padding: 8px 18px;
-  background: var(--surface);
-  border-radius: 22px;
-  color: var(--text-main);
   font-size: 14px;
   font-weight: 700;
 }
