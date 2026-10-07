@@ -1,9 +1,11 @@
 /**
- * 게임 배경음악 — 게임 폴더의 bgm.mp3 를 끊김 없이 반복하고, 상단 바에 소리 버튼을 단다.
+ * 배경음악 — 화면 폴더의 bgm.mp3 를 끊김 없이 반복하고, 상단 바에 소리 버튼을 단다.
+ * 게임 31종과 오늘의 나 3종(타로·선택·사주)이 쓴다.
  *
- * 연결: 게임 index.html 의 game.js 다음 줄에
- *   <script type="module" src="../../shared/bgm.js"></script>
- * game.js 가 먼저 돌아 #header 가 그려진 뒤여야 버튼이 붙는다(모듈은 적힌 순서대로 실행된다).
+ * 연결: index.html 의 화면 스크립트(game.js · tarot.js …) 다음 줄에
+ *   <script type="module" src="../../shared/bgm.js"></script>   (게임 — /games/<게임>/)
+ *   <script type="module" src="../shared/bgm.js"></script>      (오늘의 나 — /tarot/ 등)
+ * 화면 스크립트가 먼저 돌아 #header 가 그려진 뒤여야 버튼이 붙는다(모듈은 적힌 순서대로 실행된다).
  *
  * <audio loop> 가 아니라 Web Audio 인 이유: <audio> 는 반복할 때마다 MP3 앞뒤의
  * 인코더 무음이 끼어 이음새에서 툭 끊긴다. 곡 파일은 이음새를 맞춰 잘라 둔 것이라
