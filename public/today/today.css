@@ -160,6 +160,15 @@
 .hub-pair__txt b { display: block; font-size: 15px; line-height: 1.3; }
 .hub-pair__txt span { display: block; font-size: 13px; line-height: 1.4; }
 .hub-pair__txt small { display: block; font-size: 12px; color: var(--h-ink-2); margin-top: 1px; }
+/* 「너를 맞혀볼게」 결과 도착 한 줄 — 맨 위, 안 본 도착이 있을 때만(REQ-65 F2). 「전체」 .td-pair 와 같은 코랄 */
+.hub-arrive { display: flex; align-items: center; gap: 9px; min-height: 44px; padding: 4px 12px; border-radius: 14px;
+  background: #FFF1EC; border: 1.5px solid rgba(226, 87, 43, .5); color: #A63A17; text-decoration: none; }
+.hub-arrive__mark { flex: none; display: grid; }
+.hub-arrive__mark svg { width: 26px; height: 26px; }
+.hub-arrive__txt { flex: 1; min-width: 0; font-size: 13px; line-height: 1.35; color: var(--h-ink); }
+.hub-arrive__txt b { display: block; color: #A63A17; }
+.hub-arrive__txt > span { display: block; }
+.hub-arrive__go { flex: none; font-size: 13px; font-weight: 700; white-space: nowrap; }
 .hub-pair__badge { display: inline-block; margin-left: 6px; padding: 1px 7px; border-radius: 999px; font-size: 11px; font-weight: 700; color: #fff; background: var(--m-coral); vertical-align: 2px; }
 .hub-btn-sub { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 0 16px; border-radius: 14px; border: 1.5px solid var(--h-ink); background: transparent; color: var(--h-ink); font-size: 14px; font-weight: 700; white-space: nowrap; }
 

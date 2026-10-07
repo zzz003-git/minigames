@@ -1,0 +1,161 @@
+/* 「전체」(/) 화면의 오늘의 나 영역 — v2 허브 모듈의 홈 축소판 (REQ-65 묶음 3 · 시안 mock/home/today-home.css 사본 + 끝의 「구현 추가」 절)
+   index.html(/) 만 링크한다. 그리는 곳: shared/todaysection.js renderTodaySection.
+   ─────────────────────────────────────────────────────────────────────────
+   범위 규칙(e): 이 파일의 모든 규칙은 `.td` 루트 아래에서만 작동한다.
+   :root · html · body · 요소 단독 선택자(a, p, h2 …)를 쓰지 않는다 → base.css·게임 영역에 새지 않는다.
+   클래스 접두는 `td-` — `hub-` 는 홈에서 이미 게임 카드(.hub-card .hub__grid .hub__section)가 쓰는 이름이라 피한다.
+   토큰은 `.td` 에 정의(전역 변수 덮어쓰기 없음). 색 값은 v2 허브 theme.css(sd2/mock/hub/theme.css) 그대로. */
+
+.td{
+  --td-bg:#F4F1EC; --td-bg-2:#ECE7DF; --td-surface:#FFFDF9;
+  --td-ink:#24211D; --td-ink-2:#5E574E; --td-hair:rgba(36,33,29,.13); --td-hair-2:rgba(36,33,29,.24);
+  --td-gold:#9A6F14; --td-gold-bg:#FBF3DF; --td-gold-line:#D6B166;
+  --t-bg0:#0B1026; --t-bg1:#141C3F; --t-gold:#E8C46A; --t-gold-line:rgba(232,196,106,.6); --t-cream:#F4E9D0; --t-muted:#B4BAD3;
+  --s-paper:#EFE6D2; --s-paper-hi:#F6F0E2; --s-ink:#1E1A16; --s-ink-2:#5E554A; --s-inju:#A8281C;
+  --m-bg:#2A8F80; --m-bg2:#237A6D; --m-cream:#FFF8E7; --m-yel:#FFD24A; --m-ink:#0E2B28;
+  display:flex; flex-direction:column; gap:8px;
+  padding:12px; border-radius:22px;
+  background:var(--td-bg); color:var(--td-ink);
+  font-family:var(--sans); font-size:15px; line-height:1.45; word-break:keep-all;
+}
+.td p{margin:0}
+.td a{color:inherit; text-decoration:none}
+.td .td-num{font-family:var(--mono); font-variant-numeric:tabular-nums}
+.td .td-ico{display:block; flex:none}
+
+/* ── 머리: 영역 이름 + 오늘 n/3 (게임 영역 머리 .gamearea__head 와 같은 구조 · 같은 높이) ── */
+.td-head{display:flex; align-items:center; gap:10px; padding:0 2px}
+.td-head__txt{display:flex; flex-direction:column; gap:1px; margin-right:auto; min-width:0}
+.td-head__txt b{font-size:17px; letter-spacing:-.02em; line-height:1.25}
+.td-head__txt span{font-size:13px; color:var(--td-ink-2); line-height:1.3}
+.td-head__count{font-size:13.5px; font-weight:700; white-space:nowrap}
+.td-head__count .td-num{font-size:15px}
+.td-head__pt{display:block; text-align:right; font-size:12px; font-weight:500; color:var(--td-ink-2)}
+.td-head__pt b{font:700 13px/1 var(--mono); color:var(--td-ink)}
+
+/* ── 진행판 (v2 .board 축소: 머리 줄은 위 .td-head 가 맡음) ── */
+.td-board{padding:7px; border-radius:16px; background:var(--td-surface); border:1px solid var(--td-hair)}
+.td-nudge{margin:0 2px 6px; font-size:14px; font-weight:700; color:var(--s-inju)}
+.td-cells{display:grid; grid-template-columns:1fr 1fr 1fr 8px 64px; gap:5px; align-items:stretch}
+.td-cell{position:relative; display:flex; flex-direction:column; align-items:center; text-align:center;
+  padding:6px 2px 5px; border-radius:12px; border:1.5px dashed var(--td-hair-2); background:var(--td-bg); min-height:66px}
+.td-cell__name{font-size:13.5px; font-weight:700; line-height:1.2; margin-top:3px}
+.td-cell__state{font-size:11.5px; letter-spacing:-.03em; white-space:nowrap; line-height:1.3; color:var(--td-ink-2); margin-top:1px}
+.td-cell__ord{position:absolute; left:6px; top:5px; font:700 10.5px/1 var(--mono); color:var(--td-ink-2)}
+.td-cell.is-next{border-color:var(--td-ink); border-style:solid; background:var(--td-surface); box-shadow:0 0 0 3px rgba(36,33,29,.08)}
+.td-cell.is-next .td-cell__state{color:var(--td-ink); font-weight:700}
+.td-cell.is-done{border-style:solid}
+.td-cell.is-done .td-cell__state{font-weight:700; font-size:12px}
+.td-cell--tarot.is-done{background:linear-gradient(180deg,var(--t-bg1),var(--t-bg0)); border-color:var(--t-gold-line); color:var(--t-cream)}
+.td-cell--tarot.is-done .td-cell__state{color:var(--t-gold)}
+.td-cell--mind.is-done{background:var(--m-cream); border:2.5px solid var(--m-bg); color:var(--m-ink)}
+.td-cell--mind.is-done .td-cell__state{color:var(--m-ink); font-size:11px}
+.td-cell--saju.is-done{background:var(--s-paper); border:1.5px solid var(--s-ink); border-top:3px solid var(--s-inju); color:var(--s-ink)}
+.td-cell__check{position:absolute; right:5px; top:5px; width:16px; height:16px; border-radius:50%; display:grid; place-items:center; font-size:10px; font-weight:700}
+.td-cell--tarot .td-cell__check{background:var(--t-gold); color:var(--t-bg0)}
+.td-cell--mind .td-cell__check{background:var(--m-bg); color:#fff}
+.td-cell--saju .td-cell__check{background:var(--s-inju); color:#fff}
+.td-arrow{align-self:center; justify-self:center; color:var(--td-ink-2); font-size:15px; font-weight:700}
+.td-cell--one{border-color:var(--td-gold-line); background:var(--td-gold-bg)}
+.td-cell--one .td-cell__name{font-size:12px; line-height:1.15}
+.td-cell--one .td-cell__state{color:var(--td-gold); font:700 13px/1.2 var(--mono)}
+
+/* ── 추천 다음 1개 (v2 .reco 축소) — 홈에서 유일한 채운 버튼이 여기 있다 ── */
+.td-reco{position:relative; overflow:hidden; border-radius:16px; padding:10px 14px 12px}
+.td-reco__body{display:flex; gap:12px; align-items:center}
+.td-reco__label{display:block; font-size:12.5px; font-weight:700}
+.td-reco__title{margin:1px 0 0; font-size:20px; font-weight:700; line-height:1.2; letter-spacing:-.03em}
+.td-reco__pt{font:700 13px/1 var(--mono); margin-left:5px; vertical-align:2px; letter-spacing:0}
+.td-reco__line{margin-top:3px; font-size:14px; line-height:1.4}
+.td-reco__sub{margin-top:2px; font-size:12.5px; line-height:1.35}
+.td-btn{display:flex; align-items:center; justify-content:center; width:100%; min-height:48px; margin-top:10px;
+  border-radius:14px; font:700 16px/1 var(--sans); letter-spacing:-.02em}
+
+.td-reco--tarot{color:var(--t-cream); border:1px solid var(--t-gold-line);
+  background:
+   radial-gradient(1px 1px at 12% 14%,rgba(244,233,208,.9) 50%,transparent 51%),
+   radial-gradient(1.4px 1.4px at 86% 10%,rgba(244,233,208,.8) 50%,transparent 51%),
+   radial-gradient(1px 1px at 70% 34%,rgba(244,233,208,.55) 50%,transparent 51%),
+   radial-gradient(1px 1px at 94% 52%,rgba(244,233,208,.6) 50%,transparent 51%),
+   radial-gradient(60% 50% at 20% 30%,rgba(232,196,106,.14),transparent 70%),
+   linear-gradient(180deg,var(--t-bg1),var(--t-bg0))}
+.td-reco--tarot .td-reco__label,.td-reco--tarot .td-reco__pt{color:var(--t-gold)}
+.td-reco--tarot .td-reco__pic{flex:none; position:relative; width:46px; height:64px}
+.td-reco--tarot .td-reco__pic i{position:absolute; width:38px; aspect-ratio:2/3; border-radius:5px;
+  background:linear-gradient(180deg,#1B2552,#0F1638); border:1.5px solid var(--t-gold); /* 카드 뒷면 축약 — / 는 타로 자산을 싣지 않는다 */
+  box-shadow:0 6px 12px -6px rgba(0,0,0,.7),0 0 14px rgba(232,196,106,.22)}
+.td-reco--tarot .td-btn{background:linear-gradient(180deg,#F1D78B,var(--t-gold) 55%,#D2A94B); color:var(--t-bg0)}
+
+.td-reco--saju{border-radius:6px; color:var(--s-ink); background:var(--s-paper);
+  border:1px solid rgba(30,26,22,.75); border-top:4px solid var(--s-inju)}
+.td-reco--saju .td-reco__label{color:var(--s-inju)}
+.td-reco--saju .td-reco__day{font-size:13.5px; color:var(--s-inju); white-space:nowrap; margin-top:4px; text-align:center}
+.td-reco--saju .td-reco__sub{color:var(--s-ink-2)}
+.td-reco--saju .td-btn{background:var(--s-inju); color:#FFF8EE; box-shadow:0 3px 0 #6E1910}
+
+/* ── 오늘의 나 카드 축소(3/3) — 채운 버튼 없음, 행 전체가 /today/ 로 ── */
+.td-one{display:flex; align-items:center; gap:12px; padding:10px 12px; border-radius:16px;
+  background:var(--td-surface); border:1px solid var(--td-gold-line)}
+.td-one__pic{flex:none; position:relative; width:76px; height:64px; border-radius:10px; background:radial-gradient(90% 80% at 50% 38%,#F7F2EA,#E6DED1)}
+.td-one__txt{flex:1; min-width:0}
+.td-one__title{display:block; font-size:16px; font-weight:700; line-height:1.25}
+.td-one__tag{display:inline-block; margin-top:3px; font-size:12px; font-weight:700; color:#6E4F0C; background:var(--td-gold-bg);
+  border:1px solid var(--td-gold-line); padding:2px 8px; border-radius:999px; white-space:nowrap}
+.td-one__line{margin-top:4px; font-size:13.5px; line-height:1.45; font-weight:500}
+.td-one__go{flex:none; font-size:22px; color:var(--td-ink-2)}
+.td-done{display:flex; gap:6px; flex-wrap:wrap}
+.td-done span{display:inline-flex; align-items:center; gap:5px; min-height:30px; padding:2px 10px 2px 5px; border-radius:15px;
+  font-size:12.5px; background:var(--td-surface); border:1px solid var(--td-hair)}
+
+/* ── 아래 줄: 전체 보기 링크(테두리형) + 고지 ── */
+.td-foot{display:flex; align-items:center; gap:10px; padding:0 2px}
+.td-more{flex:none; min-height:44px; display:inline-flex; align-items:center; padding:0 14px; border-radius:14px;
+  border:1.5px solid var(--td-ink); font-size:14px; font-weight:700; white-space:nowrap}
+.td-legal{font-size:11px; line-height:1.4; color:var(--td-ink-2)}
+.td-tomorrow{font-size:12.5px; color:var(--td-ink-2)}
+
+@media (prefers-reduced-motion:reduce){ .td *{animation:none!important; transition:none!important} }
+.td-head__txt span b{font:700 14px/1 var(--mono); color:var(--td-ink)}
+.td-tomorrow{margin:0 2px; text-align:left}
+
+/* ── 최종 수정 (2026-10-07) ── */
+.td-head__txt span .td-pt{font:700 14px/1 var(--mono); color:var(--td-gold)}
+.td-board__count{margin:1px 3px 6px; font-size:13.5px; font-weight:700; line-height:1.35}
+.td-board__count .td-num{font-size:15px}
+.td-board__count .td-nudge{margin:0; display:inline; font-size:13.5px; color:var(--s-inju)}
+.td-done em{font-style:normal; font-weight:700}
+/* 너를 맞혀볼게 — 안 본 도착 한 줄(pair_unseen>0). 페어 층의 코랄을 밝은 판용으로 */
+.td-pair{display:flex; align-items:center; gap:9px; min-height:44px; padding:4px 12px; border-radius:14px;
+  background:#FFF1EC; border:1.5px solid rgba(226,87,43,.5); color:#A63A17}
+.td-pair__txt{flex:1; min-width:0; font-size:13px; line-height:1.35; color:var(--td-ink)}
+.td-pair__txt b{color:#A63A17; margin-right:3px}
+.td-pair__go{flex:none; font-size:13px; font-weight:700; white-space:nowrap}
+/* 자리 고정(impact H1): index.html 이 정적으로 class="td td--home is-loading" 을 두고, 응답 전에는 이 높이로 자리를 잡는다 */
+.td--home.is-loading{min-height:380px; background:var(--td-bg)}
+.td--home.is-loading::before,.td--home.is-loading::after{content:""; display:block; border-radius:16px; background:var(--td-bg-2)}
+.td--home.is-loading::before{height:44px}
+.td--home.is-loading::after{height:300px}
+/* 넓은 화면(impact H6): 판은 영역 폭을 따르되 안의 내용은 560px 까지만 */
+@media (min-width:640px){ .td--home > *{max-width:560px} }
+.td-pair__txt b,.td-pair__txt > span{display:block}
+.td-board__count .td-nudge{display:block}
+
+/* ── 구현 추가 (REQ-65 묶음 3) ── */
+/* 아이콘은 todaysection.js 의 공용 ico()(class="ico", 허브와 같은 스프라이트)를 쓴다 */
+.td .ico{display:block; flex:none}
+.td-pair__mark{flex:none; display:grid}
+.td-pair__mark svg{width:26px; height:26px}
+/* 선택 추천(시안 없음) — 선택 화면 테마(청록·크림·귤노랑)를 그대로 줄여서 */
+.td-reco--mind{color:#fff; background:var(--m-bg); border:1px solid var(--m-bg2)}
+.td-reco--mind .td-reco__label{color:var(--m-yel)}
+.td-reco--mind .td-reco__sub{color:rgba(255,255,255,.85)}
+.td-reco--mind .td-btn{background:var(--m-yel); color:var(--m-ink)}
+/* 3/3 콜라주 — 시안 인라인 위치를 클래스로 */
+.td-one__pic .ico:nth-child(1){position:absolute; left:6px; top:12px; transform:rotate(-9deg)}
+.td-one__pic .ico:nth-child(2){position:absolute; right:4px; top:4px}
+.td-one__seal{position:absolute; left:28px; top:36px; width:22px; height:22px; border-radius:50%; background:#A8281C;
+  box-shadow:inset 0 0 0 2px rgba(239,230,210,.9),inset 0 0 0 3.5px #A8281C,inset 0 0 0 4.2px rgba(246,240,226,.8); transform:rotate(-10deg)}
+/* 불러오기 실패 — 판 높이는 스켈레톤과 같게 두고(게임 목록이 튀지 않게) 한 줄 + 다시 시도 */
+.td--home.is-failed{min-height:380px}
+.td-fail{margin:8px 2px 0; font-size:14px; color:var(--td-ink-2)}
+.td-fail + .td-more{align-self:flex-start; background:transparent; color:var(--td-ink); font-family:var(--sans); cursor:pointer}

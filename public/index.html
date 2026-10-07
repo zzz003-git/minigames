@@ -19,8 +19,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="shared/base.css">
-  <!-- 「너를 맞혀볼게」 소개 시트(shared/pairintro.js)의 모양 — 오늘의 나 영역의 페어 띠가 연다 -->
-  <link rel="stylesheet" href="shared/nextbar.css">
+  <!-- 오늘의 나 축소판(밝은 판) — 모든 규칙이 `.td` 루트 아래에만 걸린다. 게임 판은 base.css 그대로 -->
+  <link rel="stylesheet" href="shared/today-home.css">
 </head>
 <body>
   <!-- 공용 상단 내비 (디자인 v3) — 두 영역을 한 제품으로 묶는다 -->
@@ -34,6 +34,12 @@
     <!-- 테스트 빌드 표시. 한도가 풀린 빌드인지 테스터가 알아야 「왜 무한이지?」를
          버그로 적어 오지 않습니다. 프로덕션에서는 이 자리가 비어 있습니다. -->
     <div id="testBanner" hidden></div>
+
+    <!-- ══ 오늘의 나 축소판 ══ (REQ-65 묶음 3 · Master 확정 2026-10-07)
+         게임 **위**에 둔다 — 예전엔 게임 아래(y≈4,320)라 처음 온 사람이 있는 줄도 몰랐다.
+         진행판 + 추천 하나 + 「오늘의 나 전체 보기 ›」만. 이 판만 밝고 게임은 어두운 그대로다.
+         응답 전에는 같은 높이의 스켈레톤(is-loading)으로 자리를 잡아 게임 목록이 늦게 밀리지 않게 한다. -->
+    <section id="todaySection" class="td td--home is-loading" aria-label="오늘의 나" aria-busy="true"></section>
 
     <!-- ══ 게임 영역 ══
          원안은 두 묶음(오리지널·아케이드)을 **하나의 영역 카드**로 감싼다.
@@ -299,15 +305,9 @@
 
     </section>
 
-    <!-- ══ 오늘의 나 영역 ══
-         「전체」 화면에서는 게임과 함께 보인다(원안 showHub: isHome || isHub).
-         **게임 아래**에 둔다 — 이 제품의 주 콘텐츠는 게임이고, 오늘의 나는
-         하루 한 번 들르는 곳이다. 내용은 /today/ 와 같은 모듈이 그린다. -->
-    <section id="todaySection"></section>
-
     <!-- ══ 웹툰 영역 ══
          원안의 「다음 영역」 준비중 슬롯이 있던 자리다. 세 기둥의 셋째이고
-         순서는 게임 → 오늘의 나 → 웹툰이다 — 읽는 데 가장 오래 걸리는 것이
+         순서는 오늘의 나(축소판) → 게임 → 웹툰이다 — 읽는 데 가장 오래 걸리는 것이
          맨 아래다(webtoon_section_plan 5-1). -->
     <section id="webtoonSection" hidden></section>
 
