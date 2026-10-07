@@ -47,6 +47,14 @@ export async function renderTestBanner(host) {
   line.textContent = "테스트 빌드 — 하루 한도가 풀려 있습니다. 기록은 실서비스와 분리됩니다.";
   host.append(line);
 
+  // 보이는 화면 크기 — 카톡 안 브라우저 실제 높이를 폰에서 읽으려고(기획회신 REP-64-65 3절). 툴바가 숨으면 바뀐다
+  const size = document.createElement("span");
+  size.className = "testbar__text";
+  const showSize = () => (size.textContent = `화면 ${innerWidth}×${innerHeight}`);
+  showSize();
+  addEventListener("resize", showSize);
+  host.append(size);
+
   const note = document.createElement("span");
   note.className = "testbar__note";
   host.append(note);
