@@ -287,7 +287,7 @@ function renderEditLinks() {
     }
     clear(a).append(
       ...(canFix
-        ? ["생일 정보 고치기", pc.fix_open ? el("small", {}, " (24시간 안 한 번)") : null]
+        ? ["생일 정보 고치기", ...(pc.fix_open ? [el("small", {}, " (24시간 안 한 번)")] : [])] // append(null) 은 「null」 글자가 된다
         : [lock]),
     );
   }
@@ -466,7 +466,7 @@ function renderGain(res) {
   const label = (g) =>
     g.kind === "daily" ? "오늘" : g.kind === "new" ? "새 도장" : g.p === state.st.soon_bonus ? "열흘 보너스" : "60칸 보너스";
   const parts = (res.gain_detail ?? []).filter((g) => g.kind !== "triple").map((g) => `${label(g)} ${g.p}`);
-  host.append(ck, el("span", { class: "pt" }, `+${res.gained}P`), " 받았어요", parts.length ? el("small", {}, parts.join(" + ")) : null);
+  host.append(ck, el("span", { class: "pt" }, `+${res.gained}P`), " 받았어요", ...(parts.length ? [el("small", {}, parts.join(" + "))] : []));
 }
 
 /**
@@ -736,13 +736,13 @@ function showMyChart() {
   // 한글 크게 · 한자는 모서리에 작게(ROUND2). 순서 = 해·달·날·시 + 오늘
   const col = (label, pl) =>
     pl
-      ? el("div", { class: "s-pillar pillar", "aria-label": `태어난 ${label} ${STEMS[pl.stem]}${BRANCHES[pl.branch]}` },
+      ? el("div", { class: "s-pillar", "aria-label": `태어난 ${label} ${STEMS[pl.stem]}${BRANCHES[pl.branch]}` },
           el("span", { class: `s-pillar__stem pillar__stem el${STEM_EL[pl.stem]}` }, STEMS[pl.stem],
             el("span", { class: "s-pillar__hj", "aria-hidden": "true" }, STEM_HJ[pl.stem])),
           el("span", { class: `s-pillar__branch pillar__branch el${BRANCH_EL[pl.branch]}` }, BRANCHES[pl.branch],
             el("span", { class: "s-pillar__hj", "aria-hidden": "true" }, BRANCH_HJ[pl.branch])),
           el("i", { class: `s-pillar__band-bot el${BRANCH_EL[pl.branch]}` }))
-      : el("div", { class: "s-pillar pillar pillar--empty s-pillar--empty", "aria-label": `태어난 ${label} 모름` },
+      : el("div", { class: "s-pillar s-pillar--empty", "aria-label": `태어난 ${label} 모름` },
           el("span", { class: "s-pillar__stem pillar__stem" }, "?"),
           el("span", { class: "s-pillar__branch pillar__branch" }, "?"),
           el("span", { class: "s-pillar__read" }, "몰라도", el("br"), "괜찮아요"));

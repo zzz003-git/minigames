@@ -77,7 +77,7 @@
         <p class="done" id="doneLine"><i aria-hidden="true"></i><span id="doneText">—</span><a class="s-link" id="editProfileStamp" data-edit-profile href="#reg" hidden>고치기</a></p>
         <h2 class="ttl">오늘 운세를 열어 볼까요</h2>
         <p class="today"><span id="todayLabel">오늘의 글자</span><b id="orbName">—</b></p>
-        <div class="stage">
+        <div class="s-stage">
           <div class="s-sealwrap">
             <button id="orb" class="s-seal orb" type="button" aria-label="오늘의 글자 — 눌러서 오늘 운세 열기">
               <span class="s-seal__han" id="orbHan" aria-hidden="true"></span>
@@ -163,7 +163,8 @@
       </section>
 
       <!-- ⑦ 내 글자 보기 (s7) -->
-      <section class="screen chart" data-screen="mychart">
+      <!-- `chart`·`pillar` 클래스 금지 — base.css 의 게임용 .chart(높이·잘림·오른쪽 정렬)·.pillar(220px)와 겹친다 -->
+      <section class="screen" data-screen="mychart">
         <div class="hero" id="chartNote"></div>
         <div class="cols-wrap">
           <div class="s-cols labels" aria-hidden="true">

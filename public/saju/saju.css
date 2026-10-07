@@ -218,7 +218,7 @@ body.suite--saju {
 .ttl { margin: 4px 0 0; font: 400 38px/1.1 var(--s-f-brush); color: var(--s-ink); }
 .today { margin: 6px 0 0; font-size: 14px; color: var(--s-ink-2); }
 .today b { display: block; margin-top: 2px; font-size: 30px; line-height: 1.15; color: var(--s-ink); }
-.stage { width: 100%; display: grid; place-items: center; padding: 10px 0; }
+.s-stage { width: 100%; display: grid; place-items: center; padding: 10px 0; }
 .s-sealwrap { position: relative; width: 128px; height: 128px; display: grid; place-items: center; }
 .s-sealwrap::before { content: ""; position: absolute; inset: -10px; border-radius: 50%; border: 2px solid rgba(168, 40, 28, 0.35); animation: s-ring 1.8s ease-out infinite; }
 @keyframes s-ring { 0% { transform: scale(0.86); opacity: 1; } 100% { transform: scale(1.12); opacity: 0; } }
