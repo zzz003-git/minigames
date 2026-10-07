@@ -310,3 +310,56 @@ body.game--baseball .reward__note { opacity: 1; color: var(--text-sub); }
 @media (prefers-reduced-motion: reduce) {
   body.game--baseball .bb-lamp.is-on { animation: none; }
 }
+
+/* ══════════════════════════════════════════════════════════════
+   입력 화면 — 화면 높이에 맞춤 (REQ-67 §1)
+   기록이 늘어도 키패드가 늘 화면 안에 있게: 화면 = 실제 보이는 높이(100dvh − 위쪽),
+   기록 카드는 남는 높이만 차지하고 그 안에서만 스크롤, 입력판은 340px 이하.
+   공용 .sheet·.numpad·.slot 은 countdot·mathrush·memory 도 쓰므로 이 범위 밖은 건드리지 않는다.
+   ══════════════════════════════════════════════════════════════ */
+body.game--baseball [data-screen="input"].is-active {
+  flex: none; /* 공용 .screen{flex:1} 이면 높이 지정이 무시되고 기록만큼 늘어난다 */
+  display: flex;
+  flex-direction: column;
+  /* --bb-out 은 game.js 가 잰 이 화면 바깥 높이(위: 사이트바·상단바 · 아래: 앱 여백) */
+  height: calc(100vh - var(--bb-out, 0px));
+  height: calc(100dvh - var(--bb-out, 0px));
+  gap: 10px;
+}
+body.game--baseball [data-screen="input"] > .spacer { display: none; }
+body.game--baseball [data-screen="input"] .card--info {
+  flex: 1 1 auto;
+  min-height: 92px; /* 머리줄 + 기록 1줄 */
+  display: flex;
+  flex-direction: column;
+  padding: 10px 12px;
+}
+body.game--baseball [data-screen="input"] .card__head { margin-bottom: 4px; }
+/* 기록 — 2열로 촘촘하게(6회가 한눈에). 숫자는 20px 아래로 내리지 않는다(주 사용층 50~60대) */
+body.game--baseball #inputHistory {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  column-gap: 10px;
+  align-content: start;
+}
+body.game--baseball #inputHistory .history__row { padding: 6px 2px; gap: 4px; white-space: nowrap; }
+body.game--baseball #inputHistory .history__row:nth-child(2) { border-top: 0; }
+body.game--baseball #inputHistory .history__guess { font-size: 20px; letter-spacing: 0; }
+body.game--baseball #inputHistory .history__verdict { gap: 3px; flex-wrap: nowrap; }
+body.game--baseball #inputHistory .tag { padding: 2px 4px; font-size: 12px; }
+/* 입력판 — 높이 340px 이하(390폭) */
+body.game--baseball [data-screen="input"] .sheet {
+  flex: none;
+  gap: 6px;
+  padding: 8px 16px calc(10px + env(safe-area-inset-bottom, 0px));
+}
+body.game--baseball [data-screen="input"] .sheet__grip { display: none; } /* 머리줄의 「← 취소」가 그 자리 */
+body.game--baseball [data-screen="input"] .sheet__head { gap: 6px; }
+body.game--baseball .bb-cancel { min-height: 44px; padding: 0 10px 0 2px; width: auto; flex: none; }
+body.game--baseball [data-screen="input"] #inputSlots .slot { height: 52px; width: 56px; font-size: 26px; }
+body.game--baseball [data-screen="input"] .numpad { gap: 6px; }
+body.game--baseball [data-screen="input"] .numpad__key { min-height: 48px; height: 48px; padding: 0; }

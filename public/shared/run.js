@@ -56,6 +56,7 @@ export const runApi = {
  */
 export function renderReady({ attempts, base, best, plays, formatBest }) {
   const { total, used, remaining } = attempts;
+  charge.attempts = attempts; // 충전 카드 판정용 (attemptReward)
 
   renderPips($("#attemptDots"), { total, used, base });
 
@@ -257,6 +258,8 @@ export function renderRunOver(res, view) {
     }
   }
 
+  renderRetry({ attempts: res.attempts }); // 기회 0이면 「광고 보고 한 판 더」 (REQ-68)
+
   showScreen("over");
   if (v.great) celebrate($("#overCard"));
 }
@@ -383,15 +386,52 @@ export function clearRewards() {
   }
 }
 
-/** 시작 화면 — 도전 기회 충전 */
+// ── 도전 기회 충전 — 시작 화면(REQ-67)과 결과 화면(REQ-68)이 **같은 판정**을 쓴다 ──────
+//
+// 광고는 구원이 되는 순간에만 둔다(Master 2026-10-07): 기회가 남아 있으면 충전 광고를 띄우지
+// 않고, 0이 됐을 때만 제안한다. 하루 광고 상한을 다 쓰면 숨기고 한 줄로 알린다.
+// 광고 남은 수 = 하루 상한 − granted. granted 는 충전 광고로만 오르고 광고 1회당 +1 이라
+// (routes/ad.js _ATTEMPT · STOPWATCH_ATTEMPT) 서버 상한 판정(그날 본 횟수)과 같은 값이 된다.
+
+/** 충전 광고로 받은 판은 일반 리그 — '+' 리그는 런 중 이어하기에만 붙는다(src/lib/arcade.js finalize) */
+export const CHARGE_NOTE = "광고로 받은 기회도 기록·순위는 똑같이 들어가요";
+export const CHARGE_SPENT = "오늘 도전을 모두 썼어요 · 내일 다시 채워져요";
+
+/** has = 기회 남음 · ad = 0 이고 광고 남음 · spent = 0 이고 하루 광고 상한 소진 */
+export function chargeMode(attempts, perDay) {
+  if (!attempts || (attempts.remaining ?? 0) > 0) return "has";
+  return (attempts.granted ?? 0) < perDay ? "ad" : "spent";
+}
+
+// renderReady 가 받은 남은 기회를 attemptReward·결과 화면이 쓴다 — 23종 game.js 를 고치지 않으려고.
+// (모든 게임이 loadReady 안에서 renderReady → attemptReward 순으로 부른다 · 2026-10-07 확인)
+const charge = { game: null, perDay: null, attempts: null, mode: "has" };
+
+/** 시작 화면 — 도전 기회 충전. 기회가 0일 때만, 「시작하기」 바로 아래(첫 화면 안)에 */
 export function attemptReward(game, { perDay, onGranted }) {
+  charge.game = game;
+  charge.perDay = perDay;
   const host = $("#adbar");
   if (!host) return;
+  clearRewardCard(host);
+
+  const mode = chargeMode(charge.attempts, perDay);
+  if (mode === "has") return;
+  // 첫 화면 안에 보이게 꺼진 「시작하기」 자리로 옮긴다(카드가 위, 꺼진 버튼이 바로 아래).
+  // 「바로 아래」에 두면 그림이 큰 게임(색 다른 타일)에서 655px 를 넘었다 · 게임별 index.html 은 그대로
+  const start = $("#startBtn");
+  if (mode === "spent") {
+    start?.after(host);
+    host.append(el("p", { class: "footnote--dim center" }, CHARGE_SPENT));
+    return;
+  }
+  start?.before(host);
 
   renderRewardCard(host, {
     icon: "🎁",
     title: "광고 보고 도전 기회 +1",
     desc: `하루 ${perDay}회까지`,
+    note: CHARGE_NOTE,
     cta: "받기",
     onClick: async () => {
       const res = await watchAdForReward(`${game}_ATTEMPT`);
@@ -400,6 +440,61 @@ export function attemptReward(game, { perDay, onGranted }) {
       onGranted?.(res);
     },
   });
+}
+
+/**
+ * 결과 화면 — 기회가 0이면 「다시 도전하기」를 「▶ 광고 보고 한 판 더」로 (REQ-68).
+ *
+ * 버튼에 걸린 게임 쪽 리스너(대개 loadReady)는 건드리지 않는다. 「광고」 상태일 때만 문서 캡처
+ * 단계에서 클릭을 가로채 광고를 띄우고, 받으면 원래 버튼 동작(시작하기가 켜진 시작 화면)으로 넘긴다.
+ * 광고를 중간에 닫으면 아무 일 없이 버튼이 남는다.
+ */
+export function renderRetry({ game = charge.game, perDay = charge.perDay, attempts }) {
+  const btn = $("#retryBtn");
+  if (!btn || !game || !perDay) return; // 시작 화면을 거치지 않은 경우 — 지금 그대로
+  charge.game = game;
+  charge.perDay = perDay;
+  charge.attempts = attempts;
+  charge.mode = chargeMode(attempts, perDay);
+
+  btn.dataset.label ??= btn.textContent;
+  btn.textContent =
+    charge.mode === "ad" ? "▶ 광고 보고 한 판 더" : charge.mode === "spent" ? "오늘은 여기까지 · 내일 다시 채워져요" : btn.dataset.label;
+
+  let note = $("#retryNote");
+  if (!note) {
+    note = el("p", { class: "footnote--dim center", id: "retryNote" }, CHARGE_NOTE);
+    btn.after(note);
+  }
+  note.hidden = charge.mode !== "ad";
+  hookRetry();
+}
+
+let retryHooked = false;
+function hookRetry() {
+  if (retryHooked) return;
+  retryHooked = true;
+  document.addEventListener(
+    "click",
+    async (e) => {
+      const btn = e.target.closest?.("#retryBtn");
+      if (!btn || charge.mode !== "ad") return;
+      e.stopPropagation();
+      e.preventDefault();
+      if (btn.dataset.busy) return;
+      btn.dataset.busy = "1";
+      try {
+        const res = await watchAdForReward(`${charge.game}_ATTEMPT`);
+        if (!res) return;
+        toast("도전 기회가 1회 추가되었습니다.", "good");
+        charge.mode = "has";
+        btn.click(); // 게임의 원래 「다시 도전」 — 시작하기가 켜진 시작 화면
+      } finally {
+        delete btn.dataset.busy;
+      }
+    },
+    true,
+  );
 }
 
 /**

@@ -12,6 +12,10 @@ import {
   $, el, clear, showScreen, toast, renderPips, renderChart, renderStats, renderHeader,
   celebrate, ms2, ms3, gapText, comma, currentScreen,
 } from "../../shared/ui.js";
+import { chargeMode, renderRetry, CHARGE_NOTE, CHARGE_SPENT } from "../../shared/run.js";
+
+/** 충전 광고 하루 상한 — 서버 STOPWATCH.AD_VIEWS_PER_DAY 와 같다(광고 1회당 기회 +1) */
+const AD_PER_DAY = 3;
 
 const state = {
   sessionId: null,
@@ -80,7 +84,11 @@ function handleStartError(err) {
     $("#targetDisplay").textContent = "—";
     setFigure($("#attemptText"), "0", "회");
     renderPips($("#attemptDots"), { total: 0, used: 0 });
-    renderRewards("ready");
+    // 충전 광고가 남았는지 알려면 granted 가 필요하다 — 시작 화면 조회 1회 (REQ-67)
+    apiGet("/user/attempts", { game: "STOPWATCH" })
+      .then((st) => (state.attempts = st.attempts))
+      .catch(() => {})
+      .finally(() => renderRewards("ready"));
     return;
   }
   $("#targetDisplay").textContent = "—";
@@ -250,6 +258,7 @@ function renderResult(res) {
     ? "검증 이상치로 표시되어 전체 통계에는 반영되지 않습니다"
     : `오차 ${gapText(res.gap_ms)} · 남은 기회 ${res.attempts.remaining}회`;
 
+  renderRetry({ game: "STOPWATCH", perDay: AD_PER_DAY, attempts: res.attempts }); // 기회 0이면 「광고 보고 한 판 더」 (REQ-68)
   showScreen("result");
   renderRewards("result");
 
@@ -314,10 +323,22 @@ function renderRewards(screen) {
   clearRewardCard($("#adbar2"));
 
   if (screen === "ready") {
-    renderRewardCard($("#adbar"), {
+    // 기회가 0일 때만 — 공용 판정과 같은 규칙(REQ-67). 상한을 다 쓰면 카드 대신 한 줄
+    const mode = chargeMode(state.attempts, AD_PER_DAY);
+    if (mode === "has") return;
+    const host = $("#adbar");
+    // 공용 attemptReward 와 같은 자리 — 광고 카드는 꺼진 「시작하기」 자리(위), 소진 안내는 그 아래
+    if (mode === "spent") {
+      $("#startBtn").after(host);
+      host.append(el("p", { class: "footnote--dim center" }, CHARGE_SPENT));
+      return;
+    }
+    $("#startBtn").before(host);
+    renderRewardCard(host, {
       icon: "🎁",
       title: "광고 보고 도전 기회 추가",
-      desc: "하루 3회까지",
+      desc: `하루 ${AD_PER_DAY}회까지`,
+      note: CHARGE_NOTE,
       cta: "받기",
       onClick: async () => {
         const res = await watchAdForReward("STOPWATCH_ATTEMPT");

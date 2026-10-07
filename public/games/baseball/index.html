@@ -81,13 +81,14 @@
 
         <div class="sheet">
           <div class="sheet__grip" aria-hidden="true"></div>
+          <!-- 「← 취소」를 머리줄 왼쪽으로 — 입력판 높이를 줄여 키패드가 늘 화면 안에 (REQ-67 §1) -->
           <div class="sheet__head">
+            <button class="btn btn--ghost bb-cancel" id="cancelInputBtn" type="button">← 취소</button>
             <span class="card__title" id="inputLabel">숫자 입력</span>
             <span class="footnote--dim">서로 다른 3자리</span>
           </div>
           <div class="slots slots--input" id="inputSlots"></div>
           <div id="numpad"></div>
-          <button class="btn btn--ghost" id="cancelInputBtn">← 취소</button>
         </div>
       </section>
 

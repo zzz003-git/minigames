@@ -175,6 +175,20 @@ function openInput() {
   renderInput();
   showScreen("input");
   renderRewards("input");
+  fitInput();
+}
+
+/**
+ * 입력 화면을 보이는 높이에 맞춘다 (REQ-67 §1) — 화면 바깥 높이(위: 사이트바·상단바, 아래: 앱 여백)를
+ * 재서 theme.css 가 `100dvh − 그 높이` 로 화면을 잡게 한다. 기록은 맨 아래(최신 판정)로 내린다.
+ */
+function fitInput() {
+  const screen = document.querySelector('[data-screen="input"]');
+  const r = screen.getBoundingClientRect();
+  const below = document.querySelector(".app").getBoundingClientRect().bottom - r.bottom;
+  screen.style.setProperty("--bb-out", `${Math.round(r.top + scrollY + below)}px`);
+  const h = $("#inputHistory");
+  h.scrollTop = h.scrollHeight;
 }
 
 function renderInput() {

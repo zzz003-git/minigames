@@ -128,9 +128,8 @@ async function loadReady() {
     });
     $("#doughText").textContent = "재료는 매일 바뀝니다. 늘어난 길이만큼 전액 적립돼요.";
 
-    if ((st.attempts?.remaining ?? 0) <= 0) {
-      attemptReward(GAME, { perDay: AD_PER_DAY, onGranted: loadReady });
-    }
+    // 기회가 0일 때만 카드를 띄우는 판정은 이제 공용 attemptReward 가 한다(REQ-67) — 결과 화면도 같은 값을 쓴다
+    attemptReward(GAME, { perDay: AD_PER_DAY, onGranted: loadReady });
   } catch (err) {
     toast(err.message ?? "정보를 불러올 수 없습니다.", "error");
   }
