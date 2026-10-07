@@ -165,7 +165,7 @@ function homeHead(data) {
   const sub = !h
     ? null
     : h.kind === "promise"
-      ? el("span", {}, "셋 다 하면 ", el("b", { class: "td-pt" }, "+", el("span", { class: "js-triple-pts" }, String(h.value)), "P"), " 보너스")
+      ? el("span", {}, "셋 다 하면 ", el("b", { class: "td-pt" }, "+", el("span", { class: "js-triple-pts" }, String(h.value)), "P")) // 「보너스」는 쓰지 않는다 — NEXTBAR 명칭(기획 회신 63-1)
       : el("span", {}, "오늘 받은 포인트 ", el("b", { class: "td-num" }, `${h.value}P`));
   return el("div", { class: "td-head" }, ico("one", 32), el("span", { class: "td-head__txt" }, el("b", {}, "오늘의 나"), sub));
 }
