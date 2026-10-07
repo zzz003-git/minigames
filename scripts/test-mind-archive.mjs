@@ -166,6 +166,31 @@ console.log("\n[5] 열 날이 없으면 광고 보상 거절 · 카드 숨김 �
   check("광고 기록 남지 않음(횟수 안 씀)", views === 0, `views=${views}`);
 }
 
+console.log("\n[6] 오늘 회전이 아닌 장면 → 409 DAY_CHANGED · 축 +1 통일 · 분포 닫힘 (REQ-62 ⑨⑬⑭)");
+{
+  const { c, uid } = await freshUser();
+  const other = MIND_INDEX.experiments.find((e) => e.id !== rot(today)).id;
+  const r = await c.post("/api/mind/submit", { exp_id: other, ...sheet() });
+  // 이 시험의 client 는 응답에 `data` 가 있으면 그것을 꺼내 준다 — 오류 봉투의 `data` 가 곧 r.data 다
+  check("409 · data 에 기대 id·day", r.status === 409 &&
+    r.data.expected_exp_id === rot(today) && r.data.day === today, JSON.stringify(r.data));
+  const rows = sql(`SELECT COUNT(*) AS n FROM mind_daily WHERE user_id = ${q(uid)}`)[0].n;
+  check("mind_daily 행 없음 · 적립 없음", rows === 0 && points(uid) === 0);
+
+  // −1 선택지 — 축은 그래도 +1
+  const neg = {
+    questions: Array.from({ length: 4 }, () => ({ opts: Array.from({ length: 5 }, (_, i) => ({ ty: i % 4, ax: [3, -1] })) })),
+    answers: [0, 0, 0, 0],
+  };
+  const ok = await c.post("/api/mind/submit", { exp_id: rot(today), ...neg });
+  check("−1 선택지 4개 → 축 3 이 +4", ok.status === 200 && ok.data.axes_gain?.[3] === 4, JSON.stringify(ok.data.axes_gain));
+  const s = await c.get("/api/mind/state");
+  check("state.dist_open false", s.data.dist_open === false);
+  sql(`UPDATE mind_daily SET ad_stats = 1 WHERE user_id = ${q(uid)}`);
+  const st = await c.get("/api/mind/stats");
+  check("닫힌 stats 에 total 없음", st.data.open === false && !("total" in st.data), JSON.stringify(st.data));
+}
+
 console.log(`\n${pass} 통과 · ${failures.length} 실패`);
 if (failures.length) {
   console.log("실패:\n  " + failures.join("\n  "));

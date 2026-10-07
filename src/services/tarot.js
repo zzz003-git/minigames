@@ -22,7 +22,7 @@ import { ApiError, requireOneOf } from "../lib/http.js";
 import { randomInt } from "../lib/crypto.js";
 import { dayKey, now } from "../lib/time.js";
 import { isTestMode } from "../lib/testmode.js";
-import { grantPoints, grantMany, completeDaily, dailyState, distribution, touchUser, pointState } from "../lib/suite.js";
+import { grantPoints, grantMany, completeDaily, dailyState, distribution, distOpen, touchUser, pointState } from "../lib/suite.js";
 
 const parseDraws = (raw) => {
   try {
@@ -87,7 +87,7 @@ async function loadDust(env, userId) {
  *
  * @returns {{ dustGained:number, exchangedCardId:number|null, gained:number }}
  */
-async function exchangeDust(env, userId, day, { grant = true } = {}) {
+async function exchangeDust(env, userId, day) {
   const t = now();
   const unowned = `
     WITH RECURSIVE n(i) AS (SELECT 0 UNION ALL SELECT i + 1 FROM n WHERE i < ${TAROT.CARDS - 1})
@@ -115,14 +115,14 @@ async function exchangeDust(env, userId, day, { grant = true } = {}) {
        RETURNING card_id`,
     ).bind(userId, day, randomInt(0, 2 ** 31 - 1)),
     // ④ 그 카드의 신규 적립 — 뽑기로 얻은 카드와 **같은 키**다(카드별 평생 1회).
-    //    올해·이달의 카드에서 온 교환은 적립하지 않는다(SPEC-04 §5 ③) — 금액 0 이면 넣지 않는다
+    //    올해·이달의 카드에서 온 교환도 같다(REQ-62 ⑯ · E2)
     env.DB.prepare(
       `INSERT OR IGNORE INTO suite_points (user_id, key, reason, amount, day, created_at)
        SELECT ?1, 'TAROT_NEW:' || card_id, 'TAROT_NEW', ?2, ?3, ?4
          FROM tarot_coll
-        WHERE user_id = ?1 AND via = 'dust' AND ?2 > 0
+        WHERE user_id = ?1 AND via = 'dust'
           AND EXISTS (SELECT 1 FROM tarot_meta WHERE user_id = ?1 AND ex_pending = 1)`,
-    ).bind(userId, grant ? SUITE.POINTS.COLLECT_NEW : 0, day, t),
+    ).bind(userId, SUITE.POINTS.COLLECT_NEW, day, t),
     // ⑤ 끈을 푼다
     env.DB.prepare(`UPDATE tarot_meta SET ex_pending = 0 WHERE user_id = ?1 AND ex_pending = 1`).bind(
       userId,
@@ -140,10 +140,9 @@ async function exchangeDust(env, userId, day, { grant = true } = {}) {
 
 /**
  * 뽑힌 한 장을 도감에 반영한다 — 새 카드 · 별가루 교환 · 금빛 (1·2단계 규칙 그대로).
- * 일일 뽑기와 올해·이달의 카드가 같이 쓴다. `grant=false` 면 교환 카드의 신규 적립을 넣지
- * 않는다(올해·이달의 카드는 적립 없음 · SPEC-04 §5 ③).
+ * 일일 뽑기와 올해·이달의 카드가 같이 쓴다. 교환 카드의 신규 적립(+3P)은 두 경로 모두 들어간다.
  */
-async function collectCard(env, userId, cardId, day, { via = "draw", grant = true } = {}) {
+async function collectCard(env, userId, cardId, day, { via = "draw" } = {}) {
   // 새 카드인지는 PK 충돌로 정해진다. 동시 요청이어도 한쪽만 changes 1 을 받는다.
   const ins = await env.DB.prepare(
     `INSERT OR IGNORE INTO tarot_coll (user_id, card_id, first_day, via) VALUES (?, ?, ?, ?)`,
@@ -162,7 +161,7 @@ async function collectCard(env, userId, cardId, day, { via = "draw", grant = tru
       .bind(userId)
       .first();
     if ((owned?.n ?? 0) < TAROT.CARDS) {
-      ex = await exchangeDust(env, userId, day, { grant });
+      ex = await exchangeDust(env, userId, day);
     } else {
       goldNew = await goldByDraw(env, userId, cardId, day);
       if (!goldNew) {
@@ -339,7 +338,7 @@ export async function today({ env, userId, request }) {
   const day = tarotDay(env, request);
   await touchUser(env, userId, day);
 
-  const [st, meta, coll, suite, points, dust, gold, lastYear, specials] = await Promise.all([
+  const [st, meta, coll, suite, points, dust, gold, lastYear, specials, open] = await Promise.all([
     loadDay(env, userId, day),
     loadMeta(env, userId),
     collection(env, userId),
@@ -351,6 +350,7 @@ export async function today({ env, userId, request }) {
       .bind(userId, yearAgo(day))
       .first(),
     loadSpecials(env, userId),
+    distOpen(env, "tarot", day),
   ]);
   const ly = firstDraw(lastYear?.draws);
 
@@ -363,6 +363,7 @@ export async function today({ env, userId, request }) {
     ad_more_used: st.adMoreUsed,
     ad_more_max: TAROT.AD_MORE_PER_DAY,
     ad_stats_seen: st.adStatsSeen,
+    dist_open: open, // 분포가 열렸는가 — 닫혀 있으면 화면이 분포 광고 카드를 숨긴다 (REQ-62 ⑭)
     welcome_available: TAROT.WELCOME_DRAW && !meta.welcomeUsed,
     collection: coll,
     collection_count: coll.length,
@@ -596,7 +597,8 @@ function specialState(day, rows) {
  * POST /api/tarot/special  body: { kind: 'year' | 'month' }
  *
  * 일일 뽑기와 **별개**다 — 하루 장수·고민을 쓰지 않고, 광고도 없다. 도감·별가루·금빛 규칙은
- * 그대로 적용하되 **적립은 없다**(코어·신규·마일스톤 모두 · SPEC-04 §5 ③). 마일스톤은 다음
+ * 그대로 적용한다. 적립은 **새 카드 +3P 뿐**이다 — 일일 뽑기와 같은 `TAROT_NEW:{id}` 키라
+ * 카드당 평생 1회 그대로다(REQ-62 ⑯ · E2). 코어·마일스톤은 주지 않는다 — 마일스톤은 다음
  * 일일 뽑기에서 도감 수를 다시 볼 때 들어온다.
  *
  * 기간당 1장은 `tarot_special` 의 PK 가 정한다 — 먼저 자리를 잡고(INSERT OR IGNORE) 그
@@ -625,10 +627,12 @@ export async function special({ env, userId, body, request }) {
     );
   }
 
-  const { isNew, ex, goldNew, goldExchangedCardId } = await collectCard(env, userId, cardId, day, {
-    via: kind,
-    grant: false,
-  });
+  const { isNew, ex, goldNew, goldExchangedCardId } = await collectCard(env, userId, cardId, day, { via: kind });
+  const newGained = isNew
+    ? await grantMany(env, userId, [
+        { key: `TAROT_NEW:${cardId}`, reason: "TAROT_NEW", amount: SUITE.POINTS.COLLECT_NEW, day },
+      ])
+    : 0;
   const [coll, gold] = await Promise.all([collection(env, userId), goldCards(env, userId)]);
 
   return {
@@ -643,7 +647,7 @@ export async function special({ env, userId, body, request }) {
     gold_new: goldNew,
     gold_exchanged_card_id: goldExchangedCardId,
     gold_count: gold.length,
-    gained: 0,
+    gained: newGained + ex.gained,
   };
 }
 

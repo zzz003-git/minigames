@@ -20,6 +20,9 @@ import { TAROT_DB } from "./tarot-db.js";
 import { renderSiteNav } from "../shared/sitenav.js";
 import { startRitual } from "./tarot-ritual.js";
 
+/** 분포가 아직 닫혀 있을 때의 한 줄 — 인원 수를 적지 않는다 (REQ-62 ⑭) */
+const DIST_SOON = "사람이 더 모이면 열려요";
+
 const FOCUS = [
   { k: "day", label: "오늘 하루" },
   { k: "work", label: "일 · 공부" },
@@ -169,9 +172,10 @@ async function boot() {
 
   // 이미 뽑았으면 덱을 건너뛰고 결과로 간다 — 「오늘의 카드」는 하루 한 장이고
   // 다시 들어왔을 때 또 뽑게 하면 그 전제가 깨진다(기획서 1절 엣지).
+  // 보여 주는 것은 **첫 장** — 서버·허브·달력·분포의 「오늘의 카드」와 같다 (REQ-62 ⑧)
   if (state.today.draws.length > 0) {
-    const last = state.today.draws[state.today.draws.length - 1];
-    renderResult(last.c, last.f, { gained: 0, replay: true });
+    const first = state.today.draws[0];
+    renderResult(first.c, first.f, { gained: 0, replay: true });
     return;
   }
   enterDeck();
@@ -872,21 +876,27 @@ function renderResultAds() {
     });
   }
 
-  if (!state.today.ad_stats_seen) {
+  // 분포가 아직 닫혀 있으면 광고 카드를 내지 않는다 — 봐도 받을 것이 없다 (REQ-62 ⑭ · D2)
+  if (state.today.ad_stats_seen) {
+    loadStats();
+  } else if (!state.today.dist_open) {
+    $("#resDist").textContent = DIST_SOON;
+  } else {
+    $("#resDist").textContent = "전국 분포는 광고를 보면 열려요";
     renderRewardCard($("#adbarStats"), {
       icon: "🗺️",
       title: "광고 보고 전국 분포 보기",
       desc: "오늘 사람들이 뽑은 카드",
+      note: "봐도 오늘의 카드와 적립은 그대로예요",
       cta: "보기",
       onClick: async () => {
         const r = await watchAdForReward("TAROT_STATS");
         if (!r) return;
         state.today = await apiGet("/api/tarot/today");
+        clearRewardCard($("#adbarStats"));
         loadStats();
       },
     });
-  } else {
-    loadStats();
   }
 }
 
@@ -895,14 +905,15 @@ async function loadStats() {
     const s = await apiGet("/api/tarot/stats");
     const line = $("#resDist");
     if (!s.open) {
-      // 표본이 적을 때 %를 보여 주면 그 값이 사람 한두 명을 뜻한다 (SUITE 1.5)
-      line.textContent = `오늘 ${s.total}명이 뽑았어요 — 집계 중입니다`;
+      // 표본이 적을 때 %를 보여 주면 그 값이 사람 한두 명을 뜻한다 (SUITE 1.5) — 인원 수도 싣지 않는다
+      line.textContent = DIST_SOON;
       return;
     }
     const mine = s.items.find((i) => String(i.key) === String(s.my_card));
     const top = s.items[0];
+    // 카드 이름을 적는다 — 두 번째 장을 보고 있어도 `my_card`(첫 장)에 대한 사실이 되게 (REQ-62 ⑧)
     line.textContent = mine
-      ? `오늘 이 카드를 뽑은 사람 ${mine.pct}% · 가장 많이 나온 카드는 ${TAROT_DB.cards[top.key]?.name ?? "—"}(${top.pct}%)`
+      ? `오늘 「${TAROT_DB.cards[s.my_card]?.name ?? "—"}」 카드를 뽑은 사람 ${mine.pct}% · 가장 많이 나온 카드는 ${TAROT_DB.cards[top.key]?.name ?? "—"}(${top.pct}%)`
       : `가장 많이 나온 카드는 ${TAROT_DB.cards[top.key]?.name ?? "—"}(${top.pct}%)`;
   } catch {
     /* 광고 전이면 잠겨 있는 것이 정상이다 */
@@ -1318,7 +1329,7 @@ async function pickWord(cardId, kw, prev) {
 }
 
 // ══════════════════════════════════════════════════════════════
-// 올해의 카드 · 이달의 카드 (SPEC-04 §3·§4) — 일일 뽑기와 별개, 광고 없음, 적립 없음
+// 올해의 카드 · 이달의 카드 (SPEC-04 §3·§4) — 일일 뽑기와 별개, 광고 없음, 적립은 새 카드 +3P 만 (REQ-62 ⑯)
 // ══════════════════════════════════════════════════════════════
 
 const specialTitle = (kind, period) =>
@@ -1420,8 +1431,11 @@ function renderSpecialResult(res) {
 
   const dustMax = state.today.dust_max ?? 4;
   const exchanged = res.exchanged_card_id != null || res.gold_exchanged_card_id != null;
+  // 처음 만난 카드는 일일 뽑기와 같은 +3P (REQ-62 ⑯ · E2) — 금액은 서버가 준 값
   $("#spCollect").textContent = res.is_new
-    ? "새 카드가 도감에 들어왔어요"
+    ? res.gained > 0
+      ? `+${res.gained}P · 새 카드가 카드 모음에 들어왔어요`
+      : "새 카드가 도감에 들어왔어요"
     : res.gold_new
       ? "✦ 금빛이 됐어요 · 숨은 이야기"
       : `별가루 +1 (${exchanged ? dustMax : res.dust}/${dustMax})`;
@@ -1472,8 +1486,8 @@ function leaveSpecial() {
     return;
   }
   if (state.today.draws.length > 0) {
-    const last = state.today.draws[state.today.draws.length - 1];
-    renderResult(last.c, last.f, { gained: 0, replay: true });
+    const first = state.today.draws[0]; // 오늘의 카드 = 첫 장 (REQ-62 ⑧)
+    renderResult(first.c, first.f, { gained: 0, replay: true });
   } else {
     enterDeck();
   }

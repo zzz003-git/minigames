@@ -46,6 +46,12 @@ const TRIGGER_COPY = {
   // **다른 30종은 5초 그대로**입니다.
   // title·reward 는 호출부(`boostReward`)가 덮어씁니다 — 실제로 쓰이는 것은 seconds 뿐입니다.
   CLOVER_BOOST: { title: "이어서 15초 더 찾기", reward: "지금 판을 15초 더 진행합니다", seconds: 15 },
+
+  // 「오늘의 나」 3종의 분포 열람 — 순위가 없는 서비스라 `_STATS` 기본 문구(「전체 순위」)를 쓰지 않는다
+  // (REQ-62 ⑤). 광고 종류(전면)는 접미사 규칙 그대로다
+  TAROT_STATS: { title: "오늘의 카드 분포 열람", reward: "오늘 사람들이 뽑은 카드 분포가 열립니다", seconds: 3 },
+  SAJU_STATS: { title: "오늘의 운세 유형 분포 열람", reward: "오늘 같은 운세 유형을 받은 사람 비율이 열립니다", seconds: 3 },
+  MIND_STATS: { title: "오늘의 유형 분포 열람", reward: "오늘 사람들의 유형 분포가 열립니다", seconds: 3 },
 };
 
 /** 접미사로 결정되는 기본 문구 */

@@ -18,7 +18,7 @@ import { SUITE, SAJU } from "../lib/config.js";
 import { ApiError } from "../lib/http.js";
 import { dayKey, now } from "../lib/time.js";
 import { natalChart, dayGanzhi, ganzhiName, STEMS, BRANCHES } from "../lib/saju-calendar.js";
-import { grantMany, completeDaily, dailyState, distribution, touchUser, pointState } from "../lib/suite.js";
+import { grantMany, completeDaily, dailyState, distribution, distOpen, touchUser, pointState } from "../lib/suite.js";
 
 // ══════════════════════════════════════════════════════════════
 // 명리 기초 — 오행·십신·지지관계
@@ -66,8 +66,9 @@ export function branchRelation(mine, today) {
   if (SAMHAP.some(pair)) return "samhap";
   if ((mine + 6) % 12 === today) return "chung";
   if (HYUNG.some(pair)) return "hyung";
-  if (mine === today) return "donggi";
-  return "pyeongon";
+  // 화면 해석 DB(saju-db.js branchRel)의 키와 같아야 문장이 나온다 (REQ-62 ①)
+  if (mine === today) return "same";
+  return "calm";
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -82,14 +83,38 @@ const parseProfile = (raw) => {
   }
 };
 
+/**
+ * 옛 12칸 저장값(`minute` 키 없음)은 그 지시의 **가운데 시각**으로 읽는다 (REQ-62 ②).
+ * 옛 값은 지시의 시작 시각(23·1·3…21시)이라 −30분 보정 뒤 앞 지시로 넘어갔다. 가운데
+ * (0·2·4…22시)로 읽으면 고른 지시가 그대로 나오고, 옛 23시는 0시가 되어 일주도 같다.
+ * 저장값은 고치지 않는다 — 모든 읽기가 여기를 지나므로 네 곳(등록·state·today·stats)이 같은 값을 쓴다.
+ */
+const fromLegacy = (p) =>
+  p && p.hour != null && p.minute === undefined ? { ...p, hour: (p.hour + 1) % 24, minute: 0 } : p;
+
 async function loadProfile(env, userId) {
   const row = await env.DB.prepare(
     `SELECT saju_profile, saju_profile_changed_day FROM suite_user WHERE user_id = ?`,
   )
     .bind(userId)
     .first();
-  return { profile: parseProfile(row?.saju_profile), changedDay: row?.saju_profile_changed_day ?? null };
+  return { profile: fromLegacy(parseProfile(row?.saju_profile)), changedDay: row?.saju_profile_changed_day ?? null };
 }
+
+// ── 생일 바꾸기 규칙 (REQ-62 ⑫ · D3) ─────────────────────────────────────
+// 첫 등록 뒤 24시간 안에 1회 정정, 그 밖에는 마지막 변경일부터 30일 간격.
+// `set_at`·`fix_used` 는 프로필 JSON 안에 둔다 — 필드가 없는 옛 프로필은 「정정 창 지남」.
+const FIX_WINDOW_MS = 24 * 60 * 60 * 1000;
+const CHANGE_GAP_DAYS = 30;
+
+const fixOpen = (p, t = now()) =>
+  Boolean(p) && p.fix_used === false && Number.isFinite(p.set_at) && t - p.set_at < FIX_WINDOW_MS;
+
+const nextChangeDay = (changedDay) => {
+  if (!changedDay) return null;
+  const [y, m, d] = changedDay.split("-").map(Number);
+  return new Date(Date.UTC(y, m - 1, d + CHANGE_GAP_DAYS)).toISOString().slice(0, 10);
+};
 
 async function loadDay(env, userId, day) {
   const row = await env.DB.prepare(
@@ -122,20 +147,32 @@ const soonOf = (ganzhi) => Math.floor(ganzhi / 10);
 // ══════════════════════════════════════════════════════════════
 
 /**
- * 사주 등록·변경. body: { birth: 'YYYY-MM-DD', hour: 0~23|null }
+ * 사주 등록·변경. body: { birth: 'YYYY-MM-DD', hour: 0~23|null, minute: 0~59 }
  *
- * **변경은 월 1회**다(기획서 S-01). 생년월일을 바꿔 가며 마음에 드는 리딩을 찾는
- * 것을 막는다 — 리딩이 매일 바뀌는 서비스라 그 여지를 열어 두면 안 된다.
+ * **변경 간격을 둔다**(D3) — 첫 등록 뒤 24시간 안 1회 정정, 그 밖에는 30일 간격.
+ * 생년월일을 바꿔 가며 마음에 드는 리딩을 찾는 것을 막는다. 오늘 십신은 이미 저장된
+ * 값으로 고정이라(state 의 reading) 정정해도 오늘 운세는 바뀌지 않는다.
+ * 지운 뒤 재등록은 바로 된다 — 다만 그 재등록에는 정정 창을 주지 않는다(REQ-62 최종 정정 2).
  */
 export async function profile({ env, userId, body }) {
   const day = dayKey();
   const birth = String(body?.birth ?? "");
   const hour = body?.hour == null ? null : Number(body.hour);
+  const minute = hour == null ? null : body?.minute == null ? 0 : Number(body.minute);
 
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(birth)) {
+  // 형식에 더해 **있는 날짜인지** 본다 — 2/30 이 3/1 일주로 계산되지 않게 (REQ-62 ③).
+  // 새 저장 때만 본다. 이미 저장된 프로필은 읽을 때 검사하지 않는다(state·today 가 막히지 않게)
+  const [by, bm, bd] = birth.split("-").map(Number);
+  if (
+    !/^\d{4}-\d{2}-\d{2}$/.test(birth) ||
+    new Date(Date.UTC(by, bm - 1, bd)).toISOString().slice(0, 10) !== birth
+  ) {
     throw new ApiError("BAD_PARAM", "생년월일을 확인해 주세요.", 400);
   }
   if (hour != null && (!Number.isInteger(hour) || hour < 0 || hour > 23)) {
+    throw new ApiError("BAD_PARAM", "태어난 시간을 확인해 주세요.", 400);
+  }
+  if (minute != null && (!Number.isInteger(minute) || minute < 0 || minute > 59)) {
     throw new ApiError("BAD_PARAM", "태어난 시간을 확인해 주세요.", 400);
   }
 
@@ -146,21 +183,43 @@ export async function profile({ env, userId, body }) {
   }
 
   const cur = await loadProfile(env, userId);
-  if (cur.profile && cur.changedDay && cur.changedDay.slice(0, 7) === day.slice(0, 7)) {
-    throw new ApiError("PROFILE_LOCKED", "사주 정보는 한 달에 한 번만 바꿀 수 있어요.", 429);
+  const t = now();
+  // 첫 등록만 정정 창을 연다. 정정·30일 변경·지운 뒤 재등록은 창을 쓴 것으로 둔다
+  let fix = { set_at: t, fix_used: true };
+  if (!cur.profile && !cur.changedDay) {
+    fix = { set_at: t, fix_used: false };
+  } else if (cur.profile && !fixOpen(cur.profile, t)) {
+    const next = nextChangeDay(cur.changedDay);
+    if (next && day < next) {
+      const [, nm, nd] = next.split("-").map(Number);
+      throw new ApiError("PROFILE_LOCKED", `${nm}월 ${nd}일부터 바꿀 수 있어요.`, 429);
+    }
   }
 
   // 명식은 서버가 세운다 (표 범위 밖이면 여기서 거부된다)
-  const chart = natalChart(birth, hour);
+  const chart = natalChart(birth, hour, minute ?? 0);
 
   await touchUser(env, userId, day);
   await env.DB.prepare(
     `UPDATE suite_user SET saju_profile = ?, saju_profile_changed_day = ? WHERE user_id = ?`,
   )
-    .bind(JSON.stringify({ birth, hour }), day, userId)
+    .bind(JSON.stringify({ birth, hour, minute, ...fix }), day, userId)
     .run();
 
-  return { profile: { birth, hour }, chart: publicChart(chart) };
+  return { profile: { birth, hour, minute }, chart: publicChart(chart) };
+}
+
+/**
+ * POST /api/saju/profile/delete — 「내 사주 정보 지우기」 (REQ-62 ⑰ · E4)
+ *
+ * 생일·시각만 지운다. 변경일(`saju_profile_changed_day` — 날짜 하나, 생일이 아님)과
+ * 도장·일일 기록·포인트·분포는 남긴다. 미등록이어도 200(멱등).
+ */
+export async function deleteProfile({ env, userId }) {
+  await env.DB.prepare(`UPDATE suite_user SET saju_profile = NULL WHERE user_id = ?`)
+    .bind(userId)
+    .run();
+  return { deleted: true };
 }
 
 /** 화면에 내려보낼 명식 — 계산 근거(보정 메모)까지 함께 준다 */
@@ -182,26 +241,43 @@ export async function state({ env, userId }) {
   const day = dayKey();
   await touchUser(env, userId, day);
 
-  const [{ profile: p, changedDay }, st, got, suite, points] = await Promise.all([
+  const [{ profile: p, changedDay }, st, got, suite, points, open] = await Promise.all([
     loadProfile(env, userId),
     loadDay(env, userId, day),
     stamps(env, userId),
     dailyState(env, userId, day),
     pointState(env, userId, day),
+    distOpen(env, "saju", day),
   ]);
 
   const todayGz = dayGanzhi(day);
   const soonDone = [0, 1, 2, 3, 4, 5].map(
     (s) => got.filter((g) => soonOf(g) === s).length,
   );
+  const chart = p ? natalChart(p.birth, p.hour, p.minute ?? 0) : null;
+  const fixNow = fixOpen(p);
 
   return {
     day,
     registered: Boolean(p),
-    profile: p,
+    profile: p ? { birth: p.birth, hour: p.hour, minute: p.minute ?? null } : null,
     profile_changed_day: changedDay,
-    chart: p ? publicChart(natalChart(p.birth, p.hour)) : null,
+    // 생일 고치기 — 24시간 정정 창이 열려 있거나, 다음 변경 가능일 (REQ-62 ⑫)
+    profile_change: { fix_open: fixNow, next_day: p && !fixNow ? nextChangeDay(changedDay) : null },
+    chart: chart ? publicChart(chart) : null,
     today: { ganzhi: todayGz, name: ganzhiName(todayGz) },
+    // 재열람 리딩 — 오늘 십신은 **꽂을 때 저장한 값**이다. 그 뒤 생일을 고쳐도 허브·분포와
+    // 같은 십신을 보인다. 관계·오행은 지금 명식으로 (REQ-62 ①)
+    reading:
+      st.done && chart && suite.saju.key != null
+        ? {
+            ten_god: Number(suite.saju.key),
+            relation: branchRelation(chart.day.branch, todayGz % 12),
+            my_element: STEM_EL[chart.day.stem],
+            today_element: STEM_EL[todayGz % 10],
+          }
+        : null,
+    dist_open: open,
     done: st.done,
     stamps: got,
     stamp_count: got.length,
@@ -228,7 +304,7 @@ export async function today({ env, userId }) {
     throw new ApiError("ALREADY_DONE", "오늘의 기운은 이미 꽂았어요. 리딩을 다시 볼 수 있습니다.", 409);
   }
 
-  const chart = natalChart(p.birth, p.hour);
+  const chart = natalChart(p.birth, p.hour, p.minute ?? 0);
   const gz = dayGanzhi(day);
   const todayStem = gz % 10;
   const todayBranch = gz % 12;
@@ -326,8 +402,8 @@ export async function stats({ env, userId }) {
     throw new ApiError("AD_REQUIRED", "광고를 시청하면 오늘의 분포를 볼 수 있습니다.", 403);
   }
   const dist = await distribution(env, "saju", day);
-  const { profile: p } = await loadProfile(env, userId);
-  const mine = p ? String(tenGod(natalChart(p.birth, p.hour).day.stem, dayGanzhi(day) % 10)) : null;
+  // 내가 집계된 칸 — 꽂을 때 저장한 십신이다. 그 뒤 생일을 고쳐도 바뀌지 않는다 (REQ-62 ①)
+  const mine = (await dailyState(env, userId, day)).saju.key;
   return { ...dist, mine };
 }
 

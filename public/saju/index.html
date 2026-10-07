@@ -43,13 +43,13 @@
           </label>
           <label class="field">
             <span class="field__label">태어난 시간</span>
-            <select class="field__input" id="hour"></select>
+            <input class="field__input" type="time" id="birthTime" step="60">
           </label>
-          <p class="footnote--dim mt-sm">시간을 모르면 「몰라요」를 고르세요 — 세 기둥으로 봅니다.</p>
+          <p class="footnote--dim mt-sm">시간을 모르면 비워 두세요 — 세 기둥으로 봅니다.</p>
         </div>
 
         <button class="btn btn--primary" id="regBtn">명식 세우기</button>
-        <p class="footnote--dim center">사주 정보는 한 달에 한 번만 바꿀 수 있어요</p>
+        <p class="footnote--dim center">처음 등록한 뒤 24시간 안에 한 번 고칠 수 있고, 그 뒤로는 30일마다 바꿀 수 있어요</p>
       </section>
 
       <!-- 명식 + 구슬 -->
@@ -111,6 +111,7 @@
         <button class="btn" id="stampBackBtn">← 돌아가기</button>
       </section>
 
+      <p class="legal center">본 콘텐츠는 오락용입니다.</p>
     </main>
   </div>
   <script type="module" src="saju.js"></script>

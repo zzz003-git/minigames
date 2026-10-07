@@ -45,7 +45,6 @@
 .qtext { font-size: 16.5px; font-weight: 700; line-height: 1.6; }
 
 .opts { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
-.opts--tight { margin-top: 10px; }
 .opt {
   width: 100%; text-align: left;
   padding: 14px 16px;

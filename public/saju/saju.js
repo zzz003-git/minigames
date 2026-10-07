@@ -20,10 +20,7 @@ const BRANCHES = ["자", "축", "인", "묘", "진", "사", "오", "미", "신",
 const STEM_EL = [0, 0, 1, 1, 2, 2, 3, 3, 4, 4];
 const BRANCH_EL = [4, 2, 0, 0, 2, 1, 1, 2, 3, 3, 2, 4];
 const EL_NAME = ["나무", "불", "흙", "쇠", "물"];
-const HOURS = [
-  "자시 23~01", "축시 01~03", "인시 03~05", "묘시 05~07", "진시 07~09", "사시 09~11",
-  "오시 11~13", "미시 13~15", "신시 15~17", "유시 17~19", "술시 19~21", "해시 21~23",
-];
+const DIST_SOON = "사람이 더 모이면 열려요";
 
 const ARM_DELAY_MS = 400;
 const state = { st: null, last: null };
@@ -33,15 +30,12 @@ const state = { st: null, last: null };
 renderSiteNav($("#siteNav"), "hub");
 renderHeader($("#header"), { icon: "🌤️", title: "오늘의 사주", back: "/today/" });
 
-// 시간 선택 — 12지시 + 「몰라요」 (기획서 1절)
-{
-  const sel = $("#hour");
-  sel.append(el("option", { value: "" }, "몰라요 (세 기둥으로 봐요)"));
-  HOURS.forEach((label, i) => {
-    // 각 지시의 대표 시각을 값으로 준다 — 서버가 보정해 시지를 다시 정한다
-    sel.append(el("option", { value: String((i * 2 + 23) % 24) }, label));
-  });
-}
+// 생일 고치기·지우기 자리 — 명식·리딩 화면의 메모 아래. HTML 에 id 를 더하지 않고 여기서 만든다 (REQ-62 ⑫⑰)
+const profileBoxes = ["#chartNote", "#rdNote"].map((sel) => {
+  const box = el("div", { class: "center" });
+  $(sel).after(box);
+  return box;
+});
 
 $("#regBtn").addEventListener("click", register);
 $("#orb").addEventListener("click", stampToday);
@@ -70,6 +64,11 @@ async function boot() {
     return;
   }
 
+  showMain();
+}
+
+/** 등록 전이면 등록 화면, 아니면 명식(오늘 꽂았으면 리딩) */
+function showMain() {
   if (!state.st.registered) {
     showScreen("reg");
     return;
@@ -84,7 +83,8 @@ async function boot() {
 
 async function register() {
   const birth = $("#birth").value;
-  const h = $("#hour").value;
+  // 시·분 직접 입력(선택). 비우면 시간 모름 — 보정은 서버가 생일 날짜로 한다 (REQ-62 ② · E3)
+  const [h, m] = $("#birthTime").value.split(":");
   if (!birth) {
     toast("생년월일을 골라 주세요", "error");
     return;
@@ -92,9 +92,9 @@ async function register() {
 
   $("#regBtn").disabled = true;
   try {
-    await apiPost("/api/saju/profile", { birth, hour: h === "" ? null : Number(h) });
+    await apiPost("/api/saju/profile", { birth, hour: h ? Number(h) : null, minute: h ? Number(m) : null });
     state.st = await apiGet("/api/saju/state");
-    renderChart();
+    showMain();
     toast("명식을 세웠어요", "good");
   } catch (err) {
     const msg =
@@ -105,6 +105,51 @@ async function register() {
   } finally {
     $("#regBtn").disabled = false;
   }
+}
+
+const ghostBtn = (label, onClick) => el("button", { class: "btn btn--ghost", type: "button", onclick: onClick }, label);
+
+/** 생일 고치기(24시간 1회 · 이후 30일) · 지우기 — 열 수 있는지는 서버가 준 값으로만 판단한다 */
+function renderProfileLinks() {
+  const pc = state.st.profile_change ?? {};
+  const canFix = pc.fix_open || !pc.next_day || pc.next_day <= state.st.day;
+  for (const box of profileBoxes) {
+    clear(box);
+    if (canFix) box.append(ghostBtn("생일 정보 고치기", openFix));
+    else {
+      const [, m, d] = pc.next_day.split("-").map(Number);
+      box.append(el("p", { class: "footnote--dim" }, `${m}월 ${d}일부터 바꿀 수 있어요`));
+    }
+    box.append(ghostBtn("내 사주 정보 지우기", () => confirmDelete(box)));
+  }
+}
+
+/** 등록 화면을 지금 값으로 채워 연다 — 옛 12칸 값도 서버가 시:분으로 바꿔 준다 */
+function openFix() {
+  const p = state.st.profile;
+  const pad = (n) => String(n).padStart(2, "0");
+  $("#birth").value = p.birth;
+  $("#birthTime").value = p.hour == null ? "" : `${pad(p.hour)}:${pad(p.minute ?? 0)}`;
+  showScreen("reg");
+}
+
+function confirmDelete(box) {
+  clear(box).append(
+    el("p", { class: "footnote" }, "생일과 태어난 시간을 지워요. 모은 도장은 그대로 남아요."),
+    ghostBtn("지우기", async () => {
+      try {
+        await apiPost("/api/saju/profile/delete", {});
+        state.st = await apiGet("/api/saju/state");
+        $("#birth").value = "";
+        $("#birthTime").value = "";
+        setHeaderBadge("");
+        showMain();
+      } catch (err) {
+        toast(err.message ?? "지우지 못했습니다.", "error");
+      }
+    }),
+    ghostBtn("그만두기", renderProfileLinks),
+  );
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -137,6 +182,7 @@ function renderChart() {
   $("#chartNote").textContent = `${pick(dm.intro, state.st.day + "dm")} · 도장 ${state.st.stamp_count}/60`;
 
   renderCross($("#crossChips"));
+  renderProfileLinks();
   showScreen("chart");
 }
 
@@ -166,13 +212,20 @@ function renderReading(res) {
   const gz = state.st.today.ganzhi;
   const c = state.st.chart;
 
-  // 리딩 파라미터는 서버가 준 것을 쓴다. 재열람이면 명식과 오늘 간지로 다시 세운다.
-  const stem = gz % 10;
-  const branch = gz % 12;
-  const god = res?.reading?.ten_god ?? tenGodLocal(c.day.stem, stem);
-  const rel = res?.reading?.relation ?? null;
-  const myEl = STEM_EL[c.day.stem];
-  const todayEl = STEM_EL[stem];
+  // 리딩 파라미터는 서버가 준 것을 쓴다. 재열람이면 state 의 reading — 오늘 십신은 꽂을 때
+  // 저장한 값이라 그 뒤 생일을 고쳐도 허브·분포와 같다 (REQ-62 ①).
+  // reading 이 없는 것은 꽂기 도중 허브 기록이 실패한 경우뿐이다 — 그때만 지금 명식으로 세운다
+  const rd = res?.reading ??
+    state.st.reading ?? {
+      ten_god: tenGodLocal(c.day.stem, gz % 10),
+      relation: null,
+      my_element: STEM_EL[c.day.stem],
+      today_element: STEM_EL[gz % 10],
+    };
+  const god = rd.ten_god;
+  const rel = rd.relation;
+  const myEl = rd.my_element;
+  const todayEl = rd.today_element;
 
   const tg = SAJU_DB.tenGod[god];
   $("#rdGanzhi").textContent = `${state.st.today.name} · ${tg.name}`;
@@ -198,12 +251,13 @@ function renderReading(res) {
   $("#rdNote").textContent = `이번 순 ${state.st.soon_done[soon]}/10`;
 
   renderCross($("#crossChips2"));
+  renderProfileLinks();
   renderAds();
   showScreen("reading");
   armScreen("reading");
 }
 
-/** 서버와 같은 규칙 — 재열람 때만 쓴다(꽂을 때는 서버 값이 온다) */
+/** 서버와 같은 규칙 — 내일 미리보기의 한 줄에 쓴다(오늘 리딩은 서버 값이 온다) */
 function tenGodLocal(me, other) {
   const GEN = [1, 2, 3, 4, 0];
   const CTRL = [2, 3, 4, 0, 1];
@@ -253,7 +307,12 @@ function renderAds() {
   clearRewardCard($("#adbarTomorrow"));
   clearRewardCard($("#adbarStats"));
 
-  if (!state.st.ad_tomorrow) {
+  if (state.st.ad_tomorrow) {
+    // 본 뒤에는 그 자리에 그날 내내 카드로 남긴다 — 토스트 2.4초가 전부면 받은 것이 없다 (REQ-62 ⑦)
+    $("#adbarTomorrow").append(
+      el("div", { class: "card card--info" }, el("p", { class: "footnote" }, tomorrowLine())),
+    );
+  } else {
     renderRewardCard($("#adbarTomorrow"), {
       icon: "🌅",
       title: "광고 보고 내일 미리보기",
@@ -263,28 +322,44 @@ function renderAds() {
         const r = await watchAdForReward("SAJU_TOMORROW");
         if (!r) return;
         state.st = await apiGet("/api/saju/state");
-        toast(`내일은 ${r.reward?.name ?? "—"}이에요`, "good", 2400);
         renderAds();
       },
     });
   }
 
-  if (!state.st.ad_stats_seen) {
+  // 분포가 아직 닫혀 있으면 광고 카드를 내지 않는다 — 봐도 받을 것이 없다 (REQ-62 ⑭ · D2)
+  if (state.st.ad_stats_seen) {
+    loadStats();
+  } else if (!state.st.dist_open) {
+    $("#rdDist").textContent = DIST_SOON;
+  } else {
+    $("#rdDist").textContent = "전국 분포는 광고를 보면 열려요";
     renderRewardCard($("#adbarStats"), {
       icon: "🗺️",
       title: "광고 보고 전국 분포 보기",
       desc: "오늘 같은 기운을 받은 사람들",
+      note: "봐도 오늘의 운세와 적립은 그대로예요",
       cta: "보기",
       onClick: async () => {
         const r = await watchAdForReward("SAJU_STATS");
         if (!r) return;
         state.st = await apiGet("/api/saju/state");
-        loadStats();
+        renderAds();
       },
     });
-  } else {
-    loadStats();
   }
+}
+
+/**
+ * 내일 미리보기 한 줄 — 내일 리딩 헤드라인(#rdTheme)과 **같은 함수·같은 시드**라 다음 날 같은 문장이 나온다.
+ * 내일 = 서버 day + 1(UTC 계산, 서버 unlockTomorrow 와 같은 방식). 기기 시계를 쓰지 않는다.
+ */
+function tomorrowLine() {
+  const [y, m, d] = state.st.day.split("-").map(Number);
+  const tomorrow = new Date(Date.UTC(y, m - 1, d + 1)).toISOString().slice(0, 10);
+  const tgz = (state.st.today.ganzhi + 1) % 60;
+  const god = tenGodLocal(state.st.chart.day.stem, tgz % 10);
+  return `내일 ${STEMS[tgz % 10]}${BRANCHES[tgz % 12]}일 · ${pick(SAJU_DB.tenGod[god].theme, `${tomorrow}|theme|${god}`)}`;
 }
 
 async function loadStats() {
@@ -292,7 +367,7 @@ async function loadStats() {
     const s = await apiGet("/api/saju/stats");
     const line = $("#rdDist");
     if (!s.open) {
-      line.textContent = `오늘 ${s.total}명이 꽂았어요 — 집계 중입니다`;
+      line.textContent = DIST_SOON;
       return;
     }
     const mine = s.items.find((i) => String(i.key) === String(s.mine));

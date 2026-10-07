@@ -1,10 +1,11 @@
 /** 서버 API 호출 래퍼 — 모든 게임이 공용으로 씁니다. */
 
 export class ApiFail extends Error {
-  constructor(code, message, status) {
+  constructor(code, message, status, data) {
     super(message);
     this.code = code;
     this.status = status;
+    this.data = data;
   }
 }
 
@@ -36,7 +37,7 @@ async function request(method, path, { body, params } = {}) {
   }
 
   if (!res.ok || data.ok === false) {
-    throw new ApiFail(data.code ?? "UNKNOWN", data.message ?? "요청을 처리할 수 없습니다.", res.status);
+    throw new ApiFail(data.code ?? "UNKNOWN", data.message ?? "요청을 처리할 수 없습니다.", res.status, data.data);
   }
 
   return data;

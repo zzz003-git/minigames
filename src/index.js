@@ -238,6 +238,7 @@ const ROUTES = {
 
   "GET /api/saju/state": saju.state,
   "POST /api/saju/profile": saju.profile,
+  "POST /api/saju/profile/delete": saju.deleteProfile,
   "POST /api/saju/today": saju.today,
   "GET /api/saju/stats": saju.stats,
 
@@ -395,7 +396,7 @@ export default {
       return ok(data, { headers: setCookie ? { "set-cookie": setCookie } : {} });
     } catch (err) {
       if (err instanceof ApiError) {
-        const res = fail(err.code, err.message, err.status);
+        const res = fail(err.code, err.message, err.status, err.data);
         if (setCookie) res.headers.append("set-cookie", setCookie);
         return res;
       }

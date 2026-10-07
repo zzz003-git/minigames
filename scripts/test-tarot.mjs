@@ -471,16 +471,16 @@ console.log("\n[16] 올해의 카드 기간 — 11/1 ~ 1/31 · 연도 표기");
   check(open ? "기간 안 → 올해의 카드 200" : "기간 밖 → 올해의 카드 403", open ? r.status === 200 : r.status === 403, `status=${r.status}`);
 }
 
-console.log("\n[17] 이달의 카드 — 달마다 1회 · 도감 반영 · 적립 없음");
+console.log("\n[17] 이달의 카드 — 달마다 1회 · 도감 반영 · 새 카드 +3P 만 (REQ-62 ⑯)");
 {
   const c = client();
   await c.get("/api/tarot/today");
   const uid = lastUser();
-  const before = sql(`SELECT COALESCE(SUM(amount),0) AS p FROM suite_points WHERE user_id = ${q(uid)}`)[0].p;
   const a = await c.post("/api/tarot/special", { kind: "month" });
-  check("이달의 카드 200 · 새 카드 · 적립 0", a.status === 200 && a.data.is_new === true && a.data.gained === 0, `status=${a.status}`);
-  const after = sql(`SELECT COALESCE(SUM(amount),0) AS p FROM suite_points WHERE user_id = ${q(uid)}`)[0].p;
-  check("포인트 변화 없음 (TAROT_NEW 도 없음)", after === before, `${before}→${after}`);
+  check("이달의 카드 200 · 새 카드 · 적립 3", a.status === 200 && a.data.is_new === true && a.data.gained === 3, `status=${a.status} gained=${a.data.gained}`);
+  const pts = sql(`SELECT key, amount FROM suite_points WHERE user_id = ${q(uid)}`);
+  check("적립은 TAROT_NEW:{id} 3P 한 건뿐 (코어·마일스톤 없음)",
+    pts.length === 1 && pts[0].key === `TAROT_NEW:${a.data.card_id}` && pts[0].amount === 3, JSON.stringify(pts));
   const row = sql(`SELECT via FROM tarot_coll WHERE user_id = ${q(uid)} AND card_id = ${a.data.card_id}`)[0];
   check("도감에 들어감 (via=month)", row?.via === "month");
   const b = await c.post("/api/tarot/special", { kind: "month" });
@@ -493,7 +493,7 @@ console.log("\n[17] 이달의 카드 — 달마다 1회 · 도감 반영 · 적�
   check("일일 뽑기 장수 그대로", t.data.draws.length === 0 && t.data.remaining >= 1);
 }
 
-console.log("\n[18] 이달의 카드 — 중복이면 별가루, 교환 카드도 적립 없음");
+console.log("\n[18] 이달의 카드 — 중복이면 별가루, 교환 카드는 +3P (REQ-62 ⑯)");
 {
   let ran = false;
   for (let k = 0; k < 5 && !ran; k++) {
@@ -504,7 +504,8 @@ console.log("\n[18] 이달의 카드 — 중복이면 별가루, 교환 카드�
     ran = true;
     check("중복 → 별가루 교환 → 미보유 카드", r.data.exchanged_card_id === missing && r.data.dust === 0);
     const pts = sql(`SELECT key FROM suite_points WHERE user_id = ${q(uid)}`).map((x) => x.key);
-    check("교환 카드 TAROT_NEW 없음 · 마일스톤 없음", pts.length === 0, pts.join(" "));
+    check("교환 카드 TAROT_NEW 한 건 · 마일스톤 없음", pts.length === 1 && pts[0] === `TAROT_NEW:${missing}`, pts.join(" "));
+    check("응답 gained = 3", r.data.gained === 3, `gained=${r.data.gained}`);
   }
   check("시나리오가 돌았다", ran);
 }

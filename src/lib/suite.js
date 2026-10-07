@@ -90,11 +90,11 @@ export async function collectionState(env, userId, day = dayKey()) {
       .first(),
   ]);
 
-  // 축은 |값| 이 기준치를 넘으면 「또렷하다」고 본다. 부호는 방향일 뿐이라 절댓값이다.
+  // 축은 기준치에 닿으면 「또렷하다」고 본다 — 선택 화면(`n >= GOAL`)과 같은 기준 (REQ-62 ⑬)
   let clear = 0;
   try {
     for (const v of JSON.parse(axes?.ax ?? "[]")) {
-      if (Math.abs(v) >= MIND.AXIS_GOAL) clear += 1;
+      if (v >= MIND.AXIS_GOAL) clear += 1;
     }
   } catch {
     // 값이 깨져 있어도 허브는 떠야 한다 — 0 으로 둔다
@@ -224,8 +224,9 @@ export async function distribution(env, service, day = dayKey()) {
   const list = rows?.results ?? [];
   const total = list.reduce((a, r) => a + (r.cnt ?? 0), 0);
 
+  // 닫힘 응답에는 인원 수를 싣지 않는다 — 초기 규모가 그대로 드러난다 (REQ-62 ⑭)
   if (total < SUITE.DIST_MIN_SAMPLES) {
-    return { open: false, total, threshold: SUITE.DIST_MIN_SAMPLES, items: [] };
+    return { open: false, threshold: SUITE.DIST_MIN_SAMPLES, items: [] };
   }
 
   return {
@@ -238,6 +239,19 @@ export async function distribution(env, service, day = dayKey()) {
       pct: Number(((r.cnt / total) * 100).toFixed(1)), // 소수점 1자리 (SUITE 1.5)
     })),
   };
+}
+
+/**
+ * 그날 분포가 열렸는가 — 광고 카드를 보여 줄지 화면이 **광고 전에** 알아야 한다 (REQ-62 ⑭ · D2).
+ * 인원 수는 내려 주지 않는다. 그날 안에서는 닫힘→열림 한 방향이다.
+ */
+export async function distOpen(env, service, day = dayKey()) {
+  const row = await env.DB.prepare(
+    `SELECT COALESCE(SUM(cnt), 0) AS n FROM daily_agg WHERE day = ? AND service = ?`,
+  )
+    .bind(day, service)
+    .first();
+  return (row?.n ?? 0) >= SUITE.DIST_MIN_SAMPLES;
 }
 
 /** 이용자가 처음 온 날을 남긴다(스위트 진입점 공통) */

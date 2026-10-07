@@ -94,6 +94,9 @@
 .crosschip b { display: block; color: var(--text); font-size: 13px; margin-bottom: 2px; }
 .crosschip.is-done { border-color: var(--s-dim); color: var(--s-key); }
 
+/* 오락용 고지 — 타로(tarot.css .legal)와 같은 값 (REQ-62 ④) */
+.legal { margin-top: 18px; font-size: 12px; line-height: 1.6; color: var(--text-sub); }
+
 @media (max-width: 380px) {
   .stampgrid { grid-template-columns: repeat(6, 1fr); }
   .pillar__stem, .pillar__branch { font-size: 20px; }

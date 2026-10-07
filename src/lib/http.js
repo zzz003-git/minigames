@@ -5,11 +5,13 @@ export class ApiError extends Error {
    * @param {string} code    클라이언트가 분기 처리할 기계용 코드 (예: 'AD_REQUIRED')
    * @param {string} message 사용자에게 보여도 되는 한국어 메시지
    * @param {number} status  HTTP 상태 코드
+   * @param {object} [data]  화면이 다음 동작을 고르는 데 필요한 값 (예: DAY_CHANGED 의 기대 실험 id)
    */
-  constructor(code, message, status = 400) {
+  constructor(code, message, status = 400, data = undefined) {
     super(message);
     this.code = code;
     this.status = status;
+    this.data = data;
   }
 }
 
@@ -53,8 +55,8 @@ export const ok = (data = {}, init) => {
   return json({ ...data, ok: true }, init);
 };
 
-export const fail = (code, message, status = 400) =>
-  json({ ok: false, code, message }, { status });
+export const fail = (code, message, status = 400, data = undefined) =>
+  json({ ok: false, code, message, ...(data ? { data } : {}) }, { status });
 
 /** 본문 JSON 파싱. 비정상적으로 큰 본문은 거부합니다. */
 export async function readJson(request, maxBytes = 64 * 1024) {

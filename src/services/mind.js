@@ -15,15 +15,15 @@
  * 아니라 오락이고, 원문을 쥐고 있을 이유가 없다. 그래서 `mind_daily` 에 응답
  * 컬럼이 없다.
  *
- * ── 전국 추측은 어디에도 기록하지 않는다 ─────────────────────────────────
- * 결과 화면의 「전국 추측 1문항」은 점수도 보상도 저장도 없다(기획서 M-01 · 검증
- * 항목). 그래서 이 파일에 그 API 가 **아예 없다** — 없는 것이 곧 구현이다.
+ * ── 전국 추측은 없앴다 (REQ-62 ⑮ · E1) ──────────────────────────────────
+ * 결과 화면의 「사람들은?」 추측은 그날 모두에게 같은 답이라 공유되면 분포 광고를
+ * 우회했다(정답 있는 게임 금지). 원래 서버에 저장·API 가 없었으므로 여기는 바뀐 것이 없다.
  */
 
 import { MIND, SUITE } from "../lib/config.js";
 import { ApiError } from "../lib/http.js";
 import { dayKey } from "../lib/time.js";
-import { grantMany, completeDaily, dailyState, distribution, touchUser, pointState } from "../lib/suite.js";
+import { grantMany, completeDaily, dailyState, distribution, distOpen, touchUser, pointState } from "../lib/suite.js";
 import { createLink, answerLink, openLink, myLinks } from "../lib/pair.js";
 // 도감용 목록(id·요일·months·제목·유형 이름)과 그날의 선택 고르기 — 화면과 **같은 파일**을 쓴다.
 // 본문(장면·문항)은 여전히 서버에 없다. 목록만 있으면 「그날 회전 결과가 이 실험인가」와
@@ -142,8 +142,9 @@ export function judge(questions, answers) {
     const pick = q.opts[answers[i]];
     if (!pick) return;
     if (pick.ty >= 0 && pick.ty < MIND.TYPES) votes[pick.ty] += 1;
-    const [axIdx, delta] = pick.ax ?? [];
-    if (Number.isInteger(axIdx) && axIdx >= 0 && axIdx < MIND.AXES) gain[axIdx] += delta ?? 1;
+    // 축은 「드러난 횟수」다 — 부호(양끝)와 무관하게 +1 (REQ-62 ⑬ · D5). 화면 judge 와 같은 규칙
+    const [axIdx] = pick.ax ?? [];
+    if (Number.isInteger(axIdx) && axIdx >= 0 && axIdx < MIND.AXES) gain[axIdx] += 1;
   });
 
   // 최다 득표. 동률이면 **앞 인덱스**가 이긴다(프로토 사양) — 무작위로 가르면
@@ -163,13 +164,14 @@ export async function state({ env, userId }) {
   await touchUser(env, userId, day);
 
   const month = monthKey(day);
-  const [st, axes, coll, suite, points, win] = await Promise.all([
+  const [st, axes, coll, suite, points, win, open] = await Promise.all([
     loadDay(env, userId, day),
     loadAxes(env, userId, month),
     collection(env, userId),
     dailyState(env, userId, day),
     pointState(env, userId, day),
     archiveWindow(env, userId, day),
+    distOpen(env, "mind", day),
   ]);
 
   return {
@@ -195,6 +197,7 @@ export async function state({ env, userId }) {
       opened: win.filter((w) => w.status === "opened").map(({ day: d, exp_id }) => ({ day: d, exp_id })),
     },
     ad_stats_seen: st.adStats,
+    dist_open: open, // 분포가 열렸는가 — 닫혀 있으면 화면이 분포 광고 카드를 숨긴다 (REQ-62 ⑭)
     suite,
     points,
   };
@@ -250,6 +253,13 @@ export async function submit({ env, userId, body }) {
   const st = await loadDay(env, userId, day);
   if (st.done) {
     throw new ApiError("ALREADY_DONE", "오늘의 선택은 이미 마쳤어요. 결과를 다시 볼 수 있습니다.", 409);
+  }
+  // 오늘 회전이 아닌 장면은 받지 않는다 — 23:59 에 연 어제 장면이 0시 넘어 오늘로 기록되거나,
+  // 배포로 회전이 바뀐 뒤 옛 장면이 들어오는 경우다. 저장·적립 전에 끊고, 열어야 할 장면을
+  // 함께 준다 (REQ-62 ⑨)
+  const expected = rotationOf(day);
+  if (expected !== expId) {
+    throw new ApiError("DAY_CHANGED", "오늘의 선택이 바뀌었어요.", 409, { expected_exp_id: expected, day });
   }
 
   // ── 서버가 다시 센다 ────────────────────────────────────────

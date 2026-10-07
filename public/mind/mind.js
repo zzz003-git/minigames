@@ -10,9 +10,8 @@
  * 값은 서버가 정한 것이다(기획서 M-02). 두 계산이 어긋나면 화면이 보여 준 유형과
  * 저장된 유형이 달라지므로, 규칙은 `src/services/mind.js` 의 judge 와 같아야 한다.
  *
- * ── 전국 추측은 아무 데도 보내지 않는다 ──────────────────────────────────
- * 결과 화면의 마지막 질문은 점수도 보상도 저장도 없다(기획서 M-01). 그래서 이 파일
- * 어디에도 그 답을 담아 보내는 요청이 없다 — 없는 것이 곧 구현이다.
+ * ── 전국 추측은 없앴다 (REQ-62 ⑮ · E1) ──────────────────────────────────
+ * 그날 최다 유형은 모두에게 같은 답이라 공유되면 분포 광고를 우회했다(정답 있는 게임 금지).
  */
 
 import { apiGet, apiPost, ApiFail } from "../shared/api.js";
@@ -22,6 +21,8 @@ import { expOfDay } from "./mind-pick.js";
 import { renderSiteNav } from "../shared/sitenav.js";
 
 const ARM_DELAY_MS = 400;
+/** 분포가 아직 닫혀 있을 때의 한 줄 — 인원 수를 적지 않는다 (REQ-62 ⑭) */
+const DIST_SOON = "사람이 더 모이면 열려요";
 
 /**
  * 콘텐츠는 셋으로 나뉘어 있다 (REQ-47 · scripts/gen-mind-db.mjs).
@@ -98,8 +99,9 @@ function judge(questions, answers) {
     const pick = q.opts[answers[i]];
     if (!pick) return;
     votes[pick.ty] += 1;
-    const [ax, d] = pick.ax ?? [];
-    if (Number.isInteger(ax)) gain[ax] += d ?? 1;
+    // 축은 「드러난 횟수」 — 부호와 무관하게 +1 (REQ-62 ⑬ · D5)
+    const [ax] = pick.ax ?? [];
+    if (Number.isInteger(ax)) gain[ax] += 1;
   });
 
   let best = 0;
@@ -279,6 +281,10 @@ async function sendResult() {
       renderResult({ exp, typeIdx: state.st.type_idx, replay: true });
       return;
     }
+    if (err instanceof ApiFail && err.code === "DAY_CHANGED") {
+      await reopenExpected(err.data);
+      return;
+    }
     toast(err.message ?? "결과를 저장하지 못했습니다.", "error");
     return;
   }
@@ -291,6 +297,36 @@ async function sendResult() {
   state.st = await apiGet("/api/mind/state");
   renderResult({ exp, typeIdx: res.type_idx, res, archiveDay });
   state.busy = false;
+}
+
+/**
+ * 제출한 장면이 오늘 회전이 아니었다 (REQ-62 ⑨) — 자정을 넘겼거나 배포로 회전이 바뀌었다.
+ * 메모리의 목록으로 다시 고르지 않고 **서버가 준 id** 로 연다(답은 버린다). 같은 세션에서
+ * 두 번째면 새로고침 — 옛 목록·옛 화면이 남아 반복되는 것을 끊는다.
+ */
+async function reopenExpected(data) {
+  if (state.dayChanged || !data?.expected_exp_id) {
+    location.reload();
+    return;
+  }
+  state.dayChanged = true;
+  const sameDay = data.day === state.st.day;
+  toast(
+    sameDay
+      ? "오늘의 선택이 바뀌었어요. 새 장면으로 다시 열어 드릴게요."
+      : "날이 바뀌었어요. 오늘의 선택을 새로 보여 드릴게요.",
+    "good",
+  );
+  try {
+    if (!sameDay) state.st = await apiGet("/api/mind/state");
+    state.today = await loadExp(data.expected_exp_id);
+  } catch {
+    location.reload();
+    return;
+  }
+  state.exp = state.today;
+  renderHome();
+  openScene(state.exp);
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -314,8 +350,10 @@ function renderResult({ exp, typeIdx, res, replay, archiveDay }) {
   // 없으면 오늘을 마친 뒤(광고를 쓰기 가장 좋은 때) 거기에 닿을 수 없다 (REQ-47)
   $("#archiveBackBtn").hidden = false;
 
-  // 축 에코 — 이번에 가장 많이 오른 축의 문장. 지도가 또렷해질수록 다른 말이 나온다
+  // 축 에코 — 이번에 가장 많이 오른 축의 문장. 지도가 또렷해질수록 다른 말이 나온다.
+  // 재열람에는 이번 증분이 없다 — 늘 0번 축 문장이 나오던 것을 숨긴다 (REQ-62 ⑩ 최종 정정 1)
   const gain = res?.axes_gain ?? [];
+  $("#axisEcho").hidden = gain.length === 0;
   let topAxis = 0;
   for (let i = 1; i < gain.length; i++) if ((gain[i] ?? 0) > (gain[topAxis] ?? 0)) topAxis = i;
   const axVal = state.st.axes[topAxis] ?? 0;
@@ -332,7 +370,6 @@ function renderResult({ exp, typeIdx, res, replay, archiveDay }) {
       : `+${res.gained}P 적립 · 도감 ${state.st.collection.length}칸${res.is_new ? " (새 칸!)" : ""}` +
         (res.portrait_new ? " · 마음 초상 완성!" : "");
 
-  renderGuess(exp);
   if (!isArchive) {
     renderCrossChips();
     renderStatsAd();
@@ -360,30 +397,6 @@ function renderAxisBars(host, axes, goal) {
         el("span", { class: "axisrow__n" }, `${n}/${goal}`),
       ),
     );
-  });
-}
-
-/**
- * 전국 추측 — **어디에도 보내지 않는다.**
- * 고르면 그 자리에서 한 줄 답할 뿐이고 요청도 저장도 없다(기획서 M-01 · 검증 항목).
- */
-function renderGuess(exp) {
-  const type = exp.types;
-  $("#guessQ").textContent = "사람들이 가장 많이 나온 유형은 무엇일까요?";
-  const host = clear($("#guessOpts"));
-
-  type.forEach((t, i) => {
-    const node = el("button", { class: "opt", type: "button" }, `${t.g} ${t.n}`);
-    node.addEventListener("click", () => {
-      [...host.children].forEach((n) => {
-        n.disabled = true;
-        n.classList.remove("is-pick");
-      });
-      node.classList.add("is-pick");
-      toast("기록하지 않았어요 — 재미로만 물어봤습니다", "good", 1800);
-      void i;
-    });
-    host.append(node);
   });
 }
 
@@ -484,16 +497,23 @@ function renderStatsAd() {
     loadStats();
     return;
   }
+  // 분포가 아직 닫혀 있으면 광고 카드를 내지 않는다 — 봐도 받을 것이 없다 (REQ-62 ⑭ · D2)
+  if (!state.st.dist_open) {
+    $("#resDist").textContent = DIST_SOON;
+    return;
+  }
+  $("#resDist").textContent = "전국 분포는 광고를 보면 열려요";
   renderRewardCard(host, {
     icon: "🗺️",
     title: "광고 보고 전국 분포 보기",
     desc: "오늘 사람들의 유형",
+    note: "봐도 오늘 결과와 적립은 그대로예요",
     cta: "보기",
     onClick: async () => {
       const r = await watchAdForReward("MIND_STATS");
       if (!r) return;
       state.st = await apiGet("/api/mind/state");
-      loadStats();
+      renderStatsAd();
     },
   });
 }
@@ -503,7 +523,7 @@ async function loadStats() {
     const s = await apiGet("/api/mind/stats");
     const line = $("#resDist");
     if (!s.open) {
-      line.textContent = `오늘 ${s.total}명이 참여했어요 — 집계 중입니다`;
+      line.textContent = DIST_SOON;
       return;
     }
     const mine = s.items.find((i) => i.key === s.mine);

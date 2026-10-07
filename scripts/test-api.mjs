@@ -26,6 +26,7 @@ import { ARCADE_SPECS } from "../src/games/arcade/index.js";
 import { validateSpec } from "../src/lib/arcade.js";
 import { ARCADE, MIND, RETIRED_GAME_TYPES } from "../src/lib/config.js";
 import { MIND_INDEX } from "../public/mind/mind-index.js";
+import { expOfDay } from "../public/mind/mind-pick.js";
 // ⑳ 슥슥 긁기 — 카드 생성·연속 일수 규칙은 서버 왕복으로 재현되지 않아 직접 호출합니다
 import { makeCard, streakFor, shiftDay } from "../src/games/arcade/scratch.js";
 // ㉑ 퍼펙트 스택 — 블록 위치는 서버와 **같은 식**으로 계산해야 탭 시각을 잡을 수 있습니다
@@ -483,8 +484,8 @@ async function pairResendContract() {
   const st = await get("/api/mind/state");
   const opts = Array.from({ length: MIND.OPTIONS }, (_, i) => ({ ty: i % MIND.TYPES, ax: [0, 1] }));
   const done = await post("/api/mind/submit", {
-    // 서버가 목록에 없는 실험을 거절한다(REQ-47) — 실제 목록의 첫 실험을 쓴다
-    exp_id: MIND_INDEX.experiments[0].id,
+    // 서버는 목록에 없는 실험(REQ-47)도, 오늘 회전이 아닌 실험(REQ-62 ⑨)도 거절한다 — 오늘 회전을 쓴다
+    exp_id: expOfDay(MIND_INDEX.experiments, st.data.dow, st.data.day).id,
     questions: Array.from({ length: MIND.QUESTIONS }, () => ({ opts })),
     answers: new Array(MIND.QUESTIONS).fill(0),
   });
@@ -1740,8 +1741,9 @@ function sajuRules() {
   check("지지 자축 = 육합", branchRelation(0, 1) === "yukhap");
   check("지지 신자진 = 삼합", branchRelation(8, 4) === "samhap");
   check("지지 자오 = 충", branchRelation(0, 6) === "chung");
-  check("지지 같으면 동기", branchRelation(3, 3) === "donggi");
-  check("지지 무관계 = 평온", branchRelation(0, 2) === "pyeongon");
+  // 키는 화면 해석 DB(saju-db.js branchRel)와 같다 (REQ-62 ①)
+  check("지지 같으면 동기", branchRelation(3, 3) === "same");
+  check("지지 무관계 = 평온", branchRelation(0, 2) === "calm");
 
   // 육합이 충보다 먼저다 — 우선순위가 뒤집히면 리딩이 정반대가 된다
   check("육합이 충보다 우선", branchRelation(2, 11) === "yukhap");
