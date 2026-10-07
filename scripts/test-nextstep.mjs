@@ -20,7 +20,11 @@ const S = (done, extra = {}) => ({
 });
 
 let d = decide(S(["tarot"]), false);
-check("남은 2 → 다음은 선택 · +15P", d.b === "2개 남았어요 · 다음은 오늘의 선택" && d.s === "심리테스트 4문항 · 셋 다 하면 +15P" && d.href === "/mind/", d);
+check("남은 2 → 다음은 사주(등록자) · +15P", d.b === "2개 남았어요 · 다음은 오늘의 사주" && d.s === "생일로 보는 오늘 운세 · 셋 다 하면 +15P" && d.href === "/saju/", d);
+d = decide(S(["tarot"], { saju_registered: false }), false);
+check("남은 2 → 다음은 사주 · 미등록 → 포인트 문구 없음", d.b === "2개 남았어요 · 다음은 오늘의 사주" && d.s === "생일로 보는 오늘 운세" && d.href === "/saju/", d);
+d = decide(S(["tarot", "saju"]), false);
+check("사주 다음은 선택", d.href === "/mind/", d);
 d = decide(S(["saju"]), false);
 check("순서를 어겨도 남은 것 중 추천순 첫째(타로)", d.href === "/tarot/", d);
 d = decide(S(["tarot", "saju"]), false);

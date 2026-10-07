@@ -12,8 +12,8 @@
 import { apiGet } from "./api.js";
 import { el, clear } from "./ui.js";
 
-/** 추천 순서 — 입력 없는 것부터, 생일 입력은 마지막 (K2). 허브도 이 상수를 쓴다 */
-export const SUITE_ORDER = ["tarot", "mind", "saju"];
+/** 표시·추천 순서 — 타로 → 사주 → 선택 (Master 2026-10-07 · 「생일 입력은 마지막」 K2 는 이때 바뀜). 허브·「전체」도 이 상수를 쓴다 */
+export const SUITE_ORDER = ["tarot", "saju", "mind"];
 
 const META = {
   tarot: { name: "오늘의 타로", href: "/tarot/", line: "고민 하나에 카드 한 장" },
@@ -37,14 +37,16 @@ export function decide(suite, justCompleted) {
   const tp = suite.triple_points;
   if (SUITE_ORDER.every((k) => suite[k]?.done)) {
     return justCompleted
-      ? { b: `셋 다 했어요! +${tp}P 받았어요`, s: "타로·선택·사주 · 오늘의 나 카드 보기", href: "/today/?from=triple" }
+      ? { b: `셋 다 했어요! +${tp}P 받았어요`, s: "타로·사주·선택 · 오늘의 나 카드 보기", href: "/today/?from=triple" }
       : { b: "오늘의 나 카드 보기", s: "셋 다 했어요 · 내일 0시에 새로 열려요", href: "/today/" };
   }
   const left = SUITE_ORDER.filter((k) => !suite[k]?.done && suite.ready?.[k] !== false);
   if (left.length === 0) return { b: "오늘 할 수 있는 건 다 했어요", s: "오늘의 나로 가기", href: "/today/" };
   const next = META[left[0]];
   if (left.length >= 2) {
-    return { b: `${left.length}개 남았어요 · 다음은 ${next.name}`, s: `${next.line} · 셋 다 하면 +${tp}P`, href: next.href };
+    // 사주가 둘째가 된 뒤(2026-10-07)로는 2개 남았을 때도 사주를 지목한다 — 아래와 같은 이유로 미등록자에겐 포인트 없이
+    const sajuFirst = left[0] === "saju" && !suite.saju_registered;
+    return { b: `${left.length}개 남았어요 · 다음은 ${next.name}`, s: sajuFirst ? next.line : `${next.line} · 셋 다 하면 +${tp}P`, href: next.href };
   }
   // 사주를 지목하는 줄에는 포인트를 쓰지 않는다 — 미등록자(14세 판정 전)에게 +15P 약속 금지
   if (left[0] === "saju" && !suite.saju_registered) {

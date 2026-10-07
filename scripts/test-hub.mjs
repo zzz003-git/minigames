@@ -20,7 +20,7 @@ const D = (done, extra = {}) => ({
 });
 
 let n = normalize(D([]));
-check("화면 순서 = 타로 · 선택 · 사주", n.services.map((s) => s.key).join() === "tarot,mind,saju", n.services);
+check("화면 순서 = 타로 · 사주 · 선택", n.services.map((s) => s.key).join() === "tarot,saju,mind", n.services);
 check("0/3 → +15P 약속 가능", triplePromiseOk(n));
 check("남은 하나 = 사주 · 미등록 → +15P 숨김", !triplePromiseOk(normalize(D(["tarot", "mind"]))));
 check("남은 하나 = 사주 · 등록자 → +15P", triplePromiseOk(normalize(D(["tarot", "mind"], { saju_registered: true }))));
