@@ -23,6 +23,15 @@ const META = {
 
 const ARM_MS = 400; // 서비스 armScreen 과 같은 입력 잠금
 
+/** 사주 화면이 TOO_YOUNG 을 받으면 남기는 기기 기억(saju.js) — 편의 기억이라 실패하면 「아님」 */
+const tooYoung = () => {
+  try {
+    return localStorage.getItem("mg_saju_too_young") === "1";
+  } catch {
+    return false;
+  }
+};
+
 /** NEXTBAR 상태표 6행 */
 export function decide(suite, justCompleted) {
   const tp = suite.triple_points;
@@ -118,6 +127,8 @@ function ensureBar() {
 export function renderNextStep({ suite, justCompleted = false, hasPrimaryAction = false }) {
   const host = document.getElementById("nextBlock");
   if (!host || !suite) return;
+  // 이 기기에서 사주가 만 14세 미만으로 거절됐으면 사주는 「이용 불가」 — 남은 서비스에서 뺀다(hub IMPL 15)
+  if (tooYoung()) suite = { ...suite, ready: { ...suite.ready, saju: false } };
   const screen = host.closest("[data-screen]");
   const d = decide(suite, justCompleted);
   const allDone = SUITE_ORDER.every((k) => suite[k]?.done);

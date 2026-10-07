@@ -190,6 +190,37 @@ console.log("\n[6] 지우기 — 생일만 · 도장 유지 · 바로 재등록 
   check("재등록 뒤 도장 그대로 · 오늘 done 유지", s.data.stamp_count === 1 && s.data.done === true);
 }
 
+console.log("\n[7] v2 서버 필드 — 열흘 지급 여부 · 금액 · 문구 · 나이 (REQ-63 사주)");
+{
+  const { c, uid } = await freshUser();
+  await c.post("/api/saju/profile", { birth: "1990-03-14", hour: null });
+  const s0 = await c.get("/api/saju/state");
+  check("soon_paid 6칸 false · grand_paid false · 가액·예고 금액은 서버 값",
+    s0.data.soon_paid?.length === 6 && s0.data.soon_paid.every((x) => x === false) && s0.data.grand_paid === false &&
+      s0.data.soon_bonus === 20 && s0.data.grand_bonus === 100 && s0.data.core_points === 5, JSON.stringify(s0.data.soon_paid));
+  const t = await c.post("/api/saju/today", {});
+  check("today 응답 gain_detail = daily 5 + new 3",
+    t.data.gain_detail?.some((g) => g.kind === "daily" && g.p === 5) && t.data.gain_detail?.some((g) => g.kind === "new" && g.p === 3),
+    JSON.stringify(t.data.gain_detail));
+  const again = await c.post("/api/saju/today", {});
+  check("ALREADY_DONE 문구 「오늘 운세는 이미 열었어요.」", again.status === 409 && again.data.message === "오늘 운세는 이미 열었어요.", again.data.message);
+  const soon = Math.floor(dayGanzhi(today) / 10);
+  sql(`INSERT OR IGNORE INTO suite_points (user_id, key, reason, amount, day, created_at) VALUES (${q(uid)}, 'MILESTONE_SAJU_SOON:${soon}', 'MILESTONE_SAJU_SOON', 20, ${q(today)}, 0)`);
+  const s1 = await c.get("/api/saju/state");
+  check("지급된 열흘 → soon_paid[그 칸] true", s1.data.soon_paid[soon] === true && s1.data.soon_paid.filter(Boolean).length === 1);
+
+  // 만 14세 — 생일 당일 통과, 하루 전 거부 · 1930 이전 거부
+  const y14 = Number(today.slice(0, 4)) - 14;
+  const b14 = `${y14}${today.slice(4)}`;
+  const ok14 = await (await freshUser()).c.post("/api/saju/profile", { birth: b14 });
+  const tomorrow14 = `${y14}${back(-1).slice(4)}`;
+  const ng14 = await (await freshUser()).c.post("/api/saju/profile", { birth: tomorrow14 });
+  check("14세 생일 당일 200 · 하루 모자라면 403", ok14.status === 200 && ng14.status === 403 && ng14.data.code === "TOO_YOUNG",
+    `${ok14.status} ${ng14.status}`);
+  const old = await (await freshUser()).c.post("/api/saju/profile", { birth: "1929-12-31" });
+  check("1930 이전 → 400 OUT_OF_RANGE", old.status === 400 && old.data.code === "OUT_OF_RANGE", `${old.status} ${old.data.code}`);
+}
+
 console.log(`\n${pass} 통과 · ${failures.length} 실패`);
 if (failures.length) {
   console.log("실패:\n  " + failures.join("\n  "));

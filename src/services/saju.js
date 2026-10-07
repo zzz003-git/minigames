@@ -176,9 +176,14 @@ export async function profile({ env, userId, body }) {
     throw new ApiError("BAD_PARAM", "태어난 시간을 확인해 주세요.", 400);
   }
 
-  // 만 14세 미만 차단 (기획서 1절)
-  const age = (Date.parse(`${day}T00:00:00Z`) - Date.parse(`${birth}T00:00:00Z`)) / (365.2425 * 86400000);
-  if (!(age >= SAJU.MIN_AGE)) {
+  if (birth < SAJU.BIRTH_MIN) {
+    throw new ApiError("OUT_OF_RANGE", `${SAJU.BIRTH_MIN.slice(0, 4)}년생부터 볼 수 있어요.`, 400);
+  }
+  // 만 14세 미만 차단 (기획서 1절) — 연·월·일로 만 나이를 센다. 평균 연 길이로 나누면
+  // 14세 생일 당일이 13.998 로 막혔다 (REQ-63 IMPL A-8)
+  const [ty, tmd] = [Number(day.slice(0, 4)), day.slice(5)];
+  const age = ty - by - (tmd < birth.slice(5) ? 1 : 0);
+  if (age < SAJU.MIN_AGE) {
     throw new ApiError("TOO_YOUNG", `만 ${SAJU.MIN_AGE}세부터 이용할 수 있어요.`, 403);
   }
 
@@ -241,13 +246,17 @@ export async function state({ env, userId }) {
   const day = dayKey();
   await touchUser(env, userId, day);
 
-  const [{ profile: p, changedDay }, st, got, suite, points, open] = await Promise.all([
+  const [{ profile: p, changedDay }, st, got, suite, points, open, paid] = await Promise.all([
     loadProfile(env, userId),
     loadDay(env, userId, day),
     stamps(env, userId),
     dailyState(env, userId, day),
     pointState(env, userId, day),
     distOpen(env, "saju", day),
+    env.DB.prepare(`SELECT key FROM suite_points WHERE user_id = ? AND key LIKE 'MILESTONE_SAJU_%'`)
+      .bind(userId)
+      .all()
+      .then((r) => new Set((r?.results ?? []).map((x) => x.key))),
   ]);
 
   const todayGz = dayGanzhi(day);
@@ -282,6 +291,12 @@ export async function state({ env, userId }) {
     stamps: got,
     stamp_count: got.length,
     soon_done: soonDone,
+    // 열흘·60칸 보너스 — 아직 받지 않은 것에만 +20P 를 보인다(D4). 금액도 서버 값 (REQ-63)
+    soon_paid: [0, 1, 2, 3, 4, 5].map((s) => paid.has(`MILESTONE_SAJU_SOON:${s}`)),
+    grand_paid: paid.has("MILESTONE_SAJU_GRAND"),
+    soon_bonus: SUITE.POINTS.MILESTONE_HALF,
+    grand_bonus: SUITE.POINTS.MILESTONE_GRAND,
+    core_points: SUITE.POINTS.CORE_DONE, // 「+5P부터」 예고
     ad_tomorrow: st.adTomorrow,
     ad_person: st.adPerson,
     ad_stats_seen: st.adStats,
@@ -301,7 +316,7 @@ export async function today({ env, userId }) {
 
   const st = await loadDay(env, userId, day);
   if (st.done) {
-    throw new ApiError("ALREADY_DONE", "오늘의 기운은 이미 꽂았어요. 리딩을 다시 볼 수 있습니다.", 409);
+    throw new ApiError("ALREADY_DONE", "오늘 운세는 이미 열었어요.", 409);
   }
 
   const chart = natalChart(p.birth, p.hour, p.minute ?? 0);

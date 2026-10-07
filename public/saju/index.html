@@ -12,108 +12,221 @@
   <link rel="mask-icon" href="/safari-pinned-tab.svg" color="#E07A1F">
   <link rel="manifest" href="/site.webmanifest">
   <title>오늘의 사주</title>
-  <meta name="color-scheme" content="dark">
-  <meta name="theme-color" content="#0F1420">
-  <meta name="description" content="내 명식에 오늘의 기운을 꽂아 보세요.">
+  <meta name="color-scheme" content="light">
+  <meta name="theme-color" content="#EFE6D2">
+  <meta name="description" content="생일만 넣으면 매일 나만의 운세 한 줄">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <!-- 제목 = Nanum Brush Script · 한자 = Noto Serif KR(붓 서체에 한자 글리프가 없다) -->
+  <link href="https://fonts.googleapis.com/css2?family=Nanum+Brush+Script&family=Noto+Serif+KR:wght@900&family=Noto+Sans+KR:wght@400;500;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../shared/base.css">
+  <link rel="stylesheet" href="../shared/theme-light.css">
   <link rel="stylesheet" href="../shared/nextbar.css">
   <link rel="stylesheet" href="saju.css">
 </head>
-<body class="game suite suite--saju">
+<body class="game suite suite--saju theme-light">
   <div id="siteNav"></div>
   <div class="app">
     <header class="topbar" id="header"></header>
     <main class="app__body">
 
-      <!-- 등록 -->
-      <section class="screen is-active" data-screen="reg">
-        <div class="card card--accent card--center card--hero">
-          <div class="card__label card__label--mono">MY CHART</div>
-          <div class="headline">내 명식을 세워요</div>
-          <p class="footnote">생년월일과 태어난 시간으로 네 기둥을 세웁니다.<br>
-            <b>이름도 성별도 받지 않아요.</b></p>
+      <!-- ① 소개 + 생일 (REQ-63 s1) -->
+      <section class="screen is-active reg" data-screen="reg">
+        <h2 class="reg__title">생일만 넣으면<br>매일 <em>나만의</em> 운세 한 줄</h2>
+
+        <div id="introSample" class="s-paper s-sample sample" aria-label="결과 예시">
+          <span class="s-sample__tag">예시</span>
+          <div class="sample__date" id="sampleDate">오늘의 한 줄</div>
+          <p class="sample__theme" id="sampleTheme">—</p>
+          <p class="sample__adv" id="sampleAdv">—</p>
+          <div class="sample__foot"><span>행운의 물건 <b id="sampleItem">—</b></span></div>
         </div>
 
-        <div class="card">
-          <label class="field">
-            <span class="field__label">생년월일 (양력)</span>
-            <input class="field__input" type="date" id="birth" min="1930-01-01">
-          </label>
-          <label class="field">
-            <span class="field__label">태어난 시간</span>
-            <input class="field__input" type="time" id="birthTime" step="60">
-          </label>
-          <p class="footnote--dim mt-sm">시간을 모르면 비워 두세요 — 세 기둥으로 봅니다.</p>
+        <ul class="s-checks">
+          <li>같은 날도 생일마다 운세가 달라요</li>
+          <li id="regPoints">하루 한 번 열면 포인트가 쌓여요</li>
+          <li>내일은 또 새로운 한 줄이 나와요</li>
+        </ul>
+
+        <div class="birth">
+          <div class="birth__label"><b>생년월일 <small>(양력)</small></b><small>음력이면 양력으로 바꿔 넣어 주세요</small></div>
+          <div class="s-date" id="birth" role="group" aria-label="생년월일">
+            <label class="s-date__box"><input id="birthY" inputmode="numeric" maxlength="4" placeholder="1980" aria-label="년"><span>년</span></label>
+            <label class="s-date__box"><input id="birthM" inputmode="numeric" maxlength="2" placeholder="01" aria-label="월"><span>월</span></label>
+            <label class="s-date__box"><input id="birthD" inputmode="numeric" maxlength="2" placeholder="01" aria-label="일"><span>일</span></label>
+          </div>
         </div>
 
-        <button class="btn btn--primary" id="regBtn">명식 세우기</button>
-        <p class="footnote--dim center">처음 등록한 뒤 24시간 안에 한 번 고칠 수 있고, 그 뒤로는 30일마다 바꿀 수 있어요</p>
+        <button class="s-fold" id="hourFold" type="button" aria-expanded="false" aria-controls="hourBox">
+          <b>태어난 시간</b> <small>선택 · 모르면 비워 두세요</small><span class="s-fold__chev">넣기 ▾</span>
+        </button>
+        <div class="s-hour" id="hourBox" hidden>
+          <label class="s-date__box"><input id="hourH" inputmode="numeric" maxlength="2" placeholder="--" aria-label="시 (0~23)"><span>시</span></label>
+          <label class="s-date__box"><input id="hourM" inputmode="numeric" maxlength="2" placeholder="--" aria-label="분 (0~59)"><span>분</span></label>
+          <button class="s-link" id="hourClear" type="button">비우기</button>
+        </div>
+
+        <button class="s-btn" id="regBtn" type="button">내 오늘 운세 보기</button>
+        <p class="privacy"><svg width="14" height="16" viewBox="0 0 14 16" aria-hidden="true"><rect x="1" y="7" width="12" height="8.5" rx="1.5" fill="none" stroke="#5E554A" stroke-width="1.4"/><path d="M4 7V4.6a3 3 0 0 1 6 0V7" fill="none" stroke="#5E554A" stroke-width="1.4"/></svg><span>이름·성별·연락처는 받지 않아요. 생일은 운세 계산과 나이 확인에만 써요.</span></p>
+
+        <p class="s-ent" id="entNoticeReg">본 콘텐츠는 오락용입니다</p>
       </section>
 
-      <!-- 명식 + 구슬 -->
-      <section class="screen" data-screen="chart">
-        <div class="pillars" id="pillars"></div>
-
-        <div class="card card--info">
-          <div class="card__label">오늘의 기운</div>
-          <div class="orbwrap">
-            <button class="orb" id="orb" type="button" aria-label="오늘의 기운을 명식에 꽂습니다">
-              <span class="orb__name" id="orbName">—</span>
+      <!-- ③ 인장 찍기 (s3) — 오늘 운세를 아직 안 열었을 때 -->
+      <section class="screen stampscr" data-screen="chart">
+        <p class="done" id="doneLine"><i aria-hidden="true"></i><span id="doneText">—</span><a class="s-link" id="editProfileStamp" data-edit-profile href="#reg" hidden>고치기</a></p>
+        <h2 class="ttl">오늘 운세를 열어 볼까요</h2>
+        <p class="today"><span id="todayLabel">오늘의 글자</span><b id="orbName">—</b></p>
+        <div class="stage">
+          <div class="s-sealwrap">
+            <button id="orb" class="s-seal orb" type="button" aria-label="오늘의 글자 — 눌러서 오늘 운세 열기">
+              <span class="s-seal__han" id="orbHan" aria-hidden="true"></span>
             </button>
           </div>
-          <p class="footnote center mt-sm" id="orbHint">구슬을 눌러 오늘을 꽂아 보세요</p>
+        </div>
+        <p id="orbHint">인장을 눌러 오늘 운세 열기</p>
+        <p class="open__sub" id="orbSub">오늘의 한 줄이 열리고 포인트가 쌓여요</p>
+
+        <div class="s-paper paper" id="todayPaper" aria-hidden="true">
+          <span class="paper__k">오늘의 한 줄</span>
+          <div class="paper__ln m"></div><div class="paper__ln s"></div><div class="paper__ln t"></div>
+          <span class="paper__target" id="paperTarget">여기<br>찍혀요</span>
         </div>
 
-        <button class="btn" id="stampBtn">도장판 보기</button>
-        <p class="footnote--dim center" id="chartNote">—</p>
+        <p class="s-ent" id="entNoticeChart">본 콘텐츠는 오락용입니다</p>
       </section>
 
-      <!-- 리딩 -->
-      <section class="screen" data-screen="reading">
-        <div class="card card--accent card--center card--hero">
-          <div class="card__label card__label--mono" id="rdGanzhi">—</div>
-          <div class="headline" id="rdTheme">—</div>
-          <p class="reading" id="rdIljin">—</p>
-          <p class="advice" id="rdAdvice">—</p>
+      <!-- ④ 오늘의 한 줄 (s4 · s5) -->
+      <section class="screen rd" data-screen="reading">
+        <article class="s-paper s-paper--accent hero">
+          <span class="hero__label" id="rdGanzhi">—</span>
+          <h2 id="rdTheme">—</h2>
+          <span class="s-seal--mark" aria-hidden="true"><span class="s-seal__han" id="rdSealHan"></span></span><span class="seal-ko" id="rdSealKo"></span>
+          <hr class="hero__div">
+          <span class="hero__k">오늘 이렇게 해 보세요</span>
+          <p id="rdAdvice">—</p>
+          <div class="lucky" id="rdLucky"></div>
+        </article>
+
+        <div class="gain">
+          <p id="rdGain">—</p>
+          <div class="soon" id="soonBar"></div>
         </div>
 
-        <div class="card card--info">
-          <div class="card__label">오늘의 관계</div>
-          <p class="footnote" id="rdRelation">—</p>
-          <p class="footnote mt-sm" id="rdElement">—</p>
+        <div>
+          <p class="tmr" id="tomorrowLine">—</p>
+          <div id="adbarTomorrow"></div>
         </div>
 
-        <div class="stats stats--inset" id="rdLucky"></div>
+        <article class="s-paper s-paper--plain more">
+          <button class="more__head" id="moreToggle" type="button" aria-expanded="false" aria-controls="moreBody">오늘 운세 더 읽기 <span id="moreChev">▾</span></button>
+          <div id="moreBody" hidden>
+            <div class="item"><span class="item__k">오늘의 날 이야기</span><p id="rdIljin">—</p></div>
+            <div class="item"><span class="item__k">사람·만남 운</span><p id="rdRelation">—</p></div>
+            <div class="item">
+              <span class="item__k">나와 오늘의 기운</span>
+              <div class="els" id="rdEls"></div>
+              <p id="rdElement">—</p>
+            </div>
+            <div class="item type"><span class="item__k">오늘 운세 유형</span><p id="rdType">—</p></div>
+          </div>
+        </article>
 
-        <div class="card card--info">
-          <div class="card__label">오늘의 적립</div>
-          <p class="footnote" id="rdGain">—</p>
-          <p class="footnote--dim mt-sm" id="rdDist">전국 분포는 광고를 보면 열려요</p>
-        </div>
+        <button class="mychart" id="mychartLink" type="button">
+          <span class="mychart__ic" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+          <span class="mychart__t"><b>내 글자 보기</b><small id="mychartWho">—</small></span>
+          <span class="mychart__go" aria-hidden="true">›</span>
+        </button>
 
-        <div id="adbarTomorrow"></div>
+        <p class="distwait" id="distWait" hidden>오늘 사람들의 운세 유형 분포는 사람이 더 모이면 열려요.</p>
         <div id="adbarStats"></div>
+        <p class="distwait" id="rdDist" hidden></p>
+
         <div id="nextBlock"></div>
-        <button class="btn" id="stampBtn2">도장판 보기</button>
-        <div class="footnote--dim center" id="rdNote"></div>
-      </section>
 
-      <!-- 도장판 -->
-      <section class="screen" data-screen="stamp">
-        <div class="card">
-          <div class="card__head"><span class="card__title" id="stampTitle">도장판</span></div>
-          <div class="stampgrid" id="stampGrid"></div>
-          <p class="footnote--dim mt-md">놓친 칸은 60일 뒤 같은 간지 날에 다시 채울 수 있어요</p>
+        <div class="acts">
+          <button class="s-btn s-btn--line" id="stampBtn2" type="button">열흘 도장판 보기</button>
+          <a class="s-link" id="editProfileMore" data-edit-profile href="#reg">생일 정보 고치기</a>
         </div>
-        <button class="btn" id="stampBackBtn">← 돌아가기</button>
+        <p class="s-ent" id="entNoticeReading">본 콘텐츠는 오락용입니다</p>
       </section>
 
-      <p class="legal center">본 콘텐츠는 오락용입니다.</p>
+      <!-- ⑤ 열흘 도장판 (s6) -->
+      <section class="screen stamp" data-screen="stamp">
+        <h2 id="stampTitle">열흘 도장판</h2>
+        <p class="lead">오늘 운세를 열 때마다 도장이 1개 찍혀요.</p>
+        <div id="stampGrid"></div>
+        <button class="s-fold allfold" id="stampAll" type="button" aria-expanded="false" aria-controls="stampAllBody"><b>전체 60칸 보기</b><span class="s-fold__chev">▾</span></button>
+        <div id="stampAllBody" hidden></div>
+        <button class="s-btn" id="stampBackBtn" type="button">← 돌아가기</button>
+        <p class="s-ent" id="entNoticeStamp">본 콘텐츠는 오락용입니다</p>
+      </section>
+
+      <!-- ⑦ 내 글자 보기 (s7) -->
+      <section class="screen chart" data-screen="mychart">
+        <div class="hero" id="chartNote"></div>
+        <div class="cols-wrap">
+          <div class="s-cols labels" aria-hidden="true">
+            <span class="s-born">태어난</span><span></span>
+            <span class="s-collabel">해</span>
+            <span class="s-collabel">달</span>
+            <span class="s-collabel">날</span>
+            <span class="s-collabel">시</span>
+            <span class="s-collabel is-today">오늘</span>
+          </div>
+          <div id="pillars" class="pillars s-cols"></div>
+          <p class="info"><i aria-hidden="true">i</i><span>태어난 해·달·날·시를 옛 달력 글자로 바꾼 거예요. 이 글자들과 <b>오늘의 글자</b>가 만나 오늘 운세가 나와요.</span></p>
+        </div>
+        <details class="calc" id="calcBox" hidden>
+          <summary>계산 기준 보기 <span>▾</span></summary>
+          <ul class="calc__list" id="calcList"></ul>
+        </details>
+        <p class="calcnote" id="calcNote" hidden>태어난 시간을 비워 둬서 ‘시’ 칸은 비어 있어요. 오늘 운세 유형은 ‘날’ 칸 글자로 정해져요.</p>
+        <div class="acts acts--col">
+          <button class="s-btn" id="mychartBack" type="button">← 오늘 운세로 돌아가기</button>
+          <a class="s-link" id="editProfileChart" data-edit-profile href="#reg">생일 정보 고치기</a>
+          <button class="s-link s-link--quiet" id="deleteProfile" type="button">내 사주 정보 지우기</button>
+        </div>
+        <p class="s-ent" id="entNoticeMychart">본 콘텐츠는 오락용입니다</p>
+      </section>
     </main>
   </div>
+
+  <!-- ② 확인 시트 (s2) -->
+  <div class="s-dim" id="confirmDim" hidden></div>
+  <div id="confirmSheet" class="s-sheet" role="dialog" aria-modal="true" aria-labelledby="confirmTitle" hidden>
+    <div class="s-sheet__grip"></div>
+    <h2 class="sheet__title" id="confirmTitle">이 생일로 볼게요</h2>
+    <div class="sheet__box">
+      <div class="sheet__row"><span class="sheet__k">생년월일</span><span class="sheet__v" id="confirmBirth">—</span></div>
+      <div class="sheet__row"><span class="sheet__k">태어난 시간</span><span class="sheet__v sheet__v2" id="confirmHour">—</span></div>
+    </div>
+    <p class="sheet__solar"><b>양력이 맞나요?</b> 음력 생일이면 양력으로 바꿔 넣어 주세요.</p>
+    <p class="sheet__warn"><i aria-hidden="true">!</i><span>24시간 안에 한 번 고칠 수 있어요 · 그 뒤 30일마다<small>숫자가 맞는지 한 번만 더 봐 주세요.</small></span></p>
+    <p class="sheet__err" id="confirmErr" role="alert" hidden></p>
+    <div class="sheet__acts">
+      <button class="s-btn" id="confirmOk" type="button">맞아요</button>
+      <button class="s-link" id="confirmEdit" type="button">고칠게요</button>
+    </div>
+  </div>
+
+  <!-- ⑧ 사주 정보 지우기 시트 (s8) -->
+  <div class="s-dim" id="deleteDim" hidden></div>
+  <div id="deleteSheet" class="s-sheet" role="dialog" aria-modal="true" aria-labelledby="deleteTitle" hidden>
+    <div class="s-sheet__grip"></div>
+    <h2 class="del__title" id="deleteTitle">내 사주 정보를 지울까요?</h2>
+    <p class="del__lead">생일과 태어난 시간만 지워요.</p>
+    <div class="del__box">
+      <div class="del__row"><span class="del__k go">지워져요</span><span id="deleteGo">—</span></div>
+      <div class="del__row"><span class="del__k stay">남아요</span><span id="deleteStay">—</span></div>
+    </div>
+    <p class="del__note">지운 뒤에는 오늘의 사주를 볼 수 없어요. 생일을 다시 넣으면 언제든 다시 볼 수 있어요.</p>
+    <div class="del__acts">
+      <button class="s-btn" id="deleteOk" type="button">지우기</button>
+      <button class="s-link" id="deleteCancel" type="button">그만두기</button>
+    </div>
+  </div>
+
   <script type="module" src="saju.js"></script>
 </body>
 </html>
